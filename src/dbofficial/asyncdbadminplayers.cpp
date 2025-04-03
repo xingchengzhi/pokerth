@@ -51,7 +51,7 @@ AsyncDBAdminPlayers::Init(DBIdManager& /*idManager*/)
 }
 
 void
-AsyncDBAdminPlayers::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& result, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAdminPlayers::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& result, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	list<DB_id> adminPlayers;
 	for (size_t i = 0; i < result.num_rows(); ++i) {
@@ -59,18 +59,18 @@ AsyncDBAdminPlayers::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idMa
 			adminPlayers.push_back(result[i][0]);
 		}
 	}
-	service.post(boost::bind(&ServerDBCallback::PlayerAdminList, &cb, GetId(), adminPlayers));
+	boost::asio::post(service, boost::bind(&ServerDBCallback::PlayerAdminList, &cb, GetId(), adminPlayers));
 }
 
 void
-AsyncDBAdminPlayers::HandleNoResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAdminPlayers::HandleNoResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	// This query should always produce a result.
 	HandleError(service, cb);
 }
 
 void
-AsyncDBAdminPlayers::HandleError(boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAdminPlayers::HandleError(boost::asio::io_context &service, ServerDBCallback &cb)
 {
-	service.post(boost::bind(&ServerDBCallback::QueryError, &cb, "AsyncDBAdminPlayers: Failure."));
+	boost::asio::post(service, boost::bind(&ServerDBCallback::QueryError, &cb, "AsyncDBAdminPlayers: Failure."));
 }

@@ -50,7 +50,7 @@ namespace po = boost::program_options;
 #define BUF_SIZE 1024
 
 struct NetSession {
-	NetSession(boost::asio::io_service &ioService) : recBufPos(0), authSession(NULL), socket(ioService) {}
+	NetSession(boost::asio::io_context &ioService) : recBufPos(0), authSession(NULL), socket(ioService) {}
 	boost::array<char, BUF_SIZE> recBuf;
 	size_t recBufPos;
 	boost::array<char, BUF_SIZE> sendBuf;
@@ -162,13 +162,13 @@ main(int argc, char *argv[])
 		}
 
 		// Connect to the PokerTH server.
-		boost::asio::io_service ioService;
+		boost::asio::io_context ioService;
 		tcp::resolver resolver(ioService);
 		tcp::resolver::query query(server, port);
-		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-		tcp::resolver::iterator end;
+		tcp::resolver::results_type endpoint_iterator = resolver.resolve(query);
+		tcp::resolver::results_type end;
 		boost::system::error_code error = boost::asio::error::host_not_found;
-		tcp::resolver::iterator curEndpoint;
+		tcp::resolver::results_type curEndpoint;
 		tcp::socket tmpSocket(ioService);
 		while (error && endpoint_iterator != end) {
 			curEndpoint = endpoint_iterator++;

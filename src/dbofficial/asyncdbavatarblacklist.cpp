@@ -46,23 +46,23 @@ AsyncDBAvatarBlacklist::~AsyncDBAvatarBlacklist()
 }
 
 void
-AsyncDBAvatarBlacklist::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& result, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAvatarBlacklist::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& result, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	if (result.num_rows() == 0)
-		service.post(boost::bind(&ServerDBCallback::AvatarIsOK, &cb, GetId()));
+		boost::asio::post(service, boost::bind(&ServerDBCallback::AvatarIsOK, &cb, GetId()));
 	else
-		service.post(boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &cb, GetId()));
+		boost::asio::post(service, boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &cb, GetId()));
 }
 
 void
-AsyncDBAvatarBlacklist::HandleNoResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAvatarBlacklist::HandleNoResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	HandleError(service, cb);
 }
 
 void
-AsyncDBAvatarBlacklist::HandleError(boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBAvatarBlacklist::HandleError(boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	// If query failed: Avatar is blacklisted.
-	service.post(boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &cb, GetId()));
+	boost::asio::post(service, boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &cb, GetId()));
 }

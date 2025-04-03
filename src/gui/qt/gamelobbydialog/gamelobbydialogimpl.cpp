@@ -122,7 +122,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	autoStartTimerOverlay->setAutoFillBackground(true);
 	autoStartTimerOverlay->setFrameStyle(QFrame::StyledPanel);
 	QPalette p;
-	p.setColor(QPalette::Background, QColor(255, 255, 255, 210));
+	p.setColor(QPalette::Window, QColor(255, 255, 255, 210));
 	autoStartTimerOverlay->setPalette(p);
 
 
@@ -425,7 +425,7 @@ void gameLobbyDialogImpl::refresh(int actionID)
 		myGameListModel->clear();
 		myGameListSelectionModel->clear();
 		myGameListSelectionModel->clearSelection();
-		myGameListSortFilterProxyModel->clear();
+		myGameListSortFilterProxyModel->invalidate();
 		myNickListModel->clear();
 		myNickListSelectionModel->clear();
 		myNickListSelectionModel->clearSelection();;
@@ -604,7 +604,7 @@ void gameLobbyDialogImpl::updateGameItem(QList <QStandardItem*> itemList, unsign
 	}
 
 	QString playerStr;
-	playerStr.sprintf("%u/%u", (unsigned)info.players.size(), (unsigned)info.data.maxNumberOfPlayers);
+	playerStr = QString::asprintf("%u/%u", (unsigned)info.players.size(), (unsigned)info.data.maxNumberOfPlayers);
 	itemList.at(1)->setData(playerStr, Qt::DisplayRole);
 	if((unsigned)info.players.size() == (unsigned)info.data.maxNumberOfPlayers) {
 		itemList.at(1)->setData("totalfull", 16);
@@ -873,7 +873,7 @@ void gameLobbyDialogImpl::clearDialog()
 	myGameListModel->clear();
 	myGameListSelectionModel->clear();
 	myGameListSelectionModel->clearSelection();
-	myGameListSortFilterProxyModel->clear();
+	myGameListSortFilterProxyModel->invalidate();
 	treeView_GameList->show();
 	treeWidget_connectedPlayers->clear();
 	treeWidget_connectedSpectators->clear();
@@ -1536,57 +1536,57 @@ void gameLobbyDialogImpl::changeGameListFilter(int index)
 
 	switch(index) {
 	case 0: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	case 1: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp("open", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression("open"));
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	case 2: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp("nonfull", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp("open", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression("nonfull"));
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression("open"));
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	case 3: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp("nonfull", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp("open", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp("nonpriv", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression("nonfull"));
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression("open"));
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression("nonpriv"));
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	case 4: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp("nonfull", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp("open", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp("private", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression("nonfull"));
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression("open"));
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression("private"));
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	case 5: {
-		myGameListSortFilterProxyModel->setColumn1RegExp(QRegExp("nonfull", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn2RegExp(QRegExp("open", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn3RegExp(QRegExp("ranking", Qt::CaseInsensitive, QRegExp::FixedString));
-		myGameListSortFilterProxyModel->setColumn4RegExp(QRegExp());
-		myGameListSortFilterProxyModel->setColumn5RegExp(QRegExp());
+		myGameListSortFilterProxyModel->setColumn1RegExp(QRegularExpression("nonfull"));
+		myGameListSortFilterProxyModel->setColumn2RegExp(QRegularExpression("open"));
+		myGameListSortFilterProxyModel->setColumn3RegExp(QRegularExpression("ranking"));
+		myGameListSortFilterProxyModel->setColumn4RegExp(QRegularExpression());
+		myGameListSortFilterProxyModel->setColumn5RegExp(QRegularExpression());
 	}
 	break;
 	default:
 		;
 	}
-	myGameListSortFilterProxyModel->setFilterRegExp(QString());
+	myGameListSortFilterProxyModel->setFilterRole(QString().toInt());
 	myGameListSortFilterProxyModel->setFilterKeyColumn(0);
 
 	writeDialogSettings(1);
@@ -1615,7 +1615,7 @@ void gameLobbyDialogImpl::changeNickListFilter(int state)
 	myNickListSortFilterProxyModel->setFilterState(state);
 	myNickListModel->sort(0, Qt::DescendingOrder);
 
-	myNickListSortFilterProxyModel->setFilterRegExp(QString());
+	myNickListSortFilterProxyModel->setFilterRole(QString().toInt());
 	myNickListSortFilterProxyModel->setFilterKeyColumn(0);
 
 	lastNickListFilterState = state;
@@ -1839,8 +1839,8 @@ void gameLobbyDialogImpl::removePlayerFromIgnoreList()
 
 void gameLobbyDialogImpl::searchForPlayerRegExpChanged()
 {
-	QRegExp regExp(lineEdit_searchForPlayers->text(), Qt::CaseInsensitive);
-	myNickListSortFilterProxyModel->setFilterRegExp(regExp);
+	QRegularExpression regExp(lineEdit_searchForPlayers->text());
+	myNickListSortFilterProxyModel->setFilterRole(regExp.captureCount());
 }
 
 void gameLobbyDialogImpl::showAutoStartTimer()

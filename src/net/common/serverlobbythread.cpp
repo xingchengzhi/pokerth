@@ -250,7 +250,7 @@ private:
 
 
 ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ServerIrcBotCallback &ircBotCb, ConfigFile &serverConfig,
-									 AvatarManager &avatarManager, boost::shared_ptr<boost::asio::io_service> ioService)
+									 AvatarManager &avatarManager, boost::shared_ptr<boost::asio::io_context> ioService)
 	: m_ioService(ioService), m_authContext(NULL), m_gui(gui), m_ircBotCb(ircBotCb), m_avatarManager(avatarManager),
 	  m_mode(mode), m_serverConfig(serverConfig), m_curGameId(0), m_curUniquePlayerId(0), m_curSessionId(INVALID_SESSION + 1),
 	  m_statDataChanged(false), m_removeGameTimer(*ioService),
@@ -628,7 +628,7 @@ ServerLobbyThread::RemoveGameByPlayerName(const std::string &playerName)
 	if (session) {
 		boost::shared_ptr<ServerGame> game = session->GetGame();
 		if (game) {
-			m_ioService->post(boost::bind(&ServerLobbyThread::InternalRemoveGame, shared_from_this(), game));
+			boost::asio::post(*m_ioService, boost::bind(&ServerLobbyThread::InternalRemoveGame, shared_from_this(), game));
 			retVal = true;
 		}
 	}
@@ -667,13 +667,13 @@ ServerLobbyThread::GetPlayerNameFromId(unsigned playerId) const
 void
 ServerLobbyThread::RemovePlayer(unsigned playerId, unsigned errorCode)
 {
-	m_ioService->post(boost::bind(&ServerLobbyThread::InternalRemovePlayer, shared_from_this(), playerId, errorCode));
+	boost::asio::post(*m_ioService, boost::bind(&ServerLobbyThread::InternalRemovePlayer, shared_from_this(), playerId, errorCode));
 }
 
 void
 ServerLobbyThread::MutePlayerInGame(unsigned playerId)
 {
-	m_ioService->post(boost::bind(&ServerLobbyThread::InternalMutePlayerInGame, shared_from_this(), playerId));
+	boost::asio::post(*m_ioService, boost::bind(&ServerLobbyThread::InternalMutePlayerInGame, shared_from_this(), playerId));
 }
 
 void
@@ -806,7 +806,7 @@ ServerLobbyThread::GetSender()
 	return *m_sender;
 }
 
-boost::asio::io_service &
+boost::asio::io_context &
 ServerLobbyThread::GetIOService()
 {
 	assert(m_ioService);
@@ -871,7 +871,6 @@ ServerLobbyThread::Main()
 		// Register all timers.
 		RegisterTimers();
 
-		boost::asio::io_service::work ioWork(*m_ioService);
 		m_ioService->run(); // Will only be aborted asynchronously.
 
 	} catch (const PokerTHException &e) {
@@ -897,20 +896,20 @@ void
 ServerLobbyThread::RegisterTimers()
 {
 	// Remove closed games.
-	m_removeGameTimer.expires_from_now(
-		milliseconds(SERVER_REMOVE_GAME_INTERVAL_MSEC));
+	m_removeGameTimer.expires_at(time_point<steady_clock,duration<int>>(
+		duration<int>(SERVER_REMOVE_GAME_INTERVAL_MSEC)));
 	m_removeGameTimer.async_wait(
 		boost::bind(
 			&ServerLobbyThread::TimerRemoveGame, shared_from_this(), boost::asio::placeholders::error));
 	// Update the statistics file.
-	m_saveStatisticsTimer.expires_from_now(
-		seconds(SERVER_SAVE_STATISTICS_INTERVAL_SEC));
+	m_saveStatisticsTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+		duration<int, std::ratio<1000, 1>>(SERVER_SAVE_STATISTICS_INTERVAL_SEC)));
 	m_saveStatisticsTimer.async_wait(
 		boost::bind(
 			&ServerLobbyThread::TimerSaveStatisticsFile, shared_from_this(), boost::asio::placeholders::error));
 	// Update the avatar upload locks.
-	m_loginLockTimer.expires_from_now(
-		milliseconds(SERVER_UPDATE_LOGIN_LOCK_INTERVAL_MSEC));
+	m_loginLockTimer.expires_at(time_point<steady_clock,duration<int>>(
+		duration<int>(SERVER_UPDATE_LOGIN_LOCK_INTERVAL_MSEC)));
 	m_loginLockTimer.async_wait(
 		boost::bind(
 			&ServerLobbyThread::TimerUpdateClientLoginLock, shared_from_this(), boost::asio::placeholders::error));
@@ -1936,8 +1935,8 @@ ServerLobbyThread::TimerRemoveGame(const boost::system::error_code &ec)
 			i = next;
 		}
 		// Restart timer
-		m_removeGameTimer.expires_from_now(
-			milliseconds(SERVER_REMOVE_GAME_INTERVAL_MSEC));
+		m_removeGameTimer.expires_at(time_point<steady_clock,duration<int>>(
+			duration<int>(SERVER_REMOVE_GAME_INTERVAL_MSEC)));
 		m_removeGameTimer.async_wait(
 			boost::bind(
 				&ServerLobbyThread::TimerRemoveGame, shared_from_this(), boost::asio::placeholders::error));
@@ -1961,8 +1960,8 @@ ServerLobbyThread::TimerUpdateClientLoginLock(const boost::system::error_code &e
 			i = next;
 		}
 		// Restart timer
-		m_loginLockTimer.expires_from_now(
-			milliseconds(SERVER_UPDATE_LOGIN_LOCK_INTERVAL_MSEC));
+		m_loginLockTimer.expires_at(time_point<steady_clock,duration<int>>(
+			duration<int>(SERVER_UPDATE_LOGIN_LOCK_INTERVAL_MSEC)));
 		m_loginLockTimer.async_wait(
 			boost::bind(
 				&ServerLobbyThread::TimerUpdateClientLoginLock, shared_from_this(), boost::asio::placeholders::error));
@@ -2308,8 +2307,8 @@ ServerLobbyThread::TimerSaveStatisticsFile(const boost::system::error_code &ec)
 			}
 		}
 		// Restart timer
-		m_saveStatisticsTimer.expires_from_now(
-			seconds(SERVER_SAVE_STATISTICS_INTERVAL_SEC));
+		m_saveStatisticsTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+			duration<int, std::ratio<1000, 1>>(SERVER_SAVE_STATISTICS_INTERVAL_SEC)));
 		m_saveStatisticsTimer.async_wait(
 			boost::bind(
 				&ServerLobbyThread::TimerSaveStatisticsFile, shared_from_this(), boost::asio::placeholders::error));

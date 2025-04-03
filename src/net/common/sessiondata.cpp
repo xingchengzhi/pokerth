@@ -47,7 +47,7 @@ using namespace std::chrono;
 using namespace boost::chrono;
 #endif
 
-SessionData::SessionData(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, SessionId id, SessionDataCallback &cb, boost::asio::io_service &ioService)
+SessionData::SessionData(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService)
 	: m_socket(sock), m_id(id), m_state(SessionData::Init), m_readyFlag(false), m_wantsLobbyMsg(true),
 	  m_activityTimeoutSec(0), m_activityWarningRemainingSec(0), m_initTimeoutTimer(ioService), m_globalTimeoutTimer(ioService),
 	  m_activityTimeoutTimer(ioService), m_callback(cb), m_authSession(NULL), m_curAuthStep(0)
@@ -56,7 +56,7 @@ SessionData::SessionData(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, S
 	m_sendBuffer.reset(new AsioSendBuffer);
 }
 
-SessionData::SessionData(boost::shared_ptr<WebSocketData> webData, SessionId id, SessionDataCallback &cb, boost::asio::io_service &ioService, int /*filler*/)
+SessionData::SessionData(boost::shared_ptr<WebSocketData> webData, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService, int /*filler*/)
 	: m_webData(webData), m_id(id), m_state(SessionData::Init), m_readyFlag(false), m_wantsLobbyMsg(true),
 	  m_activityTimeoutSec(0), m_activityWarningRemainingSec(0), m_initTimeoutTimer(ioService), m_globalTimeoutTimer(ioService),
 	  m_activityTimeoutTimer(ioService), m_callback(cb), m_authSession(NULL), m_curAuthStep(0)
@@ -241,8 +241,8 @@ SessionData::TimerActivityWarning(const boost::system::error_code &ec)
 	if (!ec) {
 		m_callback.SessionTimeoutWarning(shared_from_this(), m_activityWarningRemainingSec);
 
-		m_activityTimeoutTimer.expires_from_now(
-			seconds(m_activityWarningRemainingSec));
+		m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+			duration<int, std::ratio<1000, 1>>(m_activityWarningRemainingSec)));
 		m_activityTimeoutTimer.async_wait(
 			boost::bind(
 				&SessionData::TimerSessionTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -332,8 +332,8 @@ void
 SessionData::ResetActivityTimer()
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_activityTimeoutTimer.expires_from_now(
-		seconds(m_activityTimeoutSec - m_activityWarningRemainingSec));
+	m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+		duration<int, std::ratio<1000, 1>>(m_activityTimeoutSec - m_activityWarningRemainingSec)));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));
@@ -343,8 +343,8 @@ void
 SessionData::StartTimerInitTimeout(unsigned timeoutSec)
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_initTimeoutTimer.expires_from_now(
-		seconds(timeoutSec));
+	m_initTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+		duration<int, std::ratio<1000, 1>>(timeoutSec))); 
 	m_initTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerInitTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -354,8 +354,8 @@ void
 SessionData::StartTimerGlobalTimeout(unsigned timeoutSec)
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_globalTimeoutTimer.expires_from_now(
-		seconds(timeoutSec));
+	m_globalTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+		duration<int, std::ratio<1000, 1>>(timeoutSec)));
 	m_globalTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerSessionTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -368,8 +368,8 @@ SessionData::StartTimerActivityTimeout(unsigned timeoutSec, unsigned warningRema
 	m_activityTimeoutSec = timeoutSec;
 	m_activityWarningRemainingSec = warningRemainingSec;
 
-	m_activityTimeoutTimer.expires_from_now(
-		seconds(timeoutSec - warningRemainingSec));
+	m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
+		duration<int, std::ratio<1000, 1>>(timeoutSec - warningRemainingSec)));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));
@@ -407,14 +407,14 @@ SessionData::GetRemoteIPAddressFromSocket() const
 		boost::system::error_code errCode;
 		tcp::endpoint clientEndpoint = m_socket->remote_endpoint(errCode);
 		if (!errCode) {
-			ipAddress = clientEndpoint.address().to_string(errCode);
+			ipAddress = clientEndpoint.address().to_string();
 		}
 	} else {
 		boost::system::error_code errCode;
 		server::connection_ptr con = m_webData->webSocketServer->get_con_from_hdl(m_webData->webHandle);
 		tcp::endpoint webClientEndpoint = con->get_raw_socket().remote_endpoint(errCode);
 		if (!errCode) {
-			ipAddress = webClientEndpoint.address().to_string(errCode);
+			ipAddress = webClientEndpoint.address().to_string();
 		}
 	}
 	return ipAddress;

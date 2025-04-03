@@ -40,7 +40,7 @@ using namespace std::chrono;
 using namespace boost::chrono;
 #endif
 
-ServerBanManager::ServerBanManager(boost::shared_ptr<boost::asio::io_service> ioService)
+ServerBanManager::ServerBanManager(boost::shared_ptr<boost::asio::io_context> ioService)
 	: m_ioService(ioService), m_curBanId(0)
 {
 }
@@ -131,7 +131,7 @@ ServerBanManager::GetBanList(list<string> &list) const
 			banText << (*i_nick).first << ": (nickStr) - " << (*i_nick).second.nameStr;
 
 		if ((*i_nick).second.timer)
-			banText << " duration: " << duration_cast<hours>((*i_nick).second.timer->expires_from_now()).count() << "h";
+			banText << " duration: " << duration_cast<hours>((*i_nick).second.timer->expiry().time_since_epoch()).count() << "h";
 		list.push_back(banText.str());
 		++i_nick;
 	}
@@ -141,7 +141,7 @@ ServerBanManager::GetBanList(list<string> &list) const
 		ostringstream banText;
 		banText << (*i_ip).first << ": (IP) - " << (*i_ip).second.ipAddress;
 		if ((*i_ip).second.timer)
-			banText << " duration: " << duration_cast<hours>((*i_ip).second.timer->expires_from_now()).count() << "h";
+			banText << " duration: " << duration_cast<hours>((*i_ip).second.timer->expiry().time_since_epoch()).count() << "h";
 		list.push_back(banText.str());
 		++i_ip;
 	}
@@ -246,8 +246,7 @@ ServerBanManager::InternalRegisterTimedBan(unsigned timerId, unsigned durationHo
 	boost::shared_ptr<boost::asio::steady_timer> tmpTimer;
 	if (durationHours) {
 		tmpTimer.reset(new boost::asio::steady_timer(*m_ioService));
-		tmpTimer->expires_from_now(
-			hours(durationHours));
+		tmpTimer->expires_at(time_point<steady_clock,duration<int, std::ratio<3600000, 1>>>(duration<int, std::ratio<3600000, 1>>(durationHours)));
 		tmpTimer->async_wait(
 			boost::bind(
 				&ServerBanManager::TimerRemoveBan, shared_from_this(), boost::asio::placeholders::error, timerId, tmpTimer));

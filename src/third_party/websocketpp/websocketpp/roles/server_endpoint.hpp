@@ -64,34 +64,10 @@ public:
     /// Type of the endpoint component of this server
     typedef endpoint<connection_type,config> endpoint_type;
 
-    friend class connection<config>;
-
     explicit server() : endpoint_type(true)
     {
         endpoint_type::m_alog.write(log::alevel::devel, "server constructor");
     }
-
-    /// Destructor
-    ~server<config>() {}
-
-#ifdef _WEBSOCKETPP_DEFAULT_DELETE_FUNCTIONS_
-    // no copy constructor because endpoints are not copyable
-    server<config>(server<config> &) = delete;
-    
-    // no copy assignment operator because endpoints are not copyable
-    server<config> & operator=(server<config> const &) = delete;
-#endif // _WEBSOCKETPP_DEFAULT_DELETE_FUNCTIONS_
-
-#ifdef _WEBSOCKETPP_MOVE_SEMANTICS_
-    /// Move constructor
-    server<config>(server<config> && o) : endpoint<connection<config>,config>(std::move(o)) {}
-
-#ifdef _WEBSOCKETPP_DEFAULT_DELETE_FUNCTIONS_
-    // no move assignment operator because of const member variables
-    server<config> & operator=(server<config> &&) = delete;
-#endif // _WEBSOCKETPP_DEFAULT_DELETE_FUNCTIONS_
-
-#endif // _WEBSOCKETPP_MOVE_SEMANTICS_
 
     /// Create and initialize a new connection
     /**
@@ -110,8 +86,8 @@ public:
     /// Starts the server's async connection acceptance loop (exception free)
     /**
      * Initiates the server connection acceptance loop. Must be called after
-     * listen. This method will have no effect until the underlying io_service
-     * starts running. It may be called after the io_service is already running.
+     * listen. This method will have no effect until the underlying io_context
+     * starts running. It may be called after the io_context is already running.
      *
      * Refer to documentation for the transport policy you are using for
      * instructions on how to stop this acceptance loop.
@@ -143,8 +119,8 @@ public:
     /// Starts the server's async connection acceptance loop
     /**
      * Initiates the server connection acceptance loop. Must be called after
-     * listen. This method will have no effect until the underlying io_service
-     * starts running. It may be called after the io_service is already running.
+     * listen. This method will have no effect until the underlying io_context
+     * starts running. It may be called after the io_context is already running.
      *
      * Refer to documentation for the transport policy you are using for
      * instructions on how to stop this acceptance loop.

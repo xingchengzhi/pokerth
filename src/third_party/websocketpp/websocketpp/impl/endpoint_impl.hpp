@@ -45,7 +45,7 @@ endpoint<connection,config>::create_connection() {
     //scoped_lock_type guard(m_mutex);
     // Create a connection on the heap and manage it using a shared pointer
     connection_ptr con = lib::make_shared<connection_type>(m_is_server,
-        m_user_agent, lib::ref(m_alog), lib::ref(m_elog), lib::ref(m_rng));
+        m_user_agent, m_alog, m_elog, m_rng);
 
     connection_weak_ptr w(con);
 
@@ -142,21 +142,7 @@ void endpoint<connection,config>::resume_reading(connection_hdl hdl) {
     if (ec) { throw exception(ec); }
 }
 
-template <typename connection, typename config>
-void endpoint<connection,config>::send_http_response(connection_hdl hdl,
-    lib::error_code & ec)
-{
-    connection_ptr con = get_con_from_hdl(hdl,ec);
-    if (ec) {return;}
-    con->send_http_response(ec);
-}
 
-template <typename connection, typename config>
-void endpoint<connection,config>::send_http_response(connection_hdl hdl) {
-    lib::error_code ec;
-    send_http_response(hdl,ec);
-    if (ec) { throw exception(ec); }
-}
 
 template <typename connection, typename config>
 void endpoint<connection,config>::send(connection_hdl hdl, std::string const & payload,

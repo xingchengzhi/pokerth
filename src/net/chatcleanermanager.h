@@ -48,7 +48,7 @@ class ChatCleanerMessage;
 class ChatCleanerManager : public boost::enable_shared_from_this<ChatCleanerManager>
 {
 public:
-	ChatCleanerManager(ChatCleanerCallback &cb, boost::shared_ptr<boost::asio::io_service> ioService);
+	ChatCleanerManager(ChatCleanerCallback &cb, boost::shared_ptr<boost::asio::io_context> ioService);
 	virtual ~ChatCleanerManager();
 
 	void Init(const std::string &serverAddr, int port, bool ipv6,
@@ -59,8 +59,8 @@ public:
 
 protected:
 
-	void HandleResolve(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator endpoint_iterator);
-	void HandleConnect(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator endpoint_iterator);
+	void HandleResolve(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type endpoint_iterator);
+	void HandleConnect(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type endpoint_iterator);
 	void HandleRead(const boost::system::error_code &ec, size_t bytesRead);
 	bool HandleMessage(ChatCleanerMessage &msg);
 
@@ -70,7 +70,7 @@ protected:
 private:
 
 	ChatCleanerCallback &m_callback;
-	boost::shared_ptr<boost::asio::io_service> m_ioService;
+	boost::shared_ptr<boost::asio::io_context> m_ioService;
 	boost::shared_ptr<boost::asio::ip::tcp::resolver> m_resolver;
 	boost::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
 	boost::shared_ptr<AsioSendBuffer> m_sendManager;

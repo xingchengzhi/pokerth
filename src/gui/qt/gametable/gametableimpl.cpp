@@ -488,7 +488,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 
 	//resize stop-button depending on translation
 	QFontMetrics tempMetrics = this->fontMetrics();
-	int width = tempMetrics.width(tr("Stop"));
+	int width = tempMetrics.horizontalAdvance(tr("Stop"));
 
 	//Clear Focus
 #ifdef GUI_800x480
@@ -1838,7 +1838,7 @@ void gameTableImpl::provideMyActions(int mode)
 
 
 		//if value changed on bet/raise button --> uncheck to prevent unwanted actions
-		int lastBetValue = lastPushButtonBetRaiseString.simplified().remove(QRegExp("[^0-9]")).toInt();
+		int lastBetValue = lastPushButtonBetRaiseString.simplified().remove(QRegularExpression("[^0-9]")).toInt();
 
 		if((lastBetValue < horizontalSlider_bet->minimum() && pushButton_BetRaise->isChecked())) {
 
@@ -2065,7 +2065,7 @@ int gameTableImpl::getMyCallAmount()
 int gameTableImpl::getBetRaisePushButtonValue()
 {
 
-	int betValue = pushButton_BetRaise->text().simplified().remove(QRegExp("[^0-9]")).toInt();
+	int betValue = pushButton_BetRaise->text().simplified().remove(QRegularExpression("[^0-9]")).toInt();
 	return betValue;
 }
 
@@ -2816,7 +2816,7 @@ void gameTableImpl::postRiverRunAnimation6()
 				pushButton_break->setDisabled(false);
 #endif
 				QFontMetrics tempMetrics = this->fontMetrics();
-				int width = tempMetrics.width(tr("Start"));
+				int width = tempMetrics.horizontalAdvance(tr("Start"));
 #ifdef GUI_800x480
 				tabs.pushButton_break->setMinimumSize(width+10,20);
 				tabs.pushButton_break->setText(tr("Start"));
@@ -2915,7 +2915,7 @@ void gameTableImpl::startNewHand()
 #endif
 
 			QFontMetrics tempMetrics = this->fontMetrics();
-			int width = tempMetrics.width(tr("Start"));
+			int width = tempMetrics.horizontalAdvance(tr("Start"));
 #ifdef GUI_800x480
 			tabs.pushButton_break->setMinimumSize(width+10,20);
 			tabs.pushButton_break->setText(tr("Start"));
@@ -2995,7 +2995,7 @@ void gameTableImpl::nextRoundCleanGui()
 #endif
 		blinkingStartButtonAnimationTimer->stop();
 		QFontMetrics tempMetrics = this->fontMetrics();
-		int width = tempMetrics.width(tr("Stop"));
+		int width = tempMetrics.horizontalAdvance(tr("Stop"));
 #ifdef GUI_800x480
 		tabs.pushButton_break->setMinimumSize(width+10,20);
 		tabs.pushButton_break->setText(tr("Stop"));
@@ -3091,7 +3091,7 @@ void gameTableImpl::breakButtonClicked()
 		//Set default Color
 		myGameTableStyle->setBreakButtonStyle(tabs.pushButton_break,0);
 		QFontMetrics tempMetrics = this->fontMetrics();
-		int width = tempMetrics.width(tr("Stop"));
+		int width = tempMetrics.horizontalAdvance(tr("Stop"));
 		tabs.pushButton_break->setMinimumSize(width+10,20);
 
 		tabs.pushButton_break->setText(tr("Stop"));
@@ -3107,7 +3107,7 @@ void gameTableImpl::breakButtonClicked()
 		//Set default Color
 		myGameTableStyle->setBreakButtonStyle(pushButton_break,0);
 		QFontMetrics tempMetrics = this->fontMetrics();
-		int width = tempMetrics.width(tr("Stop"));
+		int width = tempMetrics.horizontalAdvance(tr("Stop"));
 		pushButton_break->setMinimumSize(width+10,20);
 
 		pushButton_break->setText(tr("Stop"));
@@ -3527,7 +3527,7 @@ void gameTableImpl::localGameModification()
 	pushButton_break->show();
 #endif
 	QFontMetrics tempMetrics = this->fontMetrics();
-	int width = tempMetrics.width(tr("Stop"));
+	int width = tempMetrics.horizontalAdvance(tr("Stop"));
 #ifdef GUI_800x480
 	tabs.pushButton_break->setText(tr("Stop"));
 	tabs.pushButton_break->setMinimumSize(width+10,20);
@@ -3590,7 +3590,7 @@ void gameTableImpl::networkGameModification()
 		pushButton_break->show();
 #endif
 		QFontMetrics tempMetrics = this->fontMetrics();
-		int width = tempMetrics.width(tr("Lobby"));
+		int width = tempMetrics.horizontalAdvance(tr("Lobby"));
 #ifdef GUI_800x480
 		tabs.pushButton_break->setText(tr("Lobby"));
 		tabs.pushButton_break->setMinimumSize(width+10,20);

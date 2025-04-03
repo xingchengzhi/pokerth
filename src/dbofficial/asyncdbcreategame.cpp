@@ -47,14 +47,14 @@ AsyncDBCreateGame::~AsyncDBCreateGame()
 }
 
 void
-AsyncDBCreateGame::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& /*result*/, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBCreateGame::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& /*result*/, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	// This query does not produce a result.
 	HandleError(service, cb);
 }
 
 void
-AsyncDBCreateGame::HandleNoResult(mysqlpp::Query &query, DBIdManager& idManager, boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBCreateGame::HandleNoResult(mysqlpp::Query &query, DBIdManager& idManager, boost::asio::io_context &service, ServerDBCallback &cb)
 {
 	query.reset();
 	query
@@ -62,15 +62,15 @@ AsyncDBCreateGame::HandleNoResult(mysqlpp::Query &query, DBIdManager& idManager,
 	mysqlpp::StoreQueryResult tmpResult = query.store();
 	DB_id insertId = tmpResult[0][0];
 	if (!tmpResult || tmpResult.num_rows() != 1 || insertId == 0) {
-		service.post(boost::bind(&ServerDBCallback::CreateGameFailed, &cb, GetId()));
+		boost::asio::post(service, boost::bind(&ServerDBCallback::CreateGameFailed, &cb, GetId()));
 	} else {
-		service.post(boost::bind(&ServerDBCallback::CreateGameSuccess, &cb, GetId()));
+		boost::asio::post(service, boost::bind(&ServerDBCallback::CreateGameSuccess, &cb, GetId()));
 		idManager.AddGameId(GetId(), insertId);
 	}
 }
 
 void
-AsyncDBCreateGame::HandleError(boost::asio::io_service &service, ServerDBCallback &cb)
+AsyncDBCreateGame::HandleError(boost::asio::io_context &service, ServerDBCallback &cb)
 {
-	service.post(boost::bind(&ServerDBCallback::CreateGameFailed, &cb, GetId()));
+	boost::asio::post(service, boost::bind(&ServerDBCallback::CreateGameFailed, &cb, GetId()));
 }

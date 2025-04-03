@@ -1,5 +1,5 @@
 FROM ubuntu:plucky
-# ubuntu:24.04 aka ubuntu:noble might also work with the following procedure
+# ubuntu:24.04 aka ubuntu:noble might also work with the following procedure (changing deb-src entries from plucky to noble)
 
 ENV TZ=Europe/Berlin
 

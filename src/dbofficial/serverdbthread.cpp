@@ -89,7 +89,7 @@ void
 ServerDBThread::SignalTermination()
 {
 	Thread::SignalTermination();
-	boost::asio::post(m_semaphore);
+	m_semaphore.post();
 }
 
 void
@@ -133,7 +133,7 @@ ServerDBThread::AsyncPlayerLogin(unsigned requestId, const string &playerName)
 			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 			m_asyncQueue.push(asyncQuery);
 		}
-		boost::asio::post(m_semaphore);
+		m_semaphore.post();
 	} else {
 		// If not connected to database, login fails.
 		boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::PlayerLoginFailed, &m_callback, requestId));
@@ -156,7 +156,7 @@ ServerDBThread::AsyncCheckAvatarBlacklist(unsigned requestId, const std::string 
 			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 			m_asyncQueue.push(asyncQuery);
 		}
-		boost::asio::post(m_semaphore);
+		m_semaphore.post();
 	} else {
 		// If not connected to database, all avatars are blacklisted.
 		boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &m_callback, requestId));
@@ -183,7 +183,7 @@ ServerDBThread::PlayerPostLogin(DB_id playerId, const std::string &avatarHash, c
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	boost::asio::post(m_semaphore);
+	m_semaphore.post();
 }
 
 void
@@ -232,7 +232,7 @@ ServerDBThread::SetGamePlayerPlace(unsigned requestId, DB_id playerId, unsigned 
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	// boost::asio::post(m_semaphore);
+	// m_semaphore.post();
 	m_semaphore.post();
 }
 

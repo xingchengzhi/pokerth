@@ -207,7 +207,8 @@ ServerDBThread::AsyncCreateGame(unsigned requestId, const string &gameName)
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	boost::asio::post(m_semaphore);
+	
+	m_semaphore.post();
 }
 
 void
@@ -231,7 +232,8 @@ ServerDBThread::SetGamePlayerPlace(unsigned requestId, DB_id playerId, unsigned 
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	boost::asio::post(m_semaphore);
+	// boost::asio::post(m_semaphore);
+	m_semaphore.post();
 }
 
 void
@@ -278,7 +280,8 @@ ServerDBThread::EndGame(unsigned requestId)
 			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 			m_asyncQueue.push(asyncQuery);
 		}
-		boost::asio::post(m_semaphore);
+		
+		m_semaphore.post();
 	}
 	// Update the player scores.
 	{
@@ -293,7 +296,8 @@ ServerDBThread::EndGame(unsigned requestId)
 			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 			m_asyncQueue.push(asyncQuery);
 		}
-		boost::asio::post(m_semaphore);
+		
+		m_semaphore.post();
 	}
 }
 
@@ -326,7 +330,8 @@ ServerDBThread::AsyncReportAvatar(unsigned requestId, unsigned replyId, DB_id re
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	boost::asio::post(m_semaphore);
+	
+	m_semaphore.post();
 }
 
 void
@@ -363,7 +368,8 @@ ServerDBThread::AsyncReportGame(unsigned requestId, unsigned replyId, DB_id *cre
 		m_asyncQueue.push(asyncQuery);
 	}
 
-	boost::asio::post(m_semaphore);
+	
+	m_semaphore.post();
 }
 
 void
@@ -378,7 +384,8 @@ ServerDBThread::AsyncQueryAdminPlayers(unsigned requestId)
 		m_asyncQueue.push(asyncQuery);
 	}
 
-	boost::asio::post(m_semaphore);
+	
+	m_semaphore.post();
 }
 
 void
@@ -405,7 +412,8 @@ ServerDBThread::AsyncBlockPlayer(unsigned requestId, unsigned replyId, DB_id pla
 		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 		m_asyncQueue.push(asyncQuery);
 	}
-	boost::asio::post(m_semaphore);
+	
+	m_semaphore.post();
 }
 
 bool

@@ -532,7 +532,7 @@ ServerDBThread::EstablishDBConnection()
 			boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::ConnectFailed, &m_callback, tmpError));
 			m_permanentError = true;
 		} else {
-			m_ioService->post(boost::bind(&ServerDBCallback::ConnectSuccess, &m_callback));
+			boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::ConnectSuccess, &m_callback));
 			m_previouslyConnected = true;
 		}
 	}

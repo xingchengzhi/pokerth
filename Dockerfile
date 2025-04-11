@@ -31,10 +31,10 @@ RUN apt clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/boost*
 RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
 
 # the following will prepare for client build:
-RUN cd /opt && qmake6 CONFIG+="client c++11" QMAKE_CFLAGS_ISYSTEM="" -spec linux-g++ pokerth.pro
+RUN cd /opt/pokerth && qmake6 CONFIG+="client c++11" QMAKE_CFLAGS_ISYSTEM="" -spec linux-g++ pokerth.pro
 
 # the following will prepare for official_server build:
-# RUN cd /opt && qmake6 CONFIG+="official_server c++11" QMAKE_CFLAGS_ISYSTEM="" -spec linux-g++ pokerth.pro
+# RUN cd /opt/pokerth && qmake6 CONFIG+="official_server c++11" QMAKE_CFLAGS_ISYSTEM="" -spec linux-g++ pokerth.pro
 
 # rebuild proto files just in case:
 RUN cd /opt/pokerth && rm src/third_party/protobuf/*

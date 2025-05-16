@@ -12,7 +12,7 @@ CONFIG += qt thread embed_manifest_exe exceptions rtti stl warn_on
 DEFINES += ENABLE_IPV6 TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED
 
 DEFINES += QML_CLIENT
-RESOURCES += src/gui/qml/qml.qrc
+# RESOURCES += src/gui/qml/qml.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH = \

@@ -8,6 +8,9 @@ official_server {
 client: {
     SUBDIRS += pokerth_game.pro
 }
+qml-client{
+    SUBDIRS += pokerth_qml-client.pro
+}
 !mac:!gui_800x480:!client:!qml-client {
     SUBDIRS += pokerth_server.pro chatcleaner.pro
 }

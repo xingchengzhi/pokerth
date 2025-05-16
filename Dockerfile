@@ -38,7 +38,7 @@ RUN cd /opt/pokerth && qmake6 CONFIG+="qml-client c++11" QMAKE_CFLAGS_ISYSTEM=""
 # RUN cd /opt/pokerth && qmake6 CONFIG+="official_server c++11" QMAKE_CFLAGS_ISYSTEM="" -spec linux-g++ pokerth.pro
 
 # rebuild proto files just in case:
-RUN cd /opt/pokerth && rm src/third_party/protobuf/*
+RUN cd /opt/pokerth && rm -f src/third_party/protobuf/*
 RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf pokerth.proto
 RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf chatcleaner.proto   
 

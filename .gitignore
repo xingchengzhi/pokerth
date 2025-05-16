@@ -7,6 +7,7 @@ Makefile.pokerth_lib
 Makefile.pokerth_protocol
 Makefile.pokerth_server
 Makefile.pokerth_dbofficial
+Makefile.pokerth_qml-client
 bin/
 moc_*
 *.o
@@ -16,6 +17,7 @@ lib/
 mocs/
 obj/
 /pokerth
+src/third_party/protobuf/*
 qrc_pokerth.cpp
 uics/
 make.sh

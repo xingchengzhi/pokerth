@@ -43,14 +43,11 @@
 
 int main(int argc, char *argv[])
 {
+	QGuiApplication::setApplicationName("PokerTH");
+    QGuiApplication::setOrganizationName("PokerTH");
+
     QApplication app(argc, argv);
     QIcon::setThemeName("pokerth");
-
-	// qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
-	// qputenv("QT_QUICK_CONTROLS_UNIVERSAL_THEME", "Dark");
-
-
-	// QQuickStyle::setStyle("Fusion");
 
     QSettings settings;
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
@@ -62,8 +59,6 @@ int main(int argc, char *argv[])
     const QString styleInSettings = settings.value("style").toString();
     if (styleInSettings.isEmpty())
         settings.setValue(QLatin1String("style"), QQuickStyle::name());
-
-	// qDebug() << "style =" << QQuickStyle::name();
 
     boost::shared_ptr<ConfigFile> myConfig;
     myConfig.reset(new ConfigFile(argv[0], false));

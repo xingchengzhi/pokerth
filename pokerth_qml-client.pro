@@ -7,12 +7,12 @@ DEFINES += PREFIX=\"$${PREFIX}\"
 
 TEMPLATE = app
 CODECFORSRC = UTF-8
-QT += core qml quick widgets svg sql
+QT += core qml quick quickcontrols2 widgets svg sql
 CONFIG += qt thread embed_manifest_exe exceptions rtti stl warn_on
 DEFINES += ENABLE_IPV6 TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED
 
 DEFINES += QML_CLIENT
-# RESOURCES += src/gui/qml/qml.qrc
+RESOURCES += src/gui/qt6-qml/qml.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH = \

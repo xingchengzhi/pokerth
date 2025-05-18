@@ -19,6 +19,7 @@ obj/
 /pokerth
 src/third_party/protobuf/*
 qrc_pokerth.cpp
+qrc_qml.cpp
 uics/
 make.sh
 gitpush_serverstuff_stable

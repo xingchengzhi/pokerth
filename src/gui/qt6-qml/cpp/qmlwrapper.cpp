@@ -1,6 +1,8 @@
 #include <QtCore>
 #include <QtQml>
 #include <QQmlApplicationEngine>
+#include <QQuickStyle>
+#include <QSettings>
 #include <QQmlContext>
 #include <configfile.h>
 
@@ -14,6 +16,17 @@ QmlWrapper::QmlWrapper(boost::shared_ptr<ConfigFile> c)
 {
     myQmlEngine = new QQmlApplicationEngine;
     myQmlConfig = new QmlConfig(myConfig);
+
+    QSettings settings;
+    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+        QQuickStyle::setStyle(settings.value("style").toString());
+
+    // If this is the first time we're running the application,
+    // we need to set a style in the settings so that the QML
+    // can find it in the list of built-in styles.
+    const QString styleInSettings = settings.value("style").toString();
+    if (styleInSettings.isEmpty())
+        settings.setValue(QLatin1String("style"), QQuickStyle::name());
 
     //TODO create Session and Log here
 

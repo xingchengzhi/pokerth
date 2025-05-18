@@ -34,6 +34,9 @@
 #include <cstdlib>
 #include <ctime>
 #include <QApplication>
+#include <QSettings>
+#include <QQuickStyle>
+#include <QIcon>
 #include <boost/shared_ptr.hpp>
 #include "configfile.h"
 #include "qmlwrapper.h"
@@ -41,6 +44,26 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QIcon::setThemeName("pokerth");
+
+	// qputenv("QT_QUICK_CONTROLS_STYLE", "Universal");
+	// qputenv("QT_QUICK_CONTROLS_UNIVERSAL_THEME", "Dark");
+
+
+	// QQuickStyle::setStyle("Fusion");
+
+    QSettings settings;
+    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+        QQuickStyle::setStyle(settings.value("style").toString());
+
+    // If this is the first time we're running the application,
+    // we need to set a style in the settings so that the QML
+    // can find it in the list of built-in styles.
+    const QString styleInSettings = settings.value("style").toString();
+    if (styleInSettings.isEmpty())
+        settings.setValue(QLatin1String("style"), QQuickStyle::name());
+
+	// qDebug() << "style =" << QQuickStyle::name();
 
     boost::shared_ptr<ConfigFile> myConfig;
     myConfig.reset(new ConfigFile(argv[0], false));

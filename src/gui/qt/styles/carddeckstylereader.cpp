@@ -37,6 +37,11 @@
 #include "mymessagedialogimpl.h"
 #include "game_defs.h"
 
+#include <QDomDocument>
+#include <QDomElement>
+#include <QDebug>
+#include <QFile>
+
 using namespace std;
 
 CardDeckStyleReader::CardDeckStyleReader(ConfigFile *c, QWidget *w) : myConfig(c), myW(w), fallBack(0), loadedSuccessfull(0), myState(CD_STYLE_UNDEFINED)
@@ -76,37 +81,38 @@ void CardDeckStyleReader::readStyleFile(QString file)
 	//start reading the file and fill vars
 	string tempString1("");
 
-	TiXmlDocument doc;
-	doc.Parse(fileContent.constData());
+	QDomDocument xmlDoc;
+	xmlDoc.setContent(fileContent.constData()); 
 
-	if(doc.RootElement()) {
-		TiXmlHandle docHandle( &doc );
-		TiXmlElement *GameTableElement = docHandle.FirstChild( "PokerTH" ).FirstChild( "TableStyle" ).ToElement();
-		if(GameTableElement) {
+	if(!xmlDoc.documentElement().isNull()){
+		QDomElement GameTableElement = xmlDoc.documentElement().firstChildElement( "TableStyle" );
+		if(!GameTableElement.isNull()) {
 			MyMessageBox::warning(myW, tr("Card Deck Style Error"),
 								  tr("A game table style was selected instead of a card deck style.\nPlease select a card deck style and try again!"),
 								  QMessageBox::Ok);
 		} else {
 
-			TiXmlElement* itemsList = docHandle.FirstChild( "PokerTH" ).FirstChild( "CardDeck" ).FirstChild().ToElement();
-			for( ; itemsList; itemsList=itemsList->NextSiblingElement()) {
-				const char *tmpStr1 = itemsList->Attribute("value");
+			QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "CardDeck" ).firstChildElement();
+			for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+			{
+				QByteArray ba = n.attribute("value").toLocal8Bit();
+				const char *tmpStr1 = ba.data();
 				if (tmpStr1) {
 					tempString1 = tmpStr1;
 
-					if(itemsList->ValueStr() == "StyleDescription") {
+					if(itemsList.attribute("value") == "StyleDescription") {
 						StyleDescription = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleMaintainerName") {
+					} else if(itemsList.attribute("value") == "StyleMaintainerName") {
 						StyleMaintainerName = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleMaintainerEMail") {
+					} else if(itemsList.attribute("value") == "StyleMaintainerEMail") {
 						StyleMaintainerEMail = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleCreateDate") {
+					} else if(itemsList.attribute("value") == "StyleCreateDate") {
 						StyleCreateDate = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "PokerTHStyleFileVersion") {
+					} else if(itemsList.attribute("value") == "PokerTHStyleFileVersion") {
 						PokerTHStyleFileVersion = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "Preview") {
+					} else if (itemsList.attribute("value") == "Preview") {
 						Preview = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BigIndexesActionBottom") {
+					} else if (itemsList.attribute("value") == "BigIndexesActionBottom") {
 						BigIndexesActionBottom = QString::fromUtf8(tempString1.c_str());
 					}
 				}

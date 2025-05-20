@@ -7,9 +7,9 @@ DEFINES += PREFIX=\"$${PREFIX}\"
 
 TEMPLATE = app
 CODECFORSRC = UTF-8
-QT += core qml quick quickcontrols2 widgets svg sql
+QT += core qml quick quickcontrols2 widgets svg sql xml
 CONFIG += qt thread embed_manifest_exe exceptions rtti stl warn_on
-DEFINES += ENABLE_IPV6 TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED
+DEFINES += ENABLE_IPV6 BOOST_FILESYSTEM_DEPRECATED
 
 DEFINES += QML_CLIENT
 RESOURCES += src/gui/qt6-qml/qml.qrc
@@ -184,7 +184,6 @@ unix:!mac {
             BSD = $$find(UNAME, "BSD")
             kFreeBSD = $$find(UNAME, "kFreeBSD")
             LIBS += -lsqlite3 \
-                            -ltinyxml \
                             -lprotobuf
             LIBS += $$BOOST_LIBS
             LIBS += -lSDL \
@@ -201,7 +200,6 @@ unix:!mac {
                     $$BOOST_CHRONO \
                     $$BOOST_SYS
             !count(BOOST_LIBS, 6):error("Unable to find boost libraries in PREFIX=$${PREFIX}lib/armv5")
-            LIBS += -ltinyxml
             LIBS += $$BOOST_LIBS
             LIBS += -lgsasl -lidn
             LIBS += -lssl -lcrypto -lgcrypt -lgpg-error -lprotobuf-lite

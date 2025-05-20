@@ -17,12 +17,12 @@ CONFIG += qt \
 	stl \
 	warn_on
 include(src/third_party/qtsingleapplication/qtsingleapplication.pri)
-QT += sql
+QT += sql xml
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 UI_DIR = uics
 MOC_DIR = mocs
 OBJECTS_DIR = obj
-DEFINES += ENABLE_IPV6 TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED
+DEFINES += ENABLE_IPV6 BOOST_FILESYSTEM_DEPRECATED
 DEFINES += PREFIX=\"$${PREFIX}\"
 TARGET = pokerth
 
@@ -354,7 +354,6 @@ win32 {
 			-lsmpeg \
 			-lSDL \
 			-lSDLmain \
-			-ltinyxml \
 			-lz \
 			-lssl \
 			-lcrypto \
@@ -523,7 +522,6 @@ unix:!mac {
 		BSD = $$find(UNAME, "BSD")
 		kFreeBSD = $$find(UNAME, "kFreeBSD")
 		LIBS += -lsqlite3 \
-				-ltinyxml \
 				-lprotobuf
 		LIBS += $$BOOST_LIBS
 		LIBS += -lSDL \
@@ -539,7 +537,6 @@ unix:!mac {
 			$$BOOST_REGEX \
 			$$BOOST_SYS
 		!count(BOOST_LIBS, 5):error("Unable to find boost libraries in PREFIX=$${PREFIX}/armv5")
-		LIBS += -ltinyxml
 		LIBS += $$BOOST_LIBS
 		LIBS += -lgsasl -lidn
 		LIBS += -lssl -lcrypto -lgcrypt -lgpg-error -lprotobuf-lite
@@ -611,7 +608,6 @@ mac {
 	LIBS += -lcrypto \
 		-lssl \
 		-lsqlite3 \
-		-ltinyxml \
 		-lprotobuf \
 		-lz \
 		-framework \
@@ -622,11 +618,9 @@ mac {
 
     LIBPATH += /usr/local/lib
     LIBPATH += /usr/local/opt/openssl/lib
-    LIBPATH += /usr/local/opt/tinyxml/lib
     LIBPATH += /usr/local/opt/protobuf/lib
 	INCLUDEPATH += /usr/local/include
     INCLUDEPATH += /usr/local/opt/openssl/include
-    INCLUDEPATH += /usr/local/opt/tinyxml/include
     INCLUDEPATH += /usr/local/opt/protobuf/include
     INCLUDEPATH += /Library/Frameworks/SDL.framework/Headers
     INCLUDEPATH += /Library/Frameworks/SDL_mixer.framework/Headers
@@ -669,7 +663,6 @@ gui_800x480 {
 android{
 	# Use old boost::filesystem, because the new version requires std::wstring.
 	DEFINES += BOOST_FILESYSTEM_VERSION=3
-	DEFINES += TIXML_USE_STL
 	# sqlite3 is included directly.
 	INCLUDEPATH += src/third_party/sqlite3
 

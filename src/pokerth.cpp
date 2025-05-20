@@ -40,6 +40,7 @@
 #include <boost/shared_ptr.hpp>
 #include "configfile.h"
 #include "qmlwrapper.h"
+#include "session.h"
 
 int main(int argc, char *argv[])
 {
@@ -57,11 +58,16 @@ int main(int argc, char *argv[])
     // we need to set a style in the settings so that the QML
     // can find it in the list of built-in styles.
     const QString styleInSettings = settings.value("style").toString();
-    if (styleInSettings.isEmpty())
-        settings.setValue(QLatin1String("style"), QQuickStyle::name());
+    if (styleInSettings.isEmpty()) settings.setValue(QLatin1String("style"), QQuickStyle::name());
+
+	// ConfigFile *myConfigOld = new ConfigFile(argv[0], false);
+	// myConfigOld->updateConfig(NONEXISTING);
 
     boost::shared_ptr<ConfigFile> myConfig;
     myConfig.reset(new ConfigFile(argv[0], false));
+
+	// @DEBUG: session test
+	// Session s = new Session();
 
     QmlWrapper myQml(myConfig);
     return app.exec();

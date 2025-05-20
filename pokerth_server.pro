@@ -14,9 +14,10 @@ TARGET = bin/pokerth_server
 MOC_DIR = mocs
 OBJECTS_DIR = obj
 DEFINES += POKERTH_DEDICATED_SERVER
-DEFINES += ENABLE_IPV6 TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED
+DEFINES += ENABLE_IPV6 BOOST_FILESYSTEM_DEPRECATED
 DEFINES += PREFIX=\"$${PREFIX}\"
-QT -= core gui
+QT -= gui
+QT += xml
 #PRECOMPILED_HEADER = src/pch_lib.h
 
 # Check for c++11
@@ -133,7 +134,7 @@ win32 {
 	debug:LIBPATH += debug/lib
 	release:LIBPATH += release/lib
 
-	LIBS += -lssl -lcrypto -lssh2 -lgnutls -lhogweed -lgmp -lgcrypt -lgpg-error -lgsasl -lnettle -lidn -lintl -lprotobuf -ltinyxml -lsqlite3 -lntlm
+	LIBS += -lssl -lcrypto -lssh2 -lgnutls -lhogweed -lgmp -lgcrypt -lgpg-error -lgsasl -lnettle -lidn -lintl -lprotobuf -lsqlite3 -lntlm
 	LIBS += -lboost_thread_win32-mt
 	LIBS += -lboost_filesystem-mt
 	LIBS += -lboost_regex-mt
@@ -284,7 +285,6 @@ unix : !mac {
 
 	LIBS += $$BOOST_LIBS
 	LIBS += -lsqlite3 \
-			-ltinyxml \
 			-lprotobuf
 	LIBS += -lgsasl
 	!isEmpty( BSD ): isEmpty( kFreeBSD ){
@@ -333,7 +333,6 @@ mac {
 
 	# libraries installed on every mac
 	LIBS += -lsqlite3
-	LIBS += -ltinyxml
 	LIBS += -lcrypto -lssl -lz -liconv
 	# set the application icon
 	RC_FILE = pokerth.icns

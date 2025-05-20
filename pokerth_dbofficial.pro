@@ -11,8 +11,8 @@ UI_DIR = uics
 TARGET = lib/pokerth_dbofficial
 MOC_DIR = mocs
 OBJECTS_DIR = obj
-QT -= core \
-    gui
+QT -= gui
+QT += xml
 
 # Check for c++11
 include(pokerth_common.pro)

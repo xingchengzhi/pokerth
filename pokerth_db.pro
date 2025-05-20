@@ -13,8 +13,9 @@ TARGET = lib/pokerth_db
 QMAKE_CLEAN += ./lib/libpokerth_db.a
 MOC_DIR = mocs
 OBJECTS_DIR = obj
-DEFINES += ENABLE_IPV6 TIXML_USE_STL
-QT -= core gui
+DEFINES += ENABLE_IPV6
+QT -= gui
+QT += xml
 #PRECOMPILED_HEADER = src/pch_lib.h
 
 # Check for c++11

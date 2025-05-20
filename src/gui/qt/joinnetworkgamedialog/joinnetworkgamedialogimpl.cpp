@@ -169,14 +169,6 @@ void joinNetworkGameDialogImpl::fillServerProfileList()
 				}
 				item->setData(3, 0, QString::fromUtf8(isIpv6.c_str()));
 
-				string isSctp = "no";
-				int tempInt1 = 0;
-				tempInt1 = n.attribute("IsSctp" ).toInt();
-				if( tempInt1 == 1 ) {
-					isSctp = "yes";
-				}
-				item->setData(4, 0, QString::fromUtf8(isSctp.c_str()));
-
 				treeWidget->addTopLevelItem(item);
 			}
 

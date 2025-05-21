@@ -92,7 +92,7 @@ void CardDeckStyleReader::readStyleFile(QString file)
 								  QMessageBox::Ok);
 		} else {
 
-			QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "CardDeck" ).firstChildElement();
+			QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "CardDeck" );
 			for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
 			{
 				QByteArray ba = n.attribute("value").toLocal8Bit();
@@ -100,19 +100,19 @@ void CardDeckStyleReader::readStyleFile(QString file)
 				if (tmpStr1) {
 					tempString1 = tmpStr1;
 
-					if(itemsList.attribute("value") == "StyleDescription") {
+					if(n.tagName() == "StyleDescription") {
 						StyleDescription = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList.attribute("value") == "StyleMaintainerName") {
+					} else if(n.tagName() == "StyleMaintainerName") {
 						StyleMaintainerName = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList.attribute("value") == "StyleMaintainerEMail") {
+					} else if(n.tagName() == "StyleMaintainerEMail") {
 						StyleMaintainerEMail = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList.attribute("value") == "StyleCreateDate") {
+					} else if(n.tagName() == "StyleCreateDate") {
 						StyleCreateDate = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList.attribute("value") == "PokerTHStyleFileVersion") {
+					} else if(n.tagName() == "PokerTHStyleFileVersion") {
 						PokerTHStyleFileVersion = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList.attribute("value") == "Preview") {
+					} else if (n.tagName() == "Preview") {
 						Preview = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList.attribute("value") == "BigIndexesActionBottom") {
+					} else if (n.tagName() == "BigIndexesActionBottom") {
 						BigIndexesActionBottom = QString::fromUtf8(tempString1.c_str());
 					}
 				}

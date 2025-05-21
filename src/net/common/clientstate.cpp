@@ -354,8 +354,6 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 		unsigned lastServerInfoId = 0;
 		QDomElement nextServer = xmlDoc.documentElement().firstChildElement("Server");
 
-		qDebug() << "clientstate xml handling...";
-
 		while (!nextServer.isNull()) {
 			ServerInfo serverInfo;
 			{

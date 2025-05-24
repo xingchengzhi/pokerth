@@ -37,7 +37,7 @@ Rectangle {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: Config.StaticData.palette.secondary.col700
+                    color: Config.Settings.palette.secondary.col700
                     opacity: 0.8
                     radius: 5
                 }
@@ -50,35 +50,35 @@ Rectangle {
                     CustomButton {
                         text: qsTr("Internetspiel")
                         onClicked: {
-                            mainStackView.push("InternetGamePage.qml")
+                            mainStackView.push("InternetGamePage.qml");
                         }
                     }
 
                     CustomButton {
                         text: qsTr("Lokales Spiel starten")
                         onClicked: {
-                            mainStackView.push("LocalGamePage.qml")
+                            mainStackView.push("LocalGamePage.qml");
                         }
                     }
 
                     CustomButton {
                         text: qsTr("Netzwerkspiel erstellen")
                         onClicked: {
-                            mainStackView.push("NetworkGameCreatePage.qml")
+                            mainStackView.push("NetworkGameCreatePage.qml");
                         }
                     }
 
                     CustomButton {
                         text: qsTr("Netzwerkspiel beitreten")
                         onClicked: {
-                            mainStackView.push("NetworkGameEnterPage.qml")
+                            mainStackView.push("NetworkGameEnterPage.qml");
                         }
                     }
 
                     CustomButton {
                         text: qsTr("Logs")
                         onClicked: {
-                            mainStackView.push("LogsPage.qml")
+                            mainStackView.push("LogsPage.qml");
                         }
                     }
                 }

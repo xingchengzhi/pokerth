@@ -1,5 +1,3 @@
-
-
 import QtQuick
 import QtQuick.VectorImage
 import QtQuick.Controls
@@ -40,7 +38,7 @@ Rectangle {
             Layout.alignment: Qt.AlignCenter
             Layout.preferredWidth: 270
             Layout.preferredHeight: 180
-            color: Config.StaticData.palette.secondary.col700
+            color: Config.Settings.palette.secondary.col700
             radius: 5
             opacity: 0.8
 
@@ -62,7 +60,7 @@ Rectangle {
                     indeterminate: true
                     Layout.alignment: Qt.AlignCenter
                     Layout.preferredWidth: parent.width / 6 * 4
-                    Universal.accent: Config.StaticData.palette.secondary.col200
+                    Universal.accent: Config.Settings.palette.secondary.col200
                 }
 
                 RowLayout {
@@ -77,14 +75,14 @@ Rectangle {
                         Layout.preferredWidth: 20
                         Layout.preferredHeight: 20
                         source: "../resources/terminal.svg"
-                        //color: Config.StaticData.palette.secondary.col200
+                        //color: Config.Settings.palette.secondary.col200
                     }
 
                     Text {
                         id: preLoaderProgressInfoText
                         text: qsTr(Config.StaticData.progressMessages[Math.floor(Math.random() * Config.StaticData.progressMessages.length)])
-                        color: Config.StaticData.palette.secondary.col200
-                        font.family: Config.StaticData.loadedFont.font.family
+                        color: Config.Settings.palette.secondary.col200
+                        font.family: Config.Settings.loadedFont.font.family
                         font.pointSize: 12
 
                         Timer {
@@ -100,8 +98,8 @@ Rectangle {
                             running: true
                             repeat: false
                             onTriggered: {
-                                preLoaderProgressInfoTextTimer.running = false
-                                mainStackView.replaceCurrentItem(mainWindow.startPage)
+                                preLoaderProgressInfoTextTimer.running = false;
+                                mainStackView.replaceCurrentItem(mainWindow.startPage);
                             }
                         }
                     }
@@ -123,18 +121,18 @@ Rectangle {
                 Text {
                     id: preLoaderFooterText
                     text: qsTr("PokerTH - v2.0 alpha")
-                    color: Config.StaticData.palette.secondary.col200
-                    font.family: Config.StaticData.loadedFont.font.family
+                    color: Config.Settings.palette.secondary.col200
+                    font.family: Config.Settings.loadedFont.font.family
                     font.pointSize: 12
                     style: Text.Outline
-                    styleColor: Config.StaticData.palette.secondary.col600
+                    styleColor: Config.Settings.palette.secondary.col600
                 }
 
                 MultiEffect {
                     source: preLoaderFooterText
                     anchors.fill: preLoaderFooterText
                     shadowEnabled: true
-                    shadowColor: Config.StaticData.palette.secondary.col700
+                    shadowColor: Config.Settings.palette.secondary.col700
                     shadowHorizontalOffset: 2
                     shadowVerticalOffset: 2
                     shadowOpacity: 1

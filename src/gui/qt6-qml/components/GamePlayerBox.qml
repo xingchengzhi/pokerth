@@ -11,11 +11,11 @@ GridLayout {
     columns: 1
     rows: 2
     Layout.maximumHeight: 102
-    
+
     property bool up: false
     property string yellow: "#E3C800"
 
-    RowLayout{
+    RowLayout {
         id: playerActions
         Layout.alignment: root.up ? Qt.AlignBottom : Qt.AlignTop
         Layout.row: root.up ? 1 : 2
@@ -24,7 +24,7 @@ GridLayout {
 
         RowLayout {
             Layout.alignment: root.up ? Qt.AlignBottom : Qt.AlignTop
-            
+
             VectorImage {
                 Layout.maximumWidth: 26
                 Layout.preferredWidth: 18 * gamePage.vScaleFactor
@@ -39,14 +39,13 @@ GridLayout {
                 leftPadding: 4
                 bottomPadding: 3
                 Layout.preferredHeight: 22
-                color: Config.StaticData.palette.secondary.col100
+                color: Config.Settings.palette.secondary.col100
                 font.bold: true
                 Component.onCompleted: {
-                    text = "$333"
+                    text = "$333";
                 }
             }
         }
-
     }
 
     Rectangle {
@@ -62,7 +61,7 @@ GridLayout {
 
         Rectangle {
             anchors.fill: parent
-            color: Config.StaticData.palette.secondary.col600
+            color: Config.Settings.palette.secondary.col600
             opacity: 0.8
             radius: 5
         }
@@ -81,8 +80,8 @@ GridLayout {
                 Rectangle {
                     anchors.fill: parent
                     border.width: 1
-                    border.color: Config.StaticData.palette.secondary.col200
-                    color: Config.StaticData.palette.secondary.col600
+                    border.color: Config.Settings.palette.secondary.col200
+                    color: Config.Settings.palette.secondary.col600
                     opacity: 0.5
                 }
 
@@ -93,7 +92,6 @@ GridLayout {
                     source: "../resources/pokerth.svg"
                 }
             }
-
 
             Row {
                 id: cardsRow
@@ -154,7 +152,7 @@ GridLayout {
         Row {
             id: playerNameRow
             width: parent.width - 8
-            height: parent.height / 2 -8
+            height: parent.height / 2 - 8
             x: 6
             y: parent.height - 22
 
@@ -162,10 +160,10 @@ GridLayout {
                 id: playerName
                 width: parent.width / 2
                 horizontalAlignment: Text.AlignLeft
-                color: Config.StaticData.palette.secondary.col100
+                color: Config.Settings.palette.secondary.col100
                 font.bold: true
                 Component.onCompleted: {
-                    text = "Player"
+                    text = "Player";
                 }
             }
 
@@ -177,7 +175,7 @@ GridLayout {
                 color: root.yellow
                 font.bold: true
                 Component.onCompleted: {
-                    text = "$10000"
+                    text = "$10000";
                 }
             }
         }
@@ -188,4 +186,3 @@ GridLayout {
         }
     }
 }
-

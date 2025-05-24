@@ -12,15 +12,14 @@ import "pages"
 import "components"
 
 ApplicationWindow {
+    id: mainWindow
 
     readonly property bool portraitMode: mainWindow.width < mainWindow.height
 
-    property StartPage startPage: StartPage { }
+    property StartPage startPage: StartPage {}
     property SideMenu sideMenu: SideMenu {}
-
-    id: mainWindow
-    width: 854
-    height: 480
+    width: 900
+    height: 600
     visible: true
     title: qsTr("PokerTH - v2.0 alpha")
 
@@ -29,7 +28,7 @@ ApplicationWindow {
         color: Config.Settings.palette.secondary.col700
     }
 
-    ColumnLayout{
+    ColumnLayout {
         id: mainLayout
         anchors.fill: parent
         Layout.alignment: Qt.AlignTop
@@ -62,30 +61,30 @@ ApplicationWindow {
                         hoverEnabled: true
 
                         onClicked: {
-                            if(mainStackView.depth > 1) mainStackView.pop()
+                            if (mainStackView.depth > 1)
+                                mainStackView.pop();
                             else {
-                                topBarMenuIcon.source = !sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg"
-                                sideMenu.visible = !sideMenu.visible
+                                topBarMenuIcon.source = !sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
+                                sideMenu.visible = !sideMenu.visible;
                             }
                         }
 
                         onEntered: {
-                            topBarMenuIconCol.colorizationColor = Config.Settings.palette.secondary.col100
+                            topBarMenuIconCol.colorizationColor = Config.Settings.palette.secondary.col100;
                         }
 
                         onExited: {
-                            topBarMenuIconCol.colorizationColor = Config.Settings.palette.secondary.col200
+                            topBarMenuIconCol.colorizationColor = Config.Settings.palette.secondary.col200;
                         }
                     }
                     MultiEffect {
-                      id: topBarMenuIconCol
-                      source: topBarMenuIcon
-                      anchors.fill: topBarMenuIcon
-                      colorization: 1.0 // opacity equivalent
-                      colorizationColor: Config.Settings.palette.secondary.col200
+                        id: topBarMenuIconCol
+                        source: topBarMenuIcon
+                        anchors.fill: topBarMenuIcon
+                        colorization: 1.0 // opacity equivalent
+                        colorizationColor: Config.Settings.palette.secondary.col200
                     }
                 }
-
 
                 Item {
                     id: topBarMenuSpace
@@ -101,7 +100,6 @@ ApplicationWindow {
                     source: "resources/settings.svg"
                     visible: true
 
-
                     MouseArea {
                         id: settingsArea
                         anchors.fill: topBarSettingsIcon
@@ -109,28 +107,27 @@ ApplicationWindow {
                         hoverEnabled: true
 
                         onClicked: {
-                            mainStackView.push("pages/SettingsPage.qml")
-                            sideMenu.visible = false
+                            mainStackView.push("pages/SettingsPage.qml");
+                            sideMenu.visible = false;
                         }
 
                         onEntered: {
-                            topBarSettingsIconCol.colorizationColor = Config.Settings.palette.secondary.col100
+                            topBarSettingsIconCol.colorizationColor = Config.Settings.palette.secondary.col100;
                         }
 
                         onExited: {
-                            topBarSettingsIconCol.colorizationColor = Config.Settings.palette.secondary.col200
+                            topBarSettingsIconCol.colorizationColor = Config.Settings.palette.secondary.col200;
                         }
                     }
 
                     MultiEffect {
-                      id: topBarSettingsIconCol
-                      source: topBarSettingsIcon
-                      anchors.fill: topBarSettingsIcon
-                      colorization: 1.0 // opacity equivalent
-                      colorizationColor: Config.Settings.palette.secondary.col200
+                        id: topBarSettingsIconCol
+                        source: topBarSettingsIcon
+                        anchors.fill: topBarSettingsIcon
+                        colorization: 1.0 // opacity equivalent
+                        colorizationColor: Config.Settings.palette.secondary.col200
                     }
                 }
-
             }
         }
 
@@ -160,13 +157,12 @@ ApplicationWindow {
             }
 
             onDepthChanged: {
-                if(mainStackView.depth > 1) {
-                  topBarSettingsIcon.visible = false  
-                  topBarMenuIcon.source = "resources/caretLeft.svg"
-                }
-                else { 
-                  topBarSettingsIcon.visible = true  
-                  topBarMenuIcon.source = sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg"
+                if (mainStackView.depth > 1) {
+                    topBarSettingsIcon.visible = false;
+                    topBarMenuIcon.source = "resources/caretLeft.svg";
+                } else {
+                    topBarSettingsIcon.visible = true;
+                    topBarMenuIcon.source = sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
                 }
             }
         }

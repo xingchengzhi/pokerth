@@ -28,30 +28,29 @@ Rectangle {
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
             MultiEffect {
-              id: customCheckCol
-              source: customCheck
-              anchors.fill: customCheck
-              colorization: 1.0 // opacity equivalent
-              colorizationColor: Config.StaticData.palette.secondary.col200
+                id: customCheckCol
+                source: customCheck
+                anchors.fill: customCheck
+                colorization: 1.0 // opacity equivalent
+                colorizationColor: Config.Settings.palette.secondary.col200
             }
         }
 
         Label {
             id: checkBoxLabel
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.Settings.palette.secondary.col200
             text: qsTr("CheckBox LabelText")
             font.pointSize: 12
         }
     }
-
 
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         onClicked: {
-            checkBox.isChecked = !checkBox.isChecked
-            Config.Parameters[checkBox.objectName] = checkBox.isChecked
+            checkBox.isChecked = !checkBox.isChecked;
+            Config.Parameters[checkBox.objectName] = checkBox.isChecked;
         }
     }
 }

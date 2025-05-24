@@ -14,7 +14,7 @@ Drawer {
 
     background: Rectangle {
         anchors.fill: parent
-        color: Config.StaticData.palette.secondary.col700
+        color: Config.Settings.palette.secondary.col700
         opacity: 0.8
         border.width: 0
     }
@@ -22,7 +22,7 @@ Drawer {
     ColumnLayout {
         anchors.fill: parent
 
-        VectorImage{
+        VectorImage {
             source: "../resources/pokerth.svg"
             Layout.preferredWidth: 96
             Layout.preferredHeight: 96
@@ -32,9 +32,9 @@ Drawer {
 
         Label {
             id: sideMenuLabel
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.Settings.palette.secondary.col200
             text: qsTr("PokerTH - v2.0 alpha")
-            font.family: Config.StaticData.loadedFont.font.family
+            font.family: Config.Settings.loadedFont.font.family
             Layout.alignment: Qt.AlignCenter
             Layout.bottomMargin: 24
             font.pointSize: 16
@@ -49,8 +49,6 @@ Drawer {
             Layout.fillHeight: true
             Layout.verticalStretchFactor: -1
 
-
-
             delegate: Rectangle {
                 id: sideMenuListItem
 
@@ -63,7 +61,7 @@ Drawer {
                 labelText: name
                 iconSource: "../resources/" + icon + ".svg"
 
-                color: Config.StaticData.palette.secondary.col500
+                color: Config.Settings.palette.secondary.col500
                 width: parent.width
                 height: 36
 
@@ -71,7 +69,7 @@ Drawer {
                     anchors.fill: parent
                     spacing: 6
 
-                    VectorImage{
+                    VectorImage {
                         id: iconImage
                         Layout.leftMargin: 16
                         Layout.topMargin: 4
@@ -81,11 +79,11 @@ Drawer {
                         Layout.preferredWidth: 24
 
                         MultiEffect {
-                          id: iconImageCol
-                          source: iconImage
-                          anchors.fill: iconImage
-                          colorization: 1.0 // opacity equivalent
-                          colorizationColor: Config.StaticData.palette.secondary.col200
+                            id: iconImageCol
+                            source: iconImage
+                            anchors.fill: iconImage
+                            colorization: 1.0 // opacity equivalent
+                            colorizationColor: Config.Settings.palette.secondary.col200
                         }
                     }
 
@@ -95,33 +93,35 @@ Drawer {
                         Layout.fillWidth: true
                         Layout.topMargin: 4
                         Layout.bottomMargin: 4
-                        color: Config.StaticData.palette.secondary.col200
-                        font.family: Config.StaticData.loadedFont.font.family
+                        color: Config.Settings.palette.secondary.col200
+                        font.family: Config.Settings.loadedFont.font.family
                         font.pointSize: 12
                         text: "StartSideMenuItem"
                     }
                 }
 
-                MouseArea{
+                MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        sideMenu.visible = false
-                        if(source === "quit") Qt.quit()
-                        else mainStackView.push("../pages/" + source + "Page.qml")
+                        sideMenu.visible = false;
+                        if (source === "quit")
+                            Qt.quit();
+                        else
+                            mainStackView.push("../pages/" + source + "Page.qml");
                     }
 
                     onEntered: {
-                        iconImageCol.colorizationColor = Config.StaticData.palette.secondary.col100
-                        label.color = Config.StaticData.palette.secondary.col100
-                        sideMenuListItem.color = Config.StaticData.palette.secondary.col400
+                        iconImageCol.colorizationColor = Config.Settings.palette.secondary.col100;
+                        label.color = Config.Settings.palette.secondary.col100;
+                        sideMenuListItem.color = Config.Settings.palette.secondary.col400;
                     }
 
                     onExited: {
-                        label.color = Config.StaticData.palette.secondary.col200
-                        iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col200
-                        sideMenuListItem.color = Config.StaticData.palette.secondary.col500
+                        label.color = Config.Settings.palette.secondary.col200;
+                        iconImageCol.colorizationColor = label.color = Config.Settings.palette.secondary.col200;
+                        sideMenuListItem.color = Config.Settings.palette.secondary.col500;
                     }
                 }
             }

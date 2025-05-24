@@ -20,7 +20,7 @@ Rectangle {
 
     Rectangle {
         anchors.fill: parent
-        color: Config.StaticData.palette.secondary.col600
+        color: Config.Settings.palette.secondary.col600
         opacity: 0.8
         radius: 5
     }
@@ -39,8 +39,8 @@ Rectangle {
             Rectangle {
                 anchors.fill: parent
                 border.width: 1
-                border.color: Config.StaticData.palette.secondary.col200
-                color: Config.StaticData.palette.secondary.col600
+                border.color: Config.Settings.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col600
                 opacity: 0.5
             }
 
@@ -51,7 +51,6 @@ Rectangle {
                 source: "../resources/pokerth.svg"
             }
         }
-
 
         Row {
             id: cardsRow
@@ -112,18 +111,18 @@ Rectangle {
     Row {
         id: playerNameRow
         width: parent.width - 8
-        height: parent.height / 2 -8
+        height: parent.height / 2 - 8
         x: 6
         y: parent.height - 26
         Text {
             id: playerName
             width: parent.width / 2
             horizontalAlignment: Text.AlignLeft
-            color: Config.StaticData.palette.secondary.col100
+            color: Config.Settings.palette.secondary.col100
             font.bold: true
             font.pointSize: 13
             Component.onCompleted: {
-                text = "Player"
+                text = "Player";
             }
         }
         Text {
@@ -135,7 +134,7 @@ Rectangle {
             font.bold: true
             font.pointSize: 13
             Component.onCompleted: {
-                text = "$10000"
+                text = "$10000";
             }
         }
     }

@@ -29,29 +29,28 @@ Rectangle {
             visible: true
 
             MultiEffect {
-              id: toggleIconCol
-              source: toggleIcon
-              anchors.fill: toggleIcon
-              colorization: 1.0 // opacity equivalent
-              colorizationColor: Config.StaticData.palette.secondary.col200
+                id: toggleIconCol
+                source: toggleIcon
+                anchors.fill: toggleIcon
+                colorization: 1.0 // opacity equivalent
+                colorizationColor: Config.Settings.palette.secondary.col200
             }
         }
 
         Label {
             id: toggleLabel
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.Settings.palette.secondary.col200
             text: qsTr("CheckBox LabelText")
             font.pointSize: 12
         }
     }
-
 
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         onClicked: {
-            toggle.isToggled = !toggle.isToggled
+            toggle.isToggled = !toggle.isToggled;
         }
     }
 }

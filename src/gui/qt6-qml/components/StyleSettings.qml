@@ -27,7 +27,7 @@ Rectangle {
             text: qsTr("Stil")
             font.bold: true
             font.pointSize: 12
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.Settings.palette.secondary.col200
         }
 
         Rectangle {
@@ -39,7 +39,7 @@ Rectangle {
             Layout.leftMargin: 12
             Layout.rightMargin: 12
             Layout.alignment: Qt.AlignTop
-            color: Config.StaticData.palette.secondary.col500
+            color: Config.Settings.palette.secondary.col500
         }
 
         ColumnLayout {
@@ -48,7 +48,7 @@ Rectangle {
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.leftMargin: 12
-            Layout.rightMargin: 12 
+            Layout.rightMargin: 12
 
             CustomTabBar {
                 id: guiSettingsTabBar
@@ -71,7 +71,6 @@ Rectangle {
                     id: cardsBackground
                 }
             }
-
         }
     }
 }

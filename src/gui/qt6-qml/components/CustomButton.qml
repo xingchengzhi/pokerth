@@ -10,16 +10,15 @@ Rectangle {
 
     width: 196
     height: 32
-    color: Config.StaticData.palette.secondary.col700
-    border.color: Config.StaticData.palette.secondary.col200
-    
+    color: Config.Settings.palette.secondary.col700
+    border.color: Config.Settings.palette.secondary.col200
+
     Text {
         id: label
         anchors.centerIn: parent
-        color: Config.StaticData.palette.secondary.col200
-        font.family: Config.StaticData.loadedFont.font.family
+        color: Config.Settings.palette.secondary.col200
+        font.family: Config.Settings.loadedFont.font.family
         text: "Button Text"
-
     }
 
     MouseArea {
@@ -29,19 +28,19 @@ Rectangle {
         hoverEnabled: true
 
         onClicked: {
-            customButton.clicked()
+            customButton.clicked();
         }
 
         onEntered: {
-            parent.color = Config.StaticData.palette.secondary.col600
-            parent.border.color = Config.StaticData.palette.secondary.col100
-            label.color = Config.StaticData.palette.secondary.col100
+            parent.color = Config.Settings.palette.secondary.col600;
+            parent.border.color = Config.Settings.palette.secondary.col100;
+            label.color = Config.Settings.palette.secondary.col100;
         }
 
         onExited: {
-            parent.color = Config.StaticData.palette.secondary.col700
-            parent.border.color = Config.StaticData.palette.secondary.col200
-            label.color = Config.StaticData.palette.secondary.col200
+            parent.color = Config.Settings.palette.secondary.col700;
+            parent.border.color = Config.Settings.palette.secondary.col200;
+            label.color = Config.Settings.palette.secondary.col200;
         }
     }
 }

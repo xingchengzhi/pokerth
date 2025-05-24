@@ -15,10 +15,10 @@ TabBar {
     currentIndex: 0
 
     background: Rectangle {
-        color: Config.StaticData.palette.secondary.col600
+        color: Config.Settings.palette.secondary.col600
     }
 
-    Repeater{
+    Repeater {
         id: tabButtons
 
         TabButton {
@@ -30,33 +30,31 @@ TabBar {
             padding: 0
             contentItem: Text {
                 text: modelData
-                color: customTabBar.currentIndex === index || tabButton.isHovered ? Config.StaticData.palette.secondary.col100 : Config.StaticData.palette.secondary.col200
+                color: customTabBar.currentIndex === index || tabButton.isHovered ? Config.Settings.palette.secondary.col100 : Config.Settings.palette.secondary.col200
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
-                color: customTabBar.currentIndex === index || tabButton.isHovered ? Config.StaticData.palette.secondary.col500 : Config.StaticData.palette.secondary.col600
+                color: customTabBar.currentIndex === index || tabButton.isHovered ? Config.Settings.palette.secondary.col500 : Config.Settings.palette.secondary.col600
             }
 
-            MouseArea{
+            MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: customTabBar.currentIndex === index && tabButton.isHovered ? Qt.ArrowCursor : Qt.PointingHandCursor
 
                 onClicked: {
-                    customTabBar.currentIndex = index
+                    customTabBar.currentIndex = index;
                 }
 
                 onEntered: {
-                    tabButton.isHovered = true
+                    tabButton.isHovered = true;
                 }
 
                 onExited: {
-                    tabButton.isHovered = false
+                    tabButton.isHovered = false;
                 }
             }
         }
     }
-
-
 }

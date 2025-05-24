@@ -20,16 +20,23 @@ Rectangle {
     property int currentHeight: mainWindow.height
 
     signal topBarToggle(real opacity)
-    onTopBarToggle: function(opacity) { console.log(opacity); topBar.opacity = opacity }
-    Component.onCompleted: { gamePage.topBarToggle(0) }
-    Component.onDestruction: { gamePage.topBarToggle(1) }
-    
+    onTopBarToggle: function (opacity) {
+        console.log(opacity);
+        topBar.opacity = opacity;
+    }
+    Component.onCompleted: {
+        gamePage.topBarToggle(0);
+    }
+    Component.onDestruction: {
+        gamePage.topBarToggle(1);
+    }
+
     onCurrentWidthChanged: {
-        hScaleFactor = currentWidth / initialWidth
+        hScaleFactor = currentWidth / initialWidth;
     }
 
     onCurrentHeightChanged: {
-        vScaleFactor = currentHeight / initialHeight
+        vScaleFactor = currentHeight / initialHeight;
     }
 
     Image {
@@ -53,31 +60,29 @@ Rectangle {
         x: gamePage.width / 12 * 2
         y: gamePage.height / 12
 
-            GamePlayerBox {
-                id: player5
-                Layout.alignment: Qt.AlignLeft
-                Layout.preferredWidth: 112 * gamePage.hScaleFactor
-                Layout.preferredHeight: 78 * gamePage.vScaleFactor
-                up: true
-            }
+        GamePlayerBox {
+            id: player5
+            Layout.alignment: Qt.AlignLeft
+            Layout.preferredWidth: 112 * gamePage.hScaleFactor
+            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            up: true
+        }
 
-            GamePlayerBox {
-                id: player6
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 112 * gamePage.hScaleFactor
-                Layout.preferredHeight: 78 * gamePage.vScaleFactor
-                up: true
-            }
+        GamePlayerBox {
+            id: player6
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 112 * gamePage.hScaleFactor
+            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            up: true
+        }
 
-            GamePlayerBox {
-                id: player7
-                Layout.alignment: Qt.AlignRight
-                Layout.preferredWidth: 112 * gamePage.hScaleFactor
-                Layout.preferredHeight: 78 * gamePage.vScaleFactor
-                up: true
-            }
-
-
+        GamePlayerBox {
+            id: player7
+            Layout.alignment: Qt.AlignRight
+            Layout.preferredWidth: 112 * gamePage.hScaleFactor
+            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            up: true
+        }
     }
 
     RowLayout {
@@ -159,8 +164,8 @@ Rectangle {
         width: gamePage.width / 12 * 4
         x: gamePage.width / 24 * 8
         y: gamePage.height / 12 * 4 + 8
-        
-        ColumnLayout{
+
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignCenter
@@ -170,7 +175,7 @@ Rectangle {
                 id: gamePot
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 12 * gamePage.vScaleFactor
                 text: qsTr("Pot")
@@ -180,7 +185,7 @@ Rectangle {
                 id: gamePotTotal
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Total: $0")
@@ -190,7 +195,7 @@ Rectangle {
                 id: gamePotBets
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Bets: $90")
@@ -212,18 +217,17 @@ Rectangle {
                 id: gamePreflop
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 12 * gamePage.vScaleFactor
                 text: qsTr("Preflop")
             }
 
-
             Text {
                 id: gamePreflopGame
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Game: 1")
@@ -233,7 +237,7 @@ Rectangle {
                 id: gamePreflopHand
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
+                color: Config.Settings.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Hand: 1")
@@ -241,7 +245,7 @@ Rectangle {
         }
     }
 
-    RowLayout{
+    RowLayout {
         id: cardHolderBox
         width: gamePage.width / 12 * 4
         x: gamePage.width / 24 * 8
@@ -253,12 +257,12 @@ Rectangle {
             Layout.preferredHeight: 72 * gamePage.hScaleFactor
             color: "transparent"
             border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
+            border.color: Config.Settings.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
+                color: Config.Settings.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -280,12 +284,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
+            border.color: Config.Settings.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
+                color: Config.Settings.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -307,12 +311,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
+            border.color: Config.Settings.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
+                color: Config.Settings.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -334,12 +338,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
+            border.color: Config.Settings.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
+                color: Config.Settings.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -362,12 +366,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
+            border.color: Config.Settings.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
+                color: Config.Settings.palette.secondary.col300
                 opacity: 0.4
             }
 

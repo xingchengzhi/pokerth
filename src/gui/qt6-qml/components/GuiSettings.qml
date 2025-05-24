@@ -28,7 +28,7 @@ Rectangle {
             text: qsTr("Benutzeroberfläche")
             font.bold: true
             font.pointSize: 12
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.Settings.palette.secondary.col200
         }
 
         Rectangle {
@@ -40,7 +40,7 @@ Rectangle {
             Layout.leftMargin: 12
             Layout.rightMargin: 12
             Layout.alignment: Qt.AlignTop
-            color: Config.StaticData.palette.secondary.col500
+            color: Config.Settings.palette.secondary.col500
         }
 
         ColumnLayout {
@@ -75,7 +75,7 @@ Rectangle {
                             horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
                             text: qsTr("Sprache:")
-                            color: Config.StaticData.palette.secondary.col200
+                            color: Config.Settings.palette.secondary.col200
                             font.pointSize: 12
                         }
 
@@ -181,7 +181,6 @@ Rectangle {
                     }
                 }
             }
-
         }
     }
 }

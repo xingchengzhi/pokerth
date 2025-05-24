@@ -5,7 +5,6 @@
 
 class QQmlApplicationEngine;
 class ConfigFile;
-class QmlConfig;
 class CreateLocalGameViewImpl;
 class StartViewImpl;
 
@@ -16,13 +15,14 @@ public:
     QmlWrapper(boost::shared_ptr<ConfigFile>);
     ~QmlWrapper();
     QmlWrapper(const QmlWrapper&);
+    static bool readXmlFile(QIODevice &device, QSettings::SettingsMap &map);
+    static bool writeXmlFile(QIODevice &device, const QSettings::SettingsMap &map);
 
 public slots:
 
 private:
     QQmlApplicationEngine *myQmlEngine;
     boost::shared_ptr<ConfigFile> myConfig;
-    QmlConfig *myQmlConfig;
     CreateLocalGameViewImpl *myCreateLocalGameViewImpl;
     StartViewImpl *myStartViewImpl;
 };

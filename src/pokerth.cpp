@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 {
 	QGuiApplication::setApplicationName("PokerTH");
     QGuiApplication::setOrganizationName("PokerTH");
+ 	QGuiApplication::setOrganizationDomain("pokerth.net");
 
     QApplication app(argc, argv);
     QIcon::setThemeName("pokerth");

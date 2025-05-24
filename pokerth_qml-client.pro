@@ -50,7 +50,6 @@ HEADERS += \
     src/core/common/qttools/qttoolswrapper.h \
     src/core/common/qttoolsinterface.h \
     src/gui/qt6-qml/cpp/qmlwrapper.h \
-    src/gui/qt6-qml/cpp/qmlconfig.h \
     src/gui/qt6-qml/cpp/startviewimpl.h \
     src/gui/qt6-qml/cpp/createlocalgameviewimpl.h \
     src/gui/qt6-qml/cpp/mylistviewitemdata.h
@@ -63,7 +62,6 @@ SOURCES += \
     src/core/common/qttools/qttoolswrapper.cpp \
     src/core/common/qttoolsinterface.cpp \
     src/gui/qt6-qml/cpp/qmlwrapper.cpp \
-    src/gui/qt6-qml/cpp/qmlconfig.cpp \
     src/gui/qt6-qml/cpp/createlocalgameviewimpl.cpp \
     src/gui/qt6-qml/cpp/startviewimpl.cpp
 

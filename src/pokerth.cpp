@@ -72,20 +72,24 @@ int main(int argc, char *argv[])
     if (styleInSettings.isEmpty())
         settings.setValue(QLatin1String("style"), QQuickStyle::name());
 
-    QQmlApplicationEngine engine(QUrl(QStringLiteral("qrc:/pokerth.qml")));
-
 	const QLocale locale;
-    const QString baseName = "pokerth";
-    QTranslator translator;
-    if (translator.load(locale, "pokerth", "_", ":/i18n")) {
+	const QString baseName = "pokerth";
+	QTranslator translator;
+	if (translator.load(locale, "pokerth", "_", ":/i18n")) {
 		// qDebug() << "Locale found!";
-        app.installTranslator(&translator);
-    } else {
-        qDebug() << "Locale not found in translations";
-    }
+		app.installTranslator(&translator);
+	} else {
+		qDebug() << "Locale not found in translations";
+	}
+
+    QQmlApplicationEngine engine;
 
     LanguageManager langMgr(&engine);
     engine.rootContext()->setContextProperty("LanguageManager", &langMgr);
+	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
+
+	if (engine.rootObjects().isEmpty())
+        return -1;
 
 	// @DEBUG: session test
 	// Session s = new Session();

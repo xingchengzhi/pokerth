@@ -175,7 +175,7 @@ Rectangle {
                 id: gamePot
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 12 * gamePage.vScaleFactor
                 text: qsTr("Pot")
@@ -185,7 +185,7 @@ Rectangle {
                 id: gamePotTotal
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Total: $0")
@@ -195,7 +195,7 @@ Rectangle {
                 id: gamePotBets
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Bets: $90")
@@ -217,7 +217,7 @@ Rectangle {
                 id: gamePreflop
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 12 * gamePage.vScaleFactor
                 text: qsTr("Preflop")
@@ -227,7 +227,7 @@ Rectangle {
                 id: gamePreflopGame
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Game: 1")
@@ -237,7 +237,7 @@ Rectangle {
                 id: gamePreflopHand
                 Layout.preferredWidth: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                color: Config.Settings.palette.secondary.col200
+                color: Config.StaticData.palette.secondary.col200
                 font.bold: true
                 font.pointSize: 10 * gamePage.vScaleFactor
                 text: qsTr("Hand: 1")
@@ -257,12 +257,12 @@ Rectangle {
             Layout.preferredHeight: 72 * gamePage.hScaleFactor
             color: "transparent"
             border.width: 2
-            border.color: Config.Settings.palette.secondary.col200
+            border.color: Config.StaticData.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.Settings.palette.secondary.col300
+                color: Config.StaticData.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -284,12 +284,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.Settings.palette.secondary.col200
+            border.color: Config.StaticData.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.Settings.palette.secondary.col300
+                color: Config.StaticData.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -311,12 +311,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.Settings.palette.secondary.col200
+            border.color: Config.StaticData.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.Settings.palette.secondary.col300
+                color: Config.StaticData.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -338,12 +338,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.Settings.palette.secondary.col200
+            border.color: Config.StaticData.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.Settings.palette.secondary.col300
+                color: Config.StaticData.palette.secondary.col300
                 opacity: 0.4
             }
 
@@ -366,12 +366,12 @@ Rectangle {
             Layout.fillHeight: true
             color: "transparent"
             border.width: 2
-            border.color: Config.Settings.palette.secondary.col200
+            border.color: Config.StaticData.palette.secondary.col200
             radius: 8
 
             Rectangle {
                 anchors.fill: parent
-                color: Config.Settings.palette.secondary.col300
+                color: Config.StaticData.palette.secondary.col300
                 opacity: 0.4
             }
 

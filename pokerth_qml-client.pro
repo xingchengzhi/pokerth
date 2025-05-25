@@ -8,11 +8,15 @@ DEFINES += PREFIX=\"$${PREFIX}\"
 TEMPLATE = app
 CODECFORSRC = UTF-8
 QT += core qml quick quickcontrols2 widgets svg sql xml
-CONFIG += qt thread embed_manifest_exe exceptions rtti stl warn_on
+CONFIG += qt thread embed_manifest_exe exceptions rtti stl warn_on lrelease embed_translations
 DEFINES += ENABLE_IPV6 BOOST_FILESYSTEM_DEPRECATED
 
 DEFINES += QML_CLIENT
 RESOURCES += src/gui/qt6-qml/qml.qrc
+
+TRANSLATIONS += src/gui/qt6-qml/i18n/pokerth_de_DE.ts \
+        src/gui/qt6-qml/i18n/pokerth_en_US.ts \
+        src/gui/qt6-qml/i18n/pokerth_fr_FR.ts
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH = \
@@ -49,7 +53,8 @@ HEADERS += \
     src/core/common/qttools/qthelper/qthelper.h \
     src/core/common/qttools/qttoolswrapper.h \
     src/core/common/qttoolsinterface.h \
-    src/gui/qt6-qml/cpp/qmlwrapper.h \
+    src/gui/qt6-qml/cpp/retranslate.h \
+    src/gui/qt6-qml/cpp/settingsxmlhandler.h \
     src/gui/qt6-qml/cpp/startviewimpl.h \
     src/gui/qt6-qml/cpp/createlocalgameviewimpl.h \
     src/gui/qt6-qml/cpp/mylistviewitemdata.h
@@ -61,7 +66,8 @@ SOURCES += \
     src/core/common/qttools/qthelper/qthelper.cpp \
     src/core/common/qttools/qttoolswrapper.cpp \
     src/core/common/qttoolsinterface.cpp \
-    src/gui/qt6-qml/cpp/qmlwrapper.cpp \
+    src/gui/qt6-qml/cpp/retranslate.cpp \
+    src/gui/qt6-qml/cpp/settingsxmlhandler.cpp \
     src/gui/qt6-qml/cpp/createlocalgameviewimpl.cpp \
     src/gui/qt6-qml/cpp/startviewimpl.cpp
 

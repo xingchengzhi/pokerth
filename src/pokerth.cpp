@@ -33,14 +33,20 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <QtCore>
+#include <QtQml>
 #include <QApplication>
 #include <QSettings>
 #include <QQuickStyle>
 #include <QIcon>
 #include <boost/shared_ptr.hpp>
 #include "configfile.h"
-#include "qmlwrapper.h"
 #include "session.h"
+#include <QTranslator>
+#include <QQmlContext>
+#include <QDebug>
+#include <retranslate.h>
+#include <settingsxmlhandler.h>
 
 int main(int argc, char *argv[])
 {
@@ -51,26 +57,40 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QIcon::setThemeName("pokerth");
 
-    QSettings settings;
-    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
-        QQuickStyle::setStyle(settings.value("style").toString());
-
-    // If this is the first time we're running the application,
-    // we need to set a style in the settings so that the QML
-    // can find it in the list of built-in styles.
-    const QString styleInSettings = settings.value("style").toString();
-    if (styleInSettings.isEmpty()) settings.setValue(QLatin1String("style"), QQuickStyle::name());
-
-	// ConfigFile *myConfigOld = new ConfigFile(argv[0], false);
-	// myConfigOld->updateConfig(NONEXISTING);
-
     boost::shared_ptr<ConfigFile> myConfig;
     myConfig.reset(new ConfigFile(argv[0], false));
+
+    // make QSettings use the default PokerTH config.xml :
+	const QSettings::Format XmlFormat = QSettings::registerFormat("xml", &SettingsXmlHandler::readXmlFile, &SettingsXmlHandler::writeXmlFile);
+    QFileInfo fi(QString::fromStdString(myConfig->configFileName));
+    QSettings::setPath(XmlFormat, QSettings::UserScope, fi.absolutePath().remove("/.pokerth"));
+    QSettings settings(XmlFormat, QSettings::UserScope, ".pokerth", "config");
+
+    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+        QQuickStyle::setStyle(settings.value("style").toString());
+    const QString styleInSettings = settings.value("style").toString();
+    if (styleInSettings.isEmpty())
+        settings.setValue(QLatin1String("style"), QQuickStyle::name());
+
+    QQmlApplicationEngine engine(QUrl(QStringLiteral("qrc:/pokerth.qml")));
+
+	const QLocale locale;
+    const QString baseName = "pokerth";
+    QTranslator translator;
+    if (translator.load(locale, "pokerth", "_", ":/i18n")) {
+		// qDebug() << "Locale found!";
+        app.installTranslator(&translator);
+    } else {
+        qDebug() << "Locale not found in translations";
+    }
+
+    LanguageManager langMgr(&engine);
+    engine.rootContext()->setContextProperty("LanguageManager", &langMgr);
 
 	// @DEBUG: session test
 	// Session s = new Session();
 
-    QmlWrapper myQml(myConfig);
+    // QmlWrapper myQml(myConfig);
     return app.exec();
 }
 

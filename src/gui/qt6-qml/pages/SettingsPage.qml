@@ -13,7 +13,7 @@ Rectangle {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    color: Config.Settings.palette.secondary.col700
+    color: Config.StaticData.palette.secondary.col700
 
     RowLayout {
         anchors.fill: parent
@@ -32,7 +32,7 @@ Rectangle {
             Layout.rightMargin: 8
             Layout.bottomMargin: 16
             border.width: 1
-            border.color: Config.Settings.palette.secondary.col500
+            border.color: Config.StaticData.palette.secondary.col500
             radius: 5
             color: "transparent"
 
@@ -60,8 +60,8 @@ Rectangle {
                     labelText: name
                     iconSource: "../resources/" + icon + ".svg"
 
-                    color: ListView.isCurrentItem ? Config.Settings.palette.secondary.col600 : "transparent"
-                    labelColor: ListView.isCurrentItem ? Config.Settings.palette.secondary.col100 : Config.Settings.palette.secondary.col200
+                    color: ListView.isCurrentItem ? Config.StaticData.palette.secondary.col600 : "transparent"
+                    labelColor: ListView.isCurrentItem ? Config.StaticData.palette.secondary.col100 : Config.StaticData.palette.secondary.col200
                     width: parent.width
                     height: 36
 
@@ -83,7 +83,7 @@ Rectangle {
                                 source: iconImage
                                 anchors.fill: iconImage
                                 colorization: 1.0 // opacity equivalent
-                                colorizationColor: Config.Settings.palette.secondary.col200
+                                colorizationColor: Config.StaticData.palette.secondary.col200
                             }
                         }
 
@@ -93,7 +93,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.topMargin: 4
                             Layout.bottomMargin: 4
-                            font.family: Config.Settings.loadedFont.font.family
+                            font.family: Config.StaticData.loadedFont.font.family
                             font.pointSize: 12
                         }
                     }
@@ -108,14 +108,14 @@ Rectangle {
                         }
 
                         onEntered: {
-                            iconImageCol.colorizationColor = label.color = Config.Settings.palette.secondary.col100;
-                            settingsMenuListItem.color = Config.Settings.palette.secondary.col600;
+                            iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col100;
+                            settingsMenuListItem.color = Config.StaticData.palette.secondary.col600;
                         }
 
                         onExited: {
-                            iconImageCol.colorizationColor = label.color = Config.Settings.palette.secondary.col200;
+                            iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col200;
                             if (settingsMenuList.currentIndex !== index) {
-                                iconImageCol.colorizationColor = label.color = Config.Settings.palette.secondary.col200;
+                                iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col200;
                                 settingsMenuListItem.color = "transparent";
                             }
                         }
@@ -123,9 +123,9 @@ Rectangle {
                 }
 
                 onCurrentIndexChanged: {
-                    settingsMenuList.currentItem.labelColor = settingsMenuList.currentItem.iconColor = Config.Settings.palette.secondary.col100;
-                    settingsMenuList.currentItem.color = Config.Settings.palette.secondary.col600;
-                    settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).labelColor = settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).iconColor = Config.Settings.palette.secondary.col200;
+                    settingsMenuList.currentItem.labelColor = settingsMenuList.currentItem.iconColor = Config.StaticData.palette.secondary.col100;
+                    settingsMenuList.currentItem.color = Config.StaticData.palette.secondary.col600;
+                    settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).labelColor = settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).iconColor = Config.StaticData.palette.secondary.col200;
                     settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).color = "transparent";
                     prevIndex = settingsMenuList.currentIndex;
                 }
@@ -144,7 +144,7 @@ Rectangle {
             Layout.rightMargin: 16
             Layout.bottomMargin: 16
             border.width: 1
-            border.color: Config.Settings.palette.secondary.col500
+            border.color: Config.StaticData.palette.secondary.col500
             radius: 5
             color: "transparent"
 

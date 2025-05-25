@@ -32,13 +32,13 @@ Rectangle {
                 source: customCheck
                 anchors.fill: customCheck
                 colorization: 1.0 // opacity equivalent
-                colorizationColor: Config.Settings.palette.secondary.col200
+                colorizationColor: Config.StaticData.palette.secondary.col200
             }
         }
 
         Label {
             id: checkBoxLabel
-            color: Config.Settings.palette.secondary.col200
+            color: Config.StaticData.palette.secondary.col200
             text: qsTr("CheckBox LabelText")
             font.pointSize: 12
         }

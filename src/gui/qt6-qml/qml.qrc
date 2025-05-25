@@ -22,7 +22,6 @@
         <file>config/qmldir</file>
         <file>config/Parameters.qml</file>
         <file>config/StaticData.qml</file>
-        <file>config/Settings.qml</file> 
         <file>i18n/pokerth_de_DE.ts</file>
         <file>i18n/pokerth_en_US.ts</file>
         <file>i18n/pokerth_fr_FR.ts</file>

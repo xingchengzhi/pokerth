@@ -28,3 +28,6 @@ gitpush_serverstuff_stable
 .vscode/
 .project
 .classpath
+qmake_qmake_qm_files.qrc
+qrc_qmake_qmake_qm_files.cpp
+.qm

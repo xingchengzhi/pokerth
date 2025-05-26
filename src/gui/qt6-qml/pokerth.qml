@@ -23,6 +23,10 @@ ApplicationWindow {
     visible: true
     title: qsTr("PokerTH - v2.0 alpha")
 
+    Component.onCompleted: {
+        LanguageManager.switchLanguage(Config.Parameters.language)
+    }
+    
     Rectangle {
         anchors.fill: parent
         color: Config.StaticData.palette.secondary.col700

@@ -20,6 +20,9 @@ ApplicationWindow {
     property SideMenu sideMenu: SideMenu {}
     width: 900
     height: 600
+    // TRY to center the window, doesn't work on my Ubuntu but should work on other platforms.
+    x: screen.width / 2 - width / 2
+    y: screen.height / 2 - height / 2
     visible: true
     title: qsTr("PokerTH - v2.0 alpha")
 

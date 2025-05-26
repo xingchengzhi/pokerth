@@ -35,6 +35,7 @@
         <file>pages/PreLoader.qml</file>
         <file>pages/SettingsPage.qml</file>
         <file>pages/StartPage.qml</file>
+        <file>pages/ServerConnectionDialog.qml</file>
         <file>resources/arrowUpLeft.svg</file>
         <file>resources/cardBackground.svg</file>
         <file>resources/caretLeft.svg</file>

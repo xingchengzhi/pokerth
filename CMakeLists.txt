@@ -27,11 +27,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FindBoost)
-include(FindGsasl)
+include(FindGSasl)
 include(FindTinyXML)
 
 find_package(Boost REQUIRED COMPONENTS iostreams thread filesystem)
-find_package(GSASL REQUIRED)
+find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(TinyXML REQUIRED)
 find_package(OpenSSL REQUIRED)

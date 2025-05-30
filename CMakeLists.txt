@@ -171,7 +171,7 @@ if(BUILD_PROTOCOL)
     find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
                           chatcleaner.proto pokerth.proto
-                          PROTOC_OUT_DIR src/third_party/protobuf)
+                          PROTOC_OUT_DIR ../src/third_party/protobuf)
     add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
     target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
     target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")

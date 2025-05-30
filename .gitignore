@@ -8,6 +8,7 @@ Makefile.pokerth_protocol
 Makefile.pokerth_server
 Makefile.pokerth_dbofficial
 bin/
+build/
 /chatcleaner
 lib/
 mocs/

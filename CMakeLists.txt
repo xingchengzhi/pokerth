@@ -330,7 +330,7 @@ if(BUILD_CLIENT)
         src/gui/qt/logfiledialog 
         src/gui/qt/mymessagebox/)
 
-    install(TARGETS pokerth_client DESTINATION bin)
+    install(TARGETS pokerth_client DESTINATION /usr/bin)
     install(DIRECTORY data DESTINATION share/pokerth)
 
 endif()

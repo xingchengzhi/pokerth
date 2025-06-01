@@ -30,7 +30,7 @@ include(FindBoost)
 include(FindGSasl)
 include(FindTinyXML)
 
-find_package(Boost REQUIRED COMPONENTS iostreams thread filesystem)
+find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem)
 find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(TinyXML REQUIRED)

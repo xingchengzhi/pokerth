@@ -329,4 +329,8 @@ if(BUILD_CLIENT)
         src/gui/qt/timeoutmsgbox 
         src/gui/qt/logfiledialog 
         src/gui/qt/mymessagebox/)
+
+    install(TARGETS pokerth_client DESTINATION bin)
+    install(DIRECTORY data DESTINATION share/pokerth)
+
 endif()

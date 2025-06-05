@@ -491,7 +491,7 @@ ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
 		boost::bind(
 			&ClientStateStartConnect::TimerTimeout, this, boost::asio::placeholders::error, client));
 
-	boost::asio::ip::tcp::endpoint endpoint = *m_remoteEndpointIterator;
+	boost::asio::ip::tcp::endpoint endpoint = m_remoteEndpointIterator->endpoint();
 	client->GetContext().GetSessionData()->GetAsioSocket()->async_connect(
 		endpoint,
 		boost::bind(&ClientStateStartConnect::HandleConnect,
@@ -510,23 +510,24 @@ ClientStateStartConnect::Exit(boost::shared_ptr<ClientThread> client)
 void
 ClientStateStartConnect::SetRemoteEndpoint(boost::asio::ip::tcp::resolver::results_type endpointIterator)
 {
-	m_remoteEndpointIterator = endpointIterator;
+	m_remoteEndpointIterator = endpointIterator.begin();
+	m_remoteEndpoint = endpointIterator;
 }
 
 void
-ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type endpoint_iterator,
+ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boost::asio::ip::basic_resolver_iterator<boost::asio::ip::tcp> endpoint_iterator,
 									   boost::shared_ptr<ClientThread> client)
 {
 	if (&client->GetState() == this) {
 		if (!ec) {
 			client->GetCallback().SignalNetClientConnect(MSG_SOCK_CONNECT_DONE);
 			client->SetState(ClientStateStartSession::Instance());
-		} else if (endpoint_iterator != boost::asio::ip::tcp::resolver::results_type()) {
+		} else if (endpoint_iterator != m_remoteEndpoint.end()) {
 			// Try next resolve entry.
 			ClientContext &context = client->GetContext();
 			boost::system::error_code ec;
 			context.GetSessionData()->GetAsioSocket()->close(ec);
-			boost::asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
+			boost::asio::ip::tcp::endpoint endpoint = endpoint_iterator->endpoint();
 			context.GetSessionData()->GetAsioSocket()->async_connect(
 				endpoint,
 				boost::bind(&ClientStateStartConnect::HandleConnect,

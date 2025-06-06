@@ -35,7 +35,6 @@ find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(TinyXML REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(absl REQUIRED CONFIG)
 
 # POKERTH.lib
 
@@ -176,9 +175,7 @@ if(BUILD_PROTOCOL)
     target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
     target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
     target_link_libraries(pokerth_protocol PUBLIC 
-        "${Protobuf_LIBRARIES}"
-        absl::log_internal_message
-        absl::log_internal_check_op)
+        "${Protobuf_LIBRARIES}")
 endif()
 
 if(BUILD_CLIENT)

@@ -485,22 +485,20 @@ ClientStateStartConnect::~ClientStateStartConnect()
 void
 ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
 {
-	boost::asio::ip::tcp::endpoint endpoint = *m_remoteEndpointIterator.begin();
-
 	client->GetStateTimer().expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
 		duration<int, std::ratio<1000, 1>>(CLIENT_CONNECT_TIMEOUT_SEC)));
 	client->GetStateTimer().async_wait(
 		boost::bind(
 			&ClientStateStartConnect::TimerTimeout, this, boost::asio::placeholders::error, client));
 
+	boost::asio::ip::tcp::endpoint endpoint = m_remoteEndpointIterator->endpoint();
 	client->GetContext().GetSessionData()->GetAsioSocket()->async_connect(
 		endpoint,
 		boost::bind(&ClientStateStartConnect::HandleConnect,
 					this,
 					boost::asio::placeholders::error,
-					m_remoteEndpointIterator,
-					client,
-					0));
+					++m_remoteEndpointIterator,
+					client));
 }
 
 void
@@ -512,38 +510,32 @@ ClientStateStartConnect::Exit(boost::shared_ptr<ClientThread> client)
 void
 ClientStateStartConnect::SetRemoteEndpoint(boost::asio::ip::tcp::resolver::results_type endpointIterator)
 {
-	m_remoteEndpointIterator = endpointIterator;
+	m_remoteEndpointIterator = endpointIterator.begin();
+	m_remoteEndpoint = endpointIterator;
 }
 
 void
-ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type endpoint_iterator,
-									   boost::shared_ptr<ClientThread> client, int rangeIndex)
+ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boost::asio::ip::basic_resolver_iterator<boost::asio::ip::tcp> endpoint_iterator,
+									   boost::shared_ptr<ClientThread> client)
 {
 	if (&client->GetState() == this) {
-
-		int rangeId = 0;
-		for ( const auto& endpoint : endpoint_iterator) {
-			if (rangeIndex != rangeId++) continue;
-
 		if (!ec) {
 			client->GetCallback().SignalNetClientConnect(MSG_SOCK_CONNECT_DONE);
 			client->SetState(ClientStateStartSession::Instance());
-		} else {
+		} else if (endpoint_iterator != m_remoteEndpoint.end()) {
 			// Try next resolve entry.
 			ClientContext &context = client->GetContext();
 			boost::system::error_code ec;
 			context.GetSessionData()->GetAsioSocket()->close(ec);
+			boost::asio::ip::tcp::endpoint endpoint = endpoint_iterator->endpoint();
 			context.GetSessionData()->GetAsioSocket()->async_connect(
 				endpoint,
 				boost::bind(&ClientStateStartConnect::HandleConnect,
 							this,
 							boost::asio::placeholders::error,
-							m_remoteEndpointIterator,
-							client,
-							++rangeIndex));
-			}
-		}
-		if (ec) {
+							++m_remoteEndpointIterator,
+							client));
+		} else {
 			if (ec != boost::asio::error::operation_aborted) {
 				if (client->GetContext().GetAddrFamily() == AF_INET6) {
 					throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_IPV6_FAILED, ec.value());

@@ -209,13 +209,14 @@ protected:
 	ClientStateStartConnect();
 
 	void HandleConnect(const boost::system::error_code& ec,
-					   boost::asio::ip::tcp::resolver::results_type endpoint_iterator,
-					   boost::shared_ptr<ClientThread> client, int rangeIndex);
+					   boost::asio::ip::basic_resolver_iterator<boost::asio::ip::tcp> endpoint_iterator,
+					   boost::shared_ptr<ClientThread> client);
 
 	void TimerTimeout(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client);
 
 private:
-	boost::asio::ip::tcp::resolver::results_type m_remoteEndpointIterator;
+	boost::asio::ip::tcp::resolver::results_type m_remoteEndpoint;
+	boost::asio::ip::basic_resolver_iterator<boost::asio::ip::tcp> m_remoteEndpointIterator;
 };
 
 // Abstract State: Receiving

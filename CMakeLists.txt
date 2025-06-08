@@ -3,10 +3,12 @@ cmake_minimum_required(VERSION 3.5)
 project(POKERTH)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/mk/cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 set(BUILD_DB ON)
-set(BUILD_DBOFFICIAL OFF)
-set(BUILD_CLIENT ON)
+set(BUILD_DBOFFICIAL ON)
+# BUILD_CLIENT ON|OFF = build client or server
+set(BUILD_CLIENT OFF)
 set(BUILD_PROTOCOL ON)
 set(GUI_800_480 OFF)
 
@@ -30,7 +32,7 @@ include(FindBoost)
 include(FindGSasl)
 include(FindTinyXML)
 
-find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem)
+find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(TinyXML REQUIRED)
@@ -135,6 +137,7 @@ target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 
+
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED)
 
 target_include_directories(pokerth_lib PUBLIC
@@ -147,14 +150,15 @@ target_include_directories(pokerth_lib PUBLIC
     src/third_party/websocketpp)
 
 if(BUILD_DBOFFICIAL)
+    add_definitions(-DPOKERTH_OFFICIAL_SERVER)
     file(GLOB POKERTH_DBOFFICIAL_SRC src/dbofficial/*.cpp)
-
     add_library(pokerth_dbofficial "${POKERTH_DBOFFICIAL_SRC}")
-    include(Findmysqlpp)
-    find_package(MYSQLPP)
+    include(FindMySQL)
+    find_package(MySQL REQUIRED)
     if(NOT MYSQLPP_FOUND)
         message(FATAL_ERROR "Could not build PokerTH::DBOfficial MySQL++ was not found.")
     endif()
+    target_include_directories(pokerth_dbofficial PRIVATE ${MYSQLPP_INCLUDE_DIR})
     target_include_directories(pokerth_dbofficial PRIVATE "${Boost_INCLUDE_DIRS}")
     target_include_directories(pokerth_dbofficial PUBLIC src)
 endif()
@@ -330,4 +334,60 @@ if(BUILD_CLIENT)
     install(TARGETS pokerth_client DESTINATION /usr/bin)
     install(DIRECTORY data DESTINATION /usr/share/pokerth)
 
+else()
+    add_definitions(-DPOKERTH_DEDICATED_SERVER)
+    find_package(Qt6 REQUIRED COMPONENTS Core Xml WebSockets Network REQUIRED)
+    find_package(CURL REQUIRED)
+
+    add_library(LibCurl INTERFACE IMPORTED)
+    set_target_properties(LibCurl PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}")
+    if(WIN32)
+      target_link_libraries(LibCurl INTERFACE ${CURL_LIBRARY})
+    else()
+      set_target_properties(LibCurl PROPERTIES
+        INTERFACE_LINK_LIBRARIES "${CURL_LIBRARY}")
+    endif()
+
+    set(POKERTH_SERVER_SRC src/pokerth_server.cpp 
+        src/gui/qt/qttools/nonqttoolswrapper.cpp
+        src/gui/qt/qttools/nonqthelper/nonqthelper.cpp
+        src/net/common/net_helper_server.cpp
+        src/core/common/loghelper_server.cpp
+        src/net/common/ircthread.cpp
+        src/net/common/servermanagerirc.cpp
+        src/net/common/servermanagerfactoryserver.cpp
+        src/core/linux/convhelper.cpp)
+
+    add_executable(pokerth_server "${POKERTH_SERVER_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+
+    target_include_directories(pokerth_server PRIVATE "${Qt6Core_INCLUDE_DIRS}")
+    target_include_directories(pokerth_server PRIVATE "${Qt6Xml_INCLUDE_DIRS}")
+    target_include_directories(pokerth_server PRIVATE "${Qt6WebSockets_INCLUDE_DIRS}")
+    target_include_directories(pokerth_server PRIVATE "${Boost_INCLUDE_DIRS}")
+
+    target_link_libraries(pokerth_server PUBLIC "${Qt6Core_LIBRARIES}")
+    target_link_libraries(pokerth_server PUBLIC "${Qt6Xml_LIBRARIES}")
+    target_link_libraries(pokerth_server PUBLIC "${Qt6WebSockets_LIBRARIES}")
+    target_link_libraries(pokerth_server PUBLIC LibCurl)
+    target_link_libraries(pokerth_server PUBLIC -lircclient)
+
+    target_link_libraries(pokerth_server PUBLIC pokerth_lib)
+    target_link_libraries(pokerth_server PUBLIC pokerth_db)
+    target_link_libraries(pokerth_server PUBLIC pokerth_protocol)
+
+    target_include_directories(pokerth_server PUBLIC
+        src 
+        src/engine 
+        src/gui
+        src/gui/qt
+        src/gui/qt/qttools
+        src/gui/qt/qttools/nonqthelper
+        src/net 
+        src/engine/local_engine 
+        src/engine/network_engine 
+        src/config 
+        src/core)
+
+    install(TARGETS pokerth_server DESTINATION /usr/bin)
 endif()

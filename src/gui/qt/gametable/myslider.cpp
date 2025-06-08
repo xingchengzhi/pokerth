@@ -1,6 +1,6 @@
 /*****************************************************************************
  * PokerTH - The open source texas holdem engine                             *
- * Copyright (C) 2006-2016 Felix Hammer, Florian Thauer, Lothar May          *
+ * Copyright (C) 2006-2012 Felix Hammer, Florian Thauer, Lothar May          *
  *                                                                           *
  * This program is free software: you can redistribute it and/or modify      *
  * it under the terms of the GNU Affero General Public License as            *
@@ -29,62 +29,14 @@
  * as that of the covered work.                                              *
  *****************************************************************************/
 
-#include <boost/bind/bind.hpp>
-#include <dbofficial/asyncdbauth.h>
+#include "myslider.h"
 
-
-using namespace std;
-
-
-AsyncDBAuth::AsyncDBAuth(unsigned queryId, const string &preparedName, const list<string> &params)
-	: SingleAsyncDBQuery(queryId, preparedName, params)
+Slider::Slider(QWidget* parent):
+    QSlider( parent )
 {
 }
 
-AsyncDBAuth::~AsyncDBAuth()
+Slider::Slider(Qt::Orientation orientation, QWidget* parent):
+    QSlider( orientation, parent )
 {
-}
-
-void
-AsyncDBAuth::HandleResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, mysqlpp::StoreQueryResult& result, boost::asio::io_context &service, ServerDBCallback &cb)
-{
-	if (result.num_rows() != 1) {
-		boost::asio::post(service, boost::bind(&ServerDBCallback::PlayerLoginFailed, &cb, GetId()));
-	} else {
-		int blocked = result[0][2];
-		int active = result[0][7];
-		if ((active != 1) || (blocked != 0)) {
-			boost::asio::post(service, boost::bind(&ServerDBCallback::PlayerLoginBlocked, &cb, GetId()));
-		} else {
-			mysqlpp::String secret(result[0][1]);
-			mysqlpp::String country(result[0][3]);
-			mysqlpp::String last_login(result[0][4]);
-			mysqlpp::String last_games(result[0][5]);
-			mysqlpp::String last_ip(result[0][6]);
-			boost::shared_ptr<DBPlayerData> tmpData(new DBPlayerData);
-			tmpData->id = result[0][0];
-			secret.to_string(tmpData->secret);
-			if (!country.is_null())
-				country.to_string(tmpData->country);
-			last_login.to_string(tmpData->last_login);
-			if (!last_games.is_null())
-				last_games.to_string(tmpData->last_games);
-			if (!last_ip.is_null())
-				last_ip.to_string(tmpData->last_ip);
-
-			boost::asio::post(service, boost::bind(&ServerDBCallback::PlayerLoginSuccess, &cb, GetId(), tmpData));
-		}
-	}
-}
-
-void
-AsyncDBAuth::HandleNoResult(mysqlpp::Query &/*query*/, DBIdManager& /*idManager*/, boost::asio::io_context &service, ServerDBCallback &cb)
-{
-	HandleError(service, cb);
-}
-
-void
-AsyncDBAuth::HandleError(boost::asio::io_context &service, ServerDBCallback &cb)
-{
-	boost::asio::post(service, boost::bind(&ServerDBCallback::PlayerLoginFailed, &cb, GetId()));
 }

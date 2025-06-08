@@ -31,7 +31,7 @@
 
 #include <net/chatcleanermanager.h>
 #include <net/asiosendbuffer.h>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <core/loghelper.h>
 #include <third_party/protobuf/chatcleaner.pb.h>
 
@@ -117,30 +117,28 @@ ChatCleanerManager::HandleGameChatText(unsigned gameId, unsigned playerId, const
 
 void
 ChatCleanerManager::HandleResolve(const boost::system::error_code& ec,
-								  boost::asio::ip::tcp::resolver::results_type endpoint_iterator)
+								  boost::asio::ip::tcp::resolver::results_type endpoint_range)
 {
-	for ( const auto& endpoint : endpoint_iterator) {
-
 	if (!ec) {
+		boost::asio::ip::basic_resolver_iterator endpoint_iterator = endpoint_range.begin();
+		boost::asio::ip::tcp::endpoint endpoint = endpoint_iterator->endpoint();
 		m_socket->async_connect(
 			endpoint,
 			boost::bind(&ChatCleanerManager::HandleConnect,
 						shared_from_this(),
 						boost::asio::placeholders::error,
-						endpoint_iterator));
-		}
-	}
-	 if (ec != boost::asio::error::operation_aborted) {
+						++endpoint_iterator,
+						endpoint_range));
+	} else if (ec != boost::asio::error::operation_aborted) {
 		LOG_ERROR("Could not resolve chat cleaner server.");
-		}
+	}
 }
 
 void
 ChatCleanerManager::HandleConnect(const boost::system::error_code& ec,
-								  boost::asio::ip::tcp::resolver::results_type endpoint_iterator)
+								  boost::asio::ip::basic_resolver_iterator<boost::asio::ip::tcp> endpoint_iterator,
+								  boost::asio::ip::tcp::resolver::results_type endpoint_range)
 {
-	for ( const auto& endpoint : endpoint_iterator) {
-
 	if (!ec) {
 		boost::shared_ptr<ChatCleanerMessage> tmpInit(ChatCleanerMessage::default_instance().New());
 		tmpInit->set_messagetype(ChatCleanerMessage::Type_CleanerInitMessage);
@@ -156,20 +154,21 @@ ChatCleanerManager::HandleConnect(const boost::system::error_code& ec,
 				boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred));
 	} else if (ec != boost::asio::error::operation_aborted) {
+		if (endpoint_iterator != endpoint_range.end()) {
 			// Try next resolve entry.
 			boost::system::error_code ec;
 			m_socket->close(ec);
+			boost::asio::ip::tcp::endpoint endpoint = endpoint_iterator->endpoint();
 			m_socket->async_connect(
 				endpoint,
 				boost::bind(&ChatCleanerManager::HandleConnect,
 							shared_from_this(),
 							boost::asio::placeholders::error,
-							endpoint_iterator));
-		}
-	}
-		if (ec != boost::asio::error::operation_aborted) {
+							++endpoint_iterator,
+							endpoint_range));
+		} else
 			LOG_ERROR("Could not connect to chat cleaner server.");
-			}
+	}
 }
 
 void

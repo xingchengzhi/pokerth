@@ -29,7 +29,7 @@ Linux:
 
   1. Type "cd path/to/the/sources". Then do one of these:
 
-    `cmake -S. -B./build -DBUILD_CLIENT=ON` -DBUILD_QML_CLIENT=ON ... builds the qml-client (not yet finished!)
+    `cmake -S. -B./build -DBUILD_CLIENT=ON` -DBUILD_QML_CLIENT=ON ... builds the qml-client (not yet finished! ... see https://github.com/pokerth/pokerth/blob/qt6-qml)
     `cmake -S. -B./build -DBUILD_CLIENT=ON` ... builds the old QT Widget client
     `cmake -S. -B./build -DBUILD_CLIENT=OFF` -DBUILD_DBOFFICIAL=ON ... builds official server with mysql-db
     `cmake -S. -B./build -DBUILD_CLIENT=OFF` ... builds dedicated server

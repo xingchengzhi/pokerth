@@ -3,7 +3,7 @@ Requirements
 
 To compile PokerTH you need following libs: 
 
-Linux:
+Linux (outdated! ... update follows):
 - Qt version >= 4.4.3, 4.8.x recommended  --> http://qtsoftware.com/
 - zlib version >= 1.2.3  --> http://www.zlib.net/
 - libcurl version >= 7.16  --> http://curl.haxx.se/
@@ -18,7 +18,7 @@ Linux:
 - protoc >= 2.3.0 (during build), libprotobuf >= 2.3.0 -> https://github.com/google/protobuf
 - For the server: libircclient 1.3 --> http://www.sourceforge.net/projects/libircclient/
 
-Windows:
+Windows (outdated):
 see docs/build_mingw_windows.txt
 
 
@@ -27,10 +27,13 @@ Basic Installation
 
 Linux:
 
-  1. Type "cd path/to/the/sources". Then do for example "/usr/qt/4/bin/qmake pokerth.pro" to configure the makefile for your system.
-     Pay attention that the QTDIR environment variable points to Qt4 not Qt3. For example QTDIR=/usr/qt/4.
-     You can set this variable typing: "export QTDIR=/usr/qt/4"
+  1. Type "cd path/to/the/sources". Then do one of these:
 
-  2. Type "make" to compile the package.
+    `cmake -S. -B./build -DBUILD_CLIENT=ON` -DBUILD_QML_CLIENT=ON ... builds the qml-client
+    `cmake -S. -B./build -DBUILD_CLIENT=ON` ... builds the old QT Widget client
+    `cmake -S. -B./build -DBUILD_CLIENT=OFF` -DBUILD_DBOFFICIAL=ON ... builds official server with mysql-db
+    `cmake -S. -B./build -DBUILD_CLIENT=OFF` ... builds dedicated server
 
-  3. Become root (typing "su") and type "make install" to install the program binary.
+  2. Type `cmake --build ./build` to compile the package.
+
+  3. Become root (typing "su") and type `cmake --install ./build` to install the program binary.

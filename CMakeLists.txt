@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(POKERTH)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/mk/cmake)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}"/mk/cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+include(CMakeDependentOption)
 
 set(BUILD_DB ON)
 set(BUILD_DBOFFICIAL ON)
@@ -11,6 +13,7 @@ set(BUILD_DBOFFICIAL ON)
 set(BUILD_CLIENT OFF)
 set(BUILD_PROTOCOL ON)
 set(GUI_800_480 OFF)
+cmake_dependent_option(BUILD_CLIENT "" ON "" OFF)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -128,17 +131,16 @@ endif()
 add_library(pokerth_lib "${POKERTH_LIB_SRC}")
 
 target_link_libraries(pokerth_lib PUBLIC "${SQLite3_LIBRARIES}")
-target_link_libraries(pokerth_lib PUBLIC "${MYSQLPP_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${GSASL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${SDLMIXER_LIBRARIES}")
-target_link_libraries(pokerth_lib PUBLIC "${TinyXML_LIBRARIES}")
+target_link_libraries(pokerth_lib PUBLIC "${TINYXML_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 
 
-target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED)
+target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
 
 target_include_directories(pokerth_lib PUBLIC
     src
@@ -149,7 +151,7 @@ target_include_directories(pokerth_lib PUBLIC
     src/core
     src/third_party/websocketpp)
 
-if(BUILD_DBOFFICIAL)
+if(BUILD_DBOFFICIAL AND NOT BUILD_CLIENT)
     add_definitions(-DPOKERTH_OFFICIAL_SERVER)
     file(GLOB POKERTH_DBOFFICIAL_SRC src/dbofficial/*.cpp)
     add_library(pokerth_dbofficial "${POKERTH_DBOFFICIAL_SRC}")
@@ -158,9 +160,30 @@ if(BUILD_DBOFFICIAL)
     if(NOT MYSQLPP_FOUND)
         message(FATAL_ERROR "Could not build PokerTH::DBOfficial MySQL++ was not found.")
     endif()
-    target_include_directories(pokerth_dbofficial PRIVATE ${MYSQLPP_INCLUDE_DIR})
+    target_include_directories(pokerth_dbofficial PRIVATE "${MYSQLPP_INCLUDE_DIR}")
     target_include_directories(pokerth_dbofficial PRIVATE "${Boost_INCLUDE_DIRS}")
     target_include_directories(pokerth_dbofficial PUBLIC src)
+
+    set(DBOFFICIAL_FILES  src/dbofficial/asyncdbcreategame.cpp
+	src/dbofficial/asyncdbgameplace.cpp
+	src/dbofficial/asyncdbupdatescore.cpp
+	src/dbofficial/asyncdbquery.cpp
+	src/dbofficial/serverdbthread.cpp
+	src/dbofficial/serverdbfactoryinternal.cpp
+	src/dbofficial/singleasyncdbquery.cpp
+	src/dbofficial/compositeasyncdbquery.cpp
+	src/dbofficial/querycontext.cpp
+	src/dbofficial/asyncdbendgame.cpp
+	src/dbofficial/asyncdblogin.cpp
+	src/dbofficial/asyncdbreportavatar.cpp
+	src/dbofficial/asyncdbreportgame.cpp
+	src/dbofficial/asyncdbavatarblacklist.cpp
+	src/dbofficial/asyncdbadminplayers.cpp
+	src/dbofficial/asyncdbblockplayer.cpp
+	src/dbofficial/asyncdbplayerlastgames.cpp
+	src/dbofficial/dbidmanager.cpp)
+else()
+    set(DBOFFICIAL_FILES "")
 endif()
 
 if(BUILD_DB)
@@ -192,7 +215,7 @@ if(BUILD_CLIENT)
     set_target_properties(LibCurl PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}")
     if(WIN32)
-      target_link_libraries(LibCurl INTERFACE ${CURL_LIBRARY})
+      target_link_libraries(LibCurl INTERFACE "${CURL_LIBRARY}")
     else()
       set_target_properties(LibCurl PROPERTIES
         INTERFACE_LINK_LIBRARIES "${CURL_LIBRARY}")
@@ -343,13 +366,14 @@ else()
     set_target_properties(LibCurl PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}")
     if(WIN32)
-      target_link_libraries(LibCurl INTERFACE ${CURL_LIBRARY})
+      target_link_libraries(LibCurl INTERFACE "${CURL_LIBRARY}")
     else()
       set_target_properties(LibCurl PROPERTIES
         INTERFACE_LINK_LIBRARIES "${CURL_LIBRARY}")
     endif()
 
-    set(POKERTH_SERVER_SRC src/pokerth_server.cpp 
+    set(POKERTH_SERVER_SRC src/pokerth_server.cpp
+        "${DBOFFICIAL_FILES}"
         src/gui/qt/qttools/nonqttoolswrapper.cpp
         src/gui/qt/qttools/nonqthelper/nonqthelper.cpp
         src/net/common/net_helper_server.cpp
@@ -359,7 +383,8 @@ else()
         src/net/common/servermanagerfactoryserver.cpp
         src/core/linux/convhelper.cpp)
 
-    add_executable(pokerth_server "${POKERTH_SERVER_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+
+    add_executable(pokerth_server "${POKERTH_SERVER_SRC}" )
 
     target_include_directories(pokerth_server PRIVATE "${Qt6Core_INCLUDE_DIRS}")
     target_include_directories(pokerth_server PRIVATE "${Qt6Xml_INCLUDE_DIRS}")
@@ -371,6 +396,13 @@ else()
     target_link_libraries(pokerth_server PUBLIC "${Qt6WebSockets_LIBRARIES}")
     target_link_libraries(pokerth_server PUBLIC LibCurl)
     target_link_libraries(pokerth_server PUBLIC -lircclient)
+
+    if(BUILD_DBOFFICIAL)
+        target_include_directories(pokerth_server PUBLIC "${MYSQLPP_INCLUDE_DIR}")
+        target_link_libraries(pokerth_server PUBLIC "${MYSQLPP_LIBRARIES}")
+        target_link_libraries(pokerth_server PUBLIC pokerth_dbofficial)
+    endif()
+    
 
     target_link_libraries(pokerth_server PUBLIC pokerth_lib)
     target_link_libraries(pokerth_server PUBLIC pokerth_db)

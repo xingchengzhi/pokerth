@@ -5,12 +5,15 @@ project(POKERTH)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/mk/cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+include(CMakeDependentOption)
+
 set(BUILD_DB ON)
 set(BUILD_DBOFFICIAL ON)
 # BUILD_CLIENT ON|OFF = build client or server
 set(BUILD_CLIENT OFF)
 set(BUILD_PROTOCOL ON)
 set(GUI_800_480 OFF)
+cmake_dependent_option(BUILD_CLIENT "" ON "" OFF)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -138,7 +141,7 @@ target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 
 
-target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED)
+target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
 
 target_include_directories(pokerth_lib PUBLIC
     src
@@ -149,7 +152,7 @@ target_include_directories(pokerth_lib PUBLIC
     src/core
     src/third_party/websocketpp)
 
-if(BUILD_DBOFFICIAL)
+if(BUILD_DBOFFICIAL AND NOT BUILD_CLIENT)
     add_definitions(-DPOKERTH_OFFICIAL_SERVER)
     file(GLOB POKERTH_DBOFFICIAL_SRC src/dbofficial/*.cpp)
     add_library(pokerth_dbofficial "${POKERTH_DBOFFICIAL_SRC}")
@@ -357,7 +360,24 @@ else()
         src/net/common/ircthread.cpp
         src/net/common/servermanagerirc.cpp
         src/net/common/servermanagerfactoryserver.cpp
-        src/core/linux/convhelper.cpp)
+        src/core/linux/convhelper.cpp
+        src/dbofficial/serverdbfactoryinternal.cpp
+        src/dbofficial/serverdbthread.cpp
+        src/dbofficial/asyncdbauth.cpp
+        src/dbofficial/asyncdbendgame.cpp
+        src/dbofficial/asyncdbadminplayers.cpp
+        src/dbofficial/singleasyncdbquery.cpp
+        src/dbofficial/asyncdbcreategame.cpp
+        src/dbofficial/asyncdbplayerlastgames.cpp
+        src/dbofficial/dbidmanager.cpp
+        src/dbofficial/asyncdblogin.cpp
+        src/dbofficial/asyncdbreportgame.cpp
+        src/dbofficial/asyncdbgameplace.cpp
+        src/dbofficial/asyncdbupdatescore.cpp
+        src/dbofficial/asyncdbreportavatar.cpp
+        src/dbofficial/asyncdbblockplayer.cpp
+        src/dbofficial/asyncdbquery.cpp
+        src/dbofficial/asyncdbavatarblacklist.cpp)
 
     add_executable(pokerth_server "${POKERTH_SERVER_SRC}" "${QTSINGLEAPPLICATION_SRC}")
 
@@ -365,6 +385,9 @@ else()
     target_include_directories(pokerth_server PRIVATE "${Qt6Xml_INCLUDE_DIRS}")
     target_include_directories(pokerth_server PRIVATE "${Qt6WebSockets_INCLUDE_DIRS}")
     target_include_directories(pokerth_server PRIVATE "${Boost_INCLUDE_DIRS}")
+    if(BUILD_DBOFFICIAL)
+        target_include_directories(pokerth_server PRIVATE ${MYSQLPP_INCLUDE_DIR})
+    endif()
 
     target_link_libraries(pokerth_server PUBLIC "${Qt6Core_LIBRARIES}")
     target_link_libraries(pokerth_server PUBLIC "${Qt6Xml_LIBRARIES}")

@@ -7,11 +7,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(CMakeDependentOption)
 
 set(BUILD_DB ON)
-set(BUILD_DBOFFICIAL ON)
+set(BUILD_DBOFFICIAL ON CACHE BOOL "Build Pokerth server")
 # BUILD_CLIENT ON|OFF = build client or server
-set(BUILD_CLIENT OFF)
-set(BUILD_PROTOCOL ON)
-set(GUI_800_480 OFF)
+set(BUILD_CLIENT OFF CACHE BOOL "Build Pokerth client")
+set(BUILD_PROTOCOL ON CACHE BOOL "Build Pokerth protocol")
+set(GUI_800_480 OFF CACHE BOOL "Set Pokerth GUI")
 cmake_dependent_option(BUILD_CLIENT "" ON "" OFF)
 
 set(CMAKE_AUTOMOC ON)

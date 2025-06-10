@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 project(POKERTH)
 
@@ -18,12 +18,12 @@ option(GUI_800_480 "" OFF)
 option(BUILD_DB "" ON)
 
 if(BUILD_CLIENT)
-    option(CMAKE_AUTOMOC "" ON)
     option(CMAKE_AUTORCC "" ON)
 endif()
 
 if(NOT BUILD_QML_CLIENT AND BUILD_CLIENT)
     option(CMAKE_AUTOUIC "" ON)
+    option(CMAKE_AUTOMOC "" ON)
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "uics/")
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "src/gui/qt")
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "src/gui/qt/gui_800x480")
@@ -34,7 +34,7 @@ if(GUI_800_480)
     add_definitions(-DGUI_800x480)
 endif()
 
-option(CMAKE_AUTOMOC "" ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -207,10 +207,14 @@ if(BUILD_PROTOCOL)
     find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
                           chatcleaner.proto pokerth.proto
-                          PROTOC_OUT_DIR ../src/third_party/protobuf)
+                          PROTOC_OUT_DIR  ../src/third_party/protobuf)
     add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
     target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
     target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
+    set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/pokerth.pb.cc PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/pokerth.pb.h PROPERTY SKIP_AUTOGEN ON)
     target_link_libraries(pokerth_protocol PUBLIC 
         "${Protobuf_LIBRARIES}")
 endif()

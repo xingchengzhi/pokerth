@@ -400,6 +400,50 @@ if(BUILD_CLIENT)
 
         qt_add_resources(POKERTH_QML_CLIENT_SRC src/gui/qt6-qml/qml.qrc)
 
+        set(QML_FILES
+            src/gui/qt6-qml/pokerth.qml
+            src/gui/qt6-qml/components/CustomCheckBox.qml
+            src/gui/qt6-qml/components/CustomComboBox.qml
+            src/gui/qt6-qml/components/CustomTabBar.qml
+            src/gui/qt6-qml/components/CustomToggle.qml
+            src/gui/qt6-qml/components/GamePlayerBox.qml
+            src/gui/qt6-qml/components/GamePlayerSelfBox.qml
+            src/gui/qt6-qml/components/GuiSettings.qml
+            src/gui/qt6-qml/components/InternetGameSettings.qml
+            src/gui/qt6-qml/components/LocalGameSettings.qml
+            src/gui/qt6-qml/components/LogsSettings.qml
+            src/gui/qt6-qml/components/NetworkGameSettings.qml
+            src/gui/qt6-qml/components/NicknameAvatarSettings.qml
+            src/gui/qt6-qml/components/ResetSettings.qml
+            src/gui/qt6-qml/components/SideMenu.qml
+            src/gui/qt6-qml/components/SoundSettings.qml
+            src/gui/qt6-qml/components/CustomButton.qml
+            src/gui/qt6-qml/components/StyleSettings.qml
+            src/gui/qt6-qml/pages/AboutPage.qml
+            src/gui/qt6-qml/pages/GamePage.qml
+            src/gui/qt6-qml/pages/InternetGamePage.qml
+            src/gui/qt6-qml/pages/LocalGamePage.qml
+            src/gui/qt6-qml/pages/LogsPage.qml
+            src/gui/qt6-qml/pages/NetworkGameCreatePage.qml
+            src/gui/qt6-qml/pages/NetworkGameEnterPage.qml
+            src/gui/qt6-qml/pages/PreLoader.qml
+            src/gui/qt6-qml/pages/SettingsPage.qml
+            src/gui/qt6-qml/pages/StartPage.qml
+            src/gui/qt6-qml/config/StaticData.qml
+            src/gui/qt6-qml/config/Parameters.qml)
+
+        set(TS_FILES
+            src/gui/qt6-qml/i18n/pokerth_de_DE.ts
+            src/gui/qt6-qml/i18n/pokerth_fr_FR.ts
+            src/gui/qt6-qml/i18n/pokerth_en_US.ts
+        )
+
+        qt_add_translations(pokerth_qml-client
+            TS_FILES        ${TS_FILES}
+            SOURCES         ${POKERTH_QML_CLIENT_SRC} ${QML_FILES}
+            RESOURCE_PREFIX "/i18n"
+        )
+
         add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
 
         target_include_directories(pokerth_qml-client PUBLIC

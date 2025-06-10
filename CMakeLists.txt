@@ -4,26 +4,26 @@ project(POKERTH)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# include(CMakeDependentOption)
-
-
-# BUILD_CLIENT ON|OFF = build client or server
-# set(BUILD_CLIENT OFF)
-# set(BUILD_QML_CLIENT OFF)
-set(BUILD_PROTOCOL ON)
-set(GUI_800_480 OFF)
-# cmake_dependent_option(BUILD_CLIENT "" ON "" OFF)
+if(NOT DEFINED BUILD_CLIENT)
+    option(BUILD_CLIENT "" ON)
+endif()
+if(NOT DEFINED BUILD_QML_CLIENT)
+    option(BUILD_QML_CLIENT "" OFF)
+endif()
+if(NOT DEFINED BUILD_DBOFFICIAL)
+    option(BUILD_DBOFFICIAL "" OFF)
+endif()
+option(BUILD_PROTOCOL "" ON)
+option(GUI_800_480 "" OFF)
+option(BUILD_DB "" ON)
 
 if(BUILD_CLIENT)
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTORCC ON)
-else()
-    set(BUILD_DB ON)
-    set(BUILD_DBOFFICIAL ON)
+    option(CMAKE_AUTOMOC "" ON)
+    option(CMAKE_AUTORCC "" ON)
 endif()
 
 if(NOT BUILD_QML_CLIENT AND BUILD_CLIENT)
-    set(CMAKE_AUTOUIC ON)
+    option(CMAKE_AUTOUIC "" ON)
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "uics/")
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "src/gui/qt")
     list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "src/gui/qt/gui_800x480")
@@ -34,7 +34,7 @@ if(GUI_800_480)
     add_definitions(-DGUI_800x480)
 endif()
 
-set(CMAKE_AUTOMOC ON)
+option(CMAKE_AUTOMOC "" ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -217,6 +217,7 @@ endif()
 
 if(BUILD_CLIENT)
     if(NOT BUILD_QML_CLIENT)
+        # build old Qt Widget client
         find_package(Qt6 REQUIRED COMPONENTS Core Sql Xml WebSockets Gui Widgets Network REQUIRED)
         find_package(SDL REQUIRED)
         find_package(SDL_mixer REQUIRED)
@@ -325,7 +326,7 @@ if(BUILD_CLIENT)
         target_link_libraries(pokerth_client PUBLIC "${SDL_LIBRARIES}" "${SDL_MIXER_LIBRARIES}")
 
         target_link_libraries(pokerth_client PUBLIC pokerth_lib)
-        target_link_libraries(pokerth_client PUBLIC pokerth_db) # @TODO: remove? db is for server only.
+        target_link_libraries(pokerth_client PUBLIC pokerth_db) # @TODO: remove? db is for server only?
         target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 
         target_include_directories(pokerth_client PUBLIC "uics/")
@@ -423,6 +424,7 @@ if(BUILD_CLIENT)
         install(DIRECTORY data DESTINATION /usr/share/pokerth)
     endif()
 else()
+    # build deicated server
     add_definitions(-DPOKERTH_DEDICATED_SERVER)
     find_package(Qt6 REQUIRED COMPONENTS Core Xml WebSockets Network REQUIRED)
     find_package(CURL REQUIRED)
@@ -463,6 +465,7 @@ else()
     target_link_libraries(pokerth_server PUBLIC -lircclient)
 
     if(BUILD_DBOFFICIAL)
+        # build with official db
         target_include_directories(pokerth_server PUBLIC "${MYSQLPP_INCLUDE_DIR}")
         target_link_libraries(pokerth_server PUBLIC "${MYSQLPP_LIBRARIES}")
         target_link_libraries(pokerth_server PUBLIC pokerth_dbofficial)

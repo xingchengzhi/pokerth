@@ -213,8 +213,11 @@ if(BUILD_PROTOCOL)
     add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
     target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
     target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
-    target_link_libraries(pokerth_protocol PUBLIC 
-        "${Protobuf_LIBRARIES}")
+    set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/pokerth.pb.cc PROPERTY SKIP_AUTOGEN ON)
+    set_property(SOURCE src/third_party/protobuf/pokerth.pb.h PROPERTY SKIP_AUTOGEN ON)
+    target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 endif()
 
 if(BUILD_CLIENT)

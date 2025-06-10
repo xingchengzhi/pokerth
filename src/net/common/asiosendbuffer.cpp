@@ -35,7 +35,11 @@
 #include <net/asiosendbuffer.h>
 #include <net/sessiondata.h>
 #include <net/netpacket.h>
+#if BOOST_VERSION >= 108400
+#include <boost/core/invoke_swap.hpp>
+#else
 #include <boost/swap.hpp>
+#endif
 
 using namespace std;
 
@@ -81,9 +85,15 @@ AsioSendBuffer::AsyncSendNextPacket(boost::shared_ptr<boost::asio::ip::tcp::sock
 {
 	if (!curWriteBufUsed) {
 		// Swap buffers and send data.
+#if BOOST_VERSION >= 108400
+		boost::core::invoke_swap(curWriteBuf, sendBuf);
+		boost::core::invoke_swap(curWriteBufAllocated, sendBufAllocated);
+		boost::core::invoke_swap(curWriteBufUsed, sendBufUsed);
+#else
 		boost::swap(curWriteBuf, sendBuf);
 		boost::swap(curWriteBufAllocated, sendBufAllocated);
 		boost::swap(curWriteBufUsed, sendBufUsed);
+#endif
 		if (curWriteBufUsed) {
 			boost::asio::async_write(
 				*socket,

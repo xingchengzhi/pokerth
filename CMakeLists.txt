@@ -136,19 +136,18 @@ else()
     list(APPEND POKERTH_LIB_SRC "src/engine/local_engine/tools.cpp")
 endif()
 
-add_library(pokerth_lib "${POKERTH_LIB_SRC}")
+add_library(pokerth_lib STATIC "${POKERTH_LIB_SRC}")
 
 target_link_libraries(pokerth_lib PUBLIC "${SQLite3_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${GSASL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
-target_link_libraries(pokerth_lib PUBLIC "${SDLMIXER_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Qt6Xml_LIBRARIES}")
 
 target_include_directories(pokerth_lib PRIVATE "${Qt6Xml_INCLUDE_DIRS}")
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 
-
+target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL TIXML_USE_STL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
 
 target_include_directories(pokerth_lib PUBLIC

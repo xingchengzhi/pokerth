@@ -489,7 +489,7 @@ ServerDBThread::EstablishDBConnection()
 		mysqlpp::Query prepareEndGame = m_connData->conn.query();
 		prepareEndGame
 				<< "PREPARE " QUERY_END_GAME_PREPARE " FROM " << mysqlpp::quote
-				<< "UPDATE " DB_TABLE_GAME " SET "DB_TABLE_GAME_COL_ENDTIME " = ? WHERE " DB_TABLE_GAME_COL_ID " = ?";
+				<< "UPDATE " DB_TABLE_GAME " SET " DB_TABLE_GAME_COL_ENDTIME " = ? WHERE " DB_TABLE_GAME_COL_ID " = ?";
 		mysqlpp::Query prepareRelation = m_connData->conn.query();
 		prepareRelation
 				<< "PREPARE " QUERY_GAME_PLAYER_PREPARE " FROM " << mysqlpp::quote

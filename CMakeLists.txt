@@ -374,7 +374,7 @@ if(BUILD_CLIENT)
 
 else()
     add_definitions(-DPOKERTH_DEDICATED_SERVER)
-    find_package(Qt6 REQUIRED COMPONENTS Core Xml WebSockets Network REQUIRED)
+    find_package(Qt6 REQUIRED COMPONENTS Xml REQUIRED)
     find_package(CURL REQUIRED)
 
     add_library(LibCurl INTERFACE IMPORTED)
@@ -406,9 +406,9 @@ else()
     target_include_directories(pokerth_server PRIVATE "${Qt6WebSockets_INCLUDE_DIRS}")
     target_include_directories(pokerth_server PRIVATE "${Boost_INCLUDE_DIRS}")
 
-    target_link_libraries(pokerth_server PUBLIC "${Qt6Core_LIBRARIES}")
+    # target_link_libraries(pokerth_server PUBLIC "${Qt6Core_LIBRARIES}")
     target_link_libraries(pokerth_server PUBLIC "${Qt6Xml_LIBRARIES}")
-    target_link_libraries(pokerth_server PUBLIC "${Qt6WebSockets_LIBRARIES}")
+    # target_link_libraries(pokerth_server PUBLIC "${Qt6WebSockets_LIBRARIES}")
     target_link_libraries(pokerth_server PUBLIC LibCurl)
     target_link_libraries(pokerth_server PUBLIC -lircclient)
 

@@ -80,17 +80,18 @@ UploadHelper::InternalInit(const string &/*url*/, const string &targetFileName, 
 			throw NetException(__FILE__, __LINE__, ERR_SOCK_TRANSFER_OPEN_FAILED, 0);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_READFUNCTION, readFunction);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_READDATA, GetData()->targetFile);
-		curl_easy_setopt(GetData()->curlHandle, CURLOPT_PUT, 1L);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_UPLOAD, 1L);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_INFILESIZE, filesize);
 	} else {
 		// Curl will handle file I/O.
-		struct curl_httppost *last = NULL;
-		curl_formadd(&GetData()->post, &last,
-					 CURLFORM_COPYNAME, httpPost.c_str(),
-					 CURLFORM_FILE, targetFileName.c_str(),
-					 CURLFORM_END);
-		curl_easy_setopt(GetData()->curlHandle, CURLOPT_HTTPPOST, GetData()->post);
+		CURL *easy = curl_easy_init ();
+		struct curl_mime *mime = nullptr;
+		struct curl_mimepart *part = nullptr;
+		mime = curl_mime_init (easy);
+		part = curl_mime_addpart (mime);
+		curl_mime_filedata (part, targetFileName.c_str ());
+		curl_mime_name (part, httpPost.c_str ());
+		curl_easy_setopt(GetData()->curlHandle, CURLOPT_MIMEPOST, GetData()->post);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_WRITEFUNCTION, writeFunction);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_WRITEDATA, &GetData()->returnMessage);
 	}

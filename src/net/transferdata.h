@@ -44,7 +44,7 @@ struct TransferData {
 	FILE *targetFile;
 	std::string curlUrl;
 	std::string userCredentials;
-	struct curl_httppost *post;
+	struct curl_mime *post;
 	std::string returnMessage;
 };
 

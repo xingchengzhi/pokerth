@@ -277,18 +277,15 @@ ServerAdminBot::Run()
 {
 	if (m_ircAdminThread) {
 		// Initialise the timers.
-		m_reconnectTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_RESTART_IRC_BOT_INTERVAL_SEC)));
+		m_reconnectTimer.expires_after(seconds(SERVER_RESTART_IRC_BOT_INTERVAL_SEC));
 		m_reconnectTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::ReconnectHandler, shared_from_this(), boost::asio::placeholders::error));
-		m_notifyLoopTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_NOTIFY_IRC_BOT_INTERVAL_SEC)));
+		m_notifyLoopTimer.expires_after(seconds(SERVER_NOTIFY_IRC_BOT_INTERVAL_SEC));
 		m_notifyLoopTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::NotifyLoop, shared_from_this(), boost::asio::placeholders::error));
-		m_checkFileTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_CHECK_IRC_BOT_INTERVAL_SEC)));
+		m_checkFileTimer.expires_after(seconds(SERVER_CHECK_IRC_BOT_INTERVAL_SEC));
 		m_checkFileTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::CheckFileHandler, shared_from_this(), boost::asio::placeholders::error));
@@ -303,8 +300,7 @@ ServerAdminBot::ReconnectHandler(const boost::system::error_code& ec)
 	if (!ec) {
 		Reconnect();
 
-		m_reconnectTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_RESTART_IRC_BOT_INTERVAL_SEC)));
+		m_reconnectTimer.expires_after(seconds(SERVER_RESTART_IRC_BOT_INTERVAL_SEC));
 		m_reconnectTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::ReconnectHandler, shared_from_this(), boost::asio::placeholders::error));
@@ -335,8 +331,7 @@ ServerAdminBot::CheckFileHandler(const boost::system::error_code& ec)
 			remove(cachePath);
 			Reconnect();
 		}
-		m_checkFileTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_CHECK_IRC_BOT_INTERVAL_SEC)));
+		m_checkFileTimer.expires_after(seconds(SERVER_CHECK_IRC_BOT_INTERVAL_SEC));
 		m_checkFileTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::CheckFileHandler, shared_from_this(), boost::asio::placeholders::error));
@@ -391,8 +386,7 @@ ServerAdminBot::NotifyLoop(const boost::system::error_code& ec)
 				m_notifyTimer.reset();
 			}
 		}
-		m_notifyLoopTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_NOTIFY_IRC_BOT_INTERVAL_SEC)));
+		m_notifyLoopTimer.expires_after(seconds(SERVER_NOTIFY_IRC_BOT_INTERVAL_SEC));
 		m_notifyLoopTimer.async_wait(
 			boost::bind(
 				&ServerAdminBot::NotifyLoop, shared_from_this(), boost::asio::placeholders::error));

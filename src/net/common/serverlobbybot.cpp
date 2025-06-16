@@ -115,8 +115,7 @@ ServerLobbyBot::Run()
 {
 	if (m_ircLobbyThread) {
 		// Initialise the reconnect timer.
-		m_reconnectTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_RESTART_IRC_BOT_INTERVAL_SEC)));
+		m_reconnectTimer.expires_after(seconds(SERVER_RESTART_IRC_BOT_INTERVAL_SEC));
 		m_reconnectTimer.async_wait(
 			boost::bind(
 				&ServerLobbyBot::Reconnect, shared_from_this(), boost::asio::placeholders::error));
@@ -137,8 +136,7 @@ ServerLobbyBot::Reconnect(const boost::system::error_code& ec)
 				m_ircLobbyThread = tmpIrcThread;
 			}
 		}
-		m_reconnectTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(SERVER_RESTART_IRC_BOT_INTERVAL_SEC)));
+		m_reconnectTimer.expires_after(seconds(SERVER_RESTART_IRC_BOT_INTERVAL_SEC));
 		m_reconnectTimer.async_wait(
 			boost::bind(
 				&ServerLobbyBot::Reconnect, shared_from_this(), boost::asio::placeholders::error));

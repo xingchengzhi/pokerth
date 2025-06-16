@@ -241,8 +241,7 @@ SessionData::TimerActivityWarning(const boost::system::error_code &ec)
 	if (!ec) {
 		m_callback.SessionTimeoutWarning(shared_from_this(), m_activityWarningRemainingSec);
 
-		m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-			duration<int, std::ratio<1000, 1>>(m_activityWarningRemainingSec)));
+		m_activityTimeoutTimer.expires_after(seconds(m_activityWarningRemainingSec));
 		m_activityTimeoutTimer.async_wait(
 			boost::bind(
 				&SessionData::TimerSessionTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -332,8 +331,7 @@ void
 SessionData::ResetActivityTimer()
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-		duration<int, std::ratio<1000, 1>>(m_activityTimeoutSec - m_activityWarningRemainingSec)));
+	m_activityTimeoutTimer.expires_after(seconds(m_activityTimeoutSec - m_activityWarningRemainingSec));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));
@@ -343,8 +341,7 @@ void
 SessionData::StartTimerInitTimeout(unsigned timeoutSec)
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_initTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-		duration<int, std::ratio<1000, 1>>(timeoutSec))); 
+	m_initTimeoutTimer.expires_after(seconds(timeoutSec)); 
 	m_initTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerInitTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -354,8 +351,7 @@ void
 SessionData::StartTimerGlobalTimeout(unsigned timeoutSec)
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_globalTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-		duration<int, std::ratio<1000, 1>>(timeoutSec)));
+	m_globalTimeoutTimer.expires_after(seconds(timeoutSec));
 	m_globalTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerSessionTimeout, shared_from_this(), boost::asio::placeholders::error));
@@ -368,8 +364,7 @@ SessionData::StartTimerActivityTimeout(unsigned timeoutSec, unsigned warningRema
 	m_activityTimeoutSec = timeoutSec;
 	m_activityWarningRemainingSec = warningRemainingSec;
 
-	m_activityTimeoutTimer.expires_at(time_point<steady_clock,duration<int, std::ratio<1000, 1>>>(
-		duration<int, std::ratio<1000, 1>>(timeoutSec - warningRemainingSec)));
+	m_activityTimeoutTimer.expires_after(seconds(timeoutSec - warningRemainingSec));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));

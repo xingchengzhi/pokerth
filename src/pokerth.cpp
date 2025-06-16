@@ -103,7 +103,9 @@ int main( int argc, char **argv )
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else
-	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+	#if QT_VERSION < 0x060000
+		QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+	# endif
 	SharedTools::QtSingleApplication a( "PokerTH", argc, argv );
 	if (a.sendMessage("Wake up!")) {
 		return 0;

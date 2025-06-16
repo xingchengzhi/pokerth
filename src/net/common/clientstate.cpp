@@ -50,7 +50,7 @@
 #include <QDomNode>
 #include <QDebug>
 #include <QFile>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/foreach.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>

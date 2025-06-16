@@ -45,8 +45,12 @@
 #include <game.h>
 #include <playerinterface.h>
 
-#include <tinyxml.h>
-#include <boost/bind/bind.hpp>
+#include <QDomDocument>
+#include <QDomElement>
+#include <QDomNode>
+#include <QDebug>
+#include <QFile>
+#include <boost/bind.hpp>
 #include <boost/foreach.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -334,60 +338,61 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 		xmlServerListPath = zippedServerListPath;
 
 	// Parse the server address.
+	QDomDocument xmlDoc;
 #if BOOST_VERSION < 108500
-	TiXmlDocument doc(xmlServerListPath.directory_string());
+	QFile file(std::filesystem::u8path(xmlServerListPath.directory_string()));
 #else
-	TiXmlDocument doc(xmlServerListPath.string());
+	QFile file(std::filesystem::u8path(xmlServerListPath.string()));
 #endif
+	if (file.open(QIODevice::ReadOnly) && xmlDoc.setContent(&file)) {
+		file.close();
 
-	if (doc.LoadFile()) {
 		client->ClearServerInfoMap();
 		int serverCount = 0;
 		unsigned lastServerInfoId = 0;
-		TiXmlHandle docHandle(&doc);
-		const TiXmlElement *nextServer = docHandle.FirstChild("ServerList" ).FirstChild("Server").ToElement();
-		while (nextServer) {
+		QDomElement nextServer = xmlDoc.documentElement().firstChildElement("Server");
+
+		while (!nextServer.isNull()) {
 			ServerInfo serverInfo;
 			{
-				int tmpId;
-				nextServer->QueryIntAttribute("id", &tmpId);
+				int tmpId = nextServer.attribute("id").toInt();
+				// nextServer->QueryIntAttribute("id", &tmpId);
 				serverInfo.id = (unsigned)tmpId;
 			}
-			const TiXmlNode *nameNode = nextServer->FirstChild("Name");
-			const TiXmlNode *sponsorNode = nextServer->FirstChild("Sponsor");
-			const TiXmlNode *countryNode = nextServer->FirstChild("Country");
-			const TiXmlNode *addr4Node = nextServer->FirstChild("IPv4Address");
-			const TiXmlNode *addr6Node = nextServer->FirstChild("IPv6Address");
-			const TiXmlNode *sctpNode = nextServer->FirstChild("SCTP");
-			const TiXmlNode *portNode = nextServer->FirstChild("ProtobufPort");
+			QDomElement nameNode = nextServer.firstChildElement("Name");
+			QDomElement sponsorNode = nextServer.firstChildElement("Sponsor");
+			QDomElement countryNode = nextServer.firstChildElement("Country");
+			QDomElement addr4Node = nextServer.firstChildElement("IPv4Address");
+			QDomElement addr6Node = nextServer.firstChildElement("IPv6Address");
+			QDomElement sctpNode = nextServer.firstChildElement("SCTP");
+			QDomElement portNode = nextServer.firstChildElement("ProtobufPort");
 
 			// IPv6 support for avatar servers depends on this address and on libcurl.
-			const TiXmlNode *avatarNode = nextServer->FirstChild("AvatarServerAddress");
+			QDomElement avatarNode = nextServer.firstChildElement("AvatarServerAddress");
 
-			if (!nameNode || !nameNode->ToElement() || !addr4Node || !addr4Node->ToElement()
-					|| !addr6Node || !addr6Node->ToElement() || !portNode || !portNode->ToElement())
+			if (nameNode.isNull() || addr4Node.isNull() || addr6Node.isNull() || portNode.isNull())
 				throw ClientException(__FILE__, __LINE__, ERR_SOCK_INVALID_SERVERLIST_XML, 0);
 
-			serverInfo.name = nameNode->ToElement()->Attribute("value");
-			serverInfo.ipv4addr = addr4Node->ToElement()->Attribute("value");
-			serverInfo.ipv6addr = addr6Node->ToElement()->Attribute("value");
-			portNode->ToElement()->QueryIntAttribute("value", &serverInfo.port);
+			serverInfo.name = nameNode.attribute("value").toStdString();
+			serverInfo.ipv4addr = addr4Node.attribute("value").toStdString();
+			serverInfo.ipv6addr = addr6Node.attribute("value").toStdString();
+			serverInfo.port = portNode.attribute("value").toInt();
 
 			// Optional parameters:
-			if (sponsorNode && sponsorNode->ToElement())
-				serverInfo.sponsor = sponsorNode->ToElement()->Attribute("value");
-			if (countryNode && countryNode->ToElement())
-				serverInfo.country = countryNode->ToElement()->Attribute("value");
-			if (sctpNode && sctpNode->ToElement()) {
+			if (!sponsorNode.isNull())
+				serverInfo.sponsor = sponsorNode.attribute("value").toStdString();
+			if (!countryNode.isNull())
+				serverInfo.country = countryNode.attribute("value").toStdString();
+			if (!sctpNode.isNull()) {
 				int tmpSctp;
-				sctpNode->ToElement()->QueryIntAttribute("value", &tmpSctp);
+				tmpSctp = sctpNode.attribute("value").toInt();
 				serverInfo.supportsSctp = tmpSctp == 1 ? true : false;
 			}
-			if (avatarNode && avatarNode->ToElement())
-				serverInfo.avatarServerAddr = avatarNode->ToElement()->Attribute("value");
+			if (!avatarNode.isNull())
+				serverInfo.avatarServerAddr = avatarNode.attribute("value").toStdString();
 
 			client->AddServerInfo(serverInfo.id, serverInfo);
-			nextServer = nextServer->NextSiblingElement();
+			nextServer = nextServer.nextSiblingElement();
 			lastServerInfoId = serverInfo.id;
 			serverCount++;
 		}

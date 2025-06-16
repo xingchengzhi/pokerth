@@ -42,6 +42,18 @@
 enum ConfigState { NONEXISTING, OLD, OK };
 enum ConfigType { CONFIG_TYPE_INT, CONFIG_TYPE_STRING, CONFIG_TYPE_INT_LIST, CONFIG_TYPE_STRING_LIST };
 
+#ifndef _CISTRUCT_H
+#define _CISTRUCT_H
+struct ConfigInfo {
+	ConfigInfo(const std::string &n, ConfigType t, const std::string &d, const std::list<std::string> &l =std::list<std::string>()) : name(n), type(t), defaultValue(d), defaultListValue(l) {}
+	std::string name;
+	ConfigType type;
+	std::string defaultValue;
+	std::list<std::string> defaultListValue;
+
+};
+#endif /* _CISTRUCT_H */
+
 class QtToolsInterface;
 
 class ConfigFile
@@ -67,6 +79,7 @@ public:
 	void writeConfigInt(std::string varName, int varCont);
 	void writeConfigIntList(std::string varName, std::list<int> varCont);
 	void deleteConfigFile();
+	std::string configFileName;
 
 protected:
 	void checkAndCorrectPlayerNames();
@@ -75,19 +88,9 @@ private:
 
 	mutable boost::recursive_mutex m_configMutex;
 
-	struct ConfigInfo {
-		ConfigInfo(const std::string &n, ConfigType t, const std::string &d, const std::list<std::string> &l =std::list<std::string>()) : name(n), type(t), defaultValue(d), defaultListValue(l) {}
-		std::string name;
-		ConfigType type;
-		std::string defaultValue;
-		std::list<std::string> defaultListValue;
-
-	};
-
 	std::vector<ConfigInfo> configList;
 	std::vector<ConfigInfo> configBufferList;
 
-	std::string configFileName;
 	std::string logDir;
 	std::string dataDir;
 	std::string cacheDir;

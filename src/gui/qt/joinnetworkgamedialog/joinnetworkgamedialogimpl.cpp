@@ -32,7 +32,10 @@
 #include "session.h"
 #include "mymessagebox.h"
 #include "configfile.h"
-#include <tinyxml.h>
+#include <QDomDocument>
+#include <QDomElement>
+#include <QDebug>
+#include <QFile>
 #include <net/socket_startup.h>
 
 using namespace std;
@@ -93,18 +96,26 @@ int joinNetworkGameDialogImpl::exec()
 		QFile serverProfilesfile(QString::fromUtf8(myServerProfilesFile.c_str()));
 
 		if(!serverProfilesfile.exists()) {
+			QDomDocument xmlDoc;
 
-			TiXmlDocument doc;
-			TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "UTF-8", "");
-			doc.LinkEndChild( decl );
+			QDomProcessingInstruction xmlVers = xmlDoc.createProcessingInstruction("xml","version=\"1.0\" encoding='utf-8'");
+			xmlDoc.appendChild(xmlVers);
 
-			TiXmlElement * root = new TiXmlElement( "PokerTH" );
-			doc.LinkEndChild( root );
+			QDomElement root = xmlDoc.createElement( "PokerTH" );
+			xmlDoc.appendChild( root );
 
-			TiXmlElement * profiles = new TiXmlElement( "ServerProfiles" );
-			root->LinkEndChild( profiles );
+			QDomElement profiles = xmlDoc.createElement( "ServerProfiles" );
+			xmlDoc.appendChild( root );
 
-			doc.SaveFile(QString::fromUtf8(myServerProfilesFile.c_str()).toStdString());
+			QFile file( QString::fromUtf8(myServerProfilesFile.c_str()) );
+			if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
+			{
+				qDebug( "Failed to open file for writing." );
+			}else{
+				QTextStream stream( &file );
+				stream << xmlDoc.toString();
+			}
+			file.close();
 		}
 
 		//Liste Füllen
@@ -130,44 +141,40 @@ void joinNetworkGameDialogImpl::fillServerProfileList()
 {
 	treeWidget->clear();
 
-	TiXmlDocument doc(QString::fromUtf8(myServerProfilesFile.c_str()).toStdString());
-	if(!doc.LoadFile()) {
+	QDomDocument xmlDoc;
+	QFile file(QString::fromUtf8(myServerProfilesFile.c_str()));
+	if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file)) {
+		file.close();
 		MyMessageBox::warning(this, tr("Load Server-Profile-File Error"),
 							  tr("Could not load server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
 							  QMessageBox::Close);
-	}
-	TiXmlHandle docHandle( &doc );
+	}else {
 
-	TiXmlElement* profile = docHandle.FirstChild( "PokerTH" ).FirstChild( "ServerProfiles" ).FirstChild().ToElement();
-	if ( profile ) {
+		QDomElement profile = xmlDoc.documentElement().firstChildElement( "ServerProfiles" ).firstChildElement();
 
-		for( ; profile; profile = profile->NextSiblingElement()) {
+		if ( !profile.isNull() ) {
 
-			QTreeWidgetItem *item = new QTreeWidgetItem(treeWidget,0);
-			item->setData(0, 0, QString::fromUtf8(profile->Attribute("Name")));
-			item->setData(1, 0, QString::fromUtf8(profile->Attribute("Address")));
-			item->setData(2, 0, profile->Attribute("Port"));
+			for(QDomElement n = profile; !n.isNull(); n = n.nextSiblingElement()){
 
-			string isIpv6 = "no";
-			int tempInt = 0;
-			profile->QueryIntAttribute("IsIpv6", &tempInt );
-			if( tempInt == 1 ) {
-				isIpv6 = "yes";
+				QTreeWidgetItem *item = new QTreeWidgetItem(treeWidget,0);
+				item->setData(0, 0, n.attribute("Name"));
+				item->setData(1, 0, n.attribute("Address"));
+				item->setData(2, 0, n.attribute("Port"));
+
+				string isIpv6 = "no";
+				int tempInt = 0;
+				tempInt = n.attribute("IsIpv6").toInt();
+				if( tempInt == 1 ) {
+					isIpv6 = "yes";
+				}
+				item->setData(3, 0, QString::fromUtf8(isIpv6.c_str()));
+
+				treeWidget->addTopLevelItem(item);
 			}
-			item->setData(3, 0, QString::fromUtf8(isIpv6.c_str()));
 
-			string isSctp = "no";
-			int tempInt1 = 0;
-			profile->QueryIntAttribute("IsSctp", &tempInt1 );
-			if( tempInt1 == 1 ) {
-				isSctp = "yes";
-			}
-			item->setData(4, 0, QString::fromUtf8(isSctp.c_str()));
-
-			treeWidget->addTopLevelItem(item);
+		} else {
+			cout << "No Profiles Found \n";
 		}
-	} else {
-		cout << "No Profiles Found \n";
 	}
 
 	treeWidget->resizeColumnToContents ( 0 );
@@ -181,22 +188,24 @@ void joinNetworkGameDialogImpl::itemFillForm (QTreeWidgetItem* item, int /*colum
 
 	bool toIntTrue;
 
-	TiXmlDocument doc(QString::fromUtf8(myServerProfilesFile.c_str()).toStdString());
-	if(!doc.LoadFile()) {
+	QDomDocument xmlDoc;
+	QFile file(QString::fromUtf8(myServerProfilesFile.c_str()));
+	if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file)) {
+		file.close();
 		MyMessageBox::warning(this, tr("Load Server-Profile-File Error"),
 							  tr("Could not load server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
 							  QMessageBox::Close);
-	}
-	TiXmlHandle docHandle( &doc );
+	}else {
 
-	TiXmlElement* profile = docHandle.FirstChild( "PokerTH" ).FirstChild( "ServerProfiles" ).FirstChild( item->data(0,0).toString().toStdString() ).ToElement();
-	if ( profile ) {
+		QDomElement profile = xmlDoc.documentElement().firstChildElement( "ServerProfiles" ).firstChildElement( QString::fromStdString(item->data(0,0).toString().toStdString()));
 
-		lineEdit_profileName->setText(QString::fromUtf8(profile->Attribute("Name")));
-		lineEdit_ipAddress->setText(QString::fromUtf8(profile->Attribute("Address")));
-		spinBox_port->setValue(QString::fromUtf8(profile->Attribute("Port")).toInt(&toIntTrue, 10));
-		checkBox_ipv6->setChecked(QString::fromUtf8(profile->Attribute("IsIpv6")).toInt(&toIntTrue, 10));
-		checkBox_sctp->setChecked(QString::fromUtf8(profile->Attribute("IsSctp")).toInt(&toIntTrue, 10));
+		if ( !profile.isNull()) {
+			lineEdit_profileName->setText(profile.attribute("Name"));
+			lineEdit_ipAddress->setText(profile.attribute("Address"));
+			spinBox_port->setValue(profile.attribute("Port").toInt(&toIntTrue, 10));
+			checkBox_ipv6->setChecked(profile.attribute("IsIpv6").toInt(&toIntTrue, 10));
+			checkBox_sctp->setChecked(profile.attribute("IsSctp").toInt(&toIntTrue, 10));
+		}
 
 	}
 
@@ -208,95 +217,109 @@ void joinNetworkGameDialogImpl::saveServerProfile()
 
 // 	bool toIntTrue;
 
-	TiXmlDocument doc(QString::fromUtf8(myServerProfilesFile.c_str()).toStdString());
-	if(!doc.LoadFile()) {
+	QDomDocument xmlDoc;
+	QFile file(QString::fromUtf8(myServerProfilesFile.c_str()));
+	if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file)) {
+		file.close();
 		MyMessageBox::warning(this, tr("Load Server-Profile-File Error"),
 							  tr("Could not load server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
 							  QMessageBox::Close);
-	}
-	TiXmlHandle docHandle( &doc );
+	}else {
 
-	TiXmlElement* profiles = docHandle.FirstChild( "PokerTH" ).FirstChild( "ServerProfiles" ).ToElement();
-	if ( profiles ) {
+		QDomElement profiles = xmlDoc.documentElement().firstChildElement( "ServerProfiles" );
 
-		TiXmlElement * testProfile = docHandle.FirstChild( "PokerTH" ).FirstChild( "ServerProfiles" ).FirstChild( lineEdit_profileName->text().toStdString() ).ToElement();
+		if ( !profiles.isNull()) {
 
-		if( testProfile ) {
-			// Wenn der Name schon existiert --> Überschreiben?
-			MyMessageBox msgBox(QMessageBox::Warning, tr("Save Server Profile Error"),
-								QString(tr("A profile with the name: %1 already exists.\nWould you like to overwrite ?")).arg(lineEdit_profileName->text()), QMessageBox::Yes | QMessageBox::No, this);
-			switch (msgBox.exec()) {
+			QDomElement testProfile = xmlDoc.documentElement().firstChildElement( "ServerProfiles" ).firstChildElement( QString::fromStdString(lineEdit_profileName->text().toStdString()) );
 
-			case QMessageBox::Yes: {
-				// yes was clicked
-				// remove the old
-				testProfile->Parent()->RemoveChild(testProfile);
-				// write the new
-				TiXmlElement * profile1 = new TiXmlElement( lineEdit_profileName->text().toUtf8().constData() );
-				profiles->LinkEndChild( profile1 );
-				profile1->SetAttribute("Name", lineEdit_profileName->text().toUtf8().constData());
-				profile1->SetAttribute("Address", lineEdit_ipAddress->text().toUtf8().constData());
-				profile1->SetAttribute("Port", spinBox_port->value());
-				profile1->SetAttribute("IsIpv6", checkBox_ipv6->isChecked());
-				profile1->SetAttribute("IsSctp", checkBox_sctp->isChecked());
-			}
-			break;
-			case QMessageBox::No:
-				// no was clicked
+			if( !testProfile.isNull() ) {
+				// Wenn der Name schon existiert --> Überschreiben?
+				MyMessageBox msgBox(QMessageBox::Warning, tr("Save Server Profile Error"),
+									QString(tr("A profile with the name: %1 already exists.\nWould you like to overwrite ?")).arg(lineEdit_profileName->text()), QMessageBox::Yes | QMessageBox::No, this);
+				switch (msgBox.exec()) {
+
+				case QMessageBox::Yes: {
+					// yes was clicked
+					// remove the old
+					testProfile.parentNode().removeChild(testProfile);
+					// write the new
+					QDomElement profile1 = xmlDoc.createElement( QString::fromStdString(lineEdit_profileName->text().toUtf8().constData()) );
+					profiles.appendChild( profile1 );
+					profile1.attribute("Name", lineEdit_profileName->text().toUtf8().constData());
+					profile1.attribute("Address", lineEdit_ipAddress->text().toUtf8().constData());
+					profile1.attribute("Port", QString::number(spinBox_port->value()));
+					profile1.attribute("IsIpv6", QString::number(checkBox_ipv6->isChecked()));
+					profile1.attribute("IsSctp", QString::number(checkBox_sctp->isChecked()));
+				}
 				break;
-			default:
-				// should never be reached
-				break;
-			}
+				case QMessageBox::No:
+					// no was clicked
+					break;
+				default:
+					// should never be reached
+					break;
+				}
 
+			} else {
+				// Wenn der Name nicht existiert --> speichern
+				QDomElement profile2 = xmlDoc.createElement( QString::fromStdString(lineEdit_profileName->text().toStdString()) );
+				profiles.appendChild( profile2 );
+				profile2.attribute("Name", lineEdit_profileName->text().toUtf8().constData());
+				profile2.attribute("Address", lineEdit_ipAddress->text().toUtf8().constData());
+				profile2.attribute("Port", QString::number(spinBox_port->value()));
+				profile2.attribute("IsIpv6", QString::number(checkBox_ipv6->isChecked()));
+				profile2.attribute("IsSctp", QString::number(checkBox_sctp->isChecked()));
+
+			}
 		} else {
-			// Wenn der Name nicht existiert --> speichern
-			TiXmlElement * profile2 = new TiXmlElement( lineEdit_profileName->text().toStdString() );
-			profiles->LinkEndChild( profile2 );
-			profile2->SetAttribute("Name", lineEdit_profileName->text().toUtf8().constData());
-			profile2->SetAttribute("Address", lineEdit_ipAddress->text().toUtf8().constData());
-			profile2->SetAttribute("Port", spinBox_port->value());
-			profile2->SetAttribute("IsIpv6", checkBox_ipv6->isChecked());
-			profile2->SetAttribute("IsSctp", checkBox_sctp->isChecked());
-
+			MyMessageBox::warning(this, tr("Read Server-Profile List Error"),
+								tr("Could not read server-profiles list"),
+								QMessageBox::Close);
 		}
-	} else {
-		MyMessageBox::warning(this, tr("Read Server-Profile List Error"),
-							  tr("Could not read server-profiles list"),
-							  QMessageBox::Close);
 	}
 
-	if(!doc.SaveFile()) {
+	QFile file2( QString::fromUtf8(myServerProfilesFile.c_str()) );
+	if( !file2.open( QIODevice::WriteOnly | QIODevice::Text ) )
+	{
 		MyMessageBox::warning(this, tr("Save Server-Profile-File Error"),
 							  tr("Could not save server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
 							  QMessageBox::Close);
+	}else{
+		QTextStream stream( &file2 );
+		stream << xmlDoc.toString();
 	}
+	file2.close();
 
 	fillServerProfileList();
 }
 
 void joinNetworkGameDialogImpl::deleteServerProfile()
 {
-
-	TiXmlDocument doc(QString::fromUtf8(myServerProfilesFile.c_str()).toStdString());
-	if(!doc.LoadFile()) {
+	QDomDocument xmlDoc;
+	QFile file(QString::fromUtf8(myServerProfilesFile.c_str()));
+	if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file)) {
 		MyMessageBox::warning(this, tr("Load Server-Profile-File Error"),
-							  tr("Could not load server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
-							  QMessageBox::Close);
-	} else {
-		TiXmlHandle docHandle( &doc );
+									  tr("Could not load server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
+									  QMessageBox::Close);
+	}else{
 
-		TiXmlElement* profile = docHandle.FirstChild( "PokerTH" ).FirstChild( "ServerProfiles" ).FirstChild( treeWidget->currentItem()->data(0,0).toString().toUtf8().constData() ).ToElement();
+		QDomElement profile = xmlDoc.documentElement().firstChildElement( "ServerProfiles" ).firstChildElement( QString::fromStdString(treeWidget->currentItem()->data(0,0).toString().toUtf8().constData()) );
 
-		if ( profile ) {
-			profile->Parent()->RemoveChild(profile);
+		if ( !profile.isNull() ) {
+			profile.parentNode().removeChild(profile);
 		}
 
-		if(!doc.SaveFile()) {
+		QFile file2( QString::fromUtf8(myServerProfilesFile.c_str()) );
+		if( !file2.open( QIODevice::WriteOnly | QIODevice::Text ) )
+		{
 			MyMessageBox::warning(this, tr("Save Server-Profile-File Error"),
 								  tr("Could not save server-profiles-file:\n%1").arg(QString::fromUtf8(myServerProfilesFile.c_str())),
 								  QMessageBox::Close);
+		}else{
+			QTextStream stream( &file2 );
+			stream << xmlDoc.toString();
 		}
+		file2.close();
 
 		//Liste Füllen
 		fillServerProfileList();

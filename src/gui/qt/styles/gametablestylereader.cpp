@@ -30,6 +30,10 @@
  *****************************************************************************/
 #include "gametablestylereader.h"
 #include <cstdlib>
+#include <QDomDocument>
+#include <QDomElement>
+#include <QDebug>
+#include <QFile>
 
 using namespace std;
 
@@ -135,13 +139,13 @@ void GameTableStyleReader::readStyleFile(QString file)
 
 	//start reading the file and fill vars
 	string tempString1("");
-	TiXmlDocument doc;
-	doc.Parse(fileContent.constData());
+	QDomDocument xmlDoc;
+	xmlDoc.setContent(fileContent.constData()); 
 
-	if(doc.RootElement()) {
-		TiXmlHandle docHandle( &doc );
-		TiXmlElement *CardDeckElement = docHandle.FirstChild( "PokerTH" ).FirstChild( "CardDeck" ).ToElement();
-		if(CardDeckElement) {
+	if(!xmlDoc.documentElement().isNull()){
+
+		QDomElement GameTableElement = xmlDoc.documentElement().firstChildElement( "CardDeck" );
+		if(!GameTableElement.isNull()) {
 			MyMessageBox::warning(myW, tr("Game Table Style Error"),
 								  tr("A card deck style was selected instead of a game table style.\nPlease select a game table style and try again!"),
 								  QMessageBox::Ok);
@@ -276,278 +280,281 @@ void GameTableStyleReader::readStyleFile(QString file)
 			ChatLogTextSize.clear();
 
 			//now reading!
-			TiXmlElement* itemsList = docHandle.FirstChild( "PokerTH" ).FirstChild( "TableStyle" ).FirstChild().ToElement();
-			for( ; itemsList; itemsList=itemsList->NextSiblingElement()) {
-				const char *tmpStr1 = itemsList->Attribute("value");
+			QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "TableStyle" );
+			for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+			{
+				QByteArray ba = n.attribute("value").toLocal8Bit();
+				const char *tmpStr1 = ba.data();
+
 				if (tmpStr1) {
 					tempString1 = tmpStr1;
 
 					// 				INFOS
-					if(itemsList->ValueStr() == "StyleDescription") {
+					if(n.tagName() == "StyleDescription") {
 						StyleDescription = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleMaintainerName") {
+					} else if(n.tagName() == "StyleMaintainerName") {
 						StyleMaintainerName = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleMaintainerEMail") {
+					} else if(n.tagName() == "StyleMaintainerEMail") {
 						StyleMaintainerEMail = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "StyleCreateDate") {
+					} else if(n.tagName() == "StyleCreateDate") {
 						StyleCreateDate = QString::fromUtf8(tempString1.c_str());
-					} else if(itemsList->ValueStr() == "PokerTHStyleFileVersion") {
+					} else if(n.tagName() == "PokerTHStyleFileVersion") {
 						PokerTHStyleFileVersion = QString::fromUtf8(tempString1.c_str());
 					}
 					// 				WINDOWS SETTINGS
-					else if (itemsList->ValueStr() == "IfFixedWindowSize") {
+					else if (n.tagName() == "IfFixedWindowSize") {
 						IfFixedWindowSize = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FixedWindowWidth") {
+					} else if (n.tagName() == "FixedWindowWidth") {
 						FixedWindowWidth = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FixedWindowHeight") {
+					} else if (n.tagName() == "FixedWindowHeight") {
 						FixedWindowHeight = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MinimumWindowWidth") {
+					} else if (n.tagName() == "MinimumWindowWidth") {
 						MinimumWindowWidth = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MinimumWindowHeight") {
+					} else if (n.tagName() == "MinimumWindowHeight") {
 						MinimumWindowHeight = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MaximumWindowWidth") {
+					} else if (n.tagName() == "MaximumWindowWidth") {
 						MaximumWindowWidth = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MaximumWindowHeight") {
+					} else if (n.tagName() == "MaximumWindowHeight") {
 						MaximumWindowHeight = QString::fromUtf8(tempString1.c_str());
 					}
 					// 				PICS
-					else if (itemsList->ValueStr() == "Preview") {
+					else if (n.tagName() == "Preview") {
 						Preview = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionAllInI18NPic") {
+					} else if (n.tagName() == "ActionAllInI18NPic") {
 						ActionAllInI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionRaiseI18NPic") {
+					} else if (n.tagName() == "ActionRaiseI18NPic") {
 						ActionRaiseI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionBetI18NPic") {
+					} else if (n.tagName() == "ActionBetI18NPic") {
 						ActionBetI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionCallI18NPic") {
+					} else if (n.tagName() == "ActionCallI18NPic") {
 						ActionCallI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionCheckI18NPic") {
+					} else if (n.tagName() == "ActionCheckI18NPic") {
 						ActionCheckI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionFoldI18NPic") {
+					} else if (n.tagName() == "ActionFoldI18NPic") {
 						ActionFoldI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionWinnerI18NPic") {
+					} else if (n.tagName() == "ActionWinnerI18NPic") {
 						ActionWinnerI18NPic = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BigBlindPuck") {
+					} else if (n.tagName() == "BigBlindPuck") {
 						BigBlindPuck = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "SmallBlindPuck") {
+					} else if (n.tagName() == "SmallBlindPuck") {
 						SmallBlindPuck = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "DealerPuck") {
+					} else if (n.tagName() == "DealerPuck") {
 						DealerPuck = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "DefaultAvatar") {
+					} else if (n.tagName() == "DefaultAvatar") {
 						DefaultAvatar = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CardHolderFlop") {
+					} else if (n.tagName() == "CardHolderFlop") {
 						CardHolderFlop = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CardHolderTurn") {
+					} else if (n.tagName() == "CardHolderTurn") {
 						CardHolderTurn = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CardHolderRiver") {
+					} else if (n.tagName() == "CardHolderRiver") {
 						CardHolderRiver = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonDefault") {
+					} else if (n.tagName() == "FoldButtonDefault") {
 						FoldButtonDefault = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonHover") {
+					} else if (n.tagName() == "FoldButtonHover") {
 						FoldButtonHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonChecked") {
+					} else if (n.tagName() == "FoldButtonChecked") {
 						FoldButtonChecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonCheckedHover") {
+					} else if (n.tagName() == "FoldButtonCheckedHover") {
 						FoldButtonCheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonDefault") {
+					} else if (n.tagName() == "CheckCallButtonDefault") {
 						CheckCallButtonDefault = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonHover") {
+					} else if (n.tagName() == "CheckCallButtonHover") {
 						CheckCallButtonHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonChecked") {
+					} else if (n.tagName() == "CheckCallButtonChecked") {
 						CheckCallButtonChecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonCheckedHover") {
+					} else if (n.tagName() == "CheckCallButtonCheckedHover") {
 						CheckCallButtonCheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonDefault") {
+					} else if (n.tagName() == "BetRaiseButtonDefault") {
 						BetRaiseButtonDefault = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonHover") {
+					} else if (n.tagName() == "BetRaiseButtonHover") {
 						BetRaiseButtonHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonChecked") {
+					} else if (n.tagName() == "BetRaiseButtonChecked") {
 						BetRaiseButtonChecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonCheckedHover") {
+					} else if (n.tagName() == "BetRaiseButtonCheckedHover") {
 						BetRaiseButtonCheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonDefault") {
+					} else if (n.tagName() == "AllInButtonDefault") {
 						AllInButtonDefault = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonHover") {
+					} else if (n.tagName() == "AllInButtonHover") {
 						AllInButtonHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonChecked") {
+					} else if (n.tagName() == "AllInButtonChecked") {
 						AllInButtonChecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonCheckedHover") {
+					} else if (n.tagName() == "AllInButtonCheckedHover") {
 						AllInButtonCheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RadioButtonPressed") {
+					} else if (n.tagName() == "RadioButtonPressed") {
 						RadioButtonPressed = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RadioButtonChecked") {
+					} else if (n.tagName() == "RadioButtonChecked") {
 						RadioButtonChecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RadioButtonCheckedHover") {
+					} else if (n.tagName() == "RadioButtonCheckedHover") {
 						RadioButtonCheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RadioButtonUnchecked") {
+					} else if (n.tagName() == "RadioButtonUnchecked") {
 						RadioButtonUnchecked = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RadioButtonUncheckedHover") {
+					} else if (n.tagName() == "RadioButtonUncheckedHover") {
 						RadioButtonUncheckedHover = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerTopSeatInactive") {
+					} else if (n.tagName() == "PlayerTopSeatInactive") {
 						PlayerTopSeatInactive = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerTopSeatActive") {
+					} else if (n.tagName() == "PlayerTopSeatActive") {
 						PlayerTopSeatActive = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerBottomSeatInactive") {
+					} else if (n.tagName() == "PlayerBottomSeatInactive") {
 						PlayerBottomSeatInactive = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerBottomSeatActive") {
+					} else if (n.tagName() == "PlayerBottomSeatActive") {
 						PlayerBottomSeatActive = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "Table") {
+					} else if (n.tagName() == "Table") {
 						Table = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "HandRanking") {
+					} else if (n.tagName() == "HandRanking") {
 						HandRanking = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ToolBoxBackground") {
+					} else if (n.tagName() == "ToolBoxBackground") {
 						ToolBoxBackground = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ShowMyCardsButtonDefault") {
+					} else if (n.tagName() == "ShowMyCardsButtonDefault") {
 						ShowMyCardsButtonDefault = currentDir+QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ShowMyCardsButtonHover") {
+					} else if (n.tagName() == "ShowMyCardsButtonHover") {
 						ShowMyCardsButtonHover = currentDir+QString::fromUtf8(tempString1.c_str());
 					}
 
 					//I18N ACTION STRINGS
-					else if (itemsList->ValueStr() == "ActionAllInI18NString") {
+					else if (n.tagName() == "ActionAllInI18NString") {
 						ActionAllInI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionRaiseI18NString") {
+					} else if (n.tagName() == "ActionRaiseI18NString") {
 						ActionRaiseI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionBetI18NString") {
+					} else if (n.tagName() == "ActionBetI18NString") {
 						ActionBetI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionCallI18NString") {
+					} else if (n.tagName() == "ActionCallI18NString") {
 						ActionCallI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionCheckI18NString") {
+					} else if (n.tagName() == "ActionCheckI18NString") {
 						ActionCheckI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ActionFoldI18NString") {
+					} else if (n.tagName() == "ActionFoldI18NString") {
 						ActionFoldI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PotI18NString") {
+					} else if (n.tagName() == "PotI18NString") {
 						PotI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "TotalI18NString") {
+					} else if (n.tagName() == "TotalI18NString") {
 						TotalI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetsI18NString") {
+					} else if (n.tagName() == "BetsI18NString") {
 						BetsI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "GameI18NString") {
+					} else if (n.tagName() == "GameI18NString") {
 						GameI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "HandI18NString") {
+					} else if (n.tagName() == "HandI18NString") {
 						HandI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PreflopI18NString") {
+					} else if (n.tagName() == "PreflopI18NString") {
 						PreflopI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FlopI18NString") {
+					} else if (n.tagName() == "FlopI18NString") {
 						FlopI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "TurnI18NString") {
+					} else if (n.tagName() == "TurnI18NString") {
 						TurnI18NString = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RiverI18NString") {
+					} else if (n.tagName() == "RiverI18NString") {
 						RiverI18NString = QString::fromUtf8(tempString1.c_str());
 					}
 
 					// 				COLORS
-					if (itemsList->ValueStr() == "FKeyIndicatorColor") {
+					if (n.tagName() == "FKeyIndicatorColor") {
 						FKeyIndicatorColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChanceLabelPossibleColor") {
+					} else if (n.tagName() == "ChanceLabelPossibleColor") {
 						ChanceLabelPossibleColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChanceLabelImpossibleColor") {
+					} else if (n.tagName() == "ChanceLabelImpossibleColor") {
 						ChanceLabelImpossibleColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatTextNickNotifyColor") {
+					} else if (n.tagName() == "ChatTextNickNotifyColor") {
 						ChatTextNickNotifyColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogTextColor") {
+					} else if (n.tagName() == "ChatLogTextColor") {
 						ChatLogTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogBgColor") {
+					} else if (n.tagName() == "ChatLogBgColor") {
 						ChatLogBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarBorderColor") {
+					} else if (n.tagName() == "ChatLogScrollBarBorderColor") {
 						ChatLogScrollBarBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarBgColor") {
+					} else if (n.tagName() == "ChatLogScrollBarBgColor") {
 						ChatLogScrollBarBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarHandleBorderColor") {
+					} else if (n.tagName() == "ChatLogScrollBarHandleBorderColor") {
 						ChatLogScrollBarHandleBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarHandleBgColor") {
+					} else if (n.tagName() == "ChatLogScrollBarHandleBgColor") {
 						ChatLogScrollBarHandleBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarArrowBorderColor") {
+					} else if (n.tagName() == "ChatLogScrollBarArrowBorderColor") {
 						ChatLogScrollBarArrowBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ChatLogScrollBarArrowBgColor") {
+					} else if (n.tagName() == "ChatLogScrollBarArrowBgColor") {
 						ChatLogScrollBarArrowBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "LogWinnerMainPotColor") {
+					} else if (n.tagName() == "LogWinnerMainPotColor") {
 						LogWinnerMainPotColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "LogWinnerSidePotColor") {
+					} else if (n.tagName() == "LogWinnerSidePotColor") {
 						LogWinnerSidePotColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "LogPlayerSitsOutColor") {
+					} else if (n.tagName() == "LogPlayerSitsOutColor") {
 						LogPlayerSitsOutColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "LogNewGameAdminColor") {
+					} else if (n.tagName() == "LogNewGameAdminColor") {
 						LogNewGameAdminColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "TabWidgetBorderColor") {
+					} else if (n.tagName() == "TabWidgetBorderColor") {
 						TabWidgetBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "TabWidgetBgColor") {
+					} else if (n.tagName() == "TabWidgetBgColor") {
 						TabWidgetBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "TabWidgetTextColor") {
+					} else if (n.tagName() == "TabWidgetTextColor") {
 						TabWidgetTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MenuBgColor") {
+					} else if (n.tagName() == "MenuBgColor") {
 						MenuBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "MenuTextColor") {
+					} else if (n.tagName() == "MenuTextColor") {
 						MenuTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonBgColor") {
+					} else if (n.tagName() == "BreakLobbyButtonBgColor") {
 						BreakLobbyButtonBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonTextColor") {
+					} else if (n.tagName() == "BreakLobbyButtonTextColor") {
 						BreakLobbyButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonBgDisabledColor") {
+					} else if (n.tagName() == "BreakLobbyButtonBgDisabledColor") {
 						BreakLobbyButtonBgDisabledColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonTextDisabledColor") {
+					} else if (n.tagName() == "BreakLobbyButtonTextDisabledColor") {
 						BreakLobbyButtonTextDisabledColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonBgBlinkColor") {
+					} else if (n.tagName() == "BreakLobbyButtonBgBlinkColor") {
 						BreakLobbyButtonBgBlinkColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BreakLobbyButtonTextBlinkColor") {
+					} else if (n.tagName() == "BreakLobbyButtonTextBlinkColor") {
 						BreakLobbyButtonTextBlinkColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerCashTextColor") {
+					} else if (n.tagName() == "PlayerCashTextColor") {
 						PlayerCashTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerBetTextColor") {
+					} else if (n.tagName() == "PlayerBetTextColor") {
 						PlayerBetTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerNickTextColor") {
+					} else if (n.tagName() == "PlayerNickTextColor") {
 						PlayerNickTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BoardBigTextColor") {
+					} else if (n.tagName() == "BoardBigTextColor") {
 						BoardBigTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BoardSmallTextColor") {
+					} else if (n.tagName() == "BoardSmallTextColor") {
 						BoardSmallTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "SpeedTextColor") {
+					} else if (n.tagName() == "SpeedTextColor") {
 						SpeedTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "VoteButtonBgColor") {
+					} else if (n.tagName() == "VoteButtonBgColor") {
 						VoteButtonBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "VoteButtonTextColor") {
+					} else if (n.tagName() == "VoteButtonTextColor") {
 						VoteButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetInputTextColor") {
+					} else if (n.tagName() == "BetInputTextColor") {
 						BetInputTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetInputBgColor") {
+					} else if (n.tagName() == "BetInputBgColor") {
 						BetInputBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetInputDisabledTextColor") {
+					} else if (n.tagName() == "BetInputDisabledTextColor") {
 						BetInputDisabledTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetInputDisabledBgColor") {
+					} else if (n.tagName() == "BetInputDisabledBgColor") {
 						BetInputDisabledBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonTextColor") {
+					} else if (n.tagName() == "FoldButtonTextColor") {
 						FoldButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "FoldButtonCheckableTextColor") {
+					} else if (n.tagName() == "FoldButtonCheckableTextColor") {
 						FoldButtonCheckableTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonTextColor") {
+					} else if (n.tagName() == "CheckCallButtonTextColor") {
 						CheckCallButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "CheckCallButtonCheckableTextColor") {
+					} else if (n.tagName() == "CheckCallButtonCheckableTextColor") {
 						CheckCallButtonCheckableTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonTextColor") {
+					} else if (n.tagName() == "BetRaiseButtonTextColor") {
 						BetRaiseButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetRaiseButtonCheckableTextColor") {
+					} else if (n.tagName() == "BetRaiseButtonCheckableTextColor") {
 						BetRaiseButtonCheckableTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonTextColor") {
+					} else if (n.tagName() == "AllInButtonTextColor") {
 						AllInButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "AllInButtonCheckableTextColor") {
+					} else if (n.tagName() == "AllInButtonCheckableTextColor") {
 						AllInButtonCheckableTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetSpeedSliderGrooveBgColor") {
+					} else if (n.tagName() == "BetSpeedSliderGrooveBgColor") {
 						BetSpeedSliderGrooveBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetSpeedSliderGrooveBorderColor") {
+					} else if (n.tagName() == "BetSpeedSliderGrooveBorderColor") {
 						BetSpeedSliderGrooveBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetSpeedSliderHandleBgColor") {
+					} else if (n.tagName() == "BetSpeedSliderHandleBgColor") {
 						BetSpeedSliderHandleBgColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "BetSpeedSliderHandleBorderColor") {
+					} else if (n.tagName() == "BetSpeedSliderHandleBorderColor") {
 						BetSpeedSliderHandleBorderColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "ShowMyCardsButtonTextColor") {
+					} else if (n.tagName() == "ShowMyCardsButtonTextColor") {
 						ShowMyCardsButtonTextColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "RatingStarsColor") {
+					} else if (n.tagName() == "RatingStarsColor") {
 						RatingStarsColor = QString::fromUtf8(tempString1.c_str());
-					} else if (itemsList->ValueStr() == "PlayerInfoHintTextColor") {
+					} else if (n.tagName() == "PlayerInfoHintTextColor") {
 						PlayerInfoHintTextColor = QString::fromUtf8(tempString1.c_str());
 					}
 					// 				SIZES
-					else if (itemsList->ValueStr() == "ChatLogTextSize") {
+					else if (n.tagName() == "ChatLogTextSize") {
 						ChatLogTextSize = QString::fromUtf8(tempString1.c_str());
 					}
 				}
@@ -1704,17 +1711,19 @@ QString GameTableStyleReader::getFallBackFieldContent(QString field, int type)
 
 	//start reading the file and fill vars
 	string tempString1("");
-	TiXmlDocument doc;
-	doc.Parse(thisContent.constData());
 
-	if(doc.RootElement()) {
-		TiXmlHandle docHandle( &doc );
-		TiXmlElement* itemsList = docHandle.FirstChild( "PokerTH" ).FirstChild( "TableStyle" ).FirstChild().ToElement();
-		for( ; itemsList; itemsList=itemsList->NextSiblingElement()) {
-			const char *tmpStr1 = itemsList->Attribute("value");
+	QDomDocument xmlDoc;
+	xmlDoc.setContent(fileContent.constData()); 
+
+	if(!xmlDoc.documentElement().isNull()){
+		QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "TableStyle" );
+		for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+		{
+			QByteArray ba = n.attribute("value").toLocal8Bit();
+			const char *tmpStr1 = ba.data();
 			if (tmpStr1) {
 				tempString1 = tmpStr1;
-				if(itemsList->ValueStr() == field.toStdString()) {
+				if(n.attribute("value") == QString::fromStdString(field.toStdString())) {
 					if(type == 1) return QString(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"gfx/gui/table/default/"+QString::fromUtf8(tempString1.c_str()));
 					else return QString::fromUtf8(tempString1.c_str());
 				}

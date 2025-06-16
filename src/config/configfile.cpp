@@ -32,7 +32,10 @@
 #include "configfile.h"
 #include <qttoolsinterface.h>
 #include <core/loghelper.h>
-#include <tinyxml.h>
+#include <QDomDocument>
+#include <QDomElement>
+#include <QDebug>
+#include <QFile>
 
 #define MODUS 0711
 
@@ -326,34 +329,48 @@ ConfigFile::ConfigFile(char *argv0, bool readonly) : noWriteAccess(readonly)
 	if(!noWriteAccess) {
 		configFileName += "config.xml";
 
-		//Prüfen ob Configfile existiert --> sonst anlegen
-		TiXmlDocument doc(configFileName);
-		if(!doc.LoadFile()) {
+		QDomDocument xmlDoc;
+		QFile file(std::filesystem::u8path(configFileName));
+		if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file)) {
+			file.close();
 			myConfigState = NONEXISTING;
 			updateConfig(myConfigState);
-		} else {
+		}else {
+			file.close();
+
 			//Check if config revision and AppDataDir is ok. Otherwise --> update()
 			int tempRevision = 0;
 			string tempAppDataPath ("");
 
-			TiXmlHandle docHandle( &doc );
-			TiXmlElement* confRevision = docHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( "ConfigRevision" ).ToElement();
-			if ( confRevision ) {
-				confRevision->QueryIntAttribute("value", &tempRevision );
+			QDomElement confRevision = xmlDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( "ConfigRevision" );
+			if ( !confRevision.isNull() ) {
+				// confRevision->QueryIntAttribute("value", &tempRevision );
+				tempRevision = confRevision.attribute("value").toInt();
 			}
-			TiXmlElement* confAppDataPath = docHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( "AppDataDir" ).ToElement();
-			if ( confAppDataPath ) {
-				const char *tmpStr = confAppDataPath->Attribute("value");
-				if (tmpStr) tempAppDataPath = tmpStr;
+
+			QDomElement confAppDataPath = xmlDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( "AppDataDir" );
+
+			if ( !confAppDataPath.isNull() ) {
+				// const char *tmpStr = confAppDataPath.attribute("value");
+				// if (tmpStr) tempAppDataPath = tmpStr;
+				QString tempAppDataPath = confAppDataPath.attribute("value");
 				//if appdatapath changes directly update it here not in UpdateConfig()
 #ifdef ANDROID
 				if(tempAppDataPath != ":/android/android-data/") {
-					confAppDataPath->SetAttribute("value", ":/android/android-data/");
+					confAppDataPath.setAttribute("value", ":/android/android-data/");
 #else
 				if(tempAppDataPath != myQtToolsInterface->getDataPathStdString(myArgv0)) {
-					confAppDataPath->SetAttribute("value", myQtToolsInterface->stringToUtf8(myQtToolsInterface->getDataPathStdString(myArgv0)));
+					confAppDataPath.setAttribute("value", QString::fromStdString(myQtToolsInterface->stringToUtf8(myQtToolsInterface->getDataPathStdString(myArgv0))));
 #endif
-					doc.SaveFile( configFileName );
+					QFile file( QString::fromStdString(configFileName) );
+					if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
+					{
+						qDebug( "Failed to open file for writing." );
+					}else{
+						QTextStream stream( &file );
+						stream << xmlDoc.toString();
+					}
+					file.close();
 				}
 			}
 			if (tempRevision < configRev) {
@@ -381,35 +398,35 @@ void ConfigFile::fillBuffer()
 
 	boost::recursive_mutex::scoped_lock lock(m_configMutex);
 
-	string tempString1("");
-	string tempString2("");
+	QString tempString1("");
+	QString tempString2("");
 
-	TiXmlDocument doc(configFileName);
-
-	if(doc.LoadFile()) {
-		TiXmlHandle docHandle( &doc );
+	QDomDocument xmlDoc;
+	QFile file(std::filesystem::u8path(configFileName));
+	if (file.open(QIODevice::ReadOnly) && xmlDoc.setContent(&file)) {
+		file.close();
 
 		for (size_t i=0; i<configBufferList.size(); i++) {
 
-			TiXmlElement* conf = docHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( configList[i].name ).ToElement();
+			QDomElement conf = xmlDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( QString::fromStdString(configList[i].name) );
+			if ( !conf.isNull() ) {
 
-			if ( conf ) {
+				QString tmpStr1 = conf.attribute("value", "");
+				if (tmpStr1 != "") tempString1 = tmpStr1;
+				configBufferList[i].defaultValue = tempString1.toStdString();
 
-				const char *tmpStr1 = conf->Attribute("value");
-				if (tmpStr1) tempString1 = tmpStr1;
-				configBufferList[i].defaultValue = tempString1;
+				QString tmpStr2 = conf.attribute("type");
+				if (tmpStr2 != "") {
+				 	tempString2 = tmpStr2;
+				 	if(tempString2 == "list") {
 
-				const char *tmpStr2 = conf->Attribute("type");
-				if (tmpStr2) {
-					tempString2 = tmpStr2;
-					if(tempString2 == "list") {
+				 		list<std::string> tempStringList2;
 
-						list<string> tempStringList2;
+						QDomElement confList = xmlDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( QString::fromStdString(configList[i].name) ).firstChildElement();
 
-						TiXmlElement* confList = docHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( configList[i].name ).FirstChild().ToElement();
-
-						for( ; confList; confList=confList->NextSiblingElement()) {
-							tempStringList2.push_back(confList->Attribute("value"));
+						for(QDomElement n = confList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+						{
+							tempStringList2.push_back(n.attribute("value").toStdString());
 						}
 
 						configBufferList[i].defaultListValue = tempStringList2;
@@ -421,9 +438,10 @@ void ConfigFile::fillBuffer()
 				LOG_ERROR("Could not find the root element in the config file!");
 			}
 
-			// 			cout << configBufferList[i].name << " " << configBufferList[i].defaultValue << endl;
+			// cout << configBufferList[i].name << " " << configBufferList[i].defaultValue << endl;
 		}
 	}
+	file.close();
 }
 
 void ConfigFile::checkAndCorrectBuffer()
@@ -464,40 +482,49 @@ void ConfigFile::writeBuffer() const
 
 	//write buffer to disc if enabled
 	if(!noWriteAccess) {
-		TiXmlDocument doc;
-		TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "UTF-8", "");
-		doc.LinkEndChild( decl );
 
-		TiXmlElement * root = new TiXmlElement( "PokerTH" );
-		doc.LinkEndChild( root );
+		QDomDocument xmlDoc;
+		QDomProcessingInstruction xmlVers = xmlDoc.createProcessingInstruction("xml","version=\"1.0\" encoding='utf-8'");
+		xmlDoc.appendChild(xmlVers);
 
-		TiXmlElement * config;
-		config = new TiXmlElement( "Configuration" );
-		root->LinkEndChild( config );
+		QDomElement root = xmlDoc.createElement( "PokerTH" );
+		xmlDoc.appendChild( root );
+
+		QDomElement config = xmlDoc.createElement( "Configuration" );
+		root.appendChild( config );
 
 		size_t i;
 
 		for (i=0; i<configBufferList.size(); i++) {
-			TiXmlElement *tmpElement = new TiXmlElement(configBufferList[i].name);
-			config->LinkEndChild( tmpElement );
-			tmpElement->SetAttribute("value", configBufferList[i].defaultValue);
+
+			QDomElement tmpElement = xmlDoc.createElement(QString::fromStdString(configBufferList[i].name));
+			config.appendChild( tmpElement );
+			tmpElement.setAttribute("value", QString::fromStdString(configBufferList[i].defaultValue));
 
 			if(configBufferList[i].type == CONFIG_TYPE_INT_LIST || configBufferList[i].type == CONFIG_TYPE_STRING_LIST) {
 
-				tmpElement->SetAttribute("type", "list");
+				tmpElement.setAttribute("type", "list");
 				list<string> tempList = configBufferList[i].defaultListValue;
 				list<string>::iterator it;
 				for(it = tempList.begin(); it != tempList.end(); ++it) {
 
-					TiXmlElement *tmpSubElement = new TiXmlElement(configBufferList[i].defaultValue);
-					tmpElement->LinkEndChild( tmpSubElement );
-					tmpSubElement->SetAttribute("value", *it);
+					QDomElement tmpSubElement = xmlDoc.createElement(QString::fromStdString(configBufferList[i].defaultValue));
+					tmpElement.appendChild( tmpSubElement );
+					tmpSubElement.setAttribute("value", QString::fromStdString(*it));
 				}
 
 			}
 		}
 
-		doc.SaveFile( configFileName );
+		QFile file( QString::fromStdString(configFileName) );
+		if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
+		{
+			qDebug( "Failed to open file for writing." );
+		}else{
+			QTextStream stream( &file );
+			stream << xmlDoc.toString();
+		}
+		file.close();
 	}
 }
 
@@ -510,158 +537,178 @@ void ConfigFile::updateConfig(ConfigState myConfigState)
 
 	if(myConfigState == NONEXISTING) {
 
-		//Create a new ConfigFile!
-		TiXmlDocument doc;
-		TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "UTF-8", "");
-		doc.LinkEndChild( decl );
+		QDomDocument xmlDoc;
+		QDomProcessingInstruction xmlVers = xmlDoc.createProcessingInstruction("xml","version=\"1.0\" encoding='utf-8'");
+		xmlDoc.appendChild(xmlVers);
 
-		TiXmlElement * root = new TiXmlElement( "PokerTH" );
-		doc.LinkEndChild( root );
+		QDomElement root = xmlDoc.createElement( "PokerTH" );
+		xmlDoc.appendChild( root );
 
-		TiXmlElement * config;
-		config = new TiXmlElement( "Configuration" );
-		root->LinkEndChild( config );
+		QDomElement config = xmlDoc.createElement( "Configuration" );
+		root.appendChild( config );
 
 		for (i=0; i<configList.size(); i++) {
-			TiXmlElement *tmpElement = new TiXmlElement(configList[i].name);
-			config->LinkEndChild( tmpElement );
-			tmpElement->SetAttribute("value", myQtToolsInterface->stringToUtf8(configList[i].defaultValue));
+			QDomElement tmpElement = xmlDoc.createElement(QString::fromStdString(configList[i].name));
+			config.appendChild( tmpElement );
+			tmpElement.setAttribute("value", QString::fromStdString(configList[i].defaultValue));
 
-			if(configList[i].type == CONFIG_TYPE_INT_LIST || configBufferList[i].type == CONFIG_TYPE_STRING_LIST) {
+			if(configList[i].type == CONFIG_TYPE_INT_LIST || configList[i].type == CONFIG_TYPE_STRING_LIST) {
 
-				tmpElement->SetAttribute("type", "list");
+				tmpElement.setAttribute("type", "list");
 				list<string> tempList = configList[i].defaultListValue;
 				list<string>::iterator it;
 				for(it = tempList.begin(); it != tempList.end(); ++it) {
 
-					TiXmlElement *tmpSubElement = new TiXmlElement(configList[i].defaultValue);
-					tmpElement->LinkEndChild( tmpSubElement );
-					tmpSubElement->SetAttribute("value", *it);
+					QDomElement tmpSubElement = xmlDoc.createElement(QString::fromStdString(configBufferList[i].defaultValue));
+					tmpElement.appendChild( tmpSubElement );
+					tmpSubElement.setAttribute("value", QString::fromStdString(*it));
 				}
 			}
 		}
-		doc.SaveFile( configFileName );
+		QFile file( QString::fromStdString(configFileName) );
+		if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
+		{
+			qDebug( "Failed to open file for writing." );
+		}else{
+			QTextStream stream( &file );
+			stream << xmlDoc.toString();
+		}
+		file.close();
 	}
 
 	if(myConfigState == OLD) {
 
-		TiXmlDocument oldDoc(configFileName);
-
 		//load the old one
-		if(oldDoc.LoadFile()) {
+		QDomDocument oldDoc;
+		QFile file(std::filesystem::u8path(configFileName));
+		if (file.open(QIODevice::ReadOnly) && oldDoc.setContent(&file)) {
+			file.close();
 
 			string tempString1("");
 			string tempString2("");
 
-			TiXmlDocument newDoc;
+			QDomDocument newDoc;
 
-			//Create the new one
-			TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "UTF-8", "");
-			newDoc.LinkEndChild( decl );
+			QDomProcessingInstruction xmlVers = newDoc.createProcessingInstruction("xml","version=\"1.0\" encoding='utf-8'");
+			newDoc.appendChild(xmlVers);
 
-			TiXmlElement * root = new TiXmlElement( "PokerTH" );
-			newDoc.LinkEndChild( root );
+			QDomElement root = newDoc.createElement( "PokerTH" );
+			newDoc.appendChild( root );
 
-			TiXmlElement * config;
-			config = new TiXmlElement( "Configuration" );
-			root->LinkEndChild( config );
+			QDomElement config = newDoc.createElement( "Configuration" );
+			root.appendChild( config );
 
 			//change configRev and AppDataPath
 			std::list<std::string> noUpdateElemtsList;
 
-			TiXmlElement * confElement0 = new TiXmlElement( "ConfigRevision" );
-			config->LinkEndChild( confElement0 );
-			confElement0->SetAttribute("value", configRev);
+			QDomElement confElement0 = newDoc.createElement( "ConfigRevision" );
+			config.appendChild( confElement0 );
+			confElement0.setAttribute("value", configRev);
+
+
 			noUpdateElemtsList.push_back("ConfigRevision");
 
-			TiXmlElement * confElement1 = new TiXmlElement( "AppDataDir" );
-			config->LinkEndChild( confElement1 );
-			confElement1->SetAttribute("value", myQtToolsInterface->stringToUtf8(myQtToolsInterface->getDataPathStdString(myArgv0)));
+			QDomElement confElement1 = newDoc.createElement( "AppDataDir" );
+			config.appendChild( confElement1 );
+			confElement1.setAttribute("value", QString::fromStdString(myQtToolsInterface->stringToUtf8(myQtToolsInterface->getDataPathStdString(myArgv0))));
 			noUpdateElemtsList.push_back("AppDataDir");
 
 			///////// VERSION HACK SECTION ///////////////////////
 			//this is the right place for special version depending config hacks:
 			//0.9.1 - log interval needs to be set to 1 instead of 0
 			if (configRev >= 95 && configRev <= 98) { // this means 0.9.1 or 0.9.2 or 1.0
-				TiXmlElement * confElement2 = new TiXmlElement( "LogInterval" );
-				config->LinkEndChild( confElement2 );
-				confElement2->SetAttribute("value", 1);
+				QDomElement confElement2 = newDoc.createElement( "LogInterval" );
+				config.appendChild( confElement2 );
+				confElement2.setAttribute("value", 1);
 				noUpdateElemtsList.push_back("LogInterval");
 			}
 
 			if (configRev == 98) { // this means 1.0
-				TiXmlElement * confElement3 = new TiXmlElement( "CurrentCardDeckStyle" );
-				config->LinkEndChild( confElement3 );
-				confElement3->SetAttribute("value", "");
+				QDomElement confElement3 = newDoc.createElement( "CurrentCardDeckStyle" );
+				config.appendChild( confElement3 );
+				confElement3.setAttribute("value", "");
 				noUpdateElemtsList.push_back("CurrentCardDeckStyle");
 			}
 			///////// VERSION HACK SECTION ///////////////////////
 
-			TiXmlHandle oldDocHandle( &oldDoc );
-
 			for (i=0; i<configList.size(); i++) {
 
-				TiXmlElement* oldConf = oldDocHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( configList[i].name ).ToElement();
+				QDomElement oldConf = oldDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( QString::fromStdString(configList[i].name) );
 
-				if ( oldConf ) { // if element is already there --> take over the saved values
+				if ( !oldConf.isNull() ) { // if element is already there --> take over the saved values
 
 					// dont update ConfigRevision and AppDataDir AND possible hacked Config-Elements becaus it was already set ^^
 					if(count(noUpdateElemtsList.begin(), noUpdateElemtsList.end(), configList[i].name) == 0) {
 
-						TiXmlElement *tmpElement = new TiXmlElement(configList[i].name);
-						config->LinkEndChild( tmpElement );
+						QDomElement tmpElement = newDoc.createElement(QString::fromStdString(configList[i].name));
+						config.appendChild( tmpElement );
 
-						const char *tmpStr1 = oldConf->Attribute("value");
+						QByteArray ba = oldConf.attribute("value").toLocal8Bit();
+  						const char *tmpStr1 = ba.data();
+
 						if (tmpStr1) tempString1 = tmpStr1;
-						tmpElement->SetAttribute("value", tempString1);
+						tmpElement.setAttribute("value", QString::fromStdString(tempString1));
 
 						//for lists copy elements
-						const char *tmpStr2 = oldConf->Attribute("type");
+						QByteArray ba2 = oldConf.attribute("type").toLocal8Bit();
+  						const char *tmpStr2 = ba2.data();
+						
+						
 						if (tmpStr2) {
 							tempString2 = tmpStr2;
 							if(tempString2 == "list") {
 
 								list<string> tempStringList2;
 
-								TiXmlElement* oldConfList = oldDocHandle.FirstChild( "PokerTH" ).FirstChild( "Configuration" ).FirstChild( configList[i].name ).FirstChild().ToElement();
+								QDomElement oldConfList = oldDoc.documentElement().firstChildElement( "Configuration" ).firstChildElement( QString::fromStdString(configList[i].name) );
 
-								for( ; oldConfList; oldConfList=oldConfList->NextSiblingElement()) {
-									tempStringList2.push_back(oldConfList->Attribute("value"));
+								for(QDomElement n = oldConfList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+								{
+									tempStringList2.push_back(n.attribute("value").toStdString());
 								}
 
-								tmpElement->SetAttribute("type", "list");
+								tmpElement.setAttribute("type", "list");
 								list<string> tempList = tempStringList2;
 								list<string>::iterator it;
 								for(it = tempList.begin(); it != tempList.end(); ++it) {
 
-									TiXmlElement *tmpSubElement = new TiXmlElement(tempString1);
-									tmpElement->LinkEndChild( tmpSubElement );
-									tmpSubElement->SetAttribute("value", *it);
+									QDomElement tmpSubElement = newDoc.createElement(QString::fromStdString(tempString1));
+									tmpElement.appendChild( tmpSubElement );
+									tmpSubElement.setAttribute("value", QString::fromStdString(*it));
 								}
 							}
 						}
 					}
 				} else {
-					// if element is not there --> set it with defaultValue
-					TiXmlElement *tmpElement = new TiXmlElement(configList[i].name);
-					config->LinkEndChild( tmpElement );
-					tmpElement->SetAttribute("value", myQtToolsInterface->stringToUtf8(configList[i].defaultValue));
+					QDomElement tmpElement = newDoc.createElement(QString::fromStdString(configList[i].name));
+					config.appendChild( tmpElement );
+					tmpElement.setAttribute("value", QString::fromStdString(myQtToolsInterface->stringToUtf8(configList[i].defaultValue)));
 
 					if(configList[i].type == CONFIG_TYPE_INT_LIST || configBufferList[i].type == CONFIG_TYPE_STRING_LIST) {
 
-						tmpElement->SetAttribute("type", "list");
+						tmpElement.setAttribute("type", "list");
 						list<string> tempList = configList[i].defaultListValue;
 						list<string>::iterator it;
+						// for(it = tempList.begin(); it != tempList.end(); ++it) {
+
 						for(it = tempList.begin(); it != tempList.end(); ++it) {
 
-							TiXmlElement *tmpSubElement = new TiXmlElement(configList[i].defaultValue);
-							tmpElement->LinkEndChild( tmpSubElement );
-							tmpSubElement->SetAttribute("value", *it);
+							QDomElement tmpSubElement = newDoc.createElement(QString::fromStdString(configList[i].defaultValue));
+							tmpElement.appendChild( tmpSubElement );
+							tmpSubElement.setAttribute("value", QString::fromStdString(*it));
 						}
 					}
 				}
 			}
-			newDoc.SaveFile( configFileName );
+			QFile file( QString::fromStdString(configFileName) );
+			if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
+			{
+				qDebug( "Failed to open file for writing." );
+			}else{
+				QTextStream stream( &file );
+				stream << newDoc.toString();
+			}
+			file.close();
 		} else {
 			LOG_ERROR("Cannot update config file: Unable to load configuration.");
 		}

@@ -28,6 +28,80 @@
  * shall include the source code for the parts of OpenSSL used as well       *
  * as that of the covered work.                                              *
  *****************************************************************************/
+#ifdef QML_CLIENT
+//START THE QML SWITCH HERE
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <QtCore>
+#include <QtQml>
+#include <QApplication>
+#include <QSettings>
+#include <QQuickStyle>
+#include <QIcon>
+#include <boost/shared_ptr.hpp>
+#include "configfile.h"
+#include "session.h"
+#include <QTranslator>
+#include <QQmlContext>
+#include <QDebug>
+#include <retranslate.h>
+#include <settingsxmlhandler.h>
+
+int main(int argc, char *argv[])
+{
+	QGuiApplication::setApplicationName("PokerTH");
+    QGuiApplication::setOrganizationName("PokerTH");
+ 	QGuiApplication::setOrganizationDomain("pokerth.net");
+
+    QApplication app(argc, argv);
+    QIcon::setThemeName("pokerth");
+
+    boost::shared_ptr<ConfigFile> myConfig;
+    myConfig.reset(new ConfigFile(argv[0], false));
+
+    // make QSettings use the default PokerTH config.xml :
+	const QSettings::Format XmlFormat = QSettings::registerFormat("xml", &SettingsXmlHandler::readXmlFile, &SettingsXmlHandler::writeXmlFile);
+    QFileInfo fi(QString::fromStdString(myConfig->configFileName));
+    QSettings::setPath(XmlFormat, QSettings::UserScope, fi.absolutePath().remove("/.pokerth"));
+    QSettings settings(XmlFormat, QSettings::UserScope, ".pokerth", "config");
+
+    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+        QQuickStyle::setStyle(settings.value("style").toString());
+    const QString styleInSettings = settings.value("style").toString();
+    if (styleInSettings.isEmpty())
+        settings.setValue(QLatin1String("style"), QQuickStyle::name());
+
+	const QLocale locale;
+	const QString baseName = "pokerth";
+	QTranslator translator;
+	if (translator.load(locale, "pokerth", "_", ":/i18n")) {
+		// qDebug() << "Locale found!";
+		app.installTranslator(&translator);
+	} else {
+		qDebug() << "Locale not found in translations";
+	}
+
+    QQmlApplicationEngine engine;
+
+    LanguageManager langMgr(&engine);
+    engine.rootContext()->setContextProperty("LanguageManager", &langMgr);
+	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
+
+	if (engine.rootObjects().isEmpty())
+        return -1;
+
+	// @DEBUG: session test
+	// Session s = new Session();
+
+    // QmlWrapper myQml(myConfig);
+    return app.exec();
+}
+
+#else
+// START OF OLD QT-WIDGETS GUI SECTION
+
+
 #include <boost/asio.hpp>
 #include <iostream>
 #include <cstdlib>
@@ -75,6 +149,13 @@
 #define ENABLE_LEAK_CHECK()
 #endif
 
+// #ifdef ANDROID
+// #ifndef ANDROID_TEST
+// // #include "QtGui/5.3.0/QtGui/qpa/qplatformnativeinterface.h"
+// // #include <jni.h>
+// #endif
+// #endif
+
 using namespace std;
 
 class startWindowImpl;
@@ -103,9 +184,6 @@ int main( int argc, char **argv )
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else
-	#if QT_VERSION < 0x060000
-		QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-	# endif
 	SharedTools::QtSingleApplication a( "PokerTH", argc, argv );
 	if (a.sendMessage("Wake up!")) {
 		return 0;
@@ -251,6 +329,29 @@ int main( int argc, char **argv )
 
 	startWindowImpl mainWin(myConfig,myLog);
 #ifdef ANDROID
+// 	//Do not start if API is smaller than x
+// 	int api = -2;
+// #ifndef ANDROID_TEST
+// 	JavaVM *currVM = (JavaVM *)QApplication::platformNativeInterface()->nativeResourceForIntegration("JavaVM");
+// 	JNIEnv* env;
+// 	if (currVM->AttachCurrentThread(&env, NULL)<0) {
+// 		qCritical()<<"AttachCurrentThread failed";
+// 	} else {
+// 		jclass jclassApplicationClass = env->FindClass("android/os/Build$VERSION");
+// 		if (jclassApplicationClass) {
+// 			api = env->GetStaticIntField(jclassApplicationClass, env->GetStaticFieldID(jclassApplicationClass,"SDK_INT", "I"));
+// 		}
+// 		currVM->DetachCurrentThread();
+// 	}
+// #endif
+// Test api and maybe do not start for further android releases
+//	if(api < 14) {
+//		QMessageBox box(QMessageBox::Critical, "PokerTH Error", "Sorry, PokerTH needs Android version 4.0 or above to start", QMessageBox::Ok);
+//		box.show();
+//	}
+//	else {
+//		mainWin.show();
+//	}
 	mainWin.show();
 #else
 	a.setActivationWindow(&mainWin, true);
@@ -260,3 +361,7 @@ int main( int argc, char **argv )
 	socket_cleanup();
 	return retVal;
 }
+
+
+// END OF OLD QT-WIDGETS GUI SECTION
+#endif

@@ -31,7 +31,6 @@
 #ifndef CARDDECKSTYLEREADER_H
 #define CARDDECKSTYLEREADER_H
 
-#include <tinyxml.h>
 #include "configfile.h"
 #include <string>
 #include <QtCore>

@@ -38,7 +38,7 @@ Comment[pt_PT]=Jogo do Texas Hol'dem
 Comment[ru]=Игра в техасский холдем
 Comment[tr]=Texas hold'em oyunu
 Comment[uk]=Гра в техаський холдем
-Exec=env QT_SCALE_FACTOR=1 pokerth_client
+Exec=env QT_SCALE_FACTOR=1 pokerth_qml-client
 Icon=pokerth
 Terminal=false
 Type=Application

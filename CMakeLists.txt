@@ -374,6 +374,8 @@ if(BUILD_CLIENT)
 
         install(TARGETS pokerth_client DESTINATION /usr/bin)
         install(DIRECTORY data DESTINATION /usr/share/pokerth)
+        install(FILES pokerth.desktop DESTINATION /usr/share/applications)
+        install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
     else()
         # BUILD_QML_CLIENT
         add_definitions(-DQML_CLIENT)
@@ -468,6 +470,8 @@ if(BUILD_CLIENT)
 
         install(TARGETS pokerth_qml-client DESTINATION /usr/bin)
         install(DIRECTORY data DESTINATION /usr/share/pokerth)
+        install(FILES pokerth_qml.desktop DESTINATION /usr/share/applications)
+        install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
     endif()
 else()
     # build deicated server

@@ -2,9 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(POKERTH)
 
-
 option(CMAKE_AUTORCC "" ON)
-option(CMAKE_AUTOUIC "" ON)
 option(CMAKE_AUTOMOC "" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -198,7 +196,7 @@ set_property(SOURCE src/third_party/protobuf/pokerth.pb.cc PROPERTY SKIP_AUTOGEN
 set_property(SOURCE src/third_party/protobuf/pokerth.pb.h PROPERTY SKIP_AUTOGEN ON)
 
 
-# POKERTH.client
+# POKERTH.client ... Qt Widgets Client
 
 set(POKERTH_CLIENT_SRC src/pokerth.cpp 
     src/gui/qt/chattools/chattools.cpp 
@@ -328,7 +326,7 @@ install(FILES pokerth.desktop DESTINATION /usr/share/applications)
 install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
 
 
-# POKERTH.qml-client
+# POKERTH.qml-client ... unfinisihed
 
 set(POKERTH_QML_CLIENT_SRC src/pokerth.cpp
     src/core/common/loghelper_client.cpp
@@ -508,3 +506,32 @@ set_target_properties(pokerth_official_server PROPERTIES COMPILE_DEFINITIONS "PO
 set_target_properties(pokerth_official_server PROPERTIES COMPILE_DEFINITIONS "POKERTH_DEDICATED_SERVER=ON")
 
 install(TARGETS pokerth_official_server DESTINATION /usr/bin)
+
+
+# POKERTH.chatcleaner
+
+set(POKERTH_CHATCLEANER_SRC src/chatcleaner/chatcleaner.cpp
+	src/chatcleaner/cleanerserver.cpp
+	src/chatcleaner/messagefilter.cpp
+	src/chatcleaner/badwordcheck.cpp
+	src/chatcleaner/textfloodcheck.cpp
+	src/chatcleaner/cleanerconfig.cpp
+	src/chatcleaner/capsfloodcheck.cpp
+	src/chatcleaner/letterrepeatingcheck.cpp
+	src/chatcleaner/urlcheck.cpp)
+
+add_executable(pokerth_chatcleaner "${POKERTH_CHATCLEANER_SRC}" )
+
+target_include_directories(pokerth_chatcleaner PRIVATE "${TINYXML_INCLUDE_DIR}")
+target_include_directories(pokerth_chatcleaner PUBLIC
+    src/
+	src/chatcleaner/
+	src/net/)
+
+target_link_libraries(pokerth_chatcleaner PUBLIC pokerth_lib)
+target_link_libraries(pokerth_chatcleaner PUBLIC pokerth_protocol)
+target_link_libraries(pokerth_chatcleaner PUBLIC "${Protobuf_LIBRARIES}")
+target_link_libraries(pokerth_chatcleaner PUBLIC "${TINYXML_LIBRARIES}")
+target_link_libraries(pokerth_chatcleaner PRIVATE Qt6::Xml Qt6::Network)
+
+target_compile_definitions(pokerth_chatcleaner PUBLIC TIXML_USE_STL)

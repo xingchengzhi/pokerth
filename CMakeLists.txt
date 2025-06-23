@@ -399,7 +399,7 @@ target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_qml-client PUBLIC LibCurl)
 target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
 
-set_target_properties(pokerth_qml-client PROPERTIES COMPILE_DEFINITIONS "QML_CLIENT=ON")
+target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
 install(TARGETS pokerth_qml-client DESTINATION /usr/bin)
 install(DIRECTORY data DESTINATION /usr/share/pokerth)
@@ -442,7 +442,7 @@ target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml)
 
-set_target_properties(pokerth_dedicated_server PROPERTIES COMPILE_DEFINITIONS "POKERTH_DEDICATED_SERVER=ON")
+target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER)
 
 install(TARGETS pokerth_dedicated_server DESTINATION /usr/bin)
 
@@ -502,8 +502,7 @@ target_link_libraries(pokerth_official_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_official_server PRIVATE Qt6::Xml)
 
-set_target_properties(pokerth_official_server PROPERTIES COMPILE_DEFINITIONS "POKERTH_OFFICIAL_SERVER=ON")
-set_target_properties(pokerth_official_server PROPERTIES COMPILE_DEFINITIONS "POKERTH_DEDICATED_SERVER=ON")
+target_compile_definitions(pokerth_official_server PUBLIC POKERTH_OFFICIAL_SERVER POKERTH_DEDICATED_SERVER)
 
 install(TARGETS pokerth_official_server DESTINATION /usr/bin)
 

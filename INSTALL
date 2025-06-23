@@ -33,7 +33,7 @@ Linux:
 
   2. Type `cmake --build ./build --config Release --target all --` to compile all targets.
       ... you can specify the following binary build targets instead of `all`:
-      `pokerth_client`, `pokerth_qml_client`, `pokerth_dedicated_server`, `pokerth_official_server`
+      `pokerth_client`, `pokerth_qml_client` (not yet finished!), `pokerth_dedicated_server`, `pokerth_official_server`
 
   3. Become root (typing "su" or "sudo -s") and type 
       `cmake --install ./build` to install

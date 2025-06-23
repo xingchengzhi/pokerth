@@ -27,13 +27,13 @@ Basic Installation
 
 Linux:
 
-  1. Type "cd path/to/the/sources". Then do one of these:
+  1. Type "cd path/to/the/sources". Then type:
 
-    `cmake -G Ninja -S. -B./build -DBUILD_CLIENT=ON -DBUILD_QML_CLIENT=ON` ... builds the qml-client (not yet finished! ... see https://github.com/pokerth/pokerth/blob/qt6-qml)
-    `cmake -G Ninja -S. -B./build -DBUILD_CLIENT=ON` ... builds the old QT Widget client
-    `cmake -G Ninja -S. -B./build -DBUILD_CLIENT=OFF -DBUILD_DBOFFICIAL=ON` ... builds official server with mysql-db
-    `cmake -G Ninja -S. -B./build -DBUILD_CLIENT=OFF` ... builds dedicated server
+    `cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja` ... configures the build
 
-  2. Type `cmake --build ./build` to compile the package.
+  2. Type `cmake --build ./build --config Release --target all --` to compile all targets.
+      ... you can specify the following binary build targets instead of `all`:
+      `pokerth_client`, `pokerth_qml_client`, `pokerth_dedicated_server`, `pokerth_official_server`
 
-  3. Become root (typing "su") and type `cmake --install ./build` to install the program binary.
+  3. Become root (typing "su" or "sudo -s") and type 
+      `cmake --install ./build` to install

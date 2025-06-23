@@ -23,7 +23,7 @@ RUN apt install -y wget git ca-certificates build-essential cmake libgsasl-dev l
 RUN apt clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/boost*
 
 # fetch repo:
-RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout qt6-qml
+RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
 RUN cd /opt/pokerth && cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja
 
 # some stuff

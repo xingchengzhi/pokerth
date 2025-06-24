@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 project(POKERTH)
 
 option(CMAKE_AUTORCC "" ON)
+option(CMAKE_AUTOUIC "" ON)
 option(CMAKE_AUTOMOC "" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")

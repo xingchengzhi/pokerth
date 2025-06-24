@@ -21,13 +21,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FindBoost)
 include(FindGSasl)
-include(FindTinyXML)
 include(FindMySQL)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
-find_package(TinyXML)
 find_package(OpenSSL REQUIRED)
 find_package(SDL REQUIRED)
 find_package(SDL_mixer REQUIRED)
@@ -521,7 +519,6 @@ set(POKERTH_CHATCLEANER_SRC src/chatcleaner/chatcleaner.cpp
 
 add_executable(pokerth_chatcleaner "${POKERTH_CHATCLEANER_SRC}" )
 
-target_include_directories(pokerth_chatcleaner PRIVATE "${TINYXML_INCLUDE_DIR}")
 target_include_directories(pokerth_chatcleaner PUBLIC
     src/
 	src/chatcleaner/
@@ -530,7 +527,6 @@ target_include_directories(pokerth_chatcleaner PUBLIC
 target_link_libraries(pokerth_chatcleaner PUBLIC pokerth_lib)
 target_link_libraries(pokerth_chatcleaner PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_chatcleaner PUBLIC "${Protobuf_LIBRARIES}")
-target_link_libraries(pokerth_chatcleaner PUBLIC "${TINYXML_LIBRARIES}")
 target_link_libraries(pokerth_chatcleaner PRIVATE Qt6::Xml Qt6::Network)
 
-target_compile_definitions(pokerth_chatcleaner PUBLIC TIXML_USE_STL)
+install(TARGETS pokerth_chatcleaner DESTINATION /usr/bin)

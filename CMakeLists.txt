@@ -38,7 +38,7 @@ find_package(MySQL REQUIRED)
 find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
-    PROTOC_OUT_DIR  src/third_party/protobuf)
+    PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
 find_package(Qt6 REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools REQUIRED)
 
 # @TODO: better use a FindCurl.cmake file?

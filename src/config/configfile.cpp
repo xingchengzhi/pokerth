@@ -373,7 +373,7 @@ ConfigFile::ConfigFile(char *argv0, bool readonly) : noWriteAccess(readonly)
 				{
 					confAppDataPath.setAttribute("value", ":/android/android-data/");
 #else
-				if (tempAppDataPath != myQtToolsInterface->getDataPathStdString(myArgv0))
+				if (tempAppDataPath != QString::fromStdString(myQtToolsInterface->getDataPathStdString(myArgv0)))
 				{
 					confAppDataPath.setAttribute("value", QString::fromStdString(myQtToolsInterface->stringToUtf8(myQtToolsInterface->getDataPathStdString(myArgv0))));
 #endif

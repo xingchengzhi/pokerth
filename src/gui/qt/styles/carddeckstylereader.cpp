@@ -82,7 +82,7 @@ void CardDeckStyleReader::readStyleFile(QString file)
 	string tempString1("");
 
 	QDomDocument xmlDoc;
-	xmlDoc.setContent(fileContent.constData()); 
+	xmlDoc.setContent(fileContent);
 
 	if(!xmlDoc.documentElement().isNull()){
 		QDomElement GameTableElement = xmlDoc.documentElement().firstChildElement( "TableStyle" );

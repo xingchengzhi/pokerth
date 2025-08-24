@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
+set(QT_MIN_VERSION "6.7.0")
+
 project(POKERTH)
 
 option(CMAKE_AUTORCC "" ON)
@@ -36,7 +38,7 @@ find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
-find_package(Qt6 REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools REQUIRED)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools REQUIRED)
 
 # @TODO: better use a FindCurl.cmake file?
 add_library(LibCurl INTERFACE IMPORTED)

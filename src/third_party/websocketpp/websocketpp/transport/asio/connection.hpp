@@ -44,6 +44,7 @@
 #include <websocketpp/common/connection_hdl.hpp>
 
 #include <boost/asio.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <istream>

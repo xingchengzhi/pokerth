@@ -324,6 +324,7 @@ target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 install(TARGETS pokerth_client DESTINATION /usr/bin)
 install(DIRECTORY data DESTINATION /usr/share/pokerth)
 install(FILES pokerth.desktop DESTINATION /usr/share/applications)
+install(FILES pokerth.desktop DESTINATION $ENV{HOME}/.local/share/applications)
 install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
 
 
@@ -404,6 +405,7 @@ target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
 install(TARGETS pokerth_qml-client DESTINATION /usr/bin)
 install(DIRECTORY data DESTINATION /usr/share/pokerth)
+install(FILES pokerth_qml.desktop DESTINATION $ENV{HOME}/.local/share/applications)
 install(FILES pokerth_qml.desktop DESTINATION /usr/share/applications)
 install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
 

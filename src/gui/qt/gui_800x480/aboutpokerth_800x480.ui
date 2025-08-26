@@ -293,7 +293,7 @@ p, li { white-space: pre-wrap; }
       <attribute name="title">
        <string>Third party libs</string>
       </attribute>
-      <layout class="QGridLayout" name="gridLayout">
+      <layout class="QGridLayout" name="gridLayout6">
        <item row="0" column="0">
         <widget class="QTextBrowser" name="textBrowser_thirdPartyLicenceText"/>
        </item>

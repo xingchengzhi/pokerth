@@ -321,7 +321,7 @@ target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 
-install(TARGETS pokerth_client DESTINATION /usr/bin)
+install(TARGETS pokerth_client DESTINATION /usr/bin OPTIONAL)
 install(DIRECTORY data DESTINATION /usr/share/pokerth)
 install(FILES pokerth.desktop DESTINATION /usr/share/applications)
 install(FILES pokerth.desktop DESTINATION $ENV{HOME}/.local/share/applications)

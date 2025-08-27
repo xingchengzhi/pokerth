@@ -321,13 +321,12 @@ target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 
-if (EXISTS build/pokerth_client)
-    install(TARGETS pokerth_client DESTINATION /usr/bin)
-    install(DIRECTORY data DESTINATION /usr/share/pokerth)
-    install(FILES pokerth.desktop DESTINATION /usr/share/applications)
-    install(FILES pokerth.desktop DESTINATION $ENV{HOME}/.local/share/applications)
-    install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
-endif()
+install(TARGETS pokerth_client DESTINATION /usr/bin)
+install(DIRECTORY data DESTINATION /usr/share/pokerth)
+install(FILES pokerth.desktop DESTINATION /usr/share/applications)
+install(FILES pokerth.desktop DESTINATION $ENV{HOME}/.local/share/applications)
+install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
+
 
 # POKERTH.qml-client ... unfinisihed
 
@@ -404,13 +403,12 @@ target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Q
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
-if (EXISTS build/pokerth_qml-client)
-    install(TARGETS pokerth_qml-client DESTINATION /usr/bin)
-    install(DIRECTORY data DESTINATION /usr/share/pokerth)
-    install(FILES pokerth_qml.desktop DESTINATION $ENV{HOME}/.local/share/applications)
-    install(FILES pokerth_qml.desktop DESTINATION /usr/share/applications)
-    install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
-endif()
+install(TARGETS pokerth_qml-client DESTINATION /usr/bin OPTIONAL)
+install(DIRECTORY data DESTINATION /usr/share/pokerth)
+install(FILES pokerth_qml.desktop DESTINATION $ENV{HOME}/.local/share/applications)
+install(FILES pokerth_qml.desktop DESTINATION /usr/share/applications)
+install(FILES pokerth.png DESTINATION /usr/share/pixmaps)
+
 
 # POKERTH.dedicated_server
 

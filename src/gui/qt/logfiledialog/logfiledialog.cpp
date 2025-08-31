@@ -279,6 +279,7 @@ void LogFileDialog::showLogAnalysis(QString /*filename*/, QString returnMessage)
 
 	if (retStr == LOG_UPLOAD_OK_STR) {
 		QString hash(returnMessage.mid(retStr.size()).trimmed());
+		hash = hash.mid(0, hash.indexOf(' '));
 		qDebug() << hash << "\n";
 		QDesktopServices::openUrl(QUrl("http://logfile-analysis.pokerth.net/?ID=" + hash));
 	} else {

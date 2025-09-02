@@ -5,10 +5,10 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     ../../core/common/qttools/qthelper/qthelper.cpp
     ../../core/common/qttools/qttoolswrapper.cpp
     ../../core/common/qttoolsinterface.cpp
-    ../../gui/qt6-qml/cpp/retranslate.cpp
-    ../../gui/qt6-qml/cpp/settingsxmlhandler.cpp)
+    cpp/retranslate.cpp
+    cpp/settingsxmlhandler.cpp)
 
-qt_add_resources(POKERTH_QML_CLIENT_SRC ../../../src/gui/qt6-qml/qml.qrc)
+qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
 
 set(QML_FILES
     pokerth.qml
@@ -43,9 +43,9 @@ set(QML_FILES
     config/Parameters.qml)
 
 set(TS_FILES
-    ../../gui/qt6-qml/i18n/pokerth_de_DE.ts
-    ../../gui/qt6-qml/i18n/pokerth_fr_FR.ts
-    ../../gui/qt6-qml/i18n/pokerth_en_US.ts
+    i18n/pokerth_de_DE.ts
+    i18n/pokerth_fr_FR.ts
+    i18n/pokerth_en_US.ts
 )
 
 qt_add_translations(pokerth_qml-client
@@ -62,8 +62,8 @@ target_include_directories(pokerth_qml-client PUBLIC
     ../../core/common
     ../../core/common/qttools
     ../../core/common/qttools/qthelper
-    ../../gui
-    ../../gui/qt6-qml/cpp)
+    ../
+    cpp)
 
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)

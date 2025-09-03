@@ -321,11 +321,11 @@ target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 
-install(TARGETS pokerth_client DESTINATION /usr/bin OPTIONAL COMPONENT pokerth_client)
-install(DIRECTORY data DESTINATION /usr/share/pokerth COMPONENT pokerth_client)
-install(FILES pokerth.desktop DESTINATION /usr/share/applications COMPONENT pokerth_client)
+install(TARGETS pokerth_client DESTINATION bin OPTIONAL COMPONENT pokerth_client)
+install(DIRECTORY data DESTINATION share/pokerth COMPONENT pokerth_client)
+install(FILES pokerth.desktop DESTINATION share/applications COMPONENT pokerth_client)
 install(FILES pokerth.desktop DESTINATION $ENV{HOME}/.local/share/applications COMPONENT pokerth_client)
-install(FILES pokerth.png DESTINATION /usr/share/pixmaps COMPONENT pokerth_client)
+install(FILES pokerth.png DESTINATION share/pixmaps COMPONENT pokerth_client)
 
 
 # POKERTH.qml-client ... unfinisihed
@@ -403,11 +403,11 @@ target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Q
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
-install(TARGETS pokerth_qml-client DESTINATION /usr/bin OPTIONAL COMPONENT pokerth_qml-client)
-install(DIRECTORY data DESTINATION /usr/share/pokerth COMPONENT pokerth_qml-client)
+install(TARGETS pokerth_qml-client DESTINATION bin OPTIONAL COMPONENT pokerth_qml-client)
+install(DIRECTORY data DESTINATION share/pokerth COMPONENT pokerth_qml-client)
 install(FILES pokerth_qml.desktop DESTINATION $ENV{HOME}/.local/share/applications COMPONENT pokerth_qml-client)
-install(FILES pokerth_qml.desktop DESTINATION /usr/share/applications COMPONENT pokerth_qml-client)
-install(FILES pokerth.png DESTINATION /usr/share/pixmaps COMPONENT pokerth_qml-client)
+install(FILES pokerth_qml.desktop DESTINATION share/applications COMPONENT pokerth_qml-client)
+install(FILES pokerth.png DESTINATION share/pixmaps COMPONENT pokerth_qml-client)
 
 
 # POKERTH.dedicated_server
@@ -447,7 +447,7 @@ target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml)
 
 target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER)
 
-install(TARGETS pokerth_dedicated_server DESTINATION /usr/bin OPTIONAL COMPONENT pokerth_dedicated_server)
+install(TARGETS pokerth_dedicated_server DESTINATION bin OPTIONAL COMPONENT pokerth_dedicated_server)
 
 # POKERTH.official_server
 
@@ -507,7 +507,7 @@ target_link_libraries(pokerth_official_server PRIVATE Qt6::Xml)
 
 target_compile_definitions(pokerth_official_server PUBLIC POKERTH_OFFICIAL_SERVER POKERTH_DEDICATED_SERVER)
 
-install(TARGETS pokerth_official_server DESTINATION /usr/bin OPTIONAL COMPONENT pokerth_official_server)
+install(TARGETS pokerth_official_server DESTINATION bin OPTIONAL COMPONENT pokerth_official_server)
 
 
 # POKERTH.chatcleaner
@@ -534,4 +534,4 @@ target_link_libraries(pokerth_chatcleaner PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_chatcleaner PUBLIC "${Protobuf_LIBRARIES}")
 target_link_libraries(pokerth_chatcleaner PRIVATE Qt6::Xml Qt6::Network)
 
-install(TARGETS pokerth_chatcleaner DESTINATION /usr/bin OPTIONAL COMPONENT pokerth_chatcleaner)
+install(TARGETS pokerth_chatcleaner DESTINATION bin OPTIONAL COMPONENT pokerth_chatcleaner)

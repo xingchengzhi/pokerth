@@ -38,20 +38,12 @@
 #include <net/serverexception.h>
 #include <net/socket_msg.h>
 #include <net/socket_startup.h>
-#include <net/serverircbotcallback.h>
 #include <core/loghelper.h>
 
 #include <boost/bind/bind.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 using namespace std;
-
-class GenericIrcCallback : public ServerIrcBotCallback
-{
-	virtual void SignalLobbyMessage(unsigned /*playerId*/, const std::string &/*playerName*/, const std::string &/*msg*/) {}
-};
-
-static GenericIrcCallback g_ircCallback;
 
 ServerManager::ServerManager(ConfigFile &config, GuiInterface &gui)
 	: m_playerConfig(config), m_gui(gui)
@@ -63,7 +55,7 @@ ServerManager::ServerManager(ConfigFile &config, GuiInterface &gui, ServerMode m
 	: m_playerConfig(config), m_gui(gui)
 {
 	m_ioService.reset(new boost::asio::io_context);
-	m_lobbyThread.reset(new ServerLobbyThread(gui, mode, g_ircCallback, config, avatarManager, m_ioService));
+	m_lobbyThread.reset(new ServerLobbyThread(gui, mode, config, avatarManager, m_ioService));
 }
 
 ServerManager::~ServerManager()

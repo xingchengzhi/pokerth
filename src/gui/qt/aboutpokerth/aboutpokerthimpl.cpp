@@ -120,8 +120,6 @@ aboutPokerthImpl::aboutPokerthImpl(QWidget *parent, ConfigFile *c)
 	QString projectText;
 	projectText.append("<b>"+tr("Project page:")+"</b><br>");
 	projectText.append("&nbsp;&nbsp;&nbsp;&nbsp;<a href='http://www.pokerth.net'>http://www.pokerth.net</a><br>");
-	projectText.append("<b>IRC:</b><br>");
-	projectText.append("&nbsp;&nbsp;&nbsp;&nbsp;#pokerth (irc.freenode.net)<br>");
 	projectText.append("<b>"+tr("Authors:")+"</b><br>");
 	projectText.append("&nbsp;&nbsp;&nbsp;&nbsp;Felix Hammer (<a href=mailto:doitux@pokerth.net>doitux@pokerth.net</a>)<br>");
 	projectText.append("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- "+tr("initial idea, basic architecture, gui implementation, gui graphics editing, linux package")+"<br>");

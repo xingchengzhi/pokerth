@@ -35,7 +35,6 @@
 #include <net/serverexception.h>
 #include <net/receivebuffer.h>
 #include <net/senderhelper.h>
-#include <net/serverircbotcallback.h>
 #include <net/socket_msg.h>
 #include <net/chatcleanermanager.h>
 #include <net/net_helper.h>
@@ -249,9 +248,9 @@ private:
 };
 
 
-ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ServerIrcBotCallback &ircBotCb, ConfigFile &serverConfig,
+ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigFile &serverConfig,
 									 AvatarManager &avatarManager, boost::shared_ptr<boost::asio::io_context> ioService)
-	: m_ioService(ioService), m_authContext(NULL), m_gui(gui), m_ircBotCb(ircBotCb), m_avatarManager(avatarManager),
+	: m_ioService(ioService), m_authContext(NULL), m_gui(gui), m_avatarManager(avatarManager),
 	  m_mode(mode), m_serverConfig(serverConfig), m_curGameId(0), m_curUniquePlayerId(0), m_curSessionId(INVALID_SESSION + 1),
 	  m_statDataChanged(false), m_removeGameTimer(*ioService),
 	  m_saveStatisticsTimer(*ioService), m_loginLockTimer(*ioService),
@@ -708,11 +707,6 @@ ServerLobbyThread::SendChatBotMsg(const std::string &message)
 
 	m_sessionManager.SendLobbyMsgToAllSessions(GetSender(), packet, SessionData::Established);
 	m_gameSessionManager.SendLobbyMsgToAllSessions(GetSender(), packet, SessionData::Game | SessionData::Spectating | SessionData::SpectatorWaiting);
-
-	GetIrcBotCallback().SignalLobbyMessage(
-		0,
-		"(chat bot)",
-		message);
 }
 
 void
@@ -1483,11 +1477,6 @@ ServerLobbyThread::HandleNetPacketChatRequest(boost::shared_ptr<SessionData> ses
 
 			// Send the message to the chat cleaner bot.
 			m_chatCleanerManager->HandleLobbyChatText(
-				session->GetPlayerData()->GetUniqueId(),
-				session->GetPlayerData()->GetName(),
-				chatMsg);
-			// Send the message to the irc bot.
-			GetIrcBotCallback().SignalLobbyMessage(
 				session->GetPlayerData()->GetUniqueId(),
 				session->GetPlayerData()->GetName(),
 				chatMsg);
@@ -2305,12 +2294,6 @@ ServerCallback &
 ServerLobbyThread::GetCallback()
 {
 	return m_gui;
-}
-
-ServerIrcBotCallback &
-ServerLobbyThread::GetIrcBotCallback()
-{
-	return m_ircBotCb;
 }
 
 InternalServerCallback &

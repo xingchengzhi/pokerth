@@ -33,7 +33,6 @@
 
 #include <net/clientcallback.h>
 #include <net/servercallback.h>
-#include <net/irccallback.h>
 #include <game_defs.h>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -42,7 +41,7 @@ class guiLog;
 class Session;
 class gameTableImpl;
 
-class GuiInterface : public ClientCallback, public ServerCallback, public IrcCallback
+class GuiInterface : public ClientCallback, public ServerCallback
 {
 public:
 	virtual ~GuiInterface();

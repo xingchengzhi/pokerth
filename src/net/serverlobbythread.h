@@ -50,7 +50,6 @@
 
 class SenderHelper;
 class InternalServerCallback;
-class ServerIrcBotCallback;
 class ServerGame;
 class ServerBanManager;
 class ConfigFile;
@@ -64,7 +63,7 @@ struct Gsasl;
 class ServerLobbyThread : public Thread, public boost::enable_shared_from_this<ServerLobbyThread>
 {
 public:
-	ServerLobbyThread(GuiInterface &gui, ServerMode mode, ServerIrcBotCallback &ircBotCb, ConfigFile &serverConfig, AvatarManager &avatarManager,
+	ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigFile &serverConfig, AvatarManager &avatarManager,
 					  boost::shared_ptr<boost::asio::io_context> ioService);
 	virtual ~ServerLobbyThread();
 
@@ -214,7 +213,6 @@ protected:
 
 	InternalServerCallback &GetSenderCallback();
 	GuiInterface &GetGui();
-	ServerIrcBotCallback &GetIrcBotCallback();
 
 	unsigned GetPlayerId(const std::string &name) const;
 
@@ -249,7 +247,6 @@ private:
 	GameMap m_gameMap;
 
 	GuiInterface &m_gui;
-	ServerIrcBotCallback &m_ircBotCb;
 	AvatarManager &m_avatarManager;
 
 	const ServerMode m_mode;

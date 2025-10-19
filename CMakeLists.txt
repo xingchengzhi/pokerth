@@ -108,9 +108,6 @@ set(POKERTH_LIB_SRC
     src/net/common/serverlobbythread.cpp 
     src/net/common/serverbanmanager.cpp 
     src/net/common/servercallback.cpp 
-    src/net/common/serveradminbot.cpp 
-    src/net/common/serverlobbybot.cpp 
-    src/net/common/serverircbotcallback.cpp 
     src/net/common/sessiondata.cpp 
     src/net/common/sessiondatacallback.cpp 
     src/net/common/sessionmanager.cpp 
@@ -118,7 +115,6 @@ set(POKERTH_LIB_SRC
     src/net/common/clientexception.cpp 
     src/net/common/netcontext.cpp 
     src/net/common/netexception.cpp 
-    src/net/common/irccallback.cpp 
     src/net/common/servermanager.cpp 
     src/net/common/transferhelper.cpp 
     src/net/common/uploaderthread.cpp 
@@ -417,8 +413,6 @@ set(POKERTH_SERVER_SRC src/pokerth_server.cpp
     src/gui/qt/qttools/nonqthelper/nonqthelper.cpp
     src/net/common/net_helper_server.cpp
     src/core/common/loghelper_server.cpp
-    src/net/common/ircthread.cpp
-    src/net/common/servermanagerirc.cpp
     src/net/common/servermanagerfactoryserver.cpp
     src/core/linux/convhelper.cpp)
 
@@ -439,7 +433,6 @@ target_include_directories(pokerth_dedicated_server PUBLIC
     src/core)
 
 target_link_libraries(pokerth_dedicated_server PUBLIC LibCurl)
-target_link_libraries(pokerth_dedicated_server PUBLIC -lircclient)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_lib)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_protocol)
@@ -478,8 +471,6 @@ set(POKERTH_OFFICIAL_SERVER_SRC src/pokerth_server.cpp
     src/gui/qt/qttools/nonqthelper/nonqthelper.cpp
     src/net/common/net_helper_server.cpp
     src/core/common/loghelper_server.cpp
-    src/net/common/ircthread.cpp
-    src/net/common/servermanagerirc.cpp
     src/net/common/servermanagerfactoryserver.cpp
     src/core/linux/convhelper.cpp)
 
@@ -501,7 +492,6 @@ target_include_directories(pokerth_official_server PUBLIC
     src/core)
 
 target_link_libraries(pokerth_official_server PUBLIC LibCurl)
-target_link_libraries(pokerth_official_server PUBLIC -lircclient)
 target_link_libraries(pokerth_official_server PUBLIC "${MYSQLPP_LIBRARIES}")
 target_link_libraries(pokerth_official_server PUBLIC pokerth_dbofficial)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_lib)

@@ -505,7 +505,7 @@ void startWindowImpl::callCreateNetworkGameDialog()
 
 		if (!myServerGuiInterface) {
 			// Create pseudo Gui Wrapper for the server.
-			myServerGuiInterface.reset(new ServerGuiWrapper(myConfig, mySession->getGui(), mySession->getGui(), mySession->getGui()));
+			myServerGuiInterface.reset(new ServerGuiWrapper(myConfig, mySession->getGui(), mySession->getGui()));
 			{
 				boost::shared_ptr<Session> session(new Session(myServerGuiInterface.get(), myConfig, 0));
 				session->init(mySession->getAvatarManager());

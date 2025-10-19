@@ -447,6 +447,10 @@ target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml)
 
 target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER)
 
+if(DEDICATED_SERVER)
+    target_compile_definitions(pokerth_lib PUBLIC POKERTH_DEDICATED_SERVER)
+endif()
+
 install(TARGETS pokerth_dedicated_server DESTINATION bin OPTIONAL COMPONENT pokerth_dedicated_server)
 
 # POKERTH.official_server
@@ -506,6 +510,10 @@ target_link_libraries(pokerth_official_server PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_official_server PRIVATE Qt6::Xml)
 
 target_compile_definitions(pokerth_official_server PUBLIC POKERTH_OFFICIAL_SERVER POKERTH_DEDICATED_SERVER)
+
+if(OFFICIAL_SERVER)
+    target_compile_definitions(pokerth_lib PUBLIC POKERTH_OFFICIAL_SERVER POKERTH_DEDICATED_SERVER)
+endif()
 
 install(TARGETS pokerth_official_server DESTINATION bin OPTIONAL COMPONENT pokerth_official_server)
 

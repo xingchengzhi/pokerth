@@ -1,6 +1,7 @@
 # POKERTH.qml-client ... unfinisihed
 
 set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
+    ../../session.cpp 
     ../../core/common/loghelper_client.cpp
     ../../core/common/qttools/qthelper/qthelper.cpp
     ../../core/common/qttools/qttoolswrapper.cpp

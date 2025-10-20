@@ -3,6 +3,7 @@
 set(CMAKE_AUTOUIC_SEARCH_PATHS . gui_800x480)
 
 set(POKERTH_CLIENT_SRC ../../pokerth.cpp
+    ../../session.cpp 
     ../../engine/local_engine/replay.cpp
     ../../core/common/loghelper_client.cpp
     ../../net/common/net_helper_client.cpp

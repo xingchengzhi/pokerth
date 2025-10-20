@@ -1,6 +1,7 @@
 # POKERTH.official_server
 
 set(POKERTH_OFFICIAL_SERVER_SRC ../pokerth_server.cpp
+    ../session.cpp
     asyncdbcreategame.cpp
     asyncdbgameplace.cpp
     asyncdbupdatescore.cpp
@@ -26,6 +27,7 @@ set(POKERTH_OFFICIAL_SERVER_SRC ../pokerth_server.cpp
     ../net/common/ircthread.cpp
     ../net/common/servermanagerirc.cpp
     ../net/common/servermanagerfactoryserver.cpp
+    ../net/common/serverlobbythread.cpp
     ../core/linux/convhelper.cpp)
 
 add_executable(pokerth_official_server "${POKERTH_OFFICIAL_SERVER_SRC}" )

@@ -56,7 +56,7 @@ endif()
 
 set(POKERTH_LIB_SRC 
     src/engine/game.cpp 
-    src/session.cpp 
+    # src/session.cpp 
     src/playerdata.cpp 
     src/config/configfile.cpp 
     src/engine/boardinterface.cpp 
@@ -105,7 +105,7 @@ set(POKERTH_LIB_SRC
     src/net/common/serveracceptwebhelper.cpp 
     src/net/common/servergame.cpp 
     src/net/common/servergamestate.cpp 
-    src/net/common/serverlobbythread.cpp 
+    # src/net/common/serverlobbythread.cpp 
     src/net/common/serverbanmanager.cpp 
     src/net/common/servercallback.cpp 
     src/net/common/serveradminbot.cpp 
@@ -201,3 +201,4 @@ add_subdirectory(src/chatcleaner)
 add_subdirectory(src/dbofficial)
 add_subdirectory(src/gui/qt)
 add_subdirectory(src/gui/qt6-qml)
+

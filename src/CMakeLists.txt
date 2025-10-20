@@ -1,6 +1,7 @@
 # POKERTH.dedicated_server
 
 set(POKERTH_SERVER_SRC pokerth_server.cpp
+    session.cpp 
     gui/qt/qttools/nonqttoolswrapper.cpp
     gui/qt/qttools/nonqthelper/nonqthelper.cpp
     net/common/net_helper_server.cpp
@@ -8,6 +9,7 @@ set(POKERTH_SERVER_SRC pokerth_server.cpp
     net/common/ircthread.cpp
     net/common/servermanagerirc.cpp
     net/common/servermanagerfactoryserver.cpp
+    net/common/serverlobbythread.cpp
     core/linux/convhelper.cpp)
 
 add_executable(pokerth_dedicated_server "${POKERTH_SERVER_SRC}" )

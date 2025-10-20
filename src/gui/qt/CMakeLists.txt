@@ -64,17 +64,12 @@ else()
     list(APPEND POKERTH_CLIENT_SRC "resources/pokerth.qrc")
 endif()
 
-file(GLOB QTSINGLEAPPLICATION_SRC ../../third_party/qtsingleapplication/*.cpp ../../third_party/qtlockedfile/qtlockedfile.cpp)
-
-if(UNIX)
-    set(QTSINGLEAPPLICATION_SRC "${QTSINGLEAPPLICATION_SRC};../../third_party/qtlockedfile/qtlockedfile_unix.cpp")
-elseif(WIN32)
-    set(QTSINGLEAPPLICATION_SRC "${QTSINGLEAPPLICATION_SRC};../../third_party/qtlockedfile/qtlockedfile_win.cpp")
-endif()
+file(GLOB QTSINGLEAPPLICATION_SRC ../../third_party/singleapplication/*.cpp)
 
 add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
 
 target_include_directories(pokerth_client PUBLIC ../../third_party/qtsingleapplication ../../third_party/qtlockedfile)
+target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)
 target_include_directories(pokerth_client PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_client PRIVATE "${SDL_MIXER_INCLUDE_DIRS}")
 target_include_directories(pokerth_client PUBLIC ".uics/")
@@ -121,6 +116,11 @@ target_link_libraries(pokerth_client PRIVATE Qt6::Core Qt6::Gui Qt6::Sql Qt6::Xm
 target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
+
+
+set(QAPPLICATION_CLASS QApplication CACHE STRING "Inheritance class for SingleApplication")
+add_subdirectory(../../third_party/singleapplication build_singleapplication)
+target_link_libraries(pokerth_client PUBLIC SingleApplication::SingleApplication)
 
 install(TARGETS pokerth_client DESTINATION bin OPTIONAL COMPONENT pokerth_client)
 install(DIRECTORY ../../../data DESTINATION share/pokerth COMPONENT pokerth_client)

@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 #include <QtWidgets>
 #include <QtGui>
 #include <QtCore>
+#include <QDebug>
 
 #include <curl/curl.h>
 
@@ -121,7 +122,7 @@ int main(int argc, char *argv[])
 #include "startsplash.h"
 #include "game_defs.h"
 #include <net/socket_startup.h>
-#include <third_party/qtsingleapplication/qtsingleapplication.h>
+#include <third_party/singleapplication/singleapplication.h>
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -157,6 +158,7 @@ int main( int argc, char **argv )
 {
 
 	//ENABLE_LEAK_CHECK();
+	qDebug("PokerTH starting ...");
 
 	//_CrtSetBreakAlloc(49937);
 	socket_startup();
@@ -176,7 +178,7 @@ int main( int argc, char **argv )
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else
-	SharedTools::QtSingleApplication a( "PokerTH", argc, argv );
+	SingleApplication a( argc, argv );
 	if (a.sendMessage("Wake up!")) {
 		return 0;
 	}
@@ -193,6 +195,8 @@ int main( int argc, char **argv )
 
 	QFontDatabase::addApplicationFont (myAppDataPath +"fonts/n019003l.pfb");
 	QFontDatabase::addApplicationFont (myAppDataPath +"fonts/DejaVuSans-Bold.ttf");
+
+	qDebug("WIN32/ANDROID check ...");
 
 #ifdef _WIN32
 	QString font1String("QApplication, QWidget, QDialog { font-size: 12px; }");
@@ -294,6 +298,7 @@ int main( int argc, char **argv )
 #else
 	QPixmap pixmap(myAppDataPath + "gfx/gui/misc/welcomepokerth10_desktop.png");
 #endif
+	qDebug("Showing splash screen");
 	StartSplash splash(pixmap);
 	if(!myConfig->readConfigInt("DisableSplashScreenOnStartup")) {
 		splash.show();
@@ -343,7 +348,7 @@ int main( int argc, char **argv )
 //	}
 	mainWin.show();
 #else
-	a.setActivationWindow(&mainWin, true);
+	// a.setActivationWindow(&mainWin, true);
 #endif
 	int retVal = a.exec();
 	curl_global_cleanup();

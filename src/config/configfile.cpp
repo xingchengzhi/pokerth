@@ -413,9 +413,6 @@ void ConfigFile::fillBuffer()
 
 	boost::recursive_mutex::scoped_lock lock(m_configMutex);
 
-	QString tempString1("");
-	QString tempString2("");
-
 	QDomDocument xmlDoc;
 	QFile file(std::filesystem::u8path(configFileName));
 	if (file.open(QIODevice::ReadOnly) && xmlDoc.setContent(&file))
@@ -430,15 +427,11 @@ void ConfigFile::fillBuffer()
 			{
 
 				QString tmpStr1 = conf.attribute("value", "");
-				if (tmpStr1 != "")
-					tempString1 = tmpStr1;
-				configBufferList[i].defaultValue = tempString1.toStdString();
-
+				configBufferList[i].defaultValue = tmpStr1.toStdString();
 				QString tmpStr2 = conf.attribute("type");
 				if (tmpStr2 != "")
 				{
-					tempString2 = tmpStr2;
-					if (tempString2 == "list")
+					if (tmpStr2 == "list")
 					{
 
 						list<std::string> tempStringList2;
@@ -788,7 +781,6 @@ string ConfigFile::readConfigString(string varName) const
 			tempString = configBufferList[i].defaultValue;
 		}
 	}
-
 	return tempString;
 }
 

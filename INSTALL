@@ -27,37 +27,13 @@ Basic Installation
 
 Linux:
 
-  Client(s), Chatcleaner:
-
   1. Type "cd path/to/the/sources". Then type:
 
     `cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja`
 
-  2. Type `cmake --build ./build --config Release --target pokerth_client --` to compile pokerth_client.
+  2. Type `cmake --build ./build --config Release --target all --` to compile all targets.
       ... you can specify the following binary build targets instead:
-      `pokerth_client`, `pokerth_qml-client` (not yet finished!), `pokerth_chatcleaner`
-
-  3. Become root (typing "su" or "sudo -s") and type 
-      `cmake --install ./build `
-
-  Dedicated Server:
-
-  1. Type "cd path/to/the/sources". Then type:
-
-    `cmake -DCMAKE_BUILD_TYPE:STRING=Release -DDEDICATED_SERVER=true -S. -B./build -G Ninja`
-
-  2. Type `cmake --build ./build --config Release --target pokerth_dedicated_server --` to compile all pokerth_dedicated_server.
-
-  3. Become root (typing "su" or "sudo -s") and type 
-      `cmake --install ./build `
-
-  Official Server:
-
-  1. Type "cd path/to/the/sources". Then type:
-
-    `cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOFFICIAL_SERVER=true -S. -B./build -G Ninja`
-
-  2. Type `cmake --build ./build --config Release --target pokerth_official_server --` to compile pokerth_official_server.
+      `pokerth_client`, `pokerth_qml-client` (not yet finished!), `pokerth_dedicated_server`, `pokerth_official_server`, `pokerth_chatcleaner`
 
   3. Become root (typing "su" or "sudo -s") and type 
       `cmake --install ./build `

@@ -39,9 +39,9 @@
 #include <QtCore/QDataStream>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QCryptographicHash>
+#include <QtCore/QRandomGenerator>
 #include <QtNetwork/QLocalServer>
 #include <QtNetwork/QLocalSocket>
-#include <QtCore/QRandomGenerator>
 
 #include "singleapplication.h"
 #include "singleapplication_p.h"

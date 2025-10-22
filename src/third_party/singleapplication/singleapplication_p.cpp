@@ -41,12 +41,7 @@
 #include <QtCore/QCryptographicHash>
 #include <QtNetwork/QLocalServer>
 #include <QtNetwork/QLocalSocket>
-
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 #include <QtCore/QRandomGenerator>
-#else
-#include <QtCore/QDateTime>
-#endif
 
 #include "singleapplication.h"
 #include "singleapplication_p.h"
@@ -537,12 +532,7 @@ void SingleApplicationPrivate::slotClientConnectionClosed( QLocalSocket *closedS
 
 void SingleApplicationPrivate::randomSleep()
 {
-#if QT_VERSION >= QT_VERSION_CHECK( 5, 10, 0 )
     QThread::msleep( QRandomGenerator::global()->bounded( 8u, 18u ));
-#else
-    qsrand( QDateTime::currentMSecsSinceEpoch() % std::numeric_limits<uint>::max() );
-    QThread::msleep( qrand() % 11 + 8);
-#endif
 }
 
 void SingleApplicationPrivate::addAppData(const QString &data)

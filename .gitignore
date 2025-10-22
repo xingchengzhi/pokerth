@@ -32,3 +32,4 @@ gitpush_serverstuff_stable
 qmake_qmake_qm_files.qrc
 qrc_qmake_qmake_qm_files.cpp
 .qm
+tests/*

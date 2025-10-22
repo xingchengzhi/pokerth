@@ -33,9 +33,15 @@
 #ifndef _WEBSOCKET_DEFS_H_
 #define _WEBSOCKET_DEFS_H_
 
-#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
-typedef websocketpp::server<websocketpp::config::asio> server;
+typedef websocketpp::server<websocketpp::config::asio_tls> server;
+typedef websocketpp::lib::shared_ptr<boost::asio::ssl::context> context_ptr;
+
+enum tls_mode {
+    MOZILLA_INTERMEDIATE = 1,
+    MOZILLA_MODERN = 2
+};
 
 #endif

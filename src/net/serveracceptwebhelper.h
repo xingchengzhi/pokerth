@@ -58,7 +58,7 @@ protected:
 	void on_open(websocketpp::connection_hdl hdl);
 	void on_close(websocketpp::connection_hdl hdl);
 	void on_message(websocketpp::connection_hdl hdl, server::message_ptr msg);
-
+	context_ptr on_tls_init(websocketpp::connection_hdl hdl);
 private:
 	boost::shared_ptr<boost::asio::io_context> m_ioService;
 	ServerCallback &m_serverCallback;

@@ -57,7 +57,6 @@ endif()
 
 set(POKERTH_LIB_SRC 
     src/engine/game.cpp 
-    # src/session.cpp 
     src/playerdata.cpp 
     src/config/configfile.cpp 
     src/engine/boardinterface.cpp 
@@ -139,8 +138,12 @@ add_library(pokerth_lib STATIC "${POKERTH_LIB_SRC}")
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_lib PUBLIC
     src
-    src/engine src/engine/local_engine src/engine/network_engine
-    src/gui src/gui/qt src/gui/qt/qttools src/gui/qt/gametable
+    src/engine src/engine/local_engine 
+    src/engine/network_engine
+    src/gui 
+    src/gui/qt 
+    src/gui/qt/qttools 
+    src/gui/qt/gametable
     src/net
     src/config
     src/core

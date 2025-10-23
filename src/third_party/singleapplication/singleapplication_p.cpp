@@ -101,11 +101,7 @@ QString SingleApplicationPrivate::getUsername()
       DWORD usernameLength = UNLEN + 1;
       if( GetUserNameW( username, &usernameLength ) )
           return QString::fromWCharArray( username );
-#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
-      return QString::fromLocal8Bit( qgetenv( "USERNAME" ) );
-#else
       return qEnvironmentVariable( "USERNAME" );
-#endif
 #endif
 #ifdef Q_OS_UNIX
       QString username;
@@ -114,11 +110,7 @@ QString SingleApplicationPrivate::getUsername()
       if( pw )
           username = QString::fromLocal8Bit( pw->pw_name );
       if ( username.isEmpty() ){
-#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
-          username = QString::fromLocal8Bit( qgetenv( "USER" ) );
-#else
           username = qEnvironmentVariable( "USER" );
-#endif
       }
       return username;
 #endif
@@ -263,9 +255,7 @@ bool SingleApplicationPrivate::connectToPrimary( int msecs, ConnectionType conne
     QByteArray initMsg;
     QDataStream writeStream(&initMsg, QIODevice::WriteOnly);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    writeStream.setVersion(QDataStream::Qt_5_6);
-#endif
+    writeStream.setVersion(QDataStream::Qt_6_7);
 
     writeStream << blockServerName.toLatin1();
     writeStream << static_cast<quint8>(connectionType);
@@ -293,9 +283,7 @@ bool SingleApplicationPrivate::writeConfirmedMessage (int msecs, const QByteArra
     QByteArray header;
     QDataStream headerStream(&header, QIODevice::WriteOnly);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    headerStream.setVersion(QDataStream::Qt_5_6);
-#endif
+    headerStream.setVersion(QDataStream::Qt_6_7);
     headerStream << static_cast <quint64>( msg.length() );
 
     if( ! writeConfirmedFrame( static_cast<int>(msecs - time.elapsed()), header ))
@@ -417,9 +405,7 @@ void SingleApplicationPrivate::readMessageHeader( QLocalSocket *sock, SingleAppl
 
     QDataStream headerStream( sock );
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    headerStream.setVersion( QDataStream::Qt_5_6 );
-#endif
+    headerStream.setVersion( QDataStream::Qt_6_7 );
 
     // Read the header to know the message length
     quint64 msgLen = 0;
@@ -456,9 +442,7 @@ void SingleApplicationPrivate::readInitMessageBody( QLocalSocket *sock )
     QByteArray msgBytes = sock->readAll();
     QDataStream readStream(msgBytes);
 
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-    readStream.setVersion( QDataStream::Qt_5_6 );
-#endif
+    readStream.setVersion( QDataStream::Qt_6_7 );
 
     // server name
     QByteArray latin1Name;

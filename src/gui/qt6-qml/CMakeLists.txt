@@ -56,7 +56,12 @@ qt_add_translations(pokerth_qml-client
     RESOURCE_PREFIX "/i18n"
 )
 
-add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}")
+# fix AUTOMOC issue: include used header files
+set(POKERTH_QML_CLIENT_NET_HEADERS 
+    ../../net/net_helper.h
+)
+
+add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}" "${POKERTH_QML_CLIENT_NET_HEADERS}" "${QTSINGLEAPPLICATION_SRC}")
 
 target_include_directories(pokerth_qml-client PUBLIC
     ../../config

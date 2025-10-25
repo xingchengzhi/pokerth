@@ -66,7 +66,12 @@ endif()
 
 file(GLOB QTSINGLEAPPLICATION_SRC ../../third_party/singleapplication/*.cpp)
 
-add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+# fix AUTOMOC issue: include used header files
+set(POKERTH_CLIENT_NET_HEADERS 
+    ../../net/net_helper.h
+)
+
+add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${POKERTH_CLIENT_NET_HEADERS}" "${QTSINGLEAPPLICATION_SRC}")
 
 target_include_directories(pokerth_client PUBLIC ../../third_party/qtsingleapplication ../../third_party/qtlockedfile)
 target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)

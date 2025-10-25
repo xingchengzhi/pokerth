@@ -4,15 +4,34 @@ set(POKERTH_SERVER_SRC pokerth_server.cpp
     session.cpp 
     gui/qt/qttools/nonqttoolswrapper.cpp
     gui/qt/qttools/nonqthelper/nonqthelper.cpp
-    net/common/net_helper_server.cpp
     core/common/loghelper_server.cpp
+    net/common/net_helper_server.cpp
     net/common/servermanager.cpp
     net/common/servermanagerfactoryserver.cpp
-    # net/common/servermanagerfactoryclient.cpp
     net/common/serverlobbythread.cpp
+    net/common/serverexception.cpp 
+    net/common/serveracceptinterface.cpp 
+    net/common/serveracceptwebhelper.cpp 
+    net/common/servergame.cpp 
+    net/common/servergamestate.cpp 
+    net/common/serverbanmanager.cpp 
     core/linux/convhelper.cpp)
 
-add_executable(pokerth_dedicated_server "${POKERTH_SERVER_SRC}" )
+# fix AUTOMOC issue: include used header files
+set(POKERTH_SERVER_NET_HEADERS 
+    net/net_helper.h
+    net/servermanager.h
+    net/servermanagerfactory.h
+    net/serverlobbythread.h
+    net/serverexception.h 
+    net/serveracceptinterface.h 
+    net/serveracceptwebhelper.h 
+    net/servergame.h 
+    net/servergamestate.h 
+    net/serverbanmanager.h 
+)
+
+add_executable(pokerth_dedicated_server ${POKERTH_SERVER_SRC} ${POKERTH_SERVER_NET_HEADERS} )
 
 target_include_directories(pokerth_dedicated_server PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_dedicated_server PUBLIC
@@ -28,7 +47,6 @@ target_include_directories(pokerth_dedicated_server PUBLIC
     core)
 
 target_link_libraries(pokerth_dedicated_server PUBLIC LibCurl)
-# target_link_libraries(pokerth_dedicated_server PUBLIC -lircclient)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_lib)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_protocol)

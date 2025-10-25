@@ -36,4 +36,4 @@ Linux:
       `pokerth_client`, `pokerth_qml-client` (not yet finished!), `pokerth_dedicated_server`, `pokerth_official_server`, `pokerth_chatcleaner`
 
   3. Become root (typing "su" or "sudo -s") and type 
-      `cmake --install ./build `
+      `cmake --install ./build`

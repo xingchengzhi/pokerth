@@ -1995,6 +1995,24 @@ p, li { white-space: pre-wrap; }
             </spacer>
            </item>
            <item>
+            <widget class="QCheckBox" name="checkBox_InternetServerUseTls">
+             <property name="text">
+              <string>Use TLS</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_whatIsTls">
+             <property name="text">
+              <string>&lt;a href=&quot;http://en.wikipedia.org/wiki/Transport_Layer_Security&quot;&gt;What is this?&lt;/a&gt;</string>
+             </property>
+             <property name="openExternalLinks">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+
+           <item>
             <widget class="QCheckBox" name="checkBox_InternetServerUseSctp">
              <property name="text">
               <string>Use SCTP</string>
@@ -4025,6 +4043,7 @@ p, li { white-space: pre-wrap; }
   <tabstop>checkBox_useAvatarServer</tabstop>
   <tabstop>lineEdit_avatarServerAddress</tabstop>
   <tabstop>checkBox_InternetServerUseIpv6</tabstop>
+  <tabstop>checkBox_InternetServerUseTls</tabstop>
   <tabstop>checkBox_InternetServerUseSctp</tabstop>
   <tabstop>lineEdit_internetGameName</tabstop>
   <tabstop>comboBox_internetGameType</tabstop>

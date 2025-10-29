@@ -134,11 +134,10 @@ void GameTableStyleReader::readStyleFile(QString file)
 #endif
 
 	QFile myFile(currentFileName);
-	if(myFile.open(QIODevice::ReadOnly)) {
-		fileContent = myFile.readAll();
-	} else {
+	if(!myFile.open(QIODevice::ReadOnly)) {
 		return;
 	}
+	fileContent = myFile.readAll();
 
 	//start reading the file and fill vars
 	string tempString1("");

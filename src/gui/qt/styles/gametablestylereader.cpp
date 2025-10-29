@@ -134,8 +134,11 @@ void GameTableStyleReader::readStyleFile(QString file)
 #endif
 
 	QFile myFile(currentFileName);
-	myFile.open(QIODevice::ReadOnly);
-	fileContent = myFile.readAll();
+	if(myFile.open(QIODevice::ReadOnly)) {
+		fileContent = myFile.readAll();
+	} else {
+		return;
+	}
 
 	//start reading the file and fill vars
 	string tempString1("");
@@ -1702,26 +1705,27 @@ void GameTableStyleReader::setSliderStyle(QSlider *s)
 QString GameTableStyleReader::getFallBackFieldContent(QString field, int type)
 {
 	QFile myFile(QFile(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"gfx/gui/table/default/defaulttablestyle.xml").fileName());
-	myFile.open(QIODevice::ReadOnly);
-	QByteArray thisContent = myFile.readAll();
+	if(myFile.open(QIODevice::ReadOnly)) {
+		QByteArray thisContent = myFile.readAll();
 
-	//start reading the file and fill vars
-	string tempString1("");
+		//start reading the file and fill vars
+		string tempString1("");
 
-	QDomDocument xmlDoc;
-	xmlDoc.setContent(thisContent);
+		QDomDocument xmlDoc;
+		xmlDoc.setContent(thisContent);
 
-	if(!xmlDoc.documentElement().isNull()){
-		QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "TableStyle" );
-		for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
-		{
-			QByteArray ba = n.attribute("value").toLocal8Bit();
-			const char *tmpStr1 = ba.data();
-			if (tmpStr1) {
-				tempString1 = tmpStr1;
-				if(n.attribute("value") == QString::fromStdString(field.toStdString())) {
-					if(type == 1) return QString(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"gfx/gui/table/default/"+QString::fromUtf8(tempString1.c_str()));
-					else return QString::fromUtf8(tempString1.c_str());
+		if(!xmlDoc.documentElement().isNull()){
+			QDomElement itemsList = xmlDoc.documentElement().firstChildElement( "TableStyle" );
+			for(QDomElement n = itemsList.firstChildElement(); !n.isNull(); n = n.nextSiblingElement())
+			{
+				QByteArray ba = n.attribute("value").toLocal8Bit();
+				const char *tmpStr1 = ba.data();
+				if (tmpStr1) {
+					tempString1 = tmpStr1;
+					if(n.attribute("value") == QString::fromStdString(field.toStdString())) {
+						if(type == 1) return QString(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"gfx/gui/table/default/"+QString::fromUtf8(tempString1.c_str()));
+						else return QString::fromUtf8(tempString1.c_str());
+					}
 				}
 			}
 		}

@@ -75,8 +75,11 @@ void CardDeckStyleReader::readStyleFile(QString file)
 	currentDir = info.absolutePath()+"/";
 #endif
 	QFile myFile(currentFileName);
-	myFile.open(QIODevice::ReadOnly);
-	fileContent = myFile.readAll();
+	if(myFile.open(QIODevice::ReadOnly)) {
+		fileContent = myFile.readAll();
+	} else {
+		return;
+	}
 
 	//start reading the file and fill vars
 	string tempString1("");

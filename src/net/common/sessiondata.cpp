@@ -37,6 +37,7 @@
 #include <net/socket_msg.h>
 #include <net/websocketdata.h>
 #include <gsasl.h>
+#include <boost/asio/ssl.hpp>
 
 using namespace std;
 using boost::asio::ip::tcp;
@@ -63,6 +64,18 @@ SessionData::SessionData(boost::shared_ptr<WebSocketData> webData, SessionId id,
 {
 	m_receiveBuffer.reset(new WebReceiveBuffer);
 	m_sendBuffer.reset(new WebSendBuffer);
+}
+
+SessionData::SessionData(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> sslStream, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService, int /*filler*/)
+    : m_socket(), m_webData(), m_id(id), m_game(), m_state(SessionData::Init), m_clientAddr(),
+      m_receiveBuffer(), m_sendBuffer(), m_readyFlag(false), m_wantsLobbyMsg(true),
+      m_activityTimeoutSec(0), m_activityWarningRemainingSec(0),
+      m_initTimeoutTimer(ioService), m_globalTimeoutTimer(ioService), m_activityTimeoutTimer(ioService),
+      m_callback(cb), m_authSession(NULL), m_curAuthStep(0)
+{
+    m_sslStream = sslStream;
+    m_receiveBuffer.reset(new AsioReceiveBuffer);
+    m_sendBuffer.reset(new AsioSendBuffer);
 }
 
 SessionData::~SessionData()
@@ -117,6 +130,18 @@ boost::shared_ptr<WebSocketData>
 SessionData::GetWebData()
 {
 	return m_webData;
+}
+
+boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> SessionData::GetSslStream()
+{
+    boost::mutex::scoped_lock lock(m_dataMutex);
+    return m_sslStream;
+}
+
+bool SessionData::IsSsl() const
+{
+    boost::mutex::scoped_lock lock(m_dataMutex);
+    return (m_sslStream != nullptr);
 }
 
 bool
@@ -307,10 +332,14 @@ SessionData::SetClientAddr(const std::string &addr)
 void
 SessionData::CloseSocketHandle()
 {
-	if (m_socket) {
-		boost::system::error_code ec;
-		m_socket->close(ec);
-	}
+    if (m_socket) {
+        boost::system::error_code ec;
+        m_socket->close(ec);
+    } else if (m_sslStream) {
+        boost::system::error_code ec;
+        // close underlying socket
+        m_sslStream->lowest_layer().close(ec);
+    }
 }
 
 void

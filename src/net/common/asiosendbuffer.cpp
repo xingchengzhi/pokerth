@@ -31,6 +31,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/asio/ssl.hpp>
 
 #include <net/asiosendbuffer.h>
 #include <net/sessiondata.h>
@@ -40,6 +41,7 @@
 #else
 #include <boost/swap.hpp>
 #endif
+#include <cstring> // memcpy
 
 using namespace std;
 
@@ -74,17 +76,33 @@ AsioSendBuffer::HandleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock
 	}
 }
 
+// Implementierung mit exakt passender Signatur (any_io_executor)
+void
+AsioSendBuffer::HandleWriteSsl(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::any_io_executor>>> sslStream, const boost::system::error_code &error)
+{
+    if (!error) {
+        boost::mutex::scoped_lock lock(dataMutex);
+        curWriteBufUsed = 0;
+        // Weiter senden (ruft die passende SSL-Send-Funktion)
+        AsyncSendNextPacketSsl(sslStream);
+    }
+}
+
 void
 AsioSendBuffer::AsyncSendNextPacket(boost::shared_ptr<SessionData> session)
 {
-	AsyncSendNextPacket(session->GetAsioSocket());
+    if (session->IsSsl()) {
+        AsyncSendNextPacketSsl(session->GetSslStream());
+    } else {
+        AsyncSendNextPacket(session->GetAsioSocket());
+    }
 }
 
 void
 AsioSendBuffer::AsyncSendNextPacket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket)
 {
-	if (!curWriteBufUsed) {
-		// Swap buffers and send data.
+    if (!curWriteBufUsed) {
+        // Swap buffers and send data.
 #if BOOST_VERSION >= 108400
 		boost::core::invoke_swap(curWriteBuf, sendBuf);
 		boost::core::invoke_swap(curWriteBufAllocated, sendBufAllocated);
@@ -94,18 +112,46 @@ AsioSendBuffer::AsyncSendNextPacket(boost::shared_ptr<boost::asio::ip::tcp::sock
 		boost::swap(curWriteBufAllocated, sendBufAllocated);
 		boost::swap(curWriteBufUsed, sendBufUsed);
 #endif
-		if (curWriteBufUsed) {
-			boost::asio::async_write(
+        if (curWriteBufUsed) {
+            boost::asio::async_write(
 				*socket,
 				boost::asio::buffer(curWriteBuf, curWriteBufUsed),
 				boost::bind(&SendBuffer::HandleWrite,
 							shared_from_this(),
 							socket,
 							boost::asio::placeholders::error));
-		} else if (closeAfterSend) {
-			socket->close();
-		}
-	}
+        } else if (closeAfterSend) {
+            socket->close();
+        }
+    }
+}
+
+// AsyncSendNextPacketSsl (angepasste Signatur, falls noch nicht exakt so vorhanden)
+void
+AsioSendBuffer::AsyncSendNextPacketSsl(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::any_io_executor>>> sslStream)
+{
+    if (!curWriteBufUsed) {
+#if BOOST_VERSION >= 108400
+        boost::core::invoke_swap(curWriteBuf, sendBuf);
+        boost::core::invoke_swap(curWriteBufAllocated, sendBufAllocated);
+        boost::core::invoke_swap(curWriteBufUsed, sendBufUsed);
+#else
+        boost::swap(curWriteBuf, sendBuf);
+        boost::swap(curWriteBufAllocated, sendBufAllocated);
+        boost::swap(curWriteBufUsed, sendBufUsed);
+#endif
+        if (curWriteBufUsed) {
+            boost::asio::async_write(
+                *sslStream,
+                boost::asio::buffer(curWriteBuf, curWriteBufUsed),
+                boost::bind(&AsioSendBuffer::HandleWriteSsl,
+                            this,
+                            sslStream,
+                            boost::asio::placeholders::error));
+        } else if (closeAfterSend) {
+            sslStream->lowest_layer().close();
+        }
+    }
 }
 
 void
@@ -122,15 +168,50 @@ AsioSendBuffer::InternalStorePacket(boost::shared_ptr<SessionData> /*session*/, 
 int
 AsioSendBuffer::EncodeToBuf(const void *data, size_t size)
 {
-	// Realloc buffer if necessary.
-	while (GetSendBufLeft() < size) {
-		if (!ReallocSendBuf()) {
-			return -1;
-		}
-	}
+    // Realloc buffer if necessary.
+    while (GetSendBufLeft() < size) {
+        if (!ReallocSendBuf()) {
+            return -1;
+        }
+    }
 
-	AppendToSendBufWithoutCheck((const char*)data, size);
+    AppendToSendBufWithoutCheck((const char*)data, size);
 
-	return 0;
+    return 0;
+}
+
+// --- Buffer helper implementations ----------------------------------------
+size_t
+AsioSendBuffer::GetSendBufLeft() const
+{
+    return (sendBufAllocated > sendBufUsed) ? (sendBufAllocated - sendBufUsed) : 0;
+}
+
+bool
+AsioSendBuffer::ReallocSendBuf()
+{
+    // Grow strategy: double until MAX_SEND_BUF_SIZE
+    size_t newSize = sendBufAllocated ? sendBufAllocated * 2 : SEND_BUF_FIRST_ALLOC_CHUNKSIZE;
+    if (newSize > MAX_SEND_BUF_SIZE)
+        newSize = MAX_SEND_BUF_SIZE;
+    // If already at max or cannot grow further
+    if (newSize <= sendBufAllocated)
+        return false;
+
+    char *newBuf = (char*)realloc(sendBuf, newSize);
+    if (!newBuf)
+        return false;
+
+    sendBuf = newBuf;
+    sendBufAllocated = newSize;
+    return true;
+}
+
+void
+AsioSendBuffer::AppendToSendBufWithoutCheck(const char *data, size_t size)
+{
+    // Caller guarantees enough space.
+    memcpy(sendBuf + sendBufUsed, data, size);
+    sendBufUsed += size;
 }
 

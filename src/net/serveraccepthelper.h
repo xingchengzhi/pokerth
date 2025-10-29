@@ -34,6 +34,7 @@
 #define _SERVERACCEPTHELPER_H_
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <string>
 
 #include <net/serveracceptinterface.h>
@@ -49,125 +50,168 @@ template <typename P>
 class ServerAcceptHelper : public ServerAcceptInterface
 {
 public:
-	typedef typename P::acceptor P_acceptor;
-	typedef typename P::endpoint P_endpoint;
+    typedef typename P::acceptor P_acceptor;
+    typedef typename P::endpoint P_endpoint;
+    typedef typename P::socket P_socket;
 
-	ServerAcceptHelper(ServerCallback &serverCallback, boost::shared_ptr<boost::asio::io_context> ioService, bool tls)
-		: m_ioService(ioService), m_serverCallback(serverCallback)
-	{
-		m_tls = tls;
-		m_acceptor.reset(new P_acceptor(*m_ioService));
-	}
+    ServerAcceptHelper(ServerCallback &serverCallback, boost::shared_ptr<boost::asio::io_context> ioService, bool tls)
+        : m_ioService(ioService), m_serverCallback(serverCallback)
+    {
+        m_tls = tls;
+        m_acceptor.reset(new P_acceptor(*m_ioService));
+        if (m_tls) {
+			try{
+				m_sslContext.reset(new boost::asio::ssl::context(boost::asio::ssl::context::sslv23));
+				m_sslContext->use_certificate_chain_file("../tls/server.crt");
+				m_sslContext->use_private_key_file("../tls/server.key", boost::asio::ssl::context::pem);
+			} catch (std::exception& e) {
+				std::cout << e.what() << std::endl;
+			}
+        }
+    }
 
-	virtual ~ServerAcceptHelper()
-	{
-	}
+    virtual ~ServerAcceptHelper()
+    {
+    }
 
-	// Set the parameters.
-	virtual void Listen(unsigned serverPort, bool ipv6, const std::string &/*logDir*/,
-						boost::shared_ptr<ServerLobbyThread> lobbyThread)
-	{
-		m_lobbyThread = lobbyThread;
+    // Set the parameters.
+    virtual void Listen(unsigned serverPort, bool ipv6, const std::string &/*logDir*/,
+                        boost::shared_ptr<ServerLobbyThread> lobbyThread)
+    {
+        m_lobbyThread = lobbyThread;
 
-		try {
-			InternalListen(serverPort, ipv6);
-		} catch (const PokerTHException &e) {
-			LOG_ERROR(e.what());
-			GetCallback().SignalNetServerError(e.GetErrorId(), e.GetOsErrorCode());
-		} catch (...) {
-			// This is probably an asio exception. Assume that bind failed,
-			// which is the most frequent case.
-			LOG_ERROR("Cannot bind/listen on port.");
-			GetCallback().SignalNetServerError(ERR_SOCK_BIND_FAILED, 0);
-		}
-	}
+        try {
+            InternalListen(serverPort, ipv6);
+        } catch (const PokerTHException &e) {
+            LOG_ERROR(e.what());
+            GetCallback().SignalNetServerError(e.GetErrorId(), e.GetOsErrorCode());
+        } catch (...) {
+            // This is probably an asio exception. Assume that bind failed,
+            // which is the most frequent case.
+            LOG_ERROR("Cannot bind/listen on port.");
+            GetCallback().SignalNetServerError(ERR_SOCK_BIND_FAILED, 0);
+        }
+    }
 
-	virtual void Close()
-	{
-		boost::system::error_code ec;
-		m_acceptor->close(ec);
-		// Ignore any error, because we are terminating.
-	}
+    virtual void Close()
+    {
+        boost::system::error_code ec;
+        m_acceptor->close(ec);
+        // Ignore any error, because we are terminating.
+    }
 protected:
 
-	void InternalListen(unsigned serverPort, bool ipv6)
-	{
-		if (serverPort < 1024)
-			throw ServerException(__FILE__, __LINE__, ERR_SOCK_INVALID_PORT, 0);
+    void InternalListen(unsigned serverPort, bool ipv6)
+    {
+        if (serverPort < 1024)
+            throw ServerException(__FILE__, __LINE__, ERR_SOCK_INVALID_PORT, 0);
 
-		// TODO consider sctp
-		// Prepare Listen.
-		if (ipv6) {
-			m_endpoint.reset(new P_endpoint(P::v6(), serverPort));
-		} else {
-			m_endpoint.reset(new P_endpoint(P::v4(), serverPort));
-		}
+        // TODO consider sctp
+        // Prepare Listen.
+        if (ipv6) {
+            m_endpoint.reset(new P_endpoint(P::v6(), serverPort));
+        } else {
+            m_endpoint.reset(new P_endpoint(P::v4(), serverPort));
+        }
 
-		m_acceptor->open(m_endpoint->protocol());
-		m_acceptor->set_option(typename P::acceptor::reuse_address(true));
-		if (ipv6) { // In IPv6 mode: Be compatible with IPv4.
-			m_acceptor->set_option(boost::asio::ip::v6_only(false));
-		}
-		m_acceptor->bind(*m_endpoint);
-		m_acceptor->listen();
+        m_acceptor->open(m_endpoint->protocol());
+        m_acceptor->set_option(typename P::acceptor::reuse_address(true));
+        if (ipv6) { // In IPv6 mode: Be compatible with IPv4.
+            m_acceptor->set_option(boost::asio::ip::v6_only(false));
+        }
+        m_acceptor->bind(*m_endpoint);
+        m_acceptor->listen();
 
-		if(m_tls){
-			// create ssl socket...
-		}else{
-			// Start first asynchronous Accept.
-			boost::shared_ptr<typename P::socket> newSocket(new typename P::socket(*m_ioService));
-			m_acceptor->async_accept(
-				*newSocket,
-				boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
-							boost::asio::placeholders::error)
-			);
-		}
-	}
+        if(m_tls){
+            boost::shared_ptr<P_socket> newSocket(new P_socket(*m_ioService));
+            m_acceptor->async_accept(
+                *newSocket,
+                boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
+                            boost::asio::placeholders::error)
+            );
+        }else{
+            // Start first asynchronous Accept.
+            boost::shared_ptr<P_socket> newSocket(new P_socket(*m_ioService));
+            m_acceptor->async_accept(
+                *newSocket,
+                boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
+                            boost::asio::placeholders::error)
+            );
+        }
+    }
 
-	void HandleAccept(boost::shared_ptr<typename P::socket> acceptedSocket,
-					  const boost::system::error_code &error)
-	{
-		if (!error) {
-			// Deprecated  non_blocking_io command
-			/*boost::asio::socket_base::non_blocking_io command(true);
-			newSock->io_control(command);*/
-			acceptedSocket->non_blocking(true);
-			acceptedSocket->set_option(typename P::no_delay(true));
-			acceptedSocket->set_option(boost::asio::socket_base::keep_alive(true));
-			boost::shared_ptr<SessionData> sessionData(new SessionData(acceptedSocket, m_lobbyThread->GetNextSessionId(), m_lobbyThread->GetSessionDataCallback(), *m_ioService));
-			GetLobbyThread().AddConnection(sessionData);
+    void HandleAccept(boost::shared_ptr<P_socket> acceptedSocket,
+                      const boost::system::error_code &error)
+    {
+        if (!error) {
+            acceptedSocket->non_blocking(true);
+            acceptedSocket->set_option(typename P::no_delay(true));
+            acceptedSocket->set_option(boost::asio::socket_base::keep_alive(true));
 
-			boost::shared_ptr<typename P::socket> newSocket(new typename P::socket(*m_ioService));
-			m_acceptor->async_accept(
-				*newSocket,
-				boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
-							boost::asio::placeholders::error)
-			);
-		} else {
-			// Accept failed. This is a fatal error.
-			LOG_ERROR("In boost::asio handler: Accept failed.");
-			GetCallback().SignalNetServerError(ERR_SOCK_ACCEPT_FAILED, 0);
-		}
-	}
+            if (m_tls) {
+                typedef boost::asio::ssl::stream<P_socket> ssl_stream_t;
+                boost::shared_ptr<ssl_stream_t> sslStream(new ssl_stream_t(*m_ioService, *m_sslContext));
+                sslStream->next_layer() = std::move(*acceptedSocket);
 
-	ServerCallback &GetCallback()
-	{
-		return m_serverCallback;
-	}
+                sslStream->async_handshake(
+                    boost::asio::ssl::stream_base::server,
+                    boost::bind(&ServerAcceptHelper::HandleHandshake, this, sslStream,
+                                boost::asio::placeholders::error)
+                );
+            } else {
+                boost::shared_ptr<SessionData> sessionData(new SessionData(acceptedSocket, m_lobbyThread->GetNextSessionId(), m_lobbyThread->GetSessionDataCallback(), *m_ioService));
+                GetLobbyThread().AddConnection(sessionData);
 
-	ServerLobbyThread &GetLobbyThread()
-	{
-		return *m_lobbyThread;
-	}
+                boost::shared_ptr<P_socket> newSocket(new P_socket(*m_ioService));
+                m_acceptor->async_accept(
+                    *newSocket,
+                    boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
+                                boost::asio::placeholders::error)
+                );
+            }
+        } else {
+            LOG_ERROR("In boost::asio handler: Accept failed.");
+            GetCallback().SignalNetServerError(ERR_SOCK_ACCEPT_FAILED, 0);
+        }
+    }
+
+    void HandleHandshake(boost::shared_ptr<boost::asio::ssl::stream<P_socket>> sslStream,
+                         const boost::system::error_code &error)
+    {
+        if (!error) {
+            boost::shared_ptr<SessionData> sessionData(new SessionData(sslStream, m_lobbyThread->GetNextSessionId(), m_lobbyThread->GetSessionDataCallback(), *m_ioService, 0));
+            GetLobbyThread().AddConnection(sessionData);
+        } else {
+            LOG_ERROR("TLS handshake failed: " << error.message());
+        }
+
+        boost::shared_ptr<P_socket> newSocket(new P_socket(*m_ioService));
+        m_acceptor->async_accept(
+            *newSocket,
+            boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
+                        boost::asio::placeholders::error)
+        );
+    }
+
+    ServerCallback &GetCallback()
+    {
+        return m_serverCallback;
+    }
+
+    ServerLobbyThread &GetLobbyThread()
+    {
+        return *m_lobbyThread;
+    }
 
 private:
-	boost::shared_ptr<boost::asio::io_context> m_ioService;
-	boost::shared_ptr<P_acceptor> m_acceptor;
-	boost::shared_ptr<P_endpoint> m_endpoint;
-	ServerCallback &m_serverCallback;
-	bool m_tls;
+    boost::shared_ptr<boost::asio::io_context> m_ioService;
+    boost::shared_ptr<P_acceptor> m_acceptor;
+    boost::shared_ptr<P_endpoint> m_endpoint;
+    boost::shared_ptr<boost::asio::ssl::context> m_sslContext;
+    ServerCallback &m_serverCallback;
+    bool m_tls;
 
-	boost::shared_ptr<ServerLobbyThread> m_lobbyThread;
+    boost::shared_ptr<ServerLobbyThread> m_lobbyThread;
 };
 
 #endif

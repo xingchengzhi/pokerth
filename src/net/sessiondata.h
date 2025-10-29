@@ -41,6 +41,7 @@ typedef unsigned SessionId;
 #include <boost/enable_shared_from_this.hpp>
 #include <string>
 #include <vector>
+#include <boost/asio/ssl.hpp>
 
 #include <net/socket_helper.h>
 #include <net/sessiondatacallback.h>
@@ -64,6 +65,7 @@ public:
 	enum State { Init = 1, ReceivingAvatar = 2, Established = 4, Game = 8, Spectating = 16, SpectatorWaiting = 32, Closed = 128 };
 
 	SessionData(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService);
+	SessionData(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> sslStream, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService, int filler);
 	SessionData(boost::shared_ptr<WebSocketData> webData, SessionId id, SessionDataCallback &cb, boost::asio::io_context &ioService, int filler);
 	~SessionData();
 
@@ -129,6 +131,10 @@ public:
 
 	std::string GetRemoteIPAddressFromSocket() const;
 
+	// New helpers
+	bool IsSsl() const;
+	boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> GetSslStream();
+
 protected:
 	SessionData(const SessionData &other);
 	SessionData &operator=(const SessionData &other);
@@ -140,6 +146,7 @@ protected:
 private:
 	boost::shared_ptr<boost::asio::ip::tcp::socket>	m_socket;
 	boost::shared_ptr<WebSocketData>	m_webData;
+	boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> m_sslStream; // new: optional ssl stream
 	const SessionId					m_id;
 	boost::weak_ptr<ServerGame>		m_game;
 	State							m_state;

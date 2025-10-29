@@ -47,39 +47,50 @@ AsioReceiveBuffer::AsioReceiveBuffer()
 void
 AsioReceiveBuffer::StartAsyncRead(boost::shared_ptr<SessionData> session)
 {
-	session->GetAsioSocket()->async_read_some(
-		boost::asio::buffer(recvBuf + recvBufUsed, RECV_BUF_SIZE - recvBufUsed),
-		boost::bind(
-			&ReceiveBuffer::HandleRead,
-			shared_from_this(),
-			session,
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+    if (session->IsSsl()) {
+        session->GetSslStream()->async_read_some(
+            boost::asio::buffer(recvBuf + recvBufUsed, RECV_BUF_SIZE - recvBufUsed),
+            boost::bind(
+                &ReceiveBuffer::HandleRead,
+                shared_from_this(),
+                session,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    } else {
+        session->GetAsioSocket()->async_read_some(
+            boost::asio::buffer(recvBuf + recvBufUsed, RECV_BUF_SIZE - recvBufUsed),
+            boost::bind(
+                &ReceiveBuffer::HandleRead,
+                shared_from_this(),
+                session,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    }
 }
 
 void
 AsioReceiveBuffer::HandleRead(boost::shared_ptr<SessionData> session, const boost::system::error_code &error, size_t bytesRead)
 {
-	if (error != boost::asio::error::operation_aborted) {
-		try {
-			if (!error) {
-				recvBufUsed += bytesRead;
-				ScanPackets(session);
-				ProcessPackets(session);
-				StartAsyncRead(session);
-			} else if (error == boost::asio::error::interrupted || error == boost::asio::error::try_again) {
-				LOG_ERROR("Session " << session->GetId() << " - recv interrupted: " << error);
-				StartAsyncRead(session);
-			} else {
-				LOG_ERROR("Session " << session->GetId() << " - Connection closed: " << error);
-				// On error: Close this session.
-				session->Close();
-			}
-		} catch (const exception &e) {
-			LOG_ERROR("Session " << session->GetId() << " - unhandled exception in HandleRead: " << e.what());
-			throw;
-		}
-	}
+    // unchanged behavior; both TCP and SSL report through error/bytesRead
+    if (error != boost::asio::error::operation_aborted) {
+        try {
+            if (!error) {
+                recvBufUsed += bytesRead;
+                ScanPackets(session);
+                ProcessPackets(session);
+                StartAsyncRead(session);
+            } else if (error == boost::asio::error::interrupted || error == boost::asio::error::try_again) {
+                LOG_ERROR("Session " << session->GetId() << " - recv interrupted: " << error);
+                StartAsyncRead(session);
+            } else {
+                LOG_ERROR("Session " << session->GetId() << " - Connection closed: " << error);
+                session->Close();
+            }
+        } catch (const exception &e) {
+            LOG_ERROR("Session " << session->GetId() << " - unhandled exception in HandleRead: " << e.what());
+            throw;
+        }
+    }
 }
 
 void

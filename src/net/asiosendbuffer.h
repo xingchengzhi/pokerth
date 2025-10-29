@@ -35,6 +35,7 @@
 
 #include <net/sendbuffer.h>
 #include <cstdlib>
+#include <boost/asio/ssl.hpp>
 
 
 #define SEND_BUF_FIRST_ALLOC_CHUNKSIZE		4096
@@ -44,61 +45,34 @@
 class AsioSendBuffer : public SendBuffer
 {
 public:
-	AsioSendBuffer();
-	virtual ~AsioSendBuffer();
+    AsioSendBuffer();
+    virtual ~AsioSendBuffer();
 
-	inline size_t GetSendBufLeft() const
-	{
-		int bytesLeft = (int)(sendBufAllocated - sendBufUsed);
-		return bytesLeft < 0 ? (size_t)0 : (size_t)bytesLeft;
-	}
+    virtual void HandleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> socket, const boost::system::error_code &error);
+    virtual void HandleWriteSsl(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::any_io_executor>>> sslStream, const boost::system::error_code &error);
 
-	inline size_t GetAllocated() const
-	{
-		return sendBufAllocated;
-	}
+    virtual void AsyncSendNextPacket(boost::shared_ptr<SessionData> session);
+    void AsyncSendNextPacket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket);
+    void AsyncSendNextPacketSsl(boost::shared_ptr<boost::asio::ssl::stream<boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::any_io_executor>>> sslStream);
 
-	inline bool ReallocSendBuf()
-	{
-		bool retVal = false;
-		size_t allocAmount = sendBufAllocated * 2;
-		if (0 == allocAmount) {
-			allocAmount = (size_t)SEND_BUF_FIRST_ALLOC_CHUNKSIZE;
-		}
-		if (allocAmount <= MAX_SEND_BUF_SIZE) {
-			char *tempBuf = (char *)std::realloc(sendBuf, allocAmount);
-			if (tempBuf) {
-				sendBuf = tempBuf;
-				sendBufAllocated = allocAmount;
-				retVal = true;
-			}
-		}
-		return retVal;
-	}
+    virtual void InternalStorePacket(boost::shared_ptr<SessionData> session, boost::shared_ptr<NetPacket> packet);
+    int EncodeToBuf(const void *data, size_t size);
 
-	inline void AppendToSendBufWithoutCheck(const char *data, size_t size)
-	{
-		std::memcpy(sendBuf + sendBufUsed, data, size);
-		sendBufUsed += size;
-	}
+    virtual void SetCloseAfterSend();
 
-	virtual void SetCloseAfterSend();
-
-	virtual void AsyncSendNextPacket(boost::shared_ptr<SessionData> session);
-	void AsyncSendNextPacket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket);
-	virtual void InternalStorePacket(boost::shared_ptr<SessionData> session, boost::shared_ptr<NetPacket> packet);
-	int EncodeToBuf(const void *data, size_t size);
-
-	virtual void HandleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> socket, const boost::system::error_code &error);
+protected:
+    size_t GetSendBufLeft() const;
+    bool ReallocSendBuf();
+    void AppendToSendBufWithoutCheck(const char *data, size_t size);
 
 private:
-	char *sendBuf;
-	char *curWriteBuf;
-	size_t sendBufAllocated;
-	size_t sendBufUsed;
-	size_t curWriteBufAllocated;
-	size_t curWriteBufUsed;
-	bool closeAfterSend;
+    char *sendBuf;
+    char *curWriteBuf;
+    size_t sendBufAllocated;
+    size_t sendBufUsed;
+    size_t curWriteBufAllocated;
+    size_t curWriteBufUsed;
+    bool closeAfterSend;
 };
 
 #endif

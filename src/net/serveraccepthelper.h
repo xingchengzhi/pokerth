@@ -43,6 +43,7 @@
 #include <core/loghelper.h>
 #include <game_defs.h>
 #include <gui/guiinterface.h>
+#include <core/loghelper.h>
 
 template <typename P>
 class ServerAcceptHelper : public ServerAcceptInterface
@@ -51,9 +52,10 @@ public:
 	typedef typename P::acceptor P_acceptor;
 	typedef typename P::endpoint P_endpoint;
 
-	ServerAcceptHelper(ServerCallback &serverCallback, boost::shared_ptr<boost::asio::io_context> ioService)
+	ServerAcceptHelper(ServerCallback &serverCallback, boost::shared_ptr<boost::asio::io_context> ioService, bool tls)
 		: m_ioService(ioService), m_serverCallback(serverCallback)
 	{
+		m_tls = tls;
 		m_acceptor.reset(new P_acceptor(*m_ioService));
 	}
 
@@ -109,13 +111,17 @@ protected:
 		m_acceptor->bind(*m_endpoint);
 		m_acceptor->listen();
 
-		// Start first asynchronous Accept.
-		boost::shared_ptr<typename P::socket> newSocket(new typename P::socket(*m_ioService));
-		m_acceptor->async_accept(
-			*newSocket,
-			boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
-						boost::asio::placeholders::error)
-		);
+		if(m_tls){
+			// create ssl socket...
+		}else{
+			// Start first asynchronous Accept.
+			boost::shared_ptr<typename P::socket> newSocket(new typename P::socket(*m_ioService));
+			m_acceptor->async_accept(
+				*newSocket,
+				boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
+							boost::asio::placeholders::error)
+			);
+		}
 	}
 
 	void HandleAccept(boost::shared_ptr<typename P::socket> acceptedSocket,
@@ -159,6 +165,7 @@ private:
 	boost::shared_ptr<P_acceptor> m_acceptor;
 	boost::shared_ptr<P_endpoint> m_endpoint;
 	ServerCallback &m_serverCallback;
+	bool m_tls;
 
 	boost::shared_ptr<ServerLobbyThread> m_lobbyThread;
 };

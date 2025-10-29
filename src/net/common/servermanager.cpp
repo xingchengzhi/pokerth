@@ -76,7 +76,7 @@ ServerManager::Init(unsigned serverPort, unsigned websocketPort, bool ipv6, bool
 	GetLobbyThread().Init(logDir);
 
 	if (proto & TRANSPORT_PROTOCOL_TCP) {
-		boost::shared_ptr<ServerAcceptInterface> tcpAcceptHelper(new ServerAcceptHelper<boost::asio::ip::tcp>(GetGui(), m_ioService));
+		boost::shared_ptr<ServerAcceptInterface> tcpAcceptHelper(new ServerAcceptHelper<boost::asio::ip::tcp>(GetGui(), m_ioService, serverTls));
 		tcpAcceptHelper->Listen(serverPort, ipv6, logDir, m_lobbyThread);
 		m_acceptHelperPool.push_back(tcpAcceptHelper);
 	}

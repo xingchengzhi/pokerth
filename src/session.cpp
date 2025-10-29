@@ -342,6 +342,8 @@ void Session::startNetworkServer(bool dedicated)
 		myConfig->readConfigInt("ServerPort"),
 		myConfig->readConfigInt("ServerWebSocketPort"),
 		myConfig->readConfigInt("ServerUseIpv6") == 1,
+		myConfig->readConfigInt("ServerUseTls"),
+		myConfig->readConfigInt("ServerUseWebSocketTls"),
 		protocol,
 		myQtToolsInterface->stringFromUtf8(myConfig->readConfigString("LogDir")),
 		myQtToolsInterface->stringFromUtf8(myConfig->readConfigString("ServerWebSocketResource")),

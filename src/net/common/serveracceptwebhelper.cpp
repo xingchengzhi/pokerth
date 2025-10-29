@@ -38,11 +38,17 @@
 using namespace std;
 
 ServerAcceptWebHelper::ServerAcceptWebHelper(ServerCallback &serverCallback, boost::shared_ptr<boost::asio::io_context> ioService,
-		const string &webSocketResource, const string &webSocketOrigin)
+		const string &webSocketResource, const string &webSocketOrigin, const bool &websocketTls)
 	: m_ioService(ioService), m_serverCallback(serverCallback),
 	  m_webSocketResource(webSocketResource), m_webSocketOrigin(webSocketOrigin)
 {
-	m_webSocketServer.reset(new server);
+	m_tls = websocketTls;
+	if(m_tls){
+		m_webSocketTlsServer.reset(new tls_server);
+	}else{
+		m_webSocketServer.reset(new server);
+	}
+	
 }
 
 void
@@ -50,23 +56,44 @@ ServerAcceptWebHelper::Listen(unsigned serverPort, bool /*ipv6*/, const std::str
 {
 	m_lobbyThread = lobbyThread;
 
-	// Set logging settings
+
+	if(m_tls){
+		// Set logging settings
 #ifdef QT_NO_DEBUG
-	m_webSocketServer->clear_access_channels(websocketpp::log::alevel::all);
+		m_webSocketTlsServer->clear_access_channels(websocketpp::log::alevel::all);
 #else
-	m_webSocketServer->set_access_channels(websocketpp::log::alevel::all);
+		m_webSocketTlsServer->set_access_channels(websocketpp::log::alevel::all);
 #endif
 
-	m_webSocketServer->init_asio(m_ioService.get());
+		m_webSocketTlsServer->init_asio(m_ioService.get());
 
-	m_webSocketServer->set_validate_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::validate), this, boost::placeholders::_1));
-	m_webSocketServer->set_open_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_open), this, boost::placeholders::_1));
-	m_webSocketServer->set_close_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_close), this, boost::placeholders::_1));
-	m_webSocketServer->set_message_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_message), this, boost::placeholders::_1, boost::placeholders::_2));
-	m_webSocketServer->set_tls_init_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_tls_init), this, boost::placeholders::_1));
+		m_webSocketTlsServer->set_validate_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::validate), this, boost::placeholders::_1));
+		m_webSocketTlsServer->set_open_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_open), this, boost::placeholders::_1));
+		m_webSocketTlsServer->set_close_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_close), this, boost::placeholders::_1));
+		m_webSocketTlsServer->set_message_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_message), this, boost::placeholders::_1, boost::placeholders::_2));
+		m_webSocketTlsServer->set_tls_init_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_tls_init), this, boost::placeholders::_1));
 
-	m_webSocketServer->listen(serverPort);
-	m_webSocketServer->start_accept();
+		m_webSocketTlsServer->listen(serverPort);
+		m_webSocketTlsServer->start_accept();
+	}else{
+		// Set logging settings
+#ifdef QT_NO_DEBUG
+		m_webSocketServer->clear_access_channels(websocketpp::log::alevel::all);
+#else
+		m_webSocketServer->set_access_channels(websocketpp::log::alevel::all);
+#endif
+
+		m_webSocketServer->init_asio(m_ioService.get());
+
+		m_webSocketServer->set_validate_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::validate), this, boost::placeholders::_1));
+		m_webSocketServer->set_open_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_open), this, boost::placeholders::_1));
+		m_webSocketServer->set_close_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_close), this, boost::placeholders::_1));
+		m_webSocketServer->set_message_handler(boost::bind(boost::mem_fn(&ServerAcceptWebHelper::on_message), this, boost::placeholders::_1, boost::placeholders::_2));
+
+		m_webSocketServer->listen(serverPort);
+		m_webSocketServer->start_accept();
+	}
+
 }
 
 void
@@ -136,13 +163,9 @@ context_ptr ServerAcceptWebHelper::on_tls_init(websocketpp::connection_hdl hdl) 
                          asio::ssl::context::no_sslv3 |
                          asio::ssl::context::single_dh_use);
 
-        std::cerr << "Setting certificate chain file" << std::endl;
         ctx->use_certificate_chain_file("../tls/server.crt");
-
-        std::cerr << "Setting private key file" << std::endl;
         ctx->use_private_key_file("../tls/server.key", asio::ssl::context::pem);
         std::string ciphers;
-        std::cerr << "Setting cipher list" << std::endl;
         ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA";
         if (SSL_CTX_set_cipher_list(ctx->native_handle() , ciphers.c_str()) != 1) {
             std::cout << "Error setting cipher list" << std::endl;

@@ -36,7 +36,8 @@
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
-typedef websocketpp::server<websocketpp::config::asio_tls> server;
+typedef websocketpp::server<websocketpp::config::asio> server;
+typedef websocketpp::server<websocketpp::config::asio_tls> tls_server;
 typedef websocketpp::lib::shared_ptr<boost::asio::ssl::context> context_ptr;
 
 enum tls_mode {

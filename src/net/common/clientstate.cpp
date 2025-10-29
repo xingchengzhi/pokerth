@@ -1115,6 +1115,7 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
 				netInit->set_login(InitMessage::authenticatedLogin);
 				// Send authentication user data for challenge/response in init.
 				boost::shared_ptr<SessionData> tmpSession = context.GetSessionData();
+				// @TODO: change client auth mechanism here
 				tmpSession->CreateClientAuthSession(client->GetAuthContext(), context.GetPlayerName(), context.GetPassword());
 				if (!tmpSession->AuthStep(1, ""))
 					throw ClientException(__FILE__, __LINE__, ERR_NET_INVALID_PASSWORD, 0);

@@ -1105,6 +1105,7 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 		if (initMessage.has_avatarhash()) {
 			memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
 		}
+		// @TODO: change server auth mechanism here
 		session->CreateServerAuthSession(m_authContext);
 		if (session->AuthStep(1, inAuthData))
 			playerName = session->AuthGetUser();

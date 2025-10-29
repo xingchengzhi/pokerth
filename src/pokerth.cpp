@@ -298,7 +298,6 @@ int main( int argc, char **argv )
 #else
 	QPixmap pixmap(myAppDataPath + "gfx/gui/misc/welcomepokerth10_desktop.png");
 #endif
-	qDebug("Showing splash screen");
 	StartSplash splash(pixmap);
 	if(!myConfig->readConfigInt("DisableSplashScreenOnStartup")) {
 		splash.show();

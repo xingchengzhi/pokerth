@@ -422,25 +422,29 @@ SessionData::GetPlayerData()
 	return m_playerData;
 }
 
-string
+std::string
 SessionData::GetRemoteIPAddressFromSocket() const
 {
-	boost::mutex::scoped_lock lock(m_dataMutex);
-	string ipAddress;
-	if (m_socket) {
-		boost::system::error_code errCode;
-		tcp::endpoint clientEndpoint = m_socket->remote_endpoint(errCode);
-		if (!errCode) {
-			ipAddress = clientEndpoint.address().to_string();
-		}
-	} else {
-		boost::system::error_code errCode;
-		server::connection_ptr con = m_webData->webSocketServer->get_con_from_hdl(m_webData->webHandle);
-		tcp::endpoint webClientEndpoint = con->get_raw_socket().remote_endpoint(errCode);
-		if (!errCode) {
-			ipAddress = webClientEndpoint.address().to_string();
-		}
-	}
-	return ipAddress;
+    boost::mutex::scoped_lock lock(m_dataMutex);
+    boost::system::error_code ec;
+
+    if (m_sslStream) {
+        try {
+            auto &lowest = m_sslStream->lowest_layer();
+            auto ep = lowest.remote_endpoint(ec);
+            if (!ec) return ep.address().to_string();
+        } catch (...) {
+        }
+    }
+
+    if (m_socket) {
+        try {
+            auto sock = m_socket;
+            auto ep = sock->remote_endpoint(ec);
+            if (!ec) return ep.address().to_string();
+        } catch (...) {
+        }
+    }
+    return std::string();
 }
 

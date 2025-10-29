@@ -251,6 +251,7 @@ ConfigFile::ConfigFile(char *argv0, bool readonly) : noWriteAccess(readonly)
 	configList.push_back(ConfigInfo("InternetServerPort", CONFIG_TYPE_INT, "7234"));
 	configList.push_back(ConfigInfo("InternetServerUseIpv6", CONFIG_TYPE_INT, "0"));
 	configList.push_back(ConfigInfo("InternetServerUseSctp", CONFIG_TYPE_INT, "0"));
+	configList.push_back(ConfigInfo("InternetServerUseTls", CONFIG_TYPE_INT, "0"));
 	configList.push_back(ConfigInfo("UseAvatarServer", CONFIG_TYPE_INT, "0"));
 	configList.push_back(ConfigInfo("AvatarServerAddress", CONFIG_TYPE_STRING, ""));
 	configList.push_back(ConfigInfo("UseInternetGamePassword", CONFIG_TYPE_INT, "0"));

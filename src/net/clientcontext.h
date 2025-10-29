@@ -57,6 +57,14 @@ public:
 	{
 		m_sctp = sctp;
 	}
+	bool GetTls() const
+	{
+		return m_tls;
+	}
+	void SetTls(bool tls)
+	{
+		m_tls = tls;
+	}
 	int GetAddrFamily() const
 	{
 		return m_addrFamily;
@@ -176,6 +184,7 @@ private:
 	boost::shared_ptr<SessionData> m_sessionData;
 	boost::shared_ptr<boost::asio::ip::tcp::resolver> m_resolver;
 	bool				m_sctp;
+	bool				m_tls;
 	int					m_addrFamily;
 	std::string			m_serverAddr;
 	std::string			m_serverPassword;

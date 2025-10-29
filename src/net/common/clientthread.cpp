@@ -30,6 +30,7 @@
  *****************************************************************************/
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <net/socket_helper.h>
 #include <net/clientthread.h>
 #include <net/clientstate.h>
@@ -91,7 +92,8 @@ void
 ClientThread::Init(
 	const string &serverAddress, const string &serverListUrl,
 	const string &serverPassword,
-	bool useServerList, unsigned serverPort, bool ipv6, bool sctp,
+	bool useServerList, unsigned serverPort, 
+	bool ipv6, bool sctp, bool tls,
 	const string &avatarServerAddress, const string &playerName,
 	const string &avatarFile, const string &cacheDir)
 {
@@ -103,6 +105,7 @@ ClientThread::Init(
 	ClientContext &context = GetContext();
 
 	context.SetSctp(sctp);
+	context.SetTls(tls);
 	context.SetAddrFamily(ipv6 ? AF_INET6 : AF_INET);
 	context.SetServerAddr(serverAddress);
 	context.SetServerListUrl(serverListUrl);
@@ -573,7 +576,8 @@ ClientThread::Main()
 	}
 	// Close the socket.
 	boost::system::error_code ec;
-	GetContext().GetSessionData()->GetAsioSocket()->close(ec);
+	if(GetContext().GetSessionData()->GetAsioSocket())
+		GetContext().GetSessionData()->GetAsioSocket()->close(ec);
 	// Set a state which does not do anything.
 	SetState(CLIENT_FINAL_STATE::Instance());
 	// Cancel timers.
@@ -981,34 +985,26 @@ ClientThread::GetCacheServerListFileName()
 void
 ClientThread::CreateContextSession()
 {
-	bool validSocket = false;
-	// TODO sctp
-	try {
-		boost::shared_ptr<tcp::socket> newSock;
-		if (GetContext().GetAddrFamily() == AF_INET6)
-			newSock.reset(new boost::asio::ip::tcp::socket(*m_ioService, tcp::v6()));
-		else
-			newSock.reset(new boost::asio::ip::tcp::socket(*m_ioService, tcp::v4()));
+    ClientContext &context = GetContext();
 
-		// Deprecated  non_blocking_io command
-		/*boost::asio::socket_base::non_blocking_io command(true);
-		newSock->io_control(command);*/
-		newSock->non_blocking(true);
-		newSock->set_option(tcp::no_delay(true));
-		newSock->set_option(boost::asio::socket_base::keep_alive(true));
+    boost::shared_ptr<boost::asio::ip::tcp::resolver> resolver(new boost::asio::ip::tcp::resolver(*m_ioService));
+    context.SetResolver(resolver);
 
-		GetContext().SetSessionData(boost::shared_ptr<SessionData>(new SessionData(
-										newSock,
-										SESSION_ID_GENERIC,
-										*this,
-										*m_ioService)));
-		GetContext().SetResolver(boost::shared_ptr<boost::asio::ip::tcp::resolver>(
-									 new boost::asio::ip::tcp::resolver(*m_ioService)));
-		validSocket = true;
-	} catch (...) {
-	}
-	if (!validSocket)
-		throw ClientException(__FILE__, __LINE__, ERR_SOCK_CREATION_FAILED, 0);
+    if (context.GetTls()) {
+        boost::shared_ptr<boost::asio::ssl::context> sslCtx(
+            new boost::asio::ssl::context(boost::asio::ssl::context::sslv23_client));
+        sslCtx->set_verify_mode(boost::asio::ssl::verify_none);
+
+        boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> sslStream(
+            new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(*m_ioService, *sslCtx));
+
+        boost::shared_ptr<SessionData> session(new SessionData(sslStream, SESSION_ID_GENERIC, *this, *m_ioService, 0));
+        context.SetSessionData(session);
+    } else {
+        boost::shared_ptr<boost::asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(*m_ioService));
+        boost::shared_ptr<SessionData> session(new SessionData(sock, SESSION_ID_GENERIC, *this, *m_ioService));
+        context.SetSessionData(session);
+    }
 }
 
 ClientState &

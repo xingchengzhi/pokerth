@@ -197,6 +197,7 @@ void Session::startInternetClient()
 		myConfig->readConfigInt("InternetServerPort"),
 		myConfig->readConfigInt("InternetServerUseIpv6") == 1,
 		myConfig->readConfigInt("InternetServerUseSctp") == 1,
+		myConfig->readConfigInt("InternetServerUseTls") == 1,
 		useAvatarServer ? myConfig->readConfigString("AvatarServerAddress") : "",
 		myConfig->readConfigString("MyName"),
 		myConfig->readConfigString("MyAvatar"),
@@ -221,6 +222,7 @@ void Session::startNetworkClient(const string &serverAddress, unsigned serverPor
 		serverPort,
 		ipv6,
 		sctp,
+		false,
 		"", // no avatar server
 		myConfig->readConfigString("MyName"),
 		myConfig->readConfigString("MyAvatar"),
@@ -251,6 +253,7 @@ void Session::startNetworkClientForLocalServer(const GameData &gameData)
 		myConfig->readConfigInt("ServerPort"),
 		useIpv6,
 		myConfig->readConfigInt("ServerUseSctp") == 1,
+		false,
 		"", // no avatar server
 		myConfig->readConfigString("MyName"),
 		myConfig->readConfigString("MyAvatar"),

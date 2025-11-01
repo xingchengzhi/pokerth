@@ -14,9 +14,7 @@ Linux (outdated! ... update follows):
   (version >= 1.83, latest always recommended)  --> http://www.boost.org/
 - libSDL_mixer, libSDL  --> http://www.libsdl.org/
 - libSQLite3 --> http://sqlite.org/
-- libtinyxml > 2.0 --> http://www.sourceforge.net/projects/tinyxml
 - protoc >= 2.3.0 (during build), libprotobuf >= 2.3.0 -> https://github.com/google/protobuf
-- For the server: libircclient 1.3 --> http://www.sourceforge.net/projects/libircclient/
 
 Windows (outdated):
 see docs/build_mingw_windows.txt
@@ -27,9 +25,12 @@ Basic Installation
 
 Linux:
 
-  1. Type "cd path/to/the/sources". Then type:
+  Type "cd path/to/the/sources". Then type:
 
-    `cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja`
+  0. if you are out for a clean build & testing binaries without installation call:
+    `bash clean_build.sh` ... it'll cleanup & copy tls cert and data-dir into build dir.
+
+  1. Type `cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja`
 
   2. Type `cmake --build ./build --config Release --target all --` to compile all targets.
       ... you can specify the following binary build targets instead:

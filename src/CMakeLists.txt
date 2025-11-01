@@ -52,6 +52,6 @@ target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml)
 
-target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER)
+target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER HAVE_OPENSSL)
 
 install(TARGETS pokerth_dedicated_server DESTINATION bin OPTIONAL COMPONENT pokerth_dedicated_server)

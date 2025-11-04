@@ -5,8 +5,8 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS . gui_800x480)
 set(POKERTH_CLIENT_SRC ../../pokerth.cpp
     ../../session.cpp 
     ../../engine/local_engine/replay.cpp
-    ../../core/common/loghelper_client.cpp
-    ../../net/common/net_helper_client.cpp
+    ../../core/loghelper_client.cpp
+    ../../net/net_helper_client.cpp
     chattools/chattools.cpp
     guiwrapper.cpp
     qttools/qttoolswrapper.cpp
@@ -66,12 +66,7 @@ endif()
 
 file(GLOB QTSINGLEAPPLICATION_SRC ../../third_party/singleapplication/*.cpp)
 
-# fix AUTOMOC issue: include used header files
-set(POKERTH_CLIENT_NET_HEADERS 
-    ../../net/net_helper.h
-)
-
-add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${POKERTH_CLIENT_NET_HEADERS}" "${QTSINGLEAPPLICATION_SRC}")
+add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
 
 target_include_directories(pokerth_client PUBLIC ../../third_party/qtsingleapplication ../../third_party/qtlockedfile)
 target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)

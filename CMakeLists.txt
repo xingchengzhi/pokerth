@@ -65,10 +65,10 @@ set(POKERTH_LIB_SRC
     src/engine/playerinterface.cpp 
     src/engine/berointerface.cpp 
     src/gui/guiinterface.cpp 
-    src/core/common/thread.cpp 
-    src/core/common/crypthelper.cpp 
-    src/core/common/avatarmanager.cpp 
-    src/core/common/pokerthexception.cpp 
+    src/core/thread.cpp 
+    src/core/crypthelper.cpp 
+    src/core/avatarmanager.cpp 
+    src/core/pokerthexception.cpp 
     src/engine/local_engine/cardsvalue.cpp 
     src/engine/local_engine/localboard.cpp 
     src/engine/local_engine/localenginefactory.cpp 
@@ -88,36 +88,36 @@ set(POKERTH_LIB_SRC
     src/engine/network_engine/clienthand.cpp 
     src/engine/network_engine/clientplayer.cpp 
     src/engine/network_engine/clientbero.cpp 
-    src/net/common/chatcleanermanager.cpp 
-    src/net/common/chatcleanercallback.cpp 
-    src/net/common/clientcallback.cpp 
-    src/net/common/clientcontext.cpp 
-    src/net/common/clientstate.cpp 
-    src/net/common/clientthread.cpp 
-    src/net/common/downloadhelper.cpp 
-    src/net/common/downloaderthread.cpp 
-    src/net/common/netpacket.cpp 
-    src/net/common/netpacketvalidator.cpp 
-    src/net/common/senderhelper.cpp 
-    src/net/common/sendercallback.cpp 
-    src/net/common/servercallback.cpp 
-    src/net/common/sessiondata.cpp 
-    src/net/common/sessiondatacallback.cpp 
-    src/net/common/sessionmanager.cpp 
-    src/net/common/socket_startup.cpp 
-    src/net/common/clientexception.cpp 
-    src/net/common/netcontext.cpp 
-    src/net/common/netexception.cpp 
-    src/net/common/transferhelper.cpp 
-    src/net/common/uploaderthread.cpp 
-    src/net/common/uploadhelper.cpp 
-    src/net/common/sendbuffer.cpp 
-    src/net/common/asiosendbuffer.cpp 
-    src/net/common/websendbuffer.cpp 
-    src/net/common/receivebuffer.cpp 
-    src/net/common/asioreceivebuffer.cpp 
-    src/net/common/webreceivebuffer.cpp 
-    src/net/common/uploadcallback.cpp
+    src/net/chatcleanermanager.cpp 
+    src/net/chatcleanercallback.cpp 
+    src/net/clientcallback.cpp 
+    src/net/clientcontext.cpp 
+    src/net/clientstate.cpp 
+    src/net/clientthread.cpp 
+    src/net/downloadhelper.cpp 
+    src/net/downloaderthread.cpp 
+    src/net/netpacket.cpp 
+    src/net/netpacketvalidator.cpp 
+    src/net/senderhelper.cpp 
+    src/net/sendercallback.cpp 
+    src/net/servercallback.cpp 
+    src/net/sessiondata.cpp 
+    src/net/sessiondatacallback.cpp 
+    src/net/sessionmanager.cpp 
+    src/net/socket_startup.cpp 
+    src/net/clientexception.cpp 
+    src/net/netcontext.cpp 
+    src/net/netexception.cpp 
+    src/net/transferhelper.cpp 
+    src/net/uploaderthread.cpp 
+    src/net/uploadhelper.cpp 
+    src/net/sendbuffer.cpp 
+    src/net/asiosendbuffer.cpp 
+    src/net/websendbuffer.cpp 
+    src/net/receivebuffer.cpp 
+    src/net/asioreceivebuffer.cpp 
+    src/net/webreceivebuffer.cpp 
+    src/net/uploadcallback.cpp
     src/gui/generic/serverguiwrapper.cpp 
     src/gui/qttoolsinterface.cpp)
 
@@ -127,41 +127,7 @@ else()
     list(APPEND POKERTH_LIB_SRC "src/engine/local_engine/tools.cpp")
 endif()
 
-# fix AUTOMOC issue: include used header files
-set(POKERTH_LIB_NET_HEADERS 
-    src/net/chatcleanermanager.h 
-    src/net/chatcleanercallback.h 
-    src/net/clientcallback.h 
-    src/net/clientcontext.h 
-    src/net/clientstate.h 
-    src/net/clientthread.h 
-    src/net/downloadhelper.h 
-    src/net/downloaderthread.h 
-    src/net/netpacket.h 
-    src/net/netpacketvalidator.h 
-    src/net/senderhelper.h 
-    src/net/sendercallback.h
-    src/net/servercallback.h  
-    src/net/sessiondata.h 
-    src/net/sessiondatacallback.h 
-    src/net/sessionmanager.h 
-    src/net/socket_startup.h 
-    src/net/clientexception.h 
-    src/net/netcontext.h 
-    src/net/netexception.h 
-    src/net/transferhelper.h 
-    src/net/uploaderthread.h 
-    src/net/uploadhelper.h
-    src/net/sendbuffer.h 
-    src/net/asiosendbuffer.h 
-    src/net/websendbuffer.h 
-    src/net/receivebuffer.h 
-    src/net/asioreceivebuffer.h 
-    src/net/webreceivebuffer.h 
-    src/net/uploadcallback.h
-)
-
-add_library(pokerth_lib STATIC ${POKERTH_LIB_SRC} ${POKERTH_LIB_NET_HEADERS})
+add_library(pokerth_lib STATIC ${POKERTH_LIB_SRC})
 
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_lib PUBLIC

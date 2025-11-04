@@ -23,34 +23,20 @@ set(POKERTH_OFFICIAL_SERVER_SRC
     dbidmanager.cpp
     ../gui/qt/qttools/nonqttoolswrapper.cpp
     ../gui/qt/qttools/nonqthelper/nonqthelper.cpp
-    ../core/common/loghelper_server.cpp
-    ../net/common/net_helper_server.cpp
-    ../net/common/servermanager.cpp
-    ../net/common/servermanagerfactoryserver.cpp
-    ../net/common/serverlobbythread.cpp
-    ../net/common/serverexception.cpp 
-    ../net/common/serveracceptinterface.cpp 
-    ../net/common/serveracceptwebhelper.cpp 
-    ../net/common/servergame.cpp 
-    ../net/common/servergamestate.cpp 
-    ../net/common/serverbanmanager.cpp 
+    ../core/loghelper_server.cpp
+    ../net/net_helper_server.cpp
+    ../net/servermanager.cpp
+    ../net/servermanagerfactoryserver.cpp
+    ../net/serverlobbythread.cpp
+    ../net/serverexception.cpp 
+    ../net/serveracceptinterface.cpp 
+    ../net/serveracceptwebhelper.cpp 
+    ../net/servergame.cpp 
+    ../net/servergamestate.cpp 
+    ../net/serverbanmanager.cpp 
     ../core/linux/convhelper.cpp)
 
-# fix AUTOMOC issue: include used header files
-set(POKERTH_OFFICIAL_SERVER_NET_HEADERS 
-    ../net/net_helper.h
-    ../net/servermanager.h
-    ../net/servermanagerfactory.h
-    ../net/serverlobbythread.h
-    ../net/serverexception.h 
-    ../net/serveracceptinterface.h 
-    ../net/serveracceptwebhelper.h 
-    ../net/servergame.h 
-    ../net/servergamestate.h 
-    ../net/serverbanmanager.h 
-)
-
-add_executable(pokerth_official_server ${POKERTH_OFFICIAL_SERVER_SRC} ${POKERTH_OFFICIAL_SERVER_NET_HEADERS} )
+add_executable(pokerth_official_server ${POKERTH_OFFICIAL_SERVER_SRC} )
 
 target_include_directories(pokerth_official_server PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_official_server PUBLIC "${MYSQLPP_INCLUDE_DIR}")

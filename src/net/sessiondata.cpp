@@ -36,7 +36,6 @@
 #include <net/websendbuffer.h>
 #include <net/socket_msg.h>
 #include <net/websocketdata.h>
-#include <gsasl.h>
 #include <boost/asio/ssl.hpp>
 
 using namespace std;
@@ -149,97 +148,73 @@ SessionData::CreateServerAuthSession(Gsasl *context)
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
 	InternalClearAuthSession();
-	int errorCode;
-	errorCode = gsasl_server_start(context, "SCRAM-SHA-1", &m_authSession);
-	return errorCode == GSASL_OK;
+	m_authSession = NULL;
+	m_curAuthStep = 0;
+	return true;
 }
 
 bool
 SessionData::CreateClientAuthSession(Gsasl *context, const string &userName, const string &password)
 {
-	bool retVal = false;
 	boost::mutex::scoped_lock lock(m_dataMutex);
 	InternalClearAuthSession();
-	int errorCode;
-	errorCode = gsasl_client_start(context, "SCRAM-SHA-1", &m_authSession);
-	if (errorCode == GSASL_OK) {
-		gsasl_property_set(m_authSession, GSASL_AUTHID, userName.c_str());
-		gsasl_property_set(m_authSession, GSASL_PASSWORD, password.c_str());
-
-		retVal = true;
-	}
-	return retVal;
+	m_password = password;
+	m_authSession = NULL;
+	m_curAuthStep = 0;
+	(void)context; (void)userName;
+	return true;
 }
 
 bool
 SessionData::AuthStep(int stepNum, const std::string &inData)
 {
-	bool retVal = false;
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	if (m_authSession && stepNum == m_curAuthStep + 1) {
+	if (stepNum == m_curAuthStep + 1) {
 		m_curAuthStep = stepNum;
-		char *tmpOut;
-		size_t tmpOutSize;
-		int errorCode = gsasl_step(m_authSession, inData.c_str(), inData.length(), &tmpOut, &tmpOutSize);
-		if (errorCode == GSASL_NEEDS_MORE) {
-			m_nextGsaslMsg = string(tmpOut, tmpOutSize);
-			retVal = true;
-		} else if (errorCode == GSASL_OK && stepNum != 1) {
-			m_nextGsaslMsg = string(tmpOut, tmpOutSize);
-			retVal = true;
-			InternalClearAuthSession();
-		}
-		gsasl_free(tmpOut);
+		m_nextGsaslMsg.clear();
+		return true;
 	}
-	return retVal;
+	return false;
 }
 
 string
 SessionData::AuthGetUser() const
 {
-	string retStr;
-	if (m_authSession) {
-		const char *tmpUser = gsasl_property_fast(m_authSession, GSASL_AUTHID);
-		if (tmpUser)
-			retStr = tmpUser;
-	}
-	return retStr;
+	return std::string();
 }
 
 void
 SessionData::AuthSetPassword(const std::string &password)
 {
-	if (m_authSession)
-		gsasl_property_set(m_authSession, GSASL_PASSWORD, password.c_str());
 	m_password = password;
 }
 
 string
 SessionData::AuthGetPassword() const
 {
-	return m_password;
+    return m_password;
 }
 
 string
 SessionData::AuthGetNextOutMsg() const
 {
-	return m_nextGsaslMsg;
+    boost::mutex::scoped_lock lock(m_dataMutex);
+    return m_nextGsaslMsg;
 }
 
 int
 SessionData::AuthGetCurStepNum() const
 {
-	return m_curAuthStep;
+    boost::mutex::scoped_lock lock(m_dataMutex);
+    return m_curAuthStep;
 }
 
 void
 SessionData::InternalClearAuthSession()
 {
-	if (m_authSession) {
-		gsasl_finish(m_authSession);
-		m_authSession = NULL;
-		m_curAuthStep = 0;
-	}
+    m_authSession = NULL;
+    m_curAuthStep = 0;
+    m_nextGsaslMsg.clear();
 }
 
 void

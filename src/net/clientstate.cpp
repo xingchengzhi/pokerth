@@ -1111,20 +1111,13 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             }
             // If the player is not a guest, authenticate.
             else {
-                // AUTHENTICATED LOGIN (PLAINTEXT SENT IN clientUserData)
-                // Store password in context and send it in InitMessage.clientUserData.
-                // Server will compare this plaintext against the DB secret (requires TLS in production).
                 context.SetPassword(loginData.password);
                 netInit->set_login(InitMessage::authenticatedLogin);
                 netInit->set_nickname(context.GetPlayerName());
-
-                // If a password is present, put it into clientUserData (proto field: bytes clientUserData = 7).
-                // Using bytes keeps compatibility with existing SCRAM payload usage.
                 if (!context.GetPassword().empty()) {
                     netInit->set_clientuserdata(context.GetPassword());
                 }
 
-                // Send init and wait for InitAck (session id).
                 client->GetSender().Send(context.GetSessionData(), init);
                 client->SetState(ClientStateWaitSession::Instance());
             }

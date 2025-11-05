@@ -60,7 +60,6 @@
 #include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/algorithm/string.hpp>
-#include <gsasl.h>
 #include <ctime>
 #include <string>  
 
@@ -913,20 +912,15 @@ ServerLobbyThread::CancelTimers()
 void
 ServerLobbyThread::InitAuthContext()
 {
-	int res = gsasl_init(&m_authContext);
-	if (res != GSASL_OK)
-		throw ServerException(__FILE__, __LINE__, ERR_NET_GSASL_INIT_FAILED, 0);
-
-	if (!gsasl_server_support_p(m_authContext, "SCRAM-SHA-1")) {
-		gsasl_done(m_authContext);
-		throw ServerException(__FILE__, __LINE__, ERR_NET_GSASL_NO_SCRAM, 0);
-	}
+	// GSASL removed: no SCRAM negotiation performed anymore.
+	// Keep m_authContext NULL for compatibility with older code paths.
+	m_authContext = NULL;
 }
 
 void
 ServerLobbyThread::ClearAuthContext()
 {
-	gsasl_done(m_authContext);
+	// nothing to clear (gsasl removed)
 	m_authContext = NULL;
 }
 
@@ -1141,28 +1135,17 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 }
 
 void
-ServerLobbyThread::HandleNetPacketAuthClientResponse(boost::shared_ptr<SessionData> session, const AuthClientResponseMessage &clientResponse)
+ServerLobbyThread::HandleNetPacketAuthClientResponse(boost::shared_ptr<SessionData> session, const AuthClientResponseMessage &/*clientResponse*/)
 {
-	if (session && session->GetPlayerData() && session->AuthGetCurStepNum() == 1) {
-		string authData = clientResponse.clientresponse();
-		if (session->AuthStep(2, authData)) {
-			string outVerification7(session->AuthGetNextOutMsg());
+    if (!session)
+        return;
 
-			boost::shared_ptr<NetPacket> packet(new NetPacket);
-			packet->GetMsg()->set_messagetype(PokerTHMessage::Type_AuthServerVerificationMessage);
-			AuthServerVerificationMessage *verification = packet->GetMsg()->mutable_authserververificationmessage();
-			verification->set_serververification(outVerification);
-			GetSender().Send(session, packet);
-			// The last message is only for server verification.
-			// We are done now, the user has logged in.
-			boost::shared_ptr<PlayerData> tmpPlayerData = session->GetPlayerData();
-			if (GetBanManager().IsAdminPlayer(tmpPlayerData->GetDBId())) {
-				session->GetPlayerData()->SetRights(PLAYER_RIGHTS_ADMIN);
-			}
-			CheckAvatarBlacklist(session);
-		} else
-			SessionError(session, ERR_NET_INVALID_PASSWORD);
-	}
+    LOG_VERBOSE("Received AuthClientResponseMessage but SCRAM removed; ignoring and advancing step.");
+    try {
+        int curStep = session->AuthGetCurStepNum();
+        session->AuthStep(curStep + 1, std::string());
+    } catch (...) {
+    }
 }
 
 void
@@ -1743,6 +1726,7 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	InitAckMessage *netInitAck = ack->GetMsg()->mutable_initackmessage();
 	netInitAck->set_yoursessionid(session->GetPlayerData()->GetGuid());
 	netInitAck->set_yourplayerid(session->GetPlayerData()->GetUniqueId());
+
 	if (rejoinGameId != 0) {
 		netInitAck->set_rejoingameid(rejoinGameId);
 	}

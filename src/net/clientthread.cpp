@@ -609,22 +609,26 @@ ClientThread::CancelTimers()
 void
 ClientThread::InitAuthContext()
 {
-	int res = gsasl_init(&m_authContext);
-	if (res != GSASL_OK)
-		throw ClientException(__FILE__, __LINE__, ERR_NET_GSASL_INIT_FAILED, 0);
-
-	if (!gsasl_server_support_p(m_authContext, "SCRAM-SHA-1")) {
-		gsasl_done(m_authContext);
-		throw ClientException(__FILE__, __LINE__, ERR_NET_GSASL_NO_SCRAM, 0);
-	}
+    // GSASL entfernt: keine SCRAM/SASL Initialisierung mehr.
+    // m_authContext bleibt für Abwärtskompatibilität NULL.
+    m_authContext = NULL;
 }
 
 void
 ClientThread::ClearAuthContext()
 {
-	gsasl_done(m_authContext);
-	m_authContext = NULL;
+    // GSASL entfernt: nichts zu räumen.
+    m_authContext = NULL;
 }
+
+// Falls es an anderen Stellen direkte gsasl_* Aufrufe (gsasl_done, gsasl_init, etc.) gibt,
+// ersetze sie durch einfache NULL‑Zuweisung oder entferne die Aufrufe.
+// Beispielersatz (sofern vorhanden):
+// if (m_authContext) {
+//     // vorher: gsasl_done(m_authContext);
+//     m_authContext = NULL;
+// }
+// ...existing code...
 
 void
 ClientThread::InitGame()

@@ -24,11 +24,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FindBoost)
-include(FindGSasl)
+# include(FindGSasl)
 include(FindMySQL)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
-find_package(GSasl REQUIRED)
+# find_package(GSasl REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(SDL REQUIRED)
@@ -144,7 +144,7 @@ target_include_directories(pokerth_lib PUBLIC
     src/third_party/websocketpp)
 
 target_link_libraries(pokerth_lib PUBLIC "${SQLite3_LIBRARIES}")
-target_link_libraries(pokerth_lib PUBLIC "${GSASL_LIBRARIES}")
+# target_link_libraries(pokerth_lib PUBLIC "${GSASL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml)

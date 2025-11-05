@@ -8,7 +8,6 @@ Linux (outdated! ... update follows):
 - zlib version >= 1.2.3  --> http://www.zlib.net/
 - libcurl version >= 7.16  --> http://curl.haxx.se/
 - libgcrypt (e.g. version 1.4.6)  --> http://www.gnu.org/software/libgcrypt/
-- libgsasl version >= 1.4 --> http://www.gnu.org/software/gsasl/
 - libboost_thread, libboost_filesystem, libboost_datetime, libboost_program_options,
   libboost_iostreams, libboost_asio, libboost_regex, libboost_random, libboost_uuid
   (version >= 1.83, latest always recommended)  --> http://www.boost.org/

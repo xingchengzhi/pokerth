@@ -609,8 +609,6 @@ ClientThread::CancelTimers()
 void
 ClientThread::InitAuthContext()
 {
-    // GSASL entfernt: keine SCRAM/SASL Initialisierung mehr.
-    // m_authContext bleibt für Abwärtskompatibilität NULL.
     m_authContext = NULL;
 }
 
@@ -620,15 +618,6 @@ ClientThread::ClearAuthContext()
     // GSASL entfernt: nichts zu räumen.
     m_authContext = NULL;
 }
-
-// Falls es an anderen Stellen direkte gsasl_* Aufrufe (gsasl_done, gsasl_init, etc.) gibt,
-// ersetze sie durch einfache NULL‑Zuweisung oder entferne die Aufrufe.
-// Beispielersatz (sofern vorhanden):
-// if (m_authContext) {
-//     // vorher: gsasl_done(m_authContext);
-//     m_authContext = NULL;
-// }
-// ...existing code...
 
 void
 ClientThread::InitGame()

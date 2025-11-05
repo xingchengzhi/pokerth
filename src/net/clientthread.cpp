@@ -1006,14 +1006,12 @@ ClientThread::CreateContextSession()
             new boost::asio::ssl::context(boost::asio::ssl::context::sslv23_client));
         sslCtx->set_verify_mode(boost::asio::ssl::verify_none);
 
-        // Info-Callback auf SSL_CTX registrieren, damit Handshake-Status geloggt wird
-        SSL_CTX_set_info_callback(sslCtx->native_handle(), &SslInfoCallback);
+        // SSL_CTX_set_info_callback(sslCtx->native_handle(), &SslInfoCallback);
 
         boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> sslStream(
             new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(*m_ioService, *sslCtx));
 
-        // Info-Callback auf das konkrete SSL-Objekt setzen (Verbindungs-spezifisch)
-        SSL_set_info_callback(sslStream->native_handle(), &SslInfoCallback);
+        // SSL_set_info_callback(sslStream->native_handle(), &SslInfoCallback);
 
         boost::shared_ptr<SessionData> session(new SessionData(sslStream, SESSION_ID_GENERIC, *this, *m_ioService, 0));
         context.SetSessionData(session);

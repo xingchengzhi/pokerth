@@ -56,6 +56,7 @@
 #include <memory>
 #include <cassert>
 #include <gsasl.h>
+#include <openssl/ssl.h>
 
 #define TEMP_AVATAR_FILENAME	"avatar.tmp"
 #define TEMP_GUID_FILENAME		"guid.tmp"
@@ -982,6 +983,16 @@ ClientThread::GetCacheServerListFileName()
 	return fileName;
 }
 
+// Debug callback für SSL Handshake / Zustands-Änderungen
+void ClientThread::SslInfoCallback(const SSL *ssl, int where, int ret)
+{
+    const char *state = SSL_state_string_long((SSL*)ssl);
+    std::ostringstream ss;
+    ss << "SSL handshake info: state=" << (state ? state : "unknown")
+       << " where=" << where << " ret=" << ret;
+    LOG_MSG(ss.str());
+}
+
 void
 ClientThread::CreateContextSession()
 {
@@ -995,8 +1006,14 @@ ClientThread::CreateContextSession()
             new boost::asio::ssl::context(boost::asio::ssl::context::sslv23_client));
         sslCtx->set_verify_mode(boost::asio::ssl::verify_none);
 
+        // Info-Callback auf SSL_CTX registrieren, damit Handshake-Status geloggt wird
+        SSL_CTX_set_info_callback(sslCtx->native_handle(), &SslInfoCallback);
+
         boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> sslStream(
             new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(*m_ioService, *sslCtx));
+
+        // Info-Callback auf das konkrete SSL-Objekt setzen (Verbindungs-spezifisch)
+        SSL_set_info_callback(sslStream->native_handle(), &SslInfoCallback);
 
         boost::shared_ptr<SessionData> session(new SessionData(sslStream, SESSION_ID_GENERIC, *this, *m_ioService, 0));
         context.SetSessionData(session);

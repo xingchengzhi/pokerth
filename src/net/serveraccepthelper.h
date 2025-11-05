@@ -36,6 +36,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <string>
+#include <openssl/ssl.h>
+#include <sstream>
 
 #include <net/serveracceptinterface.h>
 #include <net/serverlobbythread.h>
@@ -60,18 +62,20 @@ public:
         m_tls = tls;
         m_acceptor.reset(new P_acceptor(*m_ioService));
         if (m_tls) {
-			try{
-				m_sslContext.reset(new boost::asio::ssl::context(boost::asio::ssl::context::sslv23));
-				m_sslContext->use_certificate_chain_file("../tls/server.crt");
-				m_sslContext->use_private_key_file("../tls/server.key", boost::asio::ssl::context::pem);
+            try{
+                m_sslContext.reset(new boost::asio::ssl::context(boost::asio::ssl::context::sslv23));
+                m_sslContext->use_certificate_chain_file("../tls/server.crt");
+                m_sslContext->use_private_key_file("../tls/server.key", boost::asio::ssl::context::pem);
                 std::string ciphers;
                 ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA";
                 if (SSL_CTX_set_cipher_list(m_sslContext->native_handle() , ciphers.c_str()) != 1) {
                     std::cout << "Error setting cipher list" << std::endl;
                 }
-			} catch (std::exception& e) {
-				std::cout << e.what() << std::endl;
-			}
+                // Info-Callback auf SSL_CTX registrieren, damit Handshake-Status geloggt wird
+                SSL_CTX_set_info_callback(m_sslContext->native_handle(), &SslServerInfoCallback);
+            } catch (std::exception& e) {
+                std::cout << e.what() << std::endl;
+            }
         }
     }
 
@@ -158,6 +162,10 @@ protected:
                 boost::shared_ptr<ssl_stream_t> sslStream(new ssl_stream_t(*m_ioService, *m_sslContext));
                 sslStream->next_layer() = std::move(*acceptedSocket);
 
+                // Info-Callback auf das konkrete SSL-Objekt setzen (Verbindungs-spezifisch)
+                SSL_set_info_callback(sslStream->native_handle(), &SslServerInfoCallback);
+                LOG_MSG("Starting TLS handshake for accepted connection.");
+
                 sslStream->async_handshake(
                     boost::asio::ssl::stream_base::server,
                     boost::bind(&ServerAcceptHelper::HandleHandshake, this, sslStream,
@@ -184,6 +192,7 @@ protected:
                          const boost::system::error_code &error)
     {
         if (!error) {
+            LOG_MSG("TLS handshake succeeded.");
             boost::shared_ptr<SessionData> sessionData(new SessionData(sslStream, m_lobbyThread->GetNextSessionId(), m_lobbyThread->GetSessionDataCallback(), *m_ioService, 0));
             GetLobbyThread().AddConnection(sessionData);
         } else {
@@ -196,6 +205,16 @@ protected:
             boost::bind(&ServerAcceptHelper::HandleAccept, this, newSocket,
                         boost::asio::placeholders::error)
         );
+    }
+
+    // Debug-Callback für SSL Handshake / Zustands-Änderungen
+    static inline void SslServerInfoCallback(const SSL *ssl, int where, int ret)
+    {
+        const char *state = SSL_state_string_long((SSL*)ssl);
+        std::ostringstream ss;
+        ss << "SSL handshake info: state=" << (state ? state : "unknown")
+        << " where=" << where << " ret=" << ret;
+        LOG_MSG(ss.str());
     }
 
     ServerCallback &GetCallback()

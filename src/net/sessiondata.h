@@ -146,7 +146,7 @@ protected:
 private:
 	boost::shared_ptr<boost::asio::ip::tcp::socket>	m_socket;
 	boost::shared_ptr<WebSocketData>	m_webData;
-	boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> m_sslStream; // new: optional ssl stream
+	boost::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> m_sslStream;
 	const SessionId					m_id;
 	boost::weak_ptr<ServerGame>		m_game;
 	State							m_state;

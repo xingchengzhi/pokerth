@@ -251,6 +251,7 @@ void settingsDialogImpl::prepareDialog()
 	lineEdit_InternetServerPassword->setText(QString::fromUtf8(myConfig->readConfigString("ServerPassword").c_str()));
 	spinBox_InternetServerPort->setValue(myConfig->readConfigInt("InternetServerPort"));
 	checkBox_InternetServerUseIpv6->setChecked(myConfig->readConfigInt("InternetServerUseIpv6"));
+	checkBox_InternetServerUseTls->setChecked(myConfig->readConfigInt("InternetServerUseTls"));
 	checkBox_InternetServerUseSctp->setChecked(myConfig->readConfigInt("InternetServerUseSctp"));
 	if(myConfig->readConfigInt("UseAvatarServer")) {
 		lineEdit_avatarServerAddress->setText(QString::fromUtf8(myConfig->readConfigString("AvatarServerAddress").c_str()));
@@ -718,6 +719,7 @@ void settingsDialogImpl::isAccepted()
 
 	myConfig->writeConfigInt("InternetServerUseIpv6", checkBox_InternetServerUseIpv6->isChecked());
 	myConfig->writeConfigInt("InternetServerUseSctp", checkBox_InternetServerUseSctp->isChecked());
+	myConfig->writeConfigInt("InternetServerUseTls", checkBox_InternetServerUseTls->isChecked());
 	myConfig->writeConfigInt("UseInternetGamePassword", checkBox_UseInternetGamePassword->isChecked());
 	myConfig->writeConfigString("InternetGamePassword", lineEdit_InternetGamePassword->text().toUtf8().constData());
 	myConfig->writeConfigInt("UseLobbyChat", checkBox_UseLobbyChat->isChecked());

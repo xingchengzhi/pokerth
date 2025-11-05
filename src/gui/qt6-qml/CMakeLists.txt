@@ -2,11 +2,11 @@
 
 set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     ../../session.cpp 
-    ../../core/common/loghelper_client.cpp
-    ../../net/common/net_helper_client.cpp
-    ../../core/common/qttools/qthelper/qthelper.cpp
-    ../../core/common/qttools/qttoolswrapper.cpp
-    ../../core/common/qttoolsinterface.cpp
+    ../../core/loghelper_client.cpp
+    ../../net/net_helper_client.cpp
+    ../../core/qttools/qthelper/qthelper.cpp
+    ../../core/qttools/qttoolswrapper.cpp
+    ../../core/qttoolsinterface.cpp
     cpp/retranslate.cpp
     cpp/settingsxmlhandler.cpp)
 
@@ -56,19 +56,14 @@ qt_add_translations(pokerth_qml-client
     RESOURCE_PREFIX "/i18n"
 )
 
-# fix AUTOMOC issue: include used header files
-set(POKERTH_QML_CLIENT_NET_HEADERS 
-    ../../net/net_helper.h
-)
-
-add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}" "${POKERTH_QML_CLIENT_NET_HEADERS}" "${QTSINGLEAPPLICATION_SRC}")
+add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
 
 target_include_directories(pokerth_qml-client PUBLIC
     ../../config
     ../../core
-    ../../core/common
-    ../../core/common/qttools
-    ../../core/common/qttools/qthelper
+    ../../core
+    ../../core/qttools
+    ../../core/qttools/qthelper
     ../
     cpp)
 

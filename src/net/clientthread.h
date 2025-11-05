@@ -40,6 +40,7 @@
 #include <string>
 #include <algorithm>
 #include <numeric>
+#include <openssl/ssl.h>
 
 #include <core/thread.h>
 #include <net/sessiondatacallback.h>
@@ -152,6 +153,8 @@ public:
 	virtual void SessionError(boost::shared_ptr<SessionData> /*session*/, int /*errorCode*/) {}
 	virtual void SessionTimeoutWarning(boost::shared_ptr<SessionData> /*session*/, unsigned /*remainingSec*/) {}
 	virtual void HandlePacket(boost::shared_ptr<SessionData> session, boost::shared_ptr<NetPacket> packet);
+
+	static void SslInfoCallback(const SSL *ssl, int where, int ret);
 
 	void SelectServer(unsigned serverId);
 	void SetLogin(const std::string &userName, const std::string &password, bool isGuest);

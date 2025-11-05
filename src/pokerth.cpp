@@ -158,7 +158,6 @@ int main( int argc, char **argv )
 {
 
 	//ENABLE_LEAK_CHECK();
-	qDebug("PokerTH starting ...");
 
 	//_CrtSetBreakAlloc(49937);
 	socket_startup();
@@ -195,8 +194,6 @@ int main( int argc, char **argv )
 
 	QFontDatabase::addApplicationFont (myAppDataPath +"fonts/n019003l.pfb");
 	QFontDatabase::addApplicationFont (myAppDataPath +"fonts/DejaVuSans-Bold.ttf");
-
-	qDebug("WIN32/ANDROID check ...");
 
 #ifdef _WIN32
 	QString font1String("QApplication, QWidget, QDialog { font-size: 12px; }");

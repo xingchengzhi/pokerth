@@ -83,8 +83,8 @@ public:
                 if (SSL_CTX_set_ciphersuites(m_sslContext->native_handle(), c13) != 1) {
                     LOG_MSG("Could not set TLS1.3 ciphersuites (maybe older OpenSSL).");
                 }
-                SSL_CTX_set_info_callback(m_sslContext->native_handle(), &SslServerInfoCallback);
-                LOG_MSG("TLS context configured (cipher listing skipped for portability).");
+                // SSL_CTX_set_info_callback(m_sslContext->native_handle(), &SslServerInfoCallback);
+                LOG_MSG("TLS context configured.");
              } catch (std::exception& e) {
                  LOG_ERROR(e.what());
              }

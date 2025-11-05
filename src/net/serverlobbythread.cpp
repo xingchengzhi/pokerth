@@ -1069,60 +1069,35 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 	}
 #endif
 
-	string playerName;
-	MD5Buf avatarMD5;
-	bool noAuth = false;
-	bool validGuest = false;
-	// productive: if (initMessage.login() == InitMessage::guestLogin) {
-	// debug: if (initMessage.login() == InitMessage::unauthenticatedLogin) {
-	if (initMessage.login() == InitMessage::guestLogin) {
-		playerName = initMessage.nickname();
-		// Verify guest player name.
-		if (playerName.length() > sizeof(SERVER_GUEST_PLAYER_NAME - 1)
-				&& playerName.substr(0, sizeof(SERVER_GUEST_PLAYER_NAME) - 1) == SERVER_GUEST_PLAYER_NAME) {
-			string guestId(playerName.substr(sizeof(SERVER_GUEST_PLAYER_NAME)));
-			if ((size_t)count_if(guestId.begin(), guestId.end(), ::isdigit) == guestId.size()) {
-				validGuest = true;
-				noAuth = true;
-			}
-			// check if a guest session in lobby with same ip is already connected and
-			// if number of lobby guests >= SERVER_MAX_GUEST_USERS_LOBBY
-			if(m_serverConfig.readConfigInt("ServerRestrictGuestLogin") != 0
-					&& !m_sessionManager.IsGuestAllowedToConnect(session->GetClientAddr())) {
-				SessionError(session, ERR_NET_SERVER_FULL);
-				return;
-			}
-		}
+    string playerName;
+    MD5Buf avatarMD5;
+    bool noAuth = false;
+    bool validGuest = false;
 
-		if (!validGuest) {
-			SessionError(session, ERR_NET_INVALID_PLAYER_NAME);
-			return;
-		}
-	}
-#ifdef POKERTH_OFFICIAL_SERVER
-	else if (initMessage.login() == InitMessage::authenticatedLogin) {
-		string inAuthData(initMessage.clientuserdata());
-		if (initMessage.has_avatarhash()) {
-			memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
-		}
-		// @TODO: change server auth mechanism here
-		session->CreateServerAuthSession(m_authContext);
-		if (session->AuthStep(1, inAuthData))
-			playerName = session->AuthGetUser();
-	}
-#else
-	else if (initMessage.login() == InitMessage::unauthenticatedLogin) {
-		playerName = initMessage.nickname();
-		if (initMessage.has_avatarhash()) {
-			memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
-		}
-		noAuth = true;
-	}
-#endif
-	else {
-		SessionError(session, ERR_NET_INVALID_PASSWORD);
-		return;
-	}
+    if (initMessage.login() == InitMessage::guestLogin) {
+        // Gast-Login
+        playerName = initMessage.nickname();
+        validGuest = true;
+        if (initMessage.has_avatarhash()) {
+            memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
+        }
+        noAuth = true;
+    } else if (initMessage.login() == InitMessage::unauthenticatedLogin) {
+        playerName = initMessage.nickname();
+        if (initMessage.has_avatarhash()) {
+            memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
+        }
+        noAuth = true;
+    } else if (initMessage.login() == InitMessage::authenticatedLogin) {
+        playerName = initMessage.nickname();
+        if (initMessage.has_clientuserdata()) {
+            session->AuthSetPassword(initMessage.clientuserdata());
+        }
+        noAuth = false;
+    } else {
+        SessionError(session, ERR_NET_INVALID_PASSWORD);
+        return;
+    }
 
 	// Check whether the player name is correct.
 	// Partly, this is also done in netpacket.
@@ -1171,7 +1146,7 @@ ServerLobbyThread::HandleNetPacketAuthClientResponse(boost::shared_ptr<SessionDa
 	if (session && session->GetPlayerData() && session->AuthGetCurStepNum() == 1) {
 		string authData = clientResponse.clientresponse();
 		if (session->AuthStep(2, authData)) {
-			string outVerification(session->AuthGetNextOutMsg());
+			string outVerification7(session->AuthGetNextOutMsg());
 
 			boost::shared_ptr<NetPacket> packet(new NetPacket);
 			packet->GetMsg()->set_messagetype(PokerTHMessage::Type_AuthServerVerificationMessage);
@@ -1803,24 +1778,19 @@ ServerLobbyThread::AuthenticatePlayer(boost::shared_ptr<SessionData> session)
 void
 ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData)
 {
-	boost::shared_ptr<SessionData> tmpSession = m_sessionManager.GetSessionByUniquePlayerId(playerId, true);
-	if (tmpSession && tmpSession->GetPlayerData()) {
-		tmpSession->GetPlayerData()->SetDBId(dbPlayerData.id);
-		tmpSession->GetPlayerData()->SetCountry(dbPlayerData.country);
-		if(dbPlayerData.last_games.length() > 0){
-			//LOG_ERROR("last_games from db = " << dbPlayerData.last_games);
-			vector<string> last_games; 
-			boost::split(last_games, dbPlayerData.last_games, boost::is_any_of(",")); 
-			for (unsigned int i = 0; i < last_games.size(); i++){
-				if(last_games[i].length() > 0)
-					tmpSession->GetPlayerData()->AddPlayerLastGame(stol(last_games[i]));
-			} 
-			//LOG_ERROR("last_games last from vector after db = " << tmpSession->GetPlayerData()->GetPlayerLastGames().back());
-		}else{
-			//LOG_ERROR("no lastGames from db");
-		}
-		this->AuthChallenge(tmpSession, dbPlayerData.secret);
-	}
+    boost::shared_ptr<SessionData> tmpSession = m_sessionManager.GetSessionByUniquePlayerId(playerId, true);
+
+    if (!tmpSession) {
+        return;
+    }
+
+    std::string providedPassword = tmpSession->AuthGetPassword();
+    if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
+        EstablishSession(tmpSession);
+    } else {
+        LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");
+        SessionError(tmpSession, ERR_NET_INVALID_PASSWORD);
+    }
 }
 
 void

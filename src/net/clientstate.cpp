@@ -1080,65 +1080,61 @@ ClientStateWaitEnterLogin::HandlePacket(boost::shared_ptr<ClientThread> /*client
 void
 ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client)
 {
-	if (!ec && &client->GetState() == this) {
-		ClientThread::LoginData loginData;
-		if (client->GetLoginData(loginData)) {
-			ClientContext &context = client->GetContext();
-			boost::shared_ptr<NetPacket> init(new NetPacket);
-			init->GetMsg()->set_messagetype(PokerTHMessage::Type_InitMessage);
-			InitMessage *netInit = init->GetMsg()->mutable_initmessage();
-			netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
-			netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-			netInit->set_buildid(0);
-			if (!context.GetSessionGuid().empty()) {
-				netInit->set_mylastsessionid(context.GetSessionGuid());
-			}
-			if (!context.GetServerPassword().empty()) {
-				netInit->set_authserverpassword(context.GetServerPassword());
-			}
+    if (!ec && &client->GetState() == this) {
+        ClientThread::LoginData loginData;
+        if (client->GetLoginData(loginData)) {
+            ClientContext &context = client->GetContext();
+            boost::shared_ptr<NetPacket> init(new NetPacket);
+            init->GetMsg()->set_messagetype(PokerTHMessage::Type_InitMessage);
+            InitMessage *netInit = init->GetMsg()->mutable_initmessage();
+            netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
+            netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
+            netInit->set_buildid(0);
+            if (!context.GetSessionGuid().empty()) {
+                netInit->set_mylastsessionid(context.GetSessionGuid());
+            }
+            if (!context.GetServerPassword().empty()) {
+                netInit->set_authserverpassword(context.GetServerPassword());
+            }
 
-			context.SetPlayerName(loginData.userName);
+            context.SetPlayerName(loginData.userName);
 
-			// Handle guest login first.
-			if (loginData.isGuest) {
-				context.SetPassword("");
-				context.SetPlayerRights(PLAYER_RIGHTS_GUEST);
-				netInit->set_login(InitMessage::guestLogin);
-				netInit->set_nickname(context.GetPlayerName());
+            // Handle guest login first.
+            if (loginData.isGuest) {
+                context.SetPassword("");
+                context.SetPlayerRights(PLAYER_RIGHTS_GUEST);
+                netInit->set_login(InitMessage::guestLogin);
+                netInit->set_nickname(context.GetPlayerName());
 
-				client->GetSender().Send(context.GetSessionData(), init);
-				client->SetState(ClientStateWaitSession::Instance());
-			}
-			// If the player is not a guest, authenticate.
-			else {
-				context.SetPassword(loginData.password);
-				netInit->set_login(InitMessage::authenticatedLogin);
-				// Send authentication user data for challenge/response in init.
-				boost::shared_ptr<SessionData> tmpSession = context.GetSessionData();
-				// @TODO: change client auth mechanism here
-				tmpSession->CreateClientAuthSession(client->GetAuthContext(), context.GetPlayerName(), context.GetPassword());
-				if (!tmpSession->AuthStep(1, ""))
-					throw ClientException(__FILE__, __LINE__, ERR_NET_INVALID_PASSWORD, 0);
-				string outUserData(tmpSession->AuthGetNextOutMsg());
-				netInit->set_clientuserdata(outUserData);
-				string avatarFile = client->GetQtToolsInterface().stringFromUtf8(context.GetAvatarFile());
-				if (!avatarFile.empty()) {
-					MD5Buf tmpMD5;
-					if (client->GetAvatarManager().GetHashForAvatar(avatarFile, tmpMD5)) {
-						// TODO: use sha1.
-						netInit->set_avatarhash(tmpMD5.GetData(), MD5_DATA_SIZE);
-					}
-				}
-				client->GetSender().Send(context.GetSessionData(), init);
-				client->SetState(ClientStateWaitAuthChallenge::Instance());
-			}
-		} else {
-			client->GetStateTimer().expires_after(milliseconds(CLIENT_WAIT_TIMEOUT_MSEC));
-			client->GetStateTimer().async_wait(
-				boost::bind(
-					&ClientStateWaitEnterLogin::TimerLoop, this, boost::asio::placeholders::error, client));
-		}
-	}
+                client->GetSender().Send(context.GetSessionData(), init);
+                client->SetState(ClientStateWaitSession::Instance());
+            }
+            // If the player is not a guest, authenticate.
+            else {
+                // AUTHENTICATED LOGIN (PLAINTEXT SENT IN clientUserData)
+                // Store password in context and send it in InitMessage.clientUserData.
+                // Server will compare this plaintext against the DB secret (requires TLS in production).
+                context.SetPassword(loginData.password);
+                netInit->set_login(InitMessage::authenticatedLogin);
+                netInit->set_nickname(context.GetPlayerName());
+
+                // If a password is present, put it into clientUserData (proto field: bytes clientUserData = 7).
+                // Using bytes keeps compatibility with existing SCRAM payload usage.
+                if (!context.GetPassword().empty()) {
+                    netInit->set_clientuserdata(context.GetPassword());
+                }
+
+                // Send init and wait for InitAck (session id).
+                client->GetSender().Send(context.GetSessionData(), init);
+                client->SetState(ClientStateWaitSession::Instance());
+            }
+        } else {
+            client->GetStateTimer().expires_after(milliseconds(CLIENT_WAIT_TIMEOUT_MSEC));
+            client->GetStateTimer().async_wait(
+                boost::bind(
+                    &ClientStateWaitEnterLogin::TimerLoop, this, boost::asio::placeholders::error, client));
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------

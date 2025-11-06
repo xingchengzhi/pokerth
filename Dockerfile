@@ -13,10 +13,11 @@ RUN echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' >> /etc/apt
 
 # build-deps
 RUN apt update && DEBIAN_FRONTEND="noninteractive" && apt upgrade -y
-RUN apt install -y wget git ca-certificates build-essential cmake libgsasl-dev libtinyxml-dev debhelper libmysql++-dev \ 
-    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libsdl-mixer1.2-dev libcurl4-gnutls-dev libsdl1.2-dev libgcrypt20-dev libsqlite3-dev \
+RUN apt install -y wget git ca-certificates build-essential cmake debhelper libmysql++-dev \ 
+    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libsdl-mixer1.2-dev libcurl4-gnutls-dev libsdl1.2-dev libsqlite3-dev \
     qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 qt6-websockets-dev libboost1.88-all-dev ninja-build
-# INFO: libmysql++-dev only required for official_server build, libircclient-dev is obsolete?, libtinyxml-dev is necessary only for dedicated server or official_server build (e.g. for chatcleaner)
+# INFO: libmysql++-dev only required for official_server build target
+# INFO: libwebsocketpp-dev only required for pokerth server build target
 ## INFO: in order to run a gui client inside a docker container you should use distrobox as it automatically integrates necessary xserver components
 
 # cleanup
@@ -27,10 +28,10 @@ RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth &&
 RUN cd /opt/pokerth && cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja
 
 # some stuff
-RUN cd /opt/pokerth && mkdir -p src/third_party/protobuf && rm src/third_party/protobuf/* 2> /dev/null || true
-RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf pokerth.proto
-RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf chatcleaner.proto   
-RUN cd /opt/pokerth && cp -r data/ ./build/. 
+# RUN cd /opt/pokerth && mkdir -p src/third_party/protobuf && rm src/third_party/protobuf/* 2> /dev/null || true
+# RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf pokerth.proto
+# RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf chatcleaner.proto   
+# RUN cd /opt/pokerth && cp -r data/ ./build/. 
 
 # compile all targets:
 RUN cd /opt/pokerth && cmake --build ./build --config Release --target all --

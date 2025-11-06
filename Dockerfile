@@ -1,5 +1,5 @@
-FROM ubuntu:plucky
-# ubuntu:24.04 aka ubuntu:noble might also work with the following procedure (changing deb-src entries from plucky to noble)
+FROM ubuntu:questing
+# ubuntu:24.04 aka ubuntu:noble might also work with the following procedure (changing deb-src entries from questing to noble)
 
 ENV TZ=Europe/Berlin
 
@@ -7,7 +7,7 @@ USER root
 
 RUN echo '\nTypes: deb-src' >> /etc/apt/sources.list.d/ubuntu.sources
 RUN echo 'URIs: http://archive.ubuntu.com/ubuntu/' >> /etc/apt/sources.list.d/ubuntu.sources
-RUN echo 'Suites: plucky plucky-updates plucky-backports' >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo 'Suites: questing questing-updates questing-backports' >> /etc/apt/sources.list.d/ubuntu.sources
 RUN echo 'Components: main universe restricted multiverse' >> /etc/apt/sources.list.d/ubuntu.sources
 RUN echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' >> /etc/apt/sources.list.d/ubuntu.sources
 
@@ -26,12 +26,6 @@ RUN apt clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/boost*
 # fetch repo:
 RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
 RUN cd /opt/pokerth && cmake -DCMAKE_BUILD_TYPE:STRING=Release -S. -B./build -G Ninja
-
-# some stuff
-# RUN cd /opt/pokerth && mkdir -p src/third_party/protobuf && rm src/third_party/protobuf/* 2> /dev/null || true
-# RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf pokerth.proto
-# RUN cd /opt/pokerth && protoc --proto_path=. --cpp_out=src/third_party/protobuf chatcleaner.proto   
-# RUN cd /opt/pokerth && cp -r data/ ./build/. 
 
 # compile all targets:
 RUN cd /opt/pokerth && cmake --build ./build --config Release --target all --

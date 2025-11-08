@@ -40,7 +40,8 @@ class AndroidApi8Dummy;
 class AndroidAudio;
 #endif
 #else
-class SDLPlayer;
+// class SDLPlayer;
+class QtAudioPlayer;
 #endif
 
 
@@ -70,7 +71,8 @@ private:
 	AndroidAudio *myPlayer;
 #endif
 #else
-	SDLPlayer *myPlayer;
+	// SDLPlayer *myPlayer;
+	QtAudioPlayer *myPlayer;
 #endif
 
 	ConfigFile *myConfig;

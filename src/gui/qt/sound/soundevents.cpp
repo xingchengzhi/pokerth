@@ -37,7 +37,8 @@
 #include "androidaudio.h"
 #endif
 #else
-#include "sdlplayer.h"
+// #include "sdlplayer.h"
+#include "qtaudioplayer.h"
 #endif
 
 
@@ -58,7 +59,8 @@ SoundEvents::SoundEvents(ConfigFile *c): myConfig(c), lastSBValue(0), lastSBLeve
 	myPlayer = new AndroidAudio(myConfig);
 #endif
 #else
-	myPlayer = new SDLPlayer(myConfig);
+	// myPlayer = new SDLPlayer(myConfig);
+	myPlayer = new QtAudioPlayer(myConfig);
 #endif
 
 }

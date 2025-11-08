@@ -29,15 +29,15 @@ include(FindMySQL)
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(SQLite3 REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(SDL REQUIRED)
-find_package(SDL_mixer REQUIRED)
+# find_package(SDL REQUIRED)
+# find_package(SDL_mixer REQUIRED)
 find_package(CURL REQUIRED)
 find_package(MySQL REQUIRED)
 find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools REQUIRED)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
 # @TODO: better use a FindCurl.cmake file?
 add_library(LibCurl INTERFACE IMPORTED)

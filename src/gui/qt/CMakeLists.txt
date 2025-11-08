@@ -54,7 +54,8 @@ set(POKERTH_CLIENT_SRC ../../pokerth.cpp
     gamelobbydialog/mynicklistsortfilterproxymodel.cpp
     gametable/mycashlabel.cpp
     sound/soundevents.cpp
-    sound/sdlplayer.cpp
+    # sound/sdlplayer.cpp
+    sound/qtaudioplayer.cpp
     mymessagebox/mymessagebox.cpp
     logfiledialog/logfiledialog.cpp)
 
@@ -71,7 +72,7 @@ add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC
 target_include_directories(pokerth_client PUBLIC ../../third_party/qtsingleapplication ../../third_party/qtlockedfile)
 target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)
 target_include_directories(pokerth_client PRIVATE "${Boost_INCLUDE_DIRS}")
-target_include_directories(pokerth_client PRIVATE "${SDL_MIXER_INCLUDE_DIRS}")
+# target_include_directories(pokerth_client PRIVATE "${SDL_MIXER_INCLUDE_DIRS}")
 target_include_directories(pokerth_client PUBLIC ".uics/")
 target_include_directories(pokerth_client PUBLIC
     ../../
@@ -112,7 +113,7 @@ target_include_directories(pokerth_client PUBLIC
 
 target_link_libraries(pokerth_client PUBLIC LibCurl)
 target_link_libraries(pokerth_client PUBLIC "${SDL_LIBRARIES}" "${SDL_MIXER_LIBRARIES}")
-target_link_libraries(pokerth_client PRIVATE Qt6::Core Qt6::Gui Qt6::Sql Qt6::Xml Qt6::Widgets Qt6::Network)
+target_link_libraries(pokerth_client PRIVATE Qt6::Core Qt6::Gui Qt6::Sql Qt6::Xml Qt6::Widgets Qt6::Network Qt6::Multimedia)
 target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)

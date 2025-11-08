@@ -14,7 +14,7 @@ RUN echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' >> /etc/apt
 # build-deps
 RUN apt update && DEBIAN_FRONTEND="noninteractive" && apt upgrade -y
 RUN apt install -y wget git ca-certificates build-essential cmake debhelper libmysql++-dev \ 
-    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libsdl-mixer1.2-dev libcurl4-gnutls-dev libsdl1.2-dev libsqlite3-dev \
+    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev libsqlite3-dev \
     qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 qt6-websockets-dev libboost1.88-all-dev ninja-build \
     qt6-multimedia-dev
 # INFO: libmysql++-dev only required for official_server build target

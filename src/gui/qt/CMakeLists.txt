@@ -54,7 +54,6 @@ set(POKERTH_CLIENT_SRC ../../pokerth.cpp
     gamelobbydialog/mynicklistsortfilterproxymodel.cpp
     gametable/mycashlabel.cpp
     sound/soundevents.cpp
-    # sound/sdlplayer.cpp
     sound/qtaudioplayer.cpp
     mymessagebox/mymessagebox.cpp
     logfiledialog/logfiledialog.cpp)
@@ -72,7 +71,6 @@ add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC
 target_include_directories(pokerth_client PUBLIC ../../third_party/qtsingleapplication ../../third_party/qtlockedfile)
 target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)
 target_include_directories(pokerth_client PRIVATE "${Boost_INCLUDE_DIRS}")
-# target_include_directories(pokerth_client PRIVATE "${SDL_MIXER_INCLUDE_DIRS}")
 target_include_directories(pokerth_client PUBLIC ".uics/")
 target_include_directories(pokerth_client PUBLIC
     ../../

@@ -27,7 +27,6 @@ include(FindBoost)
 include(FindMySQL)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
-find_package(SQLite3 REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(MySQL REQUIRED)
@@ -139,10 +138,9 @@ target_include_directories(pokerth_lib PUBLIC
     src/core
     src/third_party/websocketpp)
 
-target_link_libraries(pokerth_lib PUBLIC "${SQLite3_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
-target_link_libraries(pokerth_lib PRIVATE Qt6::Xml)
+target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)

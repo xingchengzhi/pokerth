@@ -40,6 +40,127 @@
 
 using namespace std;
 
+#include <cstring>
+
+// Provide a tiny compatibility layer so guilog.cpp can keep using the old
+// sqlite3_get_table-style API but implemented on top of Qt's QSqlDatabase.
+// This allows fully removing the link against libsqlite3 while keeping the
+// existing export/parse code unchanged.
+
+#define SQLITE_OK 0
+#define SQLITE_ERROR 1
+
+struct sqlite3 {
+	QString connName;
+};
+
+extern "C" int sqlite3_open(const char *filename, sqlite3 **ppDb)
+{
+	if (!ppDb) return SQLITE_ERROR;
+	sqlite3 *p = new sqlite3();
+	p->connName = QString("guilog_conn_%1").arg((qulonglong)QDateTime::currentMSecsSinceEpoch());
+	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", p->connName);
+	db.setDatabaseName(QString::fromUtf8(filename));
+	if (!db.open()) {
+		QSqlDatabase::removeDatabase(p->connName);
+		delete p;
+		*ppDb = nullptr;
+		return SQLITE_ERROR;
+	}
+	*ppDb = p;
+	return SQLITE_OK;
+}
+
+extern "C" int sqlite3_get_table(sqlite3 *pDb, const char *zSql, char ***pazResult, int *pnRow, int *pnColumn, char **pErrMsg)
+{
+	if(!pDb || !pazResult || !pnRow || !pnColumn) return SQLITE_ERROR;
+	QSqlDatabase db = QSqlDatabase::database(pDb->connName);
+	QSqlQuery q(db);
+	if(!q.exec(QString::fromUtf8(zSql))) {
+		if(pErrMsg) {
+			std::string err = q.lastError().text().toStdString();
+			*pErrMsg = strdup(err.c_str());
+		}
+		*pazResult = nullptr;
+		*pnRow = 0;
+		*pnColumn = 0;
+		return SQLITE_ERROR;
+	}
+
+	QSqlRecord rec = q.record();
+	int nCol = rec.count();
+	QVector<QString> columnNames;
+	for(int i=0;i<nCol;++i) columnNames.append(rec.fieldName(i));
+
+	QVector<QVector<QString>> rows;
+	while(q.next()) {
+		QVector<QString> row;
+		for(int i=0;i<nCol;++i) row.append(q.value(i).toString());
+		rows.append(row);
+	}
+
+	int nRow = rows.size();
+	// total entries = (nRow + 1) * nCol
+	int total = (nRow + 1) * nCol;
+	char **result = (char**)malloc(sizeof(char*) * (total + 1));
+	if(!result) {
+		*pazResult = nullptr;
+		*pnRow = 0;
+		*pnColumn = 0;
+		return SQLITE_ERROR;
+	}
+
+	int idx = 0;
+	// column names first
+	for(int c=0;c<nCol;++c) {
+		result[idx++] = strdup(columnNames[c].toStdString().c_str());
+	}
+	// then rows
+	for(int r=0;r<nRow;++r) {
+		for(int c=0;c<nCol;++c) {
+			const QString &v = rows[r][c];
+			if(v.isNull()) result[idx++] = nullptr;
+			else result[idx++] = strdup(v.toStdString().c_str());
+		}
+	}
+	// null-terminate pointer array as safety (sqlite3_free_table doesn't require it)
+	result[total] = nullptr;
+
+	*pazResult = result;
+	*pnRow = nRow;
+	*pnColumn = nCol;
+	return SQLITE_OK;
+}
+
+extern "C" void sqlite3_free_table(char **result)
+{
+	if(!result) return;
+	// find number of entries by walking until null
+	for(char **p = result; *p != nullptr; ++p) {
+		free(*p);
+	}
+	free(result);
+}
+
+extern "C" int sqlite3_close(sqlite3 *pDb)
+{
+	if(!pDb) return SQLITE_ERROR;
+	// close and remove connection
+	if(QSqlDatabase::contains(pDb->connName)) {
+		// ensure any QSqlDatabase temporaries are destroyed before calling
+		// removeDatabase, otherwise Qt warns that the connection is still
+		// in use. Limiting the scope of 'db' guarantees it's out of scope
+		// when removeDatabase is invoked.
+		{
+			QSqlDatabase db = QSqlDatabase::database(pDb->connName);
+			if(db.isOpen()) db.close();
+		}
+		QSqlDatabase::removeDatabase(pDb->connName);
+	}
+	delete pDb;
+	return SQLITE_OK;
+}
+
 guiLog::guiLog(gameTableImpl* w, ConfigFile *c) : myW(w), myConfig(c), myLogDir(0), myHtmlLogFile(0), myHtmlLogFile_old(0), myTxtLogFile(0), tb(0)
 {
 

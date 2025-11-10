@@ -27,17 +27,14 @@ include(FindBoost)
 include(FindMySQL)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
-find_package(SQLite3 REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(SDL REQUIRED)
-find_package(SDL_mixer REQUIRED)
 find_package(CURL REQUIRED)
 find_package(MySQL REQUIRED)
 find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools REQUIRED)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
 # @TODO: better use a FindCurl.cmake file?
 add_library(LibCurl INTERFACE IMPORTED)
@@ -141,10 +138,9 @@ target_include_directories(pokerth_lib PUBLIC
     src/core
     src/third_party/websocketpp)
 
-target_link_libraries(pokerth_lib PUBLIC "${SQLite3_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
-target_link_libraries(pokerth_lib PRIVATE Qt6::Xml)
+target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
@@ -156,10 +152,10 @@ file(GLOB POKERTH_DBOFFICIAL_SRC src/dbofficial/*.cpp)
 
 add_library(pokerth_dbofficial "${POKERTH_DBOFFICIAL_SRC}")
 
-target_include_directories(pokerth_dbofficial PRIVATE "${MYSQLPP_INCLUDE_DIR}")
+# Use Qt6::Sql instead of mysql++ (compat header in src/dbofficial)
 target_include_directories(pokerth_dbofficial PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_dbofficial PUBLIC src/)
-
+target_link_libraries(pokerth_dbofficial PRIVATE Qt6::Sql)
 
 # POKERTH.db
 

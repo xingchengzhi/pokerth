@@ -35,7 +35,7 @@
 
 #include <boost/asio.hpp>
 #include <list>
-#include <mysql++.h>
+#include <dbofficial/mysqlpp_compat.h>
 #include <db/serverdbcallback.h>
 
 class DBIdManager;

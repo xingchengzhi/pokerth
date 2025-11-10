@@ -43,6 +43,7 @@
 #include <iostream>
 #include <fstream>
 #include <csignal>
+#include <QtCore/QCoreApplication>
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -132,6 +133,10 @@ main(int argc, char *argv[])
 	}
 
 	boost::shared_ptr<QtToolsInterface> myQtToolsInterface(CreateQtToolsWrapper());
+
+	// Some Qt classes used by the DB wrapper (QSqlDatabase) require a QCoreApplication
+	// to be instantiated before use. Create a minimal QCoreApplication for the server.
+	QCoreApplication qtCoreApp(argc, argv);
 	//create defaultconfig
 	boost::shared_ptr<ConfigFile> myConfig(new ConfigFile(argv[0], readonlyConfig));
 	loghelper_init(myQtToolsInterface->stringFromUtf8(myConfig->readConfigString("LogDir")), logLevel);

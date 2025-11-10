@@ -1,32 +1,5 @@
 /*****************************************************************************
  * PokerTH - The open source texas holdem engine                             *
- * Copyright (C) 2006-2012 Felix Hammer, Florian Thauer, Lothar May          *
- *                                                                           *
- * This program is free software: you can redistribute it and/or modify      *
- * it under the terms of the GNU Affero General Public License as            *
- * published by the Free Software Foundation, either version 3 of the        *
- * License, or (at your option) any later version.                           *
- *                                                                           *
- * This program is distributed in the hope that it will be useful,           *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
- * GNU Affero General Public License for more details.                       *
- *                                                                           *
- * You should have received a copy of the GNU Affero General Public License  *
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.     *
- *                                                                           *
- *                                                                           *
- * Additional permission under GNU AGPL version 3 section 7                  *
- *                                                                           *
- * If you modify this program, or any covered work, by linking or            *
- * combining it with the OpenSSL project's OpenSSL library (or a             *
- * modified version of that library), containing parts covered by the        *
- * terms of the OpenSSL or SSLeay licenses, the authors of PokerTH           *
- * (Felix Hammer, Florian Thauer, Lothar May) grant you additional           *
- * permission to convey the resulting work.                                  *
- * Corresponding Source for a non-source form of such a combination          *
- * shall include the source code for the parts of OpenSSL used as well       *
- * as that of the covered work.                                              *
  *****************************************************************************/
 
 #include "log.h"
@@ -35,132 +8,149 @@
 #include "playerinterface.h"
 #include "cardsvalue.h"
 
-#include <sqlite3.h>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QVariant>
+#include <QDateTime>
+#include <QDir>
+
 #include <dirent.h>
 #include <boost/lexical_cast.hpp>
 
 using namespace std;
 
-Log::Log(ConfigFile *c) : mySqliteLogDb(0), mySqliteLogFileName(""), myConfig(c), uniqueGameID(0), currentHandID(0), currentRound(GAME_STATE_PREFLOP), sql("")
+Log::Log(ConfigFile *c) : mySqliteLogDb(), myConnectionName(), mySqliteLogFileName(""), myConfig(c), uniqueGameID(0), currentHandID(0), currentRound(GAME_STATE_PREFLOP), sql("")
 {
 }
 
 Log::~Log()
 {
-	if(SQLITE_LOG) {
-		sqlite3_close(mySqliteLogDb);
-	}
+    // close Qt SQL database and remove connection
+    if (mySqliteLogDb.isValid() && mySqliteLogDb.isOpen()) {
+        mySqliteLogDb.close();
+    }
+    if (!myConnectionName.isEmpty()) {
+        QSqlDatabase::removeDatabase(myConnectionName);
+    }
 }
 
 void
 Log::init()
 {
 
-	if(SQLITE_LOG) {
+    // SQLITE_LOG wird weiterhin als Konfig-Flag benutzt
+    if(SQLITE_LOG) {
 
-		// logging activated
-		if(myConfig->readConfigInt("LogOnOff")) {
+        // logging activated
+        if(myConfig->readConfigInt("LogOnOff")) {
 
-			DIR *logDir;
-			logDir = opendir((myConfig->readConfigString("LogDir")).c_str());
-			bool dirExists = logDir != NULL;
-			closedir(logDir);
+            DIR *logDir;
+            logDir = opendir((myConfig->readConfigString("LogDir")).c_str());
+            bool dirExists = logDir != NULL;
+            closedir(logDir);
 
-			// check if logging path exist
-			if(myConfig->readConfigString("LogDir") != "" && dirExists) {
+            // check if logging path exist
+            if(myConfig->readConfigString("LogDir") != "" && dirExists) {
 
-				// detect current time
-				char curDateTime[20];
-				char curDate[11];
-				char curTime[9];
-				time_t now = time(NULL);
-				tm *z = localtime(&now);
-				strftime(curDateTime,20,"%Y-%m-%d_%H%M%S",z);
-				strftime(curDate,11,"%Y-%m-%d",z);
-				strftime(curTime,9,"%H:%M:%S",z);
+                // detect current time
+                char curDateTime[20];
+                char curDate[11];
+                char curTime[9];
+                time_t now = time(NULL);
+                tm *z = localtime(&now);
+                strftime(curDateTime,20,"%Y-%m-%d_%H%M%S",z);
+                strftime(curDate,11,"%Y-%m-%d",z);
+                strftime(curTime,9,"%H:%M:%S",z);
 
-				mySqliteLogFileName.clear();
-				mySqliteLogFileName /= myConfig->readConfigString("LogDir");
-				mySqliteLogFileName /= string("pokerth-log-") + curDateTime + ".pdb";
+                mySqliteLogFileName.clear();
+                mySqliteLogFileName /= myConfig->readConfigString("LogDir");
+                mySqliteLogFileName /= string("pokerth-log-") + curDateTime + ".pdb";
 
-				// open sqlite-db
-				sqlite3_open(mySqliteLogFileName.string().c_str(), &mySqliteLogDb);
-				if( mySqliteLogDb != 0 ) {
+                myConnectionName = QString("pokerth_log_%1").arg((qulonglong)QDateTime::currentMSecsSinceEpoch());
+                mySqliteLogDb = QSqlDatabase::addDatabase("QSQLITE", myConnectionName);
+                mySqliteLogDb.setDatabaseName(QString::fromStdString(mySqliteLogFileName.string()));
 
-					int i;
-					// create session table
-					sql += "CREATE TABLE Session (";
-					sql += "PokerTH_Version TEXT NOT NULL";
-					sql += ",Date TEXT NOT NULL";
-					sql += ",Time TEXT NOT NULL";
-					sql += ",LogVersion INTEGER NOT NULL";
-					sql += ", PRIMARY KEY(Date,Time));";
+                if (mySqliteLogDb.open()) {
 
-					sql += "INSERT INTO Session (";
-					sql += "PokerTH_Version";
-					sql += ",Date";
-					sql += ",Time";
-					sql += ",LogVersion";
-					sql += ") VALUES (";
-					sql += "\"" + boost::lexical_cast<string>(POKERTH_BETA_RELEASE_STRING) + "\",";
-					sql += "\"" + boost::lexical_cast<string>(curDate) + "\",";
-					sql += "\"" + boost::lexical_cast<string>(curTime) + "\",";
-					sql += boost::lexical_cast<string>(SQLITE_LOG_VERSION) + ");";
+                    int i;
+                    // create session table
+                    sql += "CREATE TABLE Session (";
+                    sql += "PokerTH_Version TEXT NOT NULL";
+                    sql += ",Date TEXT NOT NULL";
+                    sql += ",Time TEXT NOT NULL";
+                    sql += ",LogVersion INTEGER NOT NULL";
+                    sql += ", PRIMARY KEY(Date,Time));";
 
-					// create game table
-					sql += "CREATE TABLE Game (";
-					sql += "UniqueGameID INTEGER PRIMARY KEY";
-					sql += ",GameID INTEGER NOT NULL";
-					sql += ",Startmoney INTEGER NOT NULL";
-					sql += ",StartSb INTEGER NOT NULL";
-					sql += ",DealerPos INTEGER NOT NULL";
-					sql += ",Winner_Seat INTEGER";
-					sql += ");";
+                    sql += "INSERT INTO Session (";
+                    sql += "PokerTH_Version";
+                    sql += ",Date";
+                    sql += ",Time";
+                    sql += ",LogVersion";
+                    sql += ") VALUES (";
+                    sql += "\"" + boost::lexical_cast<string>(POKERTH_BETA_RELEASE_STRING) + "\",";
+                    sql += "\"" + boost::lexical_cast<string>(curDate) + "\",";
+                    sql += "\"" + boost::lexical_cast<string>(curTime) + "\",";
+                    sql += boost::lexical_cast<string>(SQLITE_LOG_VERSION) + ");";
 
-					// create player table
-					sql += "CREATE TABLE Player (";
-					sql += "UniqueGameID INTEGER NOT NULL";
-					sql += ",Seat INTEGER NOT NULL";
-					sql += ",Player TEXT NOT NULL";
-					sql += ",PRIMARY KEY(UniqueGameID,Seat));";
+                    // create game table
+                    sql += "CREATE TABLE Game (";
+                    sql += "UniqueGameID INTEGER PRIMARY KEY";
+                    sql += ",GameID INTEGER NOT NULL";
+                    sql += ",Startmoney INTEGER NOT NULL";
+                    sql += ",StartSb INTEGER NOT NULL";
+                    sql += ",DealerPos INTEGER NOT NULL";
+                    sql += ",Winner_Seat INTEGER";
+                    sql += ");";
 
-					// create hand table
-					sql += "CREATE TABLE Hand (";
-					sql += "HandID INTEGER NOT NULL";
-					sql += ",UniqueGameID INTEGER NOT NULL";
-					sql += ",Dealer_Seat INTEGER";
-					sql += ",Sb_Amount INTEGER NOT NULL";
-					sql += ",Sb_Seat INTEGER NOT NULL";
-					sql += ",Bb_Amount INTEGER NOT NULL";
-					sql += ",Bb_Seat INTEGER NOT NULL";
-					for(i=1; i<=MAX_NUMBER_OF_PLAYERS; i++) {
-						sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Cash INTEGER";
-						sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Card_1 INTEGER";
-						sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Card_2 INTEGER";
-						sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Hand_text TEXT";
-						sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Hand_int INTEGER";
-					}
-					for(i=1; i<=5; i++) {
-						sql += ",BoardCard_" + boost::lexical_cast<std::string>(i) + " INTEGER";
-					}
-					sql += ",PRIMARY KEY(HandID,UniqueGameID));";
+                    // create player table
+                    sql += "CREATE TABLE Player (";
+                    sql += "UniqueGameID INTEGER NOT NULL";
+                    sql += ",Seat INTEGER NOT NULL";
+                    sql += ",Player TEXT NOT NULL";
+                    sql += ",PRIMARY KEY(UniqueGameID,Seat));";
 
-					// create action table
-					sql += "CREATE TABLE Action (";
-					sql += "ActionID INTEGER PRIMARY KEY AUTOINCREMENT";
-					sql += ",HandID INTEGER NOT NULL";
-					sql += ",UniqueGameID INTEGER NOT NULL";
-					sql += ",BeRo INTEGER NOT NULL";
-					sql += ",Player INTEGER NOT NULL";
-					sql += ",Action TEXT NOT NULL";
-					sql += ",Amount INTEGER";
-					sql += ");";
+                    // create hand table
+                    sql += "CREATE TABLE Hand (";
+                    sql += "HandID INTEGER NOT NULL";
+                    sql += ",UniqueGameID INTEGER NOT NULL";
+                    sql += ",Dealer_Seat INTEGER";
+                    sql += ",Sb_Amount INTEGER NOT NULL";
+                    sql += ",Sb_Seat INTEGER NOT NULL";
+                    sql += ",Bb_Amount INTEGER NOT NULL";
+                    sql += ",Bb_Seat INTEGER NOT NULL";
+                    for(i=1; i<=MAX_NUMBER_OF_PLAYERS; i++) {
+                        sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Cash INTEGER";
+                        sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Card_1 INTEGER";
+                        sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Card_2 INTEGER";
+                        sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Hand_text TEXT";
+                        sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Hand_int INTEGER";
+                    }
+                    for(i=1; i<=5; i++) {
+                        sql += ",BoardCard_" + boost::lexical_cast<std::string>(i) + " INTEGER";
+                    }
+                    sql += ",PRIMARY KEY(HandID,UniqueGameID));";
 
-					exec_transaction();
-				}
-			}
-		}
-	}
+                    // create action table
+                    sql += "CREATE TABLE Action (";
+                    sql += "ActionID INTEGER PRIMARY KEY AUTOINCREMENT";
+                    sql += ",HandID INTEGER NOT NULL";
+                    sql += ",UniqueGameID INTEGER NOT NULL";
+                    sql += ",BeRo INTEGER NOT NULL";
+                    sql += ",Player INTEGER NOT NULL";
+                    sql += ",Action TEXT NOT NULL";
+                    sql += ",Amount INTEGER";
+                    sql += ");";
+
+                    exec_transaction();
+                } else {
+                    // open failed: du kannst hier Fehlerlog ergänzen
+                    QSqlError err = mySqliteLogDb.lastError();
+                    cout << "Failed to open sqlite (Qt): " << err.text().toStdString() << endl;
+                }
+            }
+        }
+    }
 }
 
 void
@@ -175,7 +165,7 @@ Log::logNewGameMsg(int gameID, int startCash, int startSmallBlind, unsigned deal
 
 			PlayerListConstIterator it_c;
 
-			if( mySqliteLogDb != 0 ) {
+			if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
 				// sqlite-db is open
 				int i;
 
@@ -183,15 +173,15 @@ Log::logNewGameMsg(int gameID, int startCash, int startSmallBlind, unsigned deal
 				sql += "UniqueGameID";
 				sql += ",GameID";
 				sql += ",Startmoney";
-				sql += ",StartSb";
-				sql += ",DealerPos";
-				sql += ") VALUES (";
-				sql += boost::lexical_cast<string>(uniqueGameID);
-				sql += "," + boost::lexical_cast<string>(gameID);
-				sql += "," + boost::lexical_cast<string>(startCash);
-				sql += "," + boost::lexical_cast<string>(startSmallBlind);
-				sql += "," + boost::lexical_cast<string>(dealerPosition);
-				sql += ");";
+			 sql += ",StartSb";
+			 sql += ",DealerPos";
+			 sql += ") VALUES (";
+			 sql += boost::lexical_cast<string>(uniqueGameID);
+			 sql += "," + boost::lexical_cast<string>(gameID);
+			 sql += "," + boost::lexical_cast<string>(startCash);
+			 sql += "," + boost::lexical_cast<string>(startSmallBlind);
+			 sql += "," + boost::lexical_cast<string>(dealerPosition);
+			 sql += ");";
 
 				i = 1;
 				for(it_c = seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
@@ -199,12 +189,12 @@ Log::logNewGameMsg(int gameID, int startCash, int startSmallBlind, unsigned deal
 						sql += "INSERT INTO Player (";
 						sql += "UniqueGameID";
 						sql += ",Seat";
-						sql += ",Player";
-						sql += ") VALUES (";
-						sql += boost::lexical_cast<string>(uniqueGameID);
-						sql += "," + boost::lexical_cast<string>(i);
-						sql += ",\"" + (*it_c)->getMyName() +"\"";
-						sql += ");";
+					 sql += ",Player";
+					 sql += ") VALUES (";
+					 sql += boost::lexical_cast<string>(uniqueGameID);
+					 sql += "," + boost::lexical_cast<string>(i);
+					 sql += ",\"" + (*it_c)->getMyName() +"\"";
+					 sql += ");";
 					}
 					i++;
 				}
@@ -231,40 +221,40 @@ Log::logNewHandMsg(int handID, unsigned dealerPosition, int smallBlind, unsigned
 		if(myConfig->readConfigInt("LogOnOff")) {
 			//if write logfiles is enabled
 
-			if( mySqliteLogDb != 0 ) {
+			if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
 				// sqlite-db is open
-				int i;
+			 int i;
 
 				sql += "INSERT INTO Hand (";
 				sql += "HandID";
 				sql += ",UniqueGameID";
 				sql += ",Dealer_Seat";
-				sql += ",Sb_Amount";
-				sql += ",Sb_Seat";
-				sql += ",Bb_Amount";
-				sql += ",Bb_Seat";
-				for(i=1; i<=MAX_NUMBER_OF_PLAYERS; i++) {
-					sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Cash";
-				}
-				sql += ") VALUES (";
-				sql += boost::lexical_cast<string>(currentHandID);
-				sql += "," + boost::lexical_cast<string>(uniqueGameID);
-				sql += "," + boost::lexical_cast<string>(dealerPosition);
-				sql += "," + boost::lexical_cast<string>(smallBlind);
-				sql += "," + boost::lexical_cast<string>(smallBlindPosition);
-				sql += "," + boost::lexical_cast<string>(bigBlind);
-				sql += "," + boost::lexical_cast<string>(bigBlindPosition);
-				for(it_c = seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
-					if((*it_c)->getMyActiveStatus()) {
-						sql += "," + boost::lexical_cast<string>((*it_c)->getMyRoundStartCash());
-					} else {
-						sql += ",NULL";
-					}
-				}
-				sql += ");";
-				if(myConfig->readConfigInt("LogInterval") == 0) {
-					exec_transaction();
-				}
+			 sql += ",Sb_Amount";
+			 sql += ",Sb_Seat";
+			 sql += ",Bb_Amount";
+			 sql += ",Bb_Seat";
+			 for(i=1; i<=MAX_NUMBER_OF_PLAYERS; i++) {
+				 sql += ",Seat_" + boost::lexical_cast<std::string>(i) + "_Cash";
+			 }
+			 sql += ") VALUES (";
+			 sql += boost::lexical_cast<string>(currentHandID);
+			 sql += "," + boost::lexical_cast<string>(uniqueGameID);
+			 sql += "," + boost::lexical_cast<string>(dealerPosition);
+			 sql += "," + boost::lexical_cast<string>(smallBlind);
+			 sql += "," + boost::lexical_cast<string>(smallBlindPosition);
+			 sql += "," + boost::lexical_cast<string>(bigBlind);
+			 sql += "," + boost::lexical_cast<string>(bigBlindPosition);
+			 for(it_c = seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
+				 if((*it_c)->getMyActiveStatus()) {
+					 sql += "," + boost::lexical_cast<string>((*it_c)->getMyRoundStartCash());
+				 } else {
+					 sql += ",NULL";
+				 }
+			 }
+			 sql += ");";
+			 if(myConfig->readConfigInt("LogInterval") == 0) {
+				 exec_transaction();
+			 }
 
 				// !! TODO !! Hack, weil Button-Regel noch falsch und dealerPosition noch teilweise falsche ID enthält (HeadsUp: dealerPosition=bigBlindPosition <-- falsch)
 				bool dealerButtonOnTable = false;
@@ -310,217 +300,209 @@ void
 Log::logPlayerAction(string playerName, PlayerActionLog action, int amount)
 {
 
-	if(SQLITE_LOG) {
+    if(SQLITE_LOG) {
 
-		if(myConfig->readConfigInt("LogOnOff")) {
-			//if write logfiles is enabled
+        if(myConfig->readConfigInt("LogOnOff")) {
+            //if write logfiles is enabled
 
-			if( mySqliteLogDb != 0 ) {
-				// sqlite-db is open
+            if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
+                // sqlite-db (Qt) is open
 
-				char **result_Player=0;
-				int nRow_Player=0;
-				int nCol_Player=0;
-				char *errmsg = 0;
-
-				// read seat
-				string sql_select = "SELECT Seat FROM Player WHERE UniqueGameID=" + boost::lexical_cast<std::string>(uniqueGameID);
-				sql_select += " AND ";
-				sql_select += "Player=\"" + playerName +"\"";
-				if(sqlite3_get_table(mySqliteLogDb,sql_select.c_str(),&result_Player,&nRow_Player,&nCol_Player,&errmsg) != SQLITE_OK) {
-					cout << "Error in statement: " << sql_select.c_str() << "[" << errmsg << "]." << endl;
-				} else {
-					if(nRow_Player == 1) {
-						logPlayerAction(boost::lexical_cast<int>(result_Player[1]), action, amount);
-					} else {
-						cout << "Implausible information about player " << playerName << " in log-db!" << endl;
-					}
-				}
-
-				sqlite3_free_table(result_Player);
-			}
-		}
-	}
+                // read seat using QSqlQuery
+                QSqlQuery q(mySqliteLogDb);
+                q.prepare(QString::fromUtf8("SELECT Seat FROM Player WHERE UniqueGameID = ? AND Player = ?"));
+                q.addBindValue(uniqueGameID);
+                q.addBindValue(QString::fromStdString(playerName));
+                if(!q.exec()) {
+                    QSqlError err = q.lastError();
+                    cout << "Error in statement: SELECT Seat ... [" << err.text().toStdString() << "]." << endl;
+                } else {
+                    if(q.next()) {
+                        int seat = q.value(0).toInt();
+                        logPlayerAction(seat, action, amount);
+                    } else {
+                        cout << "Implausible information about player " << playerName << " in log-db!" << endl;
+                    }
+                }
+            }
+        }
+    }
 }
 
 void
 Log::logPlayerAction(int seat, PlayerActionLog action, int amount)
 {
 
-	if(SQLITE_LOG) {
+    if(SQLITE_LOG) {
 
-		if(myConfig->readConfigInt("LogOnOff")) {
-			//if write logfiles is enabled
+        if(myConfig->readConfigInt("LogOnOff")) {
+            //if write logfiles is enabled
 
-			if( mySqliteLogDb != 0 ) {
-				// sqlite-db is open
+            if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
+                // sqlite-db (Qt) is open
 
-				if(action!=LOG_ACTION_NONE) {
-					sql += "INSERT INTO Action (";
-					sql += "HandID";
-					sql += ",UniqueGameID";
-					sql += ",BeRo";
-					sql += ",Player";
-					sql += ",Action";
-					sql += ",Amount";
-					sql += ") VALUES (";
-					sql += boost::lexical_cast<string>(currentHandID);
-					sql += "," + boost::lexical_cast<string>(uniqueGameID);
-					sql += "," + boost::lexical_cast<string>(currentRound);;
-					sql += "," + boost::lexical_cast<string>(seat);
-					switch(action) {
-					case LOG_ACTION_DEALER:
-						sql += ",'starts as dealer'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_SMALL_BLIND:
-						sql += ",'posts small blind'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_BIG_BLIND:
-						sql += ",'posts big blind'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_FOLD:
-						sql += ",'folds'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_CHECK:
-						sql += ",'checks'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_CALL:
-						sql += ",'calls'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_BET:
-						sql += ",'bets'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_ALL_IN:
-						sql += ",'is all in with'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_SHOW:
-						sql += ",'shows'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_HAS:
-						sql += ",'has'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_WIN:
-						sql += ",'wins'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_WIN_SIDE_POT:
-						sql += ",'wins (side pot)'";
-						sql += "," + boost::lexical_cast<string>(amount);
-						break;
-					case LOG_ACTION_SIT_OUT:
-						sql += ",'sits out'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_WIN_GAME:
-						sql += ",'wins game'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_LEFT:
-						sql += ",'has left the game'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_KICKED:
-						sql += ",'was kicked from the game'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_ADMIN:
-						sql += ",'is game admin now'";
-						sql += ",NULL";
-						break;
-					case LOG_ACTION_JOIN:
-						sql += ",'has joined the game'";
-						sql += ",NULL";
-						break;
-					default:
-						return;
-					}
-					sql += ");";
-					if(myConfig->readConfigInt("LogInterval") == 0) {
-						exec_transaction();
-					}
-				}
-			}
-		}
-	}
+                if(action!=LOG_ACTION_NONE) {
+                    sql += "INSERT INTO Action (";
+                    sql += "HandID";
+                    sql += ",UniqueGameID";
+                    sql += ",BeRo";
+                    sql += ",Player";
+                    sql += ",Action";
+                    sql += ",Amount";
+                    sql += ") VALUES (";
+                    sql += boost::lexical_cast<string>(currentHandID);
+                    sql += "," + boost::lexical_cast<string>(uniqueGameID);
+                    sql += "," + boost::lexical_cast<string>(currentRound);
+                    sql += "," + boost::lexical_cast<string>(seat);
+
+                    // Erzeuge Action-Text und einen einzelnen Wert für Amount (Zahl oder NULL)
+                    std::string actionText;
+                    std::string amountText = "NULL";
+                    switch(action) {
+                    case LOG_ACTION_DEALER:
+                        actionText = "starts as dealer";
+                        break;
+                    case LOG_ACTION_SMALL_BLIND:
+                        actionText = "posts small blind";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_BIG_BLIND:
+                        actionText = "posts big blind";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_FOLD:
+                        actionText = "folds";
+                        break;
+                    case LOG_ACTION_CHECK:
+                        actionText = "checks";
+                        break;
+                    case LOG_ACTION_CALL:
+                        actionText = "calls";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_BET:
+                        actionText = "bets";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_ALL_IN:
+                        actionText = "is all in with";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_SHOW:
+                        actionText = "shows";
+                        break;
+                    case LOG_ACTION_HAS:
+                        actionText = "has";
+                        break;
+                    case LOG_ACTION_WIN:
+                        actionText = "wins";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_WIN_SIDE_POT:
+                        actionText = "wins (side pot)";
+                        amountText = boost::lexical_cast<string>(amount);
+                        break;
+                    case LOG_ACTION_SIT_OUT:
+                        actionText = "sits out";
+                        break;
+                    case LOG_ACTION_WIN_GAME:
+                        actionText = "wins game";
+                        break;
+                    case LOG_ACTION_LEFT:
+                        actionText = "has left the game";
+                        break;
+                    case LOG_ACTION_KICKED:
+                        actionText = "was kicked from the game";
+                        break;
+                    case LOG_ACTION_ADMIN:
+                        actionText = "is game admin now";
+                        break;
+                    case LOG_ACTION_JOIN:
+                        actionText = "has joined the game";
+                        break;
+                    default:
+                        return;
+                    }
+
+                    sql += ",'" + actionText + "'";
+                    sql += "," + amountText;
+                    sql += ");";
+                     if(myConfig->readConfigInt("LogInterval") == 0) {
+                         exec_transaction();
+                     }
+                }
+            }
+        }
+    }
 }
 
 PlayerActionLog
 Log::transformPlayerActionLog(PlayerAction action)
 {
-	switch(action) {
-	case PLAYER_ACTION_FOLD:
-		return LOG_ACTION_FOLD;
-		break;
-	case PLAYER_ACTION_CHECK:
-		return LOG_ACTION_CHECK;
-		break;
-	case PLAYER_ACTION_CALL:
-		return LOG_ACTION_CALL;
-		break;
-	case PLAYER_ACTION_BET:
-	case PLAYER_ACTION_RAISE:
-		return LOG_ACTION_BET;
-		break;
-	case PLAYER_ACTION_ALLIN:
-		return LOG_ACTION_ALL_IN;
-		break;
-	default:
-		return LOG_ACTION_NONE;
-	}
+    switch(action) {
+    case PLAYER_ACTION_FOLD:
+        return LOG_ACTION_FOLD;
+        break;
+    case PLAYER_ACTION_CHECK:
+        return LOG_ACTION_CHECK;
+        break;
+    case PLAYER_ACTION_CALL:
+        return LOG_ACTION_CALL;
+        break;
+    case PLAYER_ACTION_BET:
+    case PLAYER_ACTION_RAISE:
+        return LOG_ACTION_BET;
+        break;
+    case PLAYER_ACTION_ALLIN:
+        return LOG_ACTION_ALL_IN;
+        break;
+    default:
+        return LOG_ACTION_NONE;
+    }
 }
 
 void
 Log::logBoardCards(int boardCards[5])
 {
-	if(SQLITE_LOG) {
+    if(SQLITE_LOG) {
 
-		if(myConfig->readConfigInt("LogOnOff")) {
-			//if write logfiles is enabled
+        if(myConfig->readConfigInt("LogOnOff")) {
+            //if write logfiles is enabled
 
-			if( mySqliteLogDb != 0 ) {
-				// sqlite-db is open
+            if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
+                // sqlite-db is open
 
-				switch(currentRound) {
-				case GAME_STATE_FLOP: {
-					sql += "UPDATE Hand SET ";
-					sql += "BoardCard_1=" + boost::lexical_cast<string>(boardCards[0]) + ",";
-					sql += "BoardCard_2=" + boost::lexical_cast<string>(boardCards[1]) + ",";
-					sql += "BoardCard_3=" + boost::lexical_cast<string>(boardCards[2]);
-				}
-				break;
-				case GAME_STATE_TURN: {
-					sql += "UPDATE Hand SET ";
-					sql += "BoardCard_4=" + boost::lexical_cast<string>(boardCards[3]);
-				}
-				break;
-				case GAME_STATE_RIVER: {
-					sql += "UPDATE Hand SET ";
-					sql += "BoardCard_5=" + boost::lexical_cast<string>(boardCards[4]);
-				}
-				break;
-				default:
-					return;
-				}
-				sql += " WHERE ";
-				sql += "UniqueGameID=" + boost::lexical_cast<string>(uniqueGameID) + " AND ";
-				sql += "HandID=" + boost::lexical_cast<string>(currentHandID);
-				sql += ";";
-				if(myConfig->readConfigInt("LogInterval") == 0) {
-					exec_transaction();
-				}
-			}
-		}
-	}
+                switch(currentRound) {
+                case GAME_STATE_FLOP: {
+                    sql += "UPDATE Hand SET ";
+                    sql += "BoardCard_1=" + boost::lexical_cast<string>(boardCards[0]) + ",";
+                    sql += "BoardCard_2=" + boost::lexical_cast<string>(boardCards[1]) + ",";
+                    sql += "BoardCard_3=" + boost::lexical_cast<string>(boardCards[2]);
+                }
+                break;
+                case GAME_STATE_TURN: {
+                    sql += "UPDATE Hand SET ";
+                    sql += "BoardCard_4=" + boost::lexical_cast<string>(boardCards[3]);
+                }
+                break;
+                case GAME_STATE_RIVER: {
+                    sql += "UPDATE Hand SET ";
+                    sql += "BoardCard_5=" + boost::lexical_cast<string>(boardCards[4]);
+                }
+                break;
+                default:
+                    return;
+                }
+                sql += " WHERE ";
+                sql += "UniqueGameID=" + boost::lexical_cast<string>(uniqueGameID) + " AND ";
+                sql += "HandID=" + boost::lexical_cast<string>(currentHandID);
+                sql += ";";
+                if(myConfig->readConfigInt("LogInterval") == 0) {
+                    exec_transaction();
+                }
+            }
+        }
+    }
 }
 
 void
@@ -547,7 +529,8 @@ Log::logHoleCardsHandName(PlayerList activePlayerList, boost::shared_ptr<PlayerI
 		if(myConfig->readConfigInt("LogOnOff")) {
 			//if write logfiles is enabled
 
-			if( mySqliteLogDb != 0) {
+			if( mySqliteLogDb.isValid() && mySqliteLogDb.isOpen() ) {
+                // sqlite-db (Qt) is open
 
 				int myCards[2];
 				player->getMyCards(myCards);
@@ -667,16 +650,51 @@ Log::logAfterGame()
 void
 Log::exec_transaction()
 {
-	char *errmsg = NULL;
+    // Execute accumulated SQL statements using QSqlQuery inside a Qt transaction.
+    if(!(mySqliteLogDb.isValid() && mySqliteLogDb.isOpen())) {
+        sql.clear();
+        return;
+    }
 
-	string sql_transaction = "BEGIN;" + sql + "COMMIT;";
-	sql = "";
+    QSqlError err;
+    if(!mySqliteLogDb.transaction()) {
+        err = mySqliteLogDb.lastError();
+        cout << "Failed to begin transaction: " << err.text().toStdString() << endl;
+        // Try to execute without transaction fallback
+    }
 
-	if(sqlite3_exec(mySqliteLogDb, sql_transaction.c_str(), 0, 0, &errmsg) != SQLITE_OK) {
-		cout << "Error in statement: " << sql_transaction.c_str() << "[" << errmsg << "]." << endl;
-		sqlite3_free(errmsg);
-		errmsg = NULL;
-	}
+    // Split the SQL buffer by ';' and execute each statement separately
+    std::string buf = sql;
+    sql.clear();
+
+    size_t start = 0;
+    while(true) {
+        size_t pos = buf.find(';', start);
+        std::string stmt;
+        if(pos == std::string::npos) {
+            stmt = buf.substr(start);
+        } else {
+            stmt = buf.substr(start, pos - start);
+        }
+        // trim whitespace
+        auto l = stmt.find_first_not_of(" \t\r\n");
+        auto r = stmt.find_last_not_of(" \t\r\n");
+        if(l != std::string::npos && r != std::string::npos && l <= r) {
+            stmt = stmt.substr(l, r - l + 1);
+            QSqlQuery q(mySqliteLogDb);
+            if(!q.exec(QString::fromStdString(stmt))) {
+                QSqlError qe = q.lastError();
+                cout << "Error in statement: " << stmt << " [" << qe.text().toStdString() << "]." << endl;
+            }
+        }
+        if(pos == std::string::npos) break;
+        start = pos + 1;
+    }
+
+    if(!mySqliteLogDb.commit()) {
+        err = mySqliteLogDb.lastError();
+        cout << "Failed to commit transaction: " << err.text().toStdString() << endl;
+    }
 }
 
 //void

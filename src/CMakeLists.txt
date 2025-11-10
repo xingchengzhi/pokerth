@@ -36,7 +36,7 @@ target_link_libraries(pokerth_dedicated_server PUBLIC LibCurl)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_lib)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_dedicated_server PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml)
+target_link_libraries(pokerth_dedicated_server PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_definitions(pokerth_dedicated_server PUBLIC POKERTH_DEDICATED_SERVER HAVE_OPENSSL)
 

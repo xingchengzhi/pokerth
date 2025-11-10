@@ -39,7 +39,6 @@ set(POKERTH_OFFICIAL_SERVER_SRC
 add_executable(pokerth_official_server ${POKERTH_OFFICIAL_SERVER_SRC} )
 
 target_include_directories(pokerth_official_server PRIVATE "${Boost_INCLUDE_DIRS}")
-target_include_directories(pokerth_official_server PUBLIC "${MYSQLPP_INCLUDE_DIR}")
 target_include_directories(pokerth_official_server PUBLIC
     ../ 
     ../engine 
@@ -54,12 +53,12 @@ target_include_directories(pokerth_official_server PUBLIC
     ../core)
 
 target_link_libraries(pokerth_official_server PUBLIC LibCurl)
-target_link_libraries(pokerth_official_server PUBLIC "${MYSQLPP_LIBRARIES}")
+# MySQL++ removed: use Qt6::Sql instead (compat header in this directory)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_dbofficial)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_lib)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_db)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_official_server PRIVATE Qt6::Xml)
+target_link_libraries(pokerth_official_server PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_definitions(pokerth_official_server PUBLIC POKERTH_OFFICIAL_SERVER POKERTH_DEDICATED_SERVER HAVE_OPENSSL)
 

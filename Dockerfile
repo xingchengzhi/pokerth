@@ -13,10 +13,10 @@ RUN echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' >> /etc/apt
 
 # build-deps
 RUN apt update && DEBIAN_FRONTEND="noninteractive" && apt upgrade -y
-RUN apt install -y wget git ca-certificates build-essential cmake debhelper libmysql++-dev \ 
+RUN apt install -y wget git ca-certificates build-essential cmake debhelper \ 
     libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev libsqlite3-dev \
     qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 qt6-websockets-dev libboost1.88-all-dev ninja-build \
-    qt6-multimedia-dev
+    qt6-multimedia-dev libqt6sql6-mysql
 # INFO: libmysql++-dev only required for official_server build target
 # INFO: libwebsocketpp-dev only required for pokerth server build target
 ## INFO: in order to run a gui client inside a docker container you should use distrobox as it automatically integrates necessary xserver components

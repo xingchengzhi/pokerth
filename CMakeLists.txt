@@ -152,10 +152,10 @@ file(GLOB POKERTH_DBOFFICIAL_SRC src/dbofficial/*.cpp)
 
 add_library(pokerth_dbofficial "${POKERTH_DBOFFICIAL_SRC}")
 
-target_include_directories(pokerth_dbofficial PRIVATE "${MYSQLPP_INCLUDE_DIR}")
+# Use Qt6::Sql instead of mysql++ (compat header in src/dbofficial)
 target_include_directories(pokerth_dbofficial PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_dbofficial PUBLIC src/)
-
+target_link_libraries(pokerth_dbofficial PRIVATE Qt6::Sql)
 
 # POKERTH.db
 

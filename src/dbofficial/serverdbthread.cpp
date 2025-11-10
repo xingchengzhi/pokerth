@@ -46,7 +46,7 @@
 #include <dbofficial/db_table_defs.h>
 #include <ctime>
 #include <sstream>
-#include <mysql++.h>
+#include <dbofficial/mysqlpp_compat.h>
 
 #include <core/loghelper.h> // @TODO: remove in productive
 

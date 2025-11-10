@@ -34,7 +34,6 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <sqlite3.h>
 
 #include "configfile.h"
 
@@ -51,6 +50,9 @@ struct result_struct {
 	char **result_Hand_ID;
 	char **result_Action;
 };
+
+// forward declare sqlite3 opaque type used by legacy code in guilog.cpp
+struct sqlite3;
 
 class gameTableImpl;
 class GameTableStyleReader;

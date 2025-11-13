@@ -142,7 +142,7 @@ target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 
-target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
+target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti -Wno-stringop-overflow)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
 
 

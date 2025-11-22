@@ -13,13 +13,20 @@ ARG ANDROID_SDK_ROOT=/opt/android-sdk
 ARG ANDROID_NDK_VERSION=25.2.9519653
 ARG GRADLE_VERSION=8.3
 
+# set ANDROID_ARCH to one of the following:
+# armv7 x86 arm64_v8a
+ENV ANDROID_ARCH x86
+ENV QT_VERSION 6.9.3
+
 ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:/opt/gradle/gradle-${GRADLE_VERSION}/bin
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget unzip git build-essential pkg-config python3 python3-pip python3-venv \
+    ca-certificates curl wget unzip git build-essential pkg-config \
+    python3 python3-pip python3-venv \
+    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev libboost1.88-all-dev  \
     locales sudo nano mc openjdk-17-jdk-headless cmake ninja-build zip unzip \
   && rm -rf /var/lib/apt/lists/*
 
@@ -103,13 +110,14 @@ RUN pip install aqtinstall
 
 RUN mkdir -p /opt/Qt
 
-# install Qt for Android - set ANDROID_ARCH to one of the following:
-# android_armv7 android_x86 android_arm64_v8a
-ENV ANDROID_ARCH android_x86
-RUN cd /opt/Qt &&aqt install-qt all_os android 6.9.3 ${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+# install Qt for Android
+RUN cd /opt/Qt &&aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
 
 ### ###
 
 RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
+RUN cd /opt/pokerth && bash docker/android/build_android.sh
 
+# Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

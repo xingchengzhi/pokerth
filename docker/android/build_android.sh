@@ -17,8 +17,7 @@ Wichtig: Installiere Android SDK/NDK und eine Qt-for-Android-Build-Installation.
 Setze mindestens ANDROID_SDK_ROOT, ANDROID_NDK_ROOT, JAVA_HOME und QT_ANDROID_DIR.
 EOF
 }
-
-ARCH=arm64-v8a
+ARCH=${ANDROID_ARCH:-x86}
 BUILD_TYPE=Release
 API_LEVEL=21
 
@@ -58,6 +57,7 @@ if [[ ! -f "$TOOLCHAIN_FILE" ]]; then
   echo "Cannot find Android toolchain file: $TOOLCHAIN_FILE"; exit 3
 fi
 
+cd ../../
 BUILD_DIR=build-android-${ARCH}
 mkdir -p "$BUILD_DIR"
 

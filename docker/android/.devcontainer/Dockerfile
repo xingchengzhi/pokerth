@@ -120,8 +120,12 @@ RUN pip install aqtinstall
 RUN mkdir -p /opt/Qt
 
 # install Qt for Android
-RUN cd /opt/Qt &&aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+RUN cd /opt/Qt && aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
+# install host (desktop) Qt needed as QT_HOST_PATH for cross-build
+RUN cd /opt/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+
+
 
 # boost & openssl for android
 RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg

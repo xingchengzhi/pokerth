@@ -117,7 +117,7 @@ ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
 ### ###
 
 RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
-RUN cd /opt/pokerth && bash docker/android/build_android.sh
+# RUN cd /opt/pokerth && bash docker/android/build_android.sh
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

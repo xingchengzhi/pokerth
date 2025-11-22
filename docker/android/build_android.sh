@@ -57,7 +57,6 @@ if [[ ! -f "$TOOLCHAIN_FILE" ]]; then
   echo "Cannot find Android toolchain file: $TOOLCHAIN_FILE"; exit 3
 fi
 
-cd ../../
 BUILD_DIR=build-android-${ARCH}
 mkdir -p "$BUILD_DIR"
 

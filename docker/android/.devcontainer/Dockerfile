@@ -17,6 +17,8 @@ ARG GRADLE_VERSION=8.3
 # armv7 x86 arm64_v8a
 ENV ANDROID_ARCH x86
 ENV QT_VERSION 6.9.3
+ENV VCPKG_ROOT=/opt/vcpkg
+ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
 
 ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
@@ -113,6 +115,11 @@ RUN mkdir -p /opt/Qt
 # install Qt for Android
 RUN cd /opt/Qt &&aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
+
+# boost & openssl for android
+RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg && \
+    /opt/vcpkg/bootstrap-vcpkg.sh && \
+    /opt/vcpkg/vcpkg install boost:${ANDROID_ARCH}-android openssl:${ANDROID_ARCH}-android
 
 ### ###
 

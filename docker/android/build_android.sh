@@ -57,6 +57,30 @@ if [[ ! -f "$TOOLCHAIN_FILE" ]]; then
   echo "Cannot find Android toolchain file: $TOOLCHAIN_FILE"; exit 3
 fi
 
+# Optional: vcpkg integration (setze VCPKG_ROOT auf vcpkg root dir, z.B. /opt/vcpkg)
+VCPKG_CMAKE_ARGS=()
+if [[ -n "${VCPKG_ROOT:-}" ]]; then
+  VCPKG_CMAKE_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+  if [[ ! -f "$VCPKG_CMAKE_FILE" ]]; then
+    echo "VCPKG_ROOT ist gesetzt, aber $VCPKG_CMAKE_FILE fehlt"; exit 4
+  fi
+
+  # Mappe Android ABI -> vcpkg triplet
+  case "$ARCH" in
+    arm64-v8a) VCPKG_TRIPLET="arm64-android";;
+    armeabi-v7a) VCPKG_TRIPLET="arm-android";;
+    x86) VCPKG_TRIPLET="x86-android";;
+    x86_64) VCPKG_TRIPLET="x64-android";;
+    *) echo "Unsupported arch for vcpkg: $ARCH"; exit 1;;
+  esac
+
+  VCPKG_CMAKE_ARGS+=(
+    -DCMAKE_TOOLCHAIN_FILE="$VCPKG_CMAKE_FILE"
+    -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$TOOLCHAIN_FILE"
+    -DVCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET"
+  )
+fi
+
 BUILD_DIR=build-android-${ARCH}
 mkdir -p "$BUILD_DIR"
 
@@ -64,6 +88,7 @@ echo "Configuring CMake..."
 cmake -S . -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
   -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
+  "${VCPKG_CMAKE_ARGS[@]}" \
   -DANDROID_ABI="$ARCH" \
   -DANDROID_NATIVE_API_LEVEL=$API_LEVEL \
   -DCMAKE_PREFIX_PATH="${QT_ANDROID_DIR}/lib/cmake" \

@@ -27,12 +27,15 @@ ENV VCPKG_ROOT=/opt/vcpkg
 ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
 
 ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android
+ENV QT_HOST_PATH=/opt/Qt/${QT_VERSION}/gcc_64
 
+# Install dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates curl wget unzip git build-essential pkg-config \
     python3 python3-pip python3-venv \
-    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev libboost1.88-all-dev  \
+    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev \
+    libboost1.88-all-dev  \
     locales sudo nano mc openjdk-17-jdk-headless cmake ninja-build zip unzip \
   && rm -rf /var/lib/apt/lists/*
 

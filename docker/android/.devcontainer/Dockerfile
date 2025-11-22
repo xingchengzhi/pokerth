@@ -10,19 +10,23 @@ ARG LC_ALL=de_DE.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG ANDROID_SDK_ROOT=/opt/android-sdk
-ARG ANDROID_NDK_VERSION=25.2.9519653
+ENV ANDROID_NDK_VERSION=25.2.9519653
 ARG GRADLE_VERSION=8.3
 
 # set ANDROID_ARCH to one of the following:
 # armv7 x86 arm64_v8a
 ENV ANDROID_ARCH x86
 ENV QT_VERSION 6.9.3
-ENV VCPKG_ROOT=/opt/vcpkg
-ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
 
 ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
+ENV ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:/opt/gradle/gradle-${GRADLE_VERSION}/bin
+
+ENV VCPKG_ROOT=/opt/vcpkg
+ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
+
+ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -117,9 +121,19 @@ RUN cd /opt/Qt &&aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_A
 ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
 
 # boost & openssl for android
-RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg && \
-    /opt/vcpkg/bootstrap-vcpkg.sh && \
-    /opt/vcpkg/vcpkg install boost:${ANDROID_ARCH}-android openssl:${ANDROID_ARCH}-android
+RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg
+RUN /opt/vcpkg/bootstrap-vcpkg.sh && \
+  /opt/vcpkg/vcpkg install boost-system:${ANDROID_ARCH}-android \
+  boost-filesystem:${ANDROID_ARCH}-android \
+  boost-thread:${ANDROID_ARCH}-android boost-regex:${ANDROID_ARCH}-android \
+  boost-chrono:${ANDROID_ARCH}-android \
+  boost-date-time:${ANDROID_ARCH}-android boost-serialization:${ANDROID_ARCH}-android \
+  boost-asio:${ANDROID_ARCH}-android \
+  boost-iostreams:${ANDROID_ARCH}-android \
+  boost-program-options:${ANDROID_ARCH}-android \
+  openssl:${ANDROID_ARCH}-android \
+  curl:${ANDROID_ARCH}-android \
+  protobuf:${ANDROID_ARCH}-android
 
 ### ###
 

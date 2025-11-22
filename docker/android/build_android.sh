@@ -92,6 +92,7 @@ cmake -S . -B "$BUILD_DIR" -G Ninja \
   -DANDROID_ABI="$ARCH" \
   -DANDROID_NATIVE_API_LEVEL=$API_LEVEL \
   -DCMAKE_PREFIX_PATH="${QT_ANDROID_DIR}_${ANDROID_ARCH}/lib/cmake" \
+  -DQt6_DIR="${QT_ANDROID_DIR}/lib/cmake/Qt6" \
   -DCMAKE_INSTALL_PREFIX="$(pwd)/$BUILD_DIR/install"
 
 echo "Building target 'pokerth_client' (this can take a while)..."

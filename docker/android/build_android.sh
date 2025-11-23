@@ -85,7 +85,7 @@ BUILD_DIR=build-android-${ARCH}
 mkdir -p "$BUILD_DIR"
 
 echo "Configuring CMake..."
-cmake -S . -B "$BUILD_DIR" -G Ninja \
+qt-cmake -S . -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
   "${VCPKG_CMAKE_ARGS[@]}" \

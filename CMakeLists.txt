@@ -24,13 +24,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FindBoost)
-# include(FindMySQL)
+include(FindProtobuf)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
-    protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
+find_package(Protobuf CONFIG)
+protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
@@ -132,7 +133,7 @@ target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
-target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
+target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
 
 # POKERTH.dbofficial
@@ -159,6 +160,8 @@ target_include_directories(pokerth_db PUBLIC src/)
 # POKERTH.protocol
 
 add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
+
+message(STATUS "Protobuf include dir: ${Protobuf_INCLUDE_DIR}")
 
 target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
 target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")

@@ -69,7 +69,7 @@ target_include_directories(pokerth_qml-client PUBLIC
 
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_qml-client PUBLIC LibCurl)
+target_link_libraries(pokerth_qml-client PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)

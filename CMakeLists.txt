@@ -24,7 +24,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FindBoost)
-include(FindMySQL)
+# include(FindMySQL)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
@@ -35,17 +35,6 @@ find_package(Protobuf REQUIRED)
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
-
-# @TODO: better use a FindCurl.cmake file?
-add_library(LibCurl INTERFACE IMPORTED)
-set_target_properties(LibCurl PROPERTIES
-INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}")
-if(WIN32)
-    target_link_libraries(LibCurl INTERFACE "${CURL_LIBRARY}")
-else()
-    set_target_properties(LibCurl PROPERTIES
-        INTERFACE_LINK_LIBRARIES "${CURL_LIBRARY}")
-endif()
 
 
 # POKERTH.lib

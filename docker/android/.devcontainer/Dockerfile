@@ -21,7 +21,6 @@ ENV QT_VERSION 6.9.3
 ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
-ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:/opt/gradle/gradle-${GRADLE_VERSION}/bin
 
 ENV VCPKG_ROOT=/opt/vcpkg
 ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
@@ -29,13 +28,15 @@ ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolcha
 ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android
 ENV QT_HOST_PATH=/opt/Qt/${QT_VERSION}/gcc_64
 
+ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:/opt/gradle/gradle-${GRADLE_VERSION}/bin:/opt/Qt/${QT_VERSION}/gcc_64/bin
+
 # Install dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates curl wget unzip git build-essential pkg-config \
     python3 python3-pip python3-venv \
     libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev \
-    libboost1.88-all-dev  \
+    libboost1.88-all-dev \
     locales sudo nano mc openjdk-17-jdk-headless cmake ninja-build zip unzip \
   && rm -rf /var/lib/apt/lists/*
 
@@ -136,15 +137,21 @@ RUN /opt/vcpkg/bootstrap-vcpkg.sh && \
   boost-chrono:${ANDROID_ARCH}-android \
   boost-date-time:${ANDROID_ARCH}-android boost-serialization:${ANDROID_ARCH}-android \
   boost-asio:${ANDROID_ARCH}-android \
+  boost-interprocess:${ANDROID_ARCH}-android \
   boost-iostreams:${ANDROID_ARCH}-android \
   boost-program-options:${ANDROID_ARCH}-android \
+  boost-lambda:${ANDROID_ARCH}-android \
+  boost-foreach:${ANDROID_ARCH}-android \
+  boost-uuid:${ANDROID_ARCH}-android \
   openssl:${ANDROID_ARCH}-android \
   curl:${ANDROID_ARCH}-android \
-  protobuf:${ANDROID_ARCH}-android
+  protobuf:${ANDROID_ARCH}-android \
+  protobuf:x64-linux
 
 ### ###
 
 RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
+
 # RUN cd /opt/pokerth && bash docker/android/build_android.sh
 
 # Entrypoint/Command used from docker-compose.yml

@@ -53,7 +53,6 @@ target_include_directories(pokerth_official_server PUBLIC
     ../core)
 
 target_link_libraries(pokerth_official_server PUBLIC CURL::libcurl)
-# MySQL++ removed: use Qt6::Sql instead (compat header in this directory)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_dbofficial)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_lib)
 target_link_libraries(pokerth_official_server PUBLIC pokerth_db)

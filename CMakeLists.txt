@@ -29,7 +29,6 @@ include(FindBoost)
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
-find_package(MySQL REQUIRED)
 find_package(Protobuf REQUIRED)
     protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
@@ -129,6 +128,7 @@ target_include_directories(pokerth_lib PUBLIC
 
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
+target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)

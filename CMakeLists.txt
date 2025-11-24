@@ -31,6 +31,12 @@ find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(Protobuf CONFIG)
+
+# Find abseil (required for protobuf >= 5.27)
+if(ANDROID)
+    find_package(absl CONFIG REQUIRED)
+endif()
+
 protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
@@ -131,7 +137,6 @@ target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
-
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
@@ -167,6 +172,22 @@ target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
 target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
 
 target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
+
+# Link abseil libraries for Android (required by protobuf >= 5.27)
+if(ANDROID)
+    target_link_libraries(pokerth_protocol PUBLIC 
+        absl::log_internal_check_op
+        absl::log_internal_message
+        absl::synchronization
+        absl::strings
+        absl::cord
+        absl::hash
+        absl::log_internal_log_sink_set
+        absl::log_internal_globals
+        utf8_range::utf8_range
+        utf8_range::utf8_validity
+    )
+endif()
 
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)

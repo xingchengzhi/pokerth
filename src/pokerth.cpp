@@ -112,6 +112,8 @@ int main(int argc, char *argv[])
 #include <QtGui>
 #include <QtCore>
 #include <QDebug>
+#include <QScreen>
+#include <QGuiApplication>
 
 #include <curl/curl.h>
 
@@ -238,9 +240,10 @@ int main( int argc, char **argv )
 #ifdef ANDROID
 	//check if custom background pictures for the resolution are there. Otherwise create them!
 	QString UserDataDir = QString::fromUtf8(myConfig->readConfigString("UserDataDir").c_str());
-	QDesktopWidget dw;
-	int screenWidth = dw.screenGeometry().width();
-	int screenHeight = dw.screenGeometry().height();
+	QScreen *screen = QGuiApplication::primaryScreen();
+	QRect screenGeometry = screen->geometry();
+	int screenWidth = screenGeometry.width();
+	int screenHeight = screenGeometry.height(); 
 	QString customStartWindowBgFileString(UserDataDir+"/startwindowbg10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
 	QString customWelcomePokerTHFileString(UserDataDir+"/welcomepokerth10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
 	QFile customStartWindowBgFile(customStartWindowBgFileString);

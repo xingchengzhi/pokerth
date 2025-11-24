@@ -56,7 +56,14 @@ qt_add_translations(pokerth_qml-client
     RESOURCE_PREFIX "/i18n"
 )
 
-add_executable(pokerth_qml-client "${POKERTH_QML_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+# Für Android muss qt_add_executable verwendet werden
+if(ANDROID)
+    qt_add_executable(pokerth_qml-client ${POKERTH_QML_CLIENT_SRC})
+    target_include_directories(pokerth_qml-client PRIVATE "${Protobuf_INCLUDE_DIR}")
+    target_link_libraries(pokerth_qml-client PUBLIC "${Protobuf_LIBRARIES}")
+else()
+    add_executable(pokerth_qml-client ${POKERTH_QML_CLIENT_SRC})
+endif()
 
 target_include_directories(pokerth_qml-client PUBLIC
     ../../config
@@ -73,6 +80,23 @@ target_link_libraries(pokerth_qml-client PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
+
+# Android deployment settings
+if(ANDROID)
+    set(ANDROID_SDK_BUILD_TOOLS_REVISION "$BUILD_TOOLS_VERSION" CACHE STRING "")
+    set(QT_ANDROID_SDK_BUILD_TOOLS_REVISION "$BUILD_TOOLS_VERSION" CACHE STRING "")
+    set_property(TARGET pokerth_qml-client PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android)
+    qt_android_generate_deployment_settings(pokerth_qml-client)
+
+    # Verwende FinalizeApk statt der veralteten Methoden
+    qt_finalize_target(pokerth_qml-client)
+    
+    # Optional: Set Android-specific properties
+    set_target_properties(pokerth_qml-client PROPERTIES
+        QT_ANDROID_MIN_SDK_VERSION 28
+        QT_ANDROID_TARGET_SDK_VERSION 34
+    )
+endif()
 
 install(TARGETS pokerth_qml-client DESTINATION bin OPTIONAL)
 install(DIRECTORY ../../../data DESTINATION share/pokerth)

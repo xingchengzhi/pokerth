@@ -1,14 +1,22 @@
 FROM ubuntu:25.10
 
+# Set architecture environment variables:
+# as android, vcpkg and qt architectures have slightly different namings, we define all three here
+# possible values are:
+# ANDROID_ARCH: armeabi-v7a, arm64-v8a, x86, x86_64
+# VCPKG_ARCH: arm, arm64, x86, x64
+# QT_ARCH: armv7, arm64_v8a, x86, x86_64
 ENV ANDROID_ARCH=arm64-v8a
 ENV VCPKG_ARCH=arm64
 ENV QT_ARCH=arm64_v8a
+
+# better not touch these values
 ENV ANDROID_API_LEVEL=35
 ENV QT_VERSION=6.9.3
 ENV GRADLE_VERSION=8.3
 ENV ANDROID_NDK_VERSION=28.0.13004108
 
-
+# Set other build environment variables
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000

@@ -33,16 +33,12 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "bmewburn.vscode-intelephense-client",
                 "ms-azuretools.vscode-containers",
-                "christian-kohler.npm-intellisense",
-                "vue.volar",
                 "ms-ceintl.vscode-language-pack-de",
                 "ms-vscode.cpptools-extension-pack",
                 "ms-vscode.cmake-tools",
                 "ms-azuretools.vscode-docker",
                 "github.vscode-github-actions",
-                "ecmel.vscode-html-css",
                 "esbenp.prettier-vscode",
                 "aswinkumar863.sort-editors"
             ]

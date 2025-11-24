@@ -79,6 +79,36 @@ target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_qml-client PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
 
+# Fix für Android: Abseil-Bibliotheken die von Protobuf benötigt werden
+if(ANDROID)
+    # Suche nach verfügbaren Abseil-Bibliotheken (optional)
+    find_library(ABSL_RAW_HASH_SET absl_raw_hash_set PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
+    find_library(ABSL_HASHTABLEZ_SAMPLER absl_hashtablez_sampler PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
+    find_library(ABSL_LOW_LEVEL_HASH absl_low_level_hash PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
+    
+    # Erstelle eine Liste der gefundenen Bibliotheken
+    set(ABSL_EXTRA_LIBS)
+    if(ABSL_RAW_HASH_SET)
+        list(APPEND ABSL_EXTRA_LIBS ${ABSL_RAW_HASH_SET})
+        message(STATUS "Found absl_raw_hash_set: ${ABSL_RAW_HASH_SET}")
+    endif()
+    if(ABSL_HASHTABLEZ_SAMPLER)
+        list(APPEND ABSL_EXTRA_LIBS ${ABSL_HASHTABLEZ_SAMPLER})
+        message(STATUS "Found absl_hashtablez_sampler: ${ABSL_HASHTABLEZ_SAMPLER}")
+    endif()
+    if(ABSL_LOW_LEVEL_HASH)
+        list(APPEND ABSL_EXTRA_LIBS ${ABSL_LOW_LEVEL_HASH})
+        message(STATUS "Found absl_low_level_hash: ${ABSL_LOW_LEVEL_HASH}")
+    endif()
+    
+    # Linke die gefundenen Bibliotheken
+    if(ABSL_EXTRA_LIBS)
+        target_link_libraries(pokerth_qml-client PRIVATE ${ABSL_EXTRA_LIBS})
+    else()
+        message(WARNING "No additional Abseil libraries found - linking may fail")
+    endif()
+endif()
+
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
 # Android deployment settings

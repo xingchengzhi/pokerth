@@ -13,7 +13,11 @@ Wichtig: Installiere Android SDK/NDK und eine Qt-for-Android-Build-Installation.
 Setze mindestens ANDROID_SDK_ROOT, ANDROID_NDK_ROOT, JAVA_HOME und QT_ANDROID_DIR.
 EOF
 }
-ARCH=${ANDROID_ARCH:-x86}
+ARCH=${ANDROID_ARCH:-x64}
+# if [[ $ARCH = "x64" ]]
+# then
+#   ARCH="x86_64"
+# fi
 BUILD_TYPE=Release
 API_LEVEL=${ANDROID_API_LEVEL:-35}
 
@@ -116,7 +120,8 @@ qt-cmake -S . -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_FIND_ROOT_PATH=${QT_ANDROID_DIR} \
   -DQt6_DIR="${QT_ANDROID_DIR}/lib/cmake/Qt6" \
   ${QT_HOST_PATH:+-DQT_HOST_PATH="$QT_HOST_PATH"} \
-  -DCMAKE_INSTALL_PREFIX="$(pwd)/$BUILD_DIR/install"
+  -DCMAKE_INSTALL_PREFIX="$(pwd)/$BUILD_DIR/install" \
+  -DProtobuf_USE_STATIC_LIBS=ON
 
 echo "Building target 'pokerth_qml-client'..."
 cmake --build "$BUILD_DIR" --target pokerth_qml-client -j $(nproc || echo 1)

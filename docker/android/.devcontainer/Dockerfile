@@ -1,5 +1,13 @@
 FROM ubuntu:25.10
 
+ENV ANDROID_ARCH=x86_64
+ENV VCPKG_ARCH=x64
+ENV ANDROID_API_LEVEL=35
+ENV QT_VERSION=6.9.3
+ENV GRADLE_VERSION=8.3
+ENV ANDROID_NDK_VERSION=28.0.13004108
+
+
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -7,10 +15,12 @@ ARG LANG=de_DE.UTF-8
 ARG LANGUAGE=de_DE.UTF-8
 ARG LC_ALL=de_DE.UTF-8
 
-ENV ROOT=/workspaces/android/build
+ARG ROOT=/opt/pokerth-android
+ENV ROOT=${ROOT}
 ENV DEBIAN_FRONTEND=noninteractive
 
-ENV ANDROID_SDK_ROOT=${ROOT}/android-sdk
+ARG ANDROID_SDK_ROOT=${ROOT}/android-sdk
+ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 
@@ -72,12 +82,13 @@ RUN userdel ubuntu && \
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod u+rwx,g+rx,o+rx /usr/local/bin/docker-entrypoint
 
+# Create sdk root
+RUN mkdir -p ${ANDROID_SDK_ROOT} \
+  && chown -R vscode:vscode ${ROOT}
+
 USER vscode
 
 ### Android stuff
-
-# Create sdk root
-RUN mkdir -p ${ANDROID_SDK_ROOT}
 
 # Install Android command line tools
 WORKDIR /tmp
@@ -122,21 +133,22 @@ RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --m
 # boost & openssl for android
 RUN git clone https://github.com/microsoft/vcpkg.git ${ROOT}/vcpkg
 RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
-  ${ROOT}/vcpkg/vcpkg install boost-system:${ANDROID_ARCH}-android \
-  boost-filesystem:${ANDROID_ARCH}-android \
-  boost-thread:${ANDROID_ARCH}-android boost-regex:${ANDROID_ARCH}-android \
-  boost-chrono:${ANDROID_ARCH}-android \
-  boost-date-time:${ANDROID_ARCH}-android boost-serialization:${ANDROID_ARCH}-android \
-  boost-asio:${ANDROID_ARCH}-android \
-  boost-interprocess:${ANDROID_ARCH}-android \
-  boost-iostreams:${ANDROID_ARCH}-android \
-  boost-program-options:${ANDROID_ARCH}-android \
-  boost-lambda:${ANDROID_ARCH}-android \
-  boost-foreach:${ANDROID_ARCH}-android \
-  boost-uuid:${ANDROID_ARCH}-android \
-  openssl:${ANDROID_ARCH}-android \
-  curl:${ANDROID_ARCH}-android \
-  protobuf:${ANDROID_ARCH}-android \
+  ${ROOT}/vcpkg/vcpkg install \
+  boost-system:${VCPKG_ARCH}-android \
+  boost-filesystem:${VCPKG_ARCH}-android \
+  boost-thread:${VCPKG_ARCH}-android boost-regex:${VCPKG_ARCH}-android \
+  boost-chrono:${VCPKG_ARCH}-android \
+  boost-date-time:${VCPKG_ARCH}-android boost-serialization:${VCPKG_ARCH}-android \
+  boost-asio:${VCPKG_ARCH}-android \
+  boost-interprocess:${VCPKG_ARCH}-android \
+  boost-iostreams:${VCPKG_ARCH}-android \
+  boost-program-options:${VCPKG_ARCH}-android \
+  boost-lambda:${VCPKG_ARCH}-android \
+  boost-foreach:${VCPKG_ARCH}-android \
+  boost-uuid:${VCPKG_ARCH}-android \
+  openssl:${VCPKG_ARCH}-android \
+  curl:${VCPKG_ARCH}-android \
+  protobuf:${VCPKG_ARCH}-android \
   protobuf:x64-linux
 
 ### ###

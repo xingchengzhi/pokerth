@@ -1,7 +1,8 @@
 FROM ubuntu:25.10
 
-ENV ANDROID_ARCH=x86_64
-ENV VCPKG_ARCH=x64
+ENV ANDROID_ARCH=arm64-v8a
+ENV VCPKG_ARCH=arm64
+ENV QT_ARCH=arm64_v8a
 ENV ANDROID_API_LEVEL=35
 ENV QT_VERSION=6.9.3
 ENV GRADLE_VERSION=8.3
@@ -124,8 +125,8 @@ RUN pip install aqtinstall
 RUN mkdir -p ${ROOT}/Qt
 
 # install Qt for Android
-RUN cd ${ROOT}/Qt && aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
-ENV QT_ANDROID_DIR=${ROOT}/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
+RUN cd ${ROOT}/Qt && aqt install-qt all_os android ${QT_VERSION} android_${QT_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+ENV QT_ANDROID_DIR=${ROOT}/Qt/${QT_VERSION}/android_${QT_ARCH}
 # install host (desktop) Qt needed as QT_HOST_PATH for cross-build
 RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 

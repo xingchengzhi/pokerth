@@ -40,6 +40,7 @@ RUN apt-get update \
     libwebsocketpp-dev \
     libboost1.88-all-dev \
     locales sudo nano mc openjdk-17-jdk-headless cmake ninja-build zip unzip \
+    google-android-build-tools-28.0.1-installer \
   && rm -rf /var/lib/apt/lists/*
 
 # Install docker

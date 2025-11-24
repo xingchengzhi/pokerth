@@ -18,7 +18,7 @@ if(GUI_800_480)
     add_definitions(-DGUI_800x480)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -137,7 +137,7 @@ target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
-target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
+target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti -Wno-stringop-overflow)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
 

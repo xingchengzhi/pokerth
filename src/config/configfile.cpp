@@ -341,7 +341,7 @@ ConfigFile::ConfigFile(char *argv0, bool readonly) : noWriteAccess(readonly)
 		configFileName += "config.xml";
 
 		QDomDocument xmlDoc;
-		QFile file(std::filesystem::u8path(configFileName));
+		QFile file(std::filesystem::path((const char8_t*)&configFileName));
 		if (!file.open(QIODevice::ReadOnly) || !xmlDoc.setContent(&file))
 		{
 			file.close();
@@ -417,7 +417,7 @@ void ConfigFile::fillBuffer()
 	boost::recursive_mutex::scoped_lock lock(m_configMutex);
 
 	QDomDocument xmlDoc;
-	QFile file(std::filesystem::u8path(configFileName));
+	QFile file(std::filesystem::path((const char8_t*)&configFileName));
 	if (file.open(QIODevice::ReadOnly) && xmlDoc.setContent(&file))
 	{
 		file.close();
@@ -612,7 +612,7 @@ void ConfigFile::updateConfig(ConfigState myConfigState)
 
 		// load the old one
 		QDomDocument oldDoc;
-		QFile file(std::filesystem::u8path(configFileName));
+		QFile file(std::filesystem::path((const char8_t*)&configFileName));
 		if (file.open(QIODevice::ReadOnly) && oldDoc.setContent(&file))
 		{
 			file.close();

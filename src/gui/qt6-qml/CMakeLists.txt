@@ -130,6 +130,5 @@ endif()
 
 install(TARGETS pokerth_qml-client DESTINATION bin OPTIONAL)
 install(DIRECTORY ../../../data DESTINATION share/pokerth)
-install(FILES ../../../pokerth_qml.desktop DESTINATION $ENV{HOME}/.local/share/applications)
 install(FILES ../../../pokerth_qml.desktop DESTINATION share/applications)
 install(FILES ../../../pokerth.png DESTINATION share/pixmaps)

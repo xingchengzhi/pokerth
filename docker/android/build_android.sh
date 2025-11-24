@@ -15,7 +15,7 @@ EOF
 }
 ARCH=${ANDROID_ARCH:-x86}
 BUILD_TYPE=Release
-API_LEVEL=35
+API_LEVEL=${ANDROID_API_LEVEL:-35}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

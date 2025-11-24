@@ -7,35 +7,27 @@ ARG LANG=de_DE.UTF-8
 ARG LANGUAGE=de_DE.UTF-8
 ARG LC_ALL=de_DE.UTF-8
 
+ENV ROOT=/workspaces/android/build
 ENV DEBIAN_FRONTEND=noninteractive
 
-ARG ANDROID_SDK_ROOT=/opt/android-sdk
-ENV ANDROID_NDK_VERSION=25.2.9519653
-ARG GRADLE_VERSION=8.3
-
-# set ANDROID_ARCH to one of the following:
-# armv7 x86 arm64_v8a
-ENV ANDROID_ARCH x86
-ENV QT_VERSION 6.9.3
-
-ENV ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
+ENV ANDROID_SDK_ROOT=${ROOT}/android-sdk
 ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 
-ENV VCPKG_ROOT=/opt/vcpkg
+ENV VCPKG_ROOT=${ROOT}/vcpkg
 ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
 
-ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android
-ENV QT_HOST_PATH=/opt/Qt/${QT_VERSION}/gcc_64
+ENV QT_ANDROID_DIR=${ROOT}/Qt/${QT_VERSION}/android
+ENV QT_HOST_PATH=${ROOT}/Qt/${QT_VERSION}/gcc_64
 
-ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:/opt/gradle/gradle-${GRADLE_VERSION}/bin:/opt/Qt/${QT_VERSION}/gcc_64/bin
+ENV PATH=$PATH:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ROOT}/gradle/gradle-${GRADLE_VERSION}/bin:${ROOT}/Qt/${QT_VERSION}/gcc_64/bin:${ROOT}/vcpkg
 
 # Install dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates curl wget unzip git build-essential pkg-config \
-    python3 python3-pip python3-venv \
-    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libcurl4-gnutls-dev \
+    python3 python3-pip python3-venv jq \
+    libwebsocketpp-dev \
     libboost1.88-all-dev \
     locales sudo nano mc openjdk-17-jdk-headless cmake ninja-build zip unzip \
   && rm -rf /var/lib/apt/lists/*
@@ -75,7 +67,6 @@ RUN userdel ubuntu && \
     usermod -aG systemd-journal $USERNAME
 
 
-RUN chown -R vscode:vscode /opt
 
 # entry-point
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
@@ -104,34 +95,34 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 # Install SDK components (platform-tools, build-tools, ndk)
 RUN yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses || true
-RUN ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-31" "build-tools;33.0.2" "ndk;${ANDROID_NDK_VERSION}" "cmake;3.22.1"
+RUN ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-35" "build-tools;33.0.2" "ndk;${ANDROID_NDK_VERSION}" "cmake;3.22.1"
 
 # Install Gradle (binary distribution)
-RUN mkdir -p /opt/gradle \
+RUN mkdir -p ${ROOT}/gradle \
   && curl -fSL https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o /tmp/gradle.zip \
-  && unzip /tmp/gradle.zip -d /opt/gradle \
+  && unzip /tmp/gradle.zip -d ${ROOT}/gradle \
   && rm /tmp/gradle.zip
 
 # install aqtinstall
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+RUN python3 -m venv ${ROOT}/venv
+ENV PATH="${ROOT}/venv/bin:$PATH"
 RUN pip install --upgrade pip
 RUN pip install aqtinstall
 
-RUN mkdir -p /opt/Qt
+RUN mkdir -p ${ROOT}/Qt
 
 # install Qt for Android
-RUN cd /opt/Qt && aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
-ENV QT_ANDROID_DIR=/opt/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
+RUN cd ${ROOT}/Qt && aqt install-qt all_os android ${QT_VERSION} android_${ANDROID_ARCH} --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+ENV QT_ANDROID_DIR=${ROOT}/Qt/${QT_VERSION}/android_${ANDROID_ARCH}
 # install host (desktop) Qt needed as QT_HOST_PATH for cross-build
-RUN cd /opt/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
+RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 
 
 
 # boost & openssl for android
-RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg
-RUN /opt/vcpkg/bootstrap-vcpkg.sh && \
-  /opt/vcpkg/vcpkg install boost-system:${ANDROID_ARCH}-android \
+RUN git clone https://github.com/microsoft/vcpkg.git ${ROOT}/vcpkg
+RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
+  ${ROOT}/vcpkg/vcpkg install boost-system:${ANDROID_ARCH}-android \
   boost-filesystem:${ANDROID_ARCH}-android \
   boost-thread:${ANDROID_ARCH}-android boost-regex:${ANDROID_ARCH}-android \
   boost-chrono:${ANDROID_ARCH}-android \
@@ -150,9 +141,9 @@ RUN /opt/vcpkg/bootstrap-vcpkg.sh && \
 
 ### ###
 
-RUN cd /opt && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
-
-# RUN cd /opt/pokerth && bash docker/android/build_android.sh
+RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
+# RUN cd ${ROOT}/pokerth && patch -p1 < docker/android/websocketpp.patch
+# RUN cd ${ROOT}/pokerth && bash docker/android/build_android.sh
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

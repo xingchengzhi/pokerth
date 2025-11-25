@@ -12,6 +12,7 @@ ENV QT_ARCH=arm64_v8a
 # set target (pokerth_client or pokerth_qml-client)
 ENV TARGET=pokerth_client
 
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://de.archive.ubuntu.com/ubuntu/|' /etc/apt/sources.list.d/ubuntu.sources
 
 # better not touch these values
 ENV ANDROID_API_LEVEL=35
@@ -168,10 +169,10 @@ RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth
 
 # build protobuf with tls-emulation
 RUN mkdir -p ${ROOT}/vcpkg-overlays/protobuf
-RUN cp -r ${ROOT}/vcpkg/ports/protobuf/* ${ROOT}/vcpkg-overlays/protobuf/ports/protobuf/
-RUN cp ${ROOT}/pokerth/docker/android/portfile.cmake ${ROOT}/vcpkg-overlays/protobuf/ports/protobuf/portfile.cmake
+RUN cp -r ${ROOT}/vcpkg/ports/protobuf/* ${ROOT}/vcpkg-overlays/protobuf/
+RUN cp ${ROOT}/pokerth/docker/android/portfile.cmake ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake
 RUN ${ROOT}/vcpkg/vcpkg remove protobuf:${VCPKG_ARCH}-android
-RUN ${ROOT}/vcpkg install protobuf:${VCPKG_ARCH}-android --overlay-ports=${ROOT}/vcpkg-overlays/protobuf
+RUN ${ROOT}/vcpkg/vcpkg install protobuf:${VCPKG_ARCH}-android --overlay-ports=${ROOT}/vcpkg-overlays/protobuf
 
 # RUN cd ${ROOT}/pokerth && bash docker/android/build_android.sh
 

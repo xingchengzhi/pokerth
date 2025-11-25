@@ -118,48 +118,8 @@ target_include_directories(pokerth_client PUBLIC
 target_link_libraries(pokerth_client PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_client PRIVATE Qt6::Core Qt6::Gui Qt6::Sql Qt6::Xml Qt6::Widgets Qt6::Network Qt6::Multimedia Qt6::Sql)
 
-# Fix für Android: Abseil-Bibliotheken die von Protobuf benötigt werden
-if(ANDROID)
-    # Suche nach verfügbaren Abseil-Bibliotheken (optional)
-    find_library(ABSL_RAW_HASH_SET absl_raw_hash_set PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
-    find_library(ABSL_HASHTABLEZ_SAMPLER absl_hashtablez_sampler PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
-    find_library(ABSL_LOW_LEVEL_HASH absl_low_level_hash PATHS ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib NO_DEFAULT_PATH)
-    
-    # Erstelle eine Liste der gefundenen Bibliotheken
-    set(ABSL_EXTRA_LIBS)
-    if(ABSL_RAW_HASH_SET)
-        list(APPEND ABSL_EXTRA_LIBS ${ABSL_RAW_HASH_SET})
-        message(STATUS "Found absl_raw_hash_set: ${ABSL_RAW_HASH_SET}")
-    endif()
-    if(ABSL_HASHTABLEZ_SAMPLER)
-        list(APPEND ABSL_EXTRA_LIBS ${ABSL_HASHTABLEZ_SAMPLER})
-        message(STATUS "Found absl_hashtablez_sampler: ${ABSL_HASHTABLEZ_SAMPLER}")
-    endif()
-    if(ABSL_LOW_LEVEL_HASH)
-        list(APPEND ABSL_EXTRA_LIBS ${ABSL_LOW_LEVEL_HASH})
-        message(STATUS "Found absl_low_level_hash: ${ABSL_LOW_LEVEL_HASH}")
-    endif()
-    
-    # Linke die gefundenen Bibliotheken
-    if(ABSL_EXTRA_LIBS)
-        target_link_libraries(pokerth_client PRIVATE ${ABSL_EXTRA_LIBS})
-    else()
-        message(WARNING "No additional Abseil libraries found - linking may fail")
-    endif()
-endif()
-
 target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
-
-# Android: Force whole-archive linking for libprotobuf to include TLS symbols
-if(ANDROID)
-    # Füge Protobuf mit whole-archive hinzu, BEVOR pokerth_protocol gelinkt wird
-    target_link_libraries(pokerth_client PUBLIC 
-        -Wl,--whole-archive
-        ${Protobuf_LIBRARIES}
-        -Wl,--no-whole-archive
-    )
-endif()
 
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
 

@@ -74,11 +74,6 @@ target_include_directories(pokerth_qml-client PUBLIC
     ../
     cpp)
 
-target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
-target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_qml-client PUBLIC CURL::libcurl)
-target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
-
 # Fix für Android: Abseil-Bibliotheken die von Protobuf benötigt werden
 if(ANDROID)
     # Suche nach verfügbaren Abseil-Bibliotheken (optional)
@@ -109,24 +104,25 @@ if(ANDROID)
     endif()
 endif()
 
+target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
+target_link_libraries(pokerth_qml-client PUBLIC pokerth_db)
+
+target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
+target_link_libraries(pokerth_qml-client PUBLIC CURL::libcurl)
+target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
+
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 
-# Android deployment settings
+# Android: Konfiguriere und finalisiere Target
 if(ANDROID)
-    set(ANDROID_SDK_BUILD_TOOLS_REVISION "$BUILD_TOOLS_VERSION" CACHE STRING "")
-    set(QT_ANDROID_SDK_BUILD_TOOLS_REVISION "$BUILD_TOOLS_VERSION" CACHE STRING "")
-    
     # Setze Properties VOR qt_finalize_target
-    set_property(TARGET pokerth_qml-client PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android)
     set_target_properties(pokerth_qml-client PROPERTIES
-        QT_ANDROID_MIN_SDK_VERSION 28
-        QT_ANDROID_TARGET_SDK_VERSION 34
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+        QT_ANDROID_MIN_SDK_VERSION "28"
+        QT_ANDROID_TARGET_SDK_VERSION "35"
     )
     
-    # WICHTIG: NICHT qt_android_generate_deployment_settings aufrufen!
-    # Das passiert automatisch in qt_finalize_target
-    
-    # Finalisiere das Target (nur einmal, da MANUAL_FINALIZATION gesetzt ist)
+    # Finalisiere das Target (generiert deployment-settings.json)
     qt_finalize_target(pokerth_qml-client)
 endif()
 

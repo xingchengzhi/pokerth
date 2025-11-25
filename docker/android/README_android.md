@@ -1,6 +1,6 @@
 Best practice is to use the VS Code Dev-Container feature.
 
-Before building the container Image, edit Dockerfile and set architecture to build for.
+Before building the container Image, edit Dockerfile in `.devcontainer` folder and set architecture and target to build for.
 
 Inside the running container:
 

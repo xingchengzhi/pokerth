@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../opt/pokerth-android"
+		},
+		{
+			"path": "../../opt/pokerth-android/pokerth"
 		}
 	],
 	"settings": {}

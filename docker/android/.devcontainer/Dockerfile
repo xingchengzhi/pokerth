@@ -10,7 +10,7 @@ ENV ANDROID_ARCH=x86_64
 ENV VCPKG_ARCH=x64
 ENV QT_ARCH=x86_64
 # set target (pokerth_client or pokerth_qml-client)
-ENV TARGET=pokerth_client
+ENV TARGET=pokerth_qml-client
 
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://de.archive.ubuntu.com/ubuntu/|' /etc/apt/sources.list.d/ubuntu.sources
 
@@ -171,9 +171,7 @@ RUN mkdir -p ${ROOT}/vcpkg-overlays/protobuf
 RUN cp -r ${ROOT}/vcpkg/ports/protobuf/* ${ROOT}/vcpkg-overlays/protobuf/
 
 # Füge TLS-Emulation am Anfang der portfile.cmake ein
-RUN cat ${ROOT}/pokerth/docker/android/protobuf-portfile.cmake > ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new && \
-    cat ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake >> ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new && \
-    mv ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake
+RUN sed -i '1i\# Workaround für TLS-Emulation\nset(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-warn-execstack")\nset(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-warn-execstack")\n' ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake
 
 # Entferne Protobuf komplett und lösche Build-Cache
 RUN ${ROOT}/vcpkg/vcpkg remove protobuf:${VCPKG_ARCH}-android --recurse

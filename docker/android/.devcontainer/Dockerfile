@@ -9,6 +9,9 @@ FROM ubuntu:25.10
 ENV ANDROID_ARCH=arm64-v8a
 ENV VCPKG_ARCH=arm64
 ENV QT_ARCH=arm64_v8a
+# set target (pokerth_client or pokerth_qml-client)
+ENV TARGET=pokerth_client
+
 
 # better not touch these values
 ENV ANDROID_API_LEVEL=35
@@ -138,8 +141,6 @@ ENV QT_ANDROID_DIR=${ROOT}/Qt/${QT_VERSION}/android_${QT_ARCH}
 # install host (desktop) Qt needed as QT_HOST_PATH for cross-build
 RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 
-
-
 # boost & openssl for android
 RUN git clone https://github.com/microsoft/vcpkg.git ${ROOT}/vcpkg
 RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
@@ -164,7 +165,14 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
 ### ###
 
 RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
-# RUN cd ${ROOT}/pokerth && patch -p1 < docker/android/websocketpp.patch
+
+# build protobuf with tls-emulation
+RUN mkdir -p ${ROOT}/vcpkg-overlays/protobuf
+RUN cp -r ${ROOT}/vcpkg/ports/protobuf/* ${ROOT}/vcpkg-overlays/protobuf/ports/protobuf/
+RUN cp ${ROOT}/pokerth/docker/android/portfile.cmake ${ROOT}/vcpkg-overlays/protobuf/ports/protobuf/portfile.cmake
+RUN ${ROOT}/vcpkg/vcpkg remove protobuf:${VCPKG_ARCH}-android
+RUN ${ROOT}/vcpkg install protobuf:${VCPKG_ARCH}-android --overlay-ports=${ROOT}/vcpkg-overlays/protobuf
+
 # RUN cd ${ROOT}/pokerth && bash docker/android/build_android.sh
 
 # Entrypoint/Command used from docker-compose.yml

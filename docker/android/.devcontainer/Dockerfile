@@ -6,9 +6,9 @@ FROM ubuntu:25.10
 # ANDROID_ARCH: armeabi-v7a, arm64-v8a, x86, x86_64
 # VCPKG_ARCH: arm, arm64, x86, x64
 # QT_ARCH: armv7, arm64_v8a, x86, x86_64
-ENV ANDROID_ARCH=arm64-v8a
-ENV VCPKG_ARCH=arm64
-ENV QT_ARCH=arm64_v8a
+ENV ANDROID_ARCH=x86_64
+ENV VCPKG_ARCH=x64
+ENV QT_ARCH=x86_64
 # set target (pokerth_client or pokerth_qml-client)
 ENV TARGET=pokerth_client
 
@@ -160,7 +160,6 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
   boost-uuid:${VCPKG_ARCH}-android \
   openssl:${VCPKG_ARCH}-android \
   curl:${VCPKG_ARCH}-android \
-  protobuf:${VCPKG_ARCH}-android \
   protobuf:x64-linux
 
 ### ###
@@ -170,9 +169,23 @@ RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth
 # build protobuf with tls-emulation
 RUN mkdir -p ${ROOT}/vcpkg-overlays/protobuf
 RUN cp -r ${ROOT}/vcpkg/ports/protobuf/* ${ROOT}/vcpkg-overlays/protobuf/
-RUN cp ${ROOT}/pokerth/docker/android/portfile.cmake ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake
-RUN ${ROOT}/vcpkg/vcpkg remove protobuf:${VCPKG_ARCH}-android
-RUN ${ROOT}/vcpkg/vcpkg install protobuf:${VCPKG_ARCH}-android --overlay-ports=${ROOT}/vcpkg-overlays/protobuf
+
+# Füge TLS-Emulation am Anfang der portfile.cmake ein
+RUN cat ${ROOT}/pokerth/docker/android/protobuf-portfile.cmake > ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new && \
+    cat ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake >> ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new && \
+    mv ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake.new ${ROOT}/vcpkg-overlays/protobuf/portfile.cmake
+
+# Entferne Protobuf komplett und lösche Build-Cache
+RUN ${ROOT}/vcpkg/vcpkg remove protobuf:${VCPKG_ARCH}-android --recurse
+RUN rm -rf ${ROOT}/vcpkg/buildtrees/protobuf
+RUN rm -rf ${ROOT}/vcpkg/packages/protobuf_${VCPKG_ARCH}-android
+RUN rm -rf /tmp/vcpkg-buildtrees/protobuf
+
+# Installiere Protobuf neu mit Overlay
+RUN ${ROOT}/vcpkg/vcpkg install protobuf:${VCPKG_ARCH}-android \
+    --overlay-ports=${ROOT}/vcpkg-overlays/protobuf \
+    --x-buildtrees-root=/tmp/vcpkg-buildtrees \
+    --no-binarycaching
 
 # RUN cd ${ROOT}/pokerth && bash docker/android/build_android.sh
 

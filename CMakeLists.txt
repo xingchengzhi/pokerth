@@ -29,11 +29,21 @@ include(FindProtobuf)
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
+
+if(ANDROID)
+    set(Protobuf_USE_STATIC_LIBS ON)
+    set(protobuf_MODULE_COMPATIBLE ON)
+    # Force Protobuf to use emulated TLS instead of native TLS
+    add_definitions(-DPROTOBUF_USE_DLLS)
+    add_compile_options(-femulated-tls)  # WICHTIG: Emuliere TLS für Android
+endif()
+
 find_package(Protobuf REQUIRED)
 find_package(Protobuf CONFIG)
 
 # Find abseil (required for protobuf >= 5.27)
 if(ANDROID)
+    add_definitions(-DPROTOBUF_USE_DLLS)  # Kann TLS-Probleme umgehen
     find_package(absl CONFIG REQUIRED)
 endif()
 
@@ -175,15 +185,86 @@ target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 
 # Link abseil libraries for Android (required by protobuf >= 5.27)
 if(ANDROID)
+    # WICHTIG: Die Reihenfolge ist entscheidend!
     target_link_libraries(pokerth_protocol PUBLIC 
+        # CRITICAL: Protobuf muss VOR Abseil gelinkt werden
+        # Dann Base-Bibliotheken (enthalten TLS-Symbole)
+        absl::base
+        absl::raw_logging_internal
+        absl::spinlock_wait
+        absl::malloc_internal
+        absl::log_severity
+        
+        # NEUE: Status & StatusOr (für FailedPreconditionError)
+        absl::status
+        absl::statusor
+        
+        # NEUE: Log Every Pow2 State
+        absl::log_internal_conditions
+        
+        # Debugging & Demangle
+        absl::debugging_internal
+        absl::demangle_internal
+        absl::demangle_rust
+        absl::decode_rust_punycode
+        absl::utf8_for_code_point
+        absl::tracing_internal
+        
+        # Strings
+        absl::strings
+        absl::strings_internal
+        absl::string_view
+        absl::int128
+        absl::throw_delegate
+        
+        # Time & Sync
+        absl::time
+        absl::civil_time
+        absl::time_zone
+        absl::synchronization
+        absl::graphcycles_internal
+        absl::kernel_timeout_internal
+        
+        # Hash (WICHTIG: Nach Base, vor Cord)
+        absl::city
+        absl::hash
+        absl::raw_hash_set
+        absl::hashtablez_sampler
+        absl::exponential_biased
+        
+        # Cord
+        absl::cord
+        absl::cordz_info
+        absl::cord_internal
+        absl::cordz_functions
+        absl::cordz_handle
+        absl::crc_cord_state
+        absl::crc32c
+        absl::crc_internal
+        absl::crc_cpu_detect
+        absl::str_format_internal
+        
+        # Logging
         absl::log_internal_check_op
         absl::log_internal_message
-        absl::synchronization
-        absl::strings
-        absl::cord
-        absl::hash
         absl::log_internal_log_sink_set
         absl::log_internal_globals
+        absl::log_globals
+        absl::vlog_config_internal
+        absl::log_internal_fnmatch
+        absl::log_sink
+        absl::log_entry
+        absl::log_internal_proto
+        absl::log_internal_nullguard
+        absl::examine_stack
+        absl::log_internal_format
+        absl::log_internal_structured_proto
+        absl::strerror
+        absl::leak_check
+        absl::stacktrace
+        absl::symbolize
+        
+        # UTF8
         utf8_range::utf8_range
         utf8_range::utf8_validity
     )

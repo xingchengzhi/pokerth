@@ -123,39 +123,101 @@ qt-cmake -S . -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_INSTALL_PREFIX="$(pwd)/$BUILD_DIR/install" \
   -DProtobuf_USE_STATIC_LIBS=ON
 
-echo "Building target 'pokerth_qml-client'..."
-cmake --build "$BUILD_DIR" --target pokerth_qml-client -j $(nproc || echo 1)
+echo "Building target 'pokerth_client'..."
+cmake --build "$BUILD_DIR" --target pokerth_client -j $(nproc || echo 1)
 
 echo "Build finished. Artefacts in: $BUILD_DIR"
 
-# Suche deployment-settings.json
-DEPLOY_JSON=$(find "$BUILD_DIR" -type f -name "*-deployment-settings.json" | head -n1 || true)
+# WICHTIG: Suche deployment-settings.json für pokerth_client (nicht qml-client!)
+# Zuerst im qt/ Verzeichnis suchen (wo pokerth_client gebaut wird)
+DEPLOY_JSON=$(find "$BUILD_DIR/src/gui/qt" -type f -name "*deployment-settings.json" | grep -v "qml" | head -n1 || true)
 
 if [[ -z "$DEPLOY_JSON" ]]; then
-  echo "WARNING: No deployment settings JSON found"
-  exit 0
+  echo "WARNING: No deployment settings JSON found in qt/ directory"
+  echo "Searching in entire build directory..."
+  
+  # Suche nach ALLEN deployment-settings.json, bevorzuge aber nicht-QML
+  DEPLOY_JSON=$(find "$BUILD_DIR" -type f -name "*deployment-settings.json" | grep -v "qml" | head -n1 || true)
+  
+  if [[ -z "$DEPLOY_JSON" ]]; then
+    echo "No non-QML deployment settings found, trying QML as last resort..."
+    DEPLOY_JSON=$(find "$BUILD_DIR" -type f -name "*deployment-settings.json" | head -n1 || true)
+  fi
+  
+  if [[ -z "$DEPLOY_JSON" ]]; then
+    echo "ERROR: No deployment settings JSON found at all"
+    echo "Available JSON files:"
+    find "$BUILD_DIR" -type f -name "*.json"
+    exit 10
+  fi
 fi
 
 echo "Found deployment settings: $DEPLOY_JSON"
 
-# Patche deployment-settings.json
+ANDROID_SOURCE_DIR="${PWD}/src/gui/qt/android"
+ANDROID_BUILD_DIR="$BUILD_DIR/android-build"
+
+# Patche deployment-settings.json - WICHTIG: Ändere application-binary!
 if command -v jq >/dev/null 2>&1; then
   echo "Patching deployment settings JSON..."
   TMP_JSON=$(mktemp)
+  
+  # Patche ALLE relevanten Felder UND setze application-binary auf pokerth_client
   jq --arg bt "$BUILD_TOOLS_VERSION" \
-    '.["android-build-tools-revision"] = $bt | .["android-sdk-build-tools-revision"] = $bt' \
+     --arg al "$API_LEVEL" \
+     --arg arch "$ARCH" \
+    '.["android-build-tools-revision"] = $bt | 
+     .["android-sdk-build-tools-revision"] = $bt |
+     .["android-target-sdk-version"] = $al |
+     .["android-min-sdk-version"] = "28" |
+     .["target-architecture"] = $arch |
+     .["application-binary"] = "pokerth_client" |
+     .["android-package-source-directory"] = "'"$ANDROID_SOURCE_DIR"'"' \
     "$DEPLOY_JSON" > "$TMP_JSON"
   mv "$TMP_JSON" "$DEPLOY_JSON"
   
   echo "Deployment settings after patch:"
-  jq '.["android-build-tools-revision"], .["android-sdk-build-tools-revision"]' "$DEPLOY_JSON"
+  jq '.["application-binary"], .["android-package-source-directory"]' "$DEPLOY_JSON"
+else
+  echo "WARNING: jq not found, cannot patch deployment settings"
 fi
 
-# Finde .so-Datei
-SO_FILE=$(find "$BUILD_DIR" -type f -name "libpokerth_qml-client*.so" | head -n1)
+# Kopiere Android-Manifest und Ressourcen
+if [[ ! -d "$ANDROID_SOURCE_DIR" ]]; then
+  echo "WARNING: Android source directory not found: $ANDROID_SOURCE_DIR"
+  echo "Creating minimal Android directory structure..."
+  mkdir -p "$ANDROID_BUILD_DIR/res/values"
+  
+  # Erstelle minimales AndroidManifest.xml
+  cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<'MANIFEST'
+<?xml version="1.0"?>
+<manifest package="org.pokerth.widget" xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.0" android:versionCode="1" android:installLocation="auto">
+    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="35"/>
+    <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
+    <application android:hardwareAccelerated="true" android:name="org.qtproject.qt.android.bindings.QtApplication" android:label="PokerTH">
+        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" android:name="org.qtproject.qt.android.bindings.QtActivity" android:label="PokerTH" android:screenOrientation="unspecified" android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+MANIFEST
+  
+  echo "Created minimal AndroidManifest.xml"
+else
+  echo "Copying Android source files from: $ANDROID_SOURCE_DIR"
+  cp -rv "$ANDROID_SOURCE_DIR"/* "$ANDROID_BUILD_DIR/" || true
+fi
+
+# Finde .so-Datei - suche sowohl nach libpokerth_client.so als auch nach Varianten
+SO_FILE=$(find "$BUILD_DIR" -type f \( -name "libpokerth_client.so" -o -name "libpokerth_client_*.so" \) | head -n1)
 
 if [[ -z "$SO_FILE" ]]; then
-  echo "ERROR: Could not find libpokerth_qml-client*.so"
+  echo "ERROR: Could not find libpokerth_client*.so"
+  echo "Searching for any .so files in build directory:"
+  find "$BUILD_DIR" -type f -name "*.so" | head -20
   exit 6
 fi
 
@@ -165,16 +227,30 @@ echo "Found library: $SO_FILE"
 ANDROID_BUILD_DIR="$BUILD_DIR/android-build"
 mkdir -p "$ANDROID_BUILD_DIR/libs/$ARCH"
 
-echo "Copying library to expected location..."
-cp -v "$SO_FILE" "$ANDROID_BUILD_DIR/libs/$ARCH/"
+# Kopiere mit dem Namen, den androiddeployqt erwartet
+EXPECTED_SO_NAME="libpokerth_client_${ARCH}.so"
+echo "Copying library as: $EXPECTED_SO_NAME"
+cp -v "$SO_FILE" "$ANDROID_BUILD_DIR/libs/$ARCH/$EXPECTED_SO_NAME"
+
+# Erstelle auch einen Symlink mit dem ursprünglichen Namen
+ln -sf "$EXPECTED_SO_NAME" "$ANDROID_BUILD_DIR/libs/$ARCH/libpokerth_client.so"
 
 # Überprüfe, ob die Datei kopiert wurde
-if [[ ! -f "$ANDROID_BUILD_DIR/libs/$ARCH/$(basename "$SO_FILE")" ]]; then
+if [[ ! -f "$ANDROID_BUILD_DIR/libs/$ARCH/$EXPECTED_SO_NAME" ]]; then
   echo "ERROR: Failed to copy library to $ANDROID_BUILD_DIR/libs/$ARCH/"
   exit 9
 fi
 
-echo "Library successfully copied to: $ANDROID_BUILD_DIR/libs/$ARCH/$(basename "$SO_FILE")"
+echo "Library successfully copied to: $ANDROID_BUILD_DIR/libs/$ARCH/$EXPECTED_SO_NAME"
+
+# Kopiere Android-Manifest und Ressourcen
+ANDROID_SOURCE_DIR="$(dirname "$DEPLOY_JSON")/android"
+if [[ -d "$ANDROID_SOURCE_DIR" ]]; then
+  echo "Copying Android source files from: $ANDROID_SOURCE_DIR"
+  cp -rv "$ANDROID_SOURCE_DIR"/* "$ANDROID_BUILD_DIR/" || true
+else
+  echo "WARNING: Android source directory not found: $ANDROID_SOURCE_DIR"
+fi
 
 # Verwende androiddeployqt
 ANDROIDDEPLOYQT="${QT_HOST_PATH}/bin/androiddeployqt"

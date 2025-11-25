@@ -33,14 +33,9 @@
 
 #include <string>
 
-#ifdef ANDROID
 #ifdef ANDROID_API8
 class AndroidApi8Dummy;
 #else
-class AndroidAudio;
-#endif
-#else
-// class SDLPlayer;
 class QtAudioPlayer;
 #endif
 
@@ -63,16 +58,14 @@ protected:
 	SoundEvents(const SoundEvents &);
 
 private:
-
 #ifdef ANDROID
 #ifdef ANDROID_API8
-	AndroidApi8Dummy *myPlayer;
+    AndroidApi8Dummy *myPlayer;
 #else
-	AndroidAudio *myPlayer;
+    QtAudioPlayer *myPlayer;  // ÄNDERN SIE DIES
 #endif
 #else
-	// SDLPlayer *myPlayer;
-	QtAudioPlayer *myPlayer;
+    QtAudioPlayer *myPlayer;
 #endif
 
 	ConfigFile *myConfig;

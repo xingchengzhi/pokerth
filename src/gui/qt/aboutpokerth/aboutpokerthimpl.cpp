@@ -35,13 +35,14 @@
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
-#include "QtGui/5.7.1/QtGui/qpa/qplatformnativeinterface.h"
-#include <jni.h>
+// Qt6: Verwende QJniEnvironment statt direktem JNI-Zugriff
+#include <QJniEnvironment>
+#include <QJniObject>
 #endif
 #endif
 
 aboutPokerthImpl::aboutPokerthImpl(QWidget *parent, ConfigFile *c)
-	: QDialog(parent), myConfig(c)
+    : QDialog(parent), myConfig(c)
 {
 #ifdef __APPLE__
 	setWindowModality(Qt::ApplicationModal);
@@ -70,24 +71,21 @@ aboutPokerthImpl::aboutPokerthImpl(QWidget *parent, ConfigFile *c)
 #endif
 
 #ifdef ANDROID
-	int api = -2;
-	this->setWindowState(Qt::WindowFullScreen);
+    int api = -2;
+    this->setWindowState(Qt::WindowFullScreen);
 #ifndef ANDROID_TEST
-	JavaVM *currVM = (JavaVM *)QApplication::platformNativeInterface()->nativeResourceForIntegration("JavaVM");
-	JNIEnv* env;
-	if (currVM->AttachCurrentThread(&env, NULL)<0) {
-		qCritical()<<"AttachCurrentThread failed";
-	} else {
-		jclass jclassApplicationClass = env->FindClass("android/os/Build$VERSION");
-		if (jclassApplicationClass) {
-			api = env->GetStaticIntField(jclassApplicationClass, env->GetStaticFieldID(jclassApplicationClass,"SDK_INT", "I"));
-		}
-		currVM->DetachCurrentThread();
-	}
+    // Qt6: Verwende QJniEnvironment für Android API-Zugriff
+    QJniEnvironment env;
+    if (env.isValid()) {
+        QJniObject versionClass = QJniObject::fromString("android.os.Build$VERSION");
+        if (versionClass.isValid()) {
+            api = QJniObject::getStaticField<jint>("android/os/Build$VERSION", "SDK_INT");
+        }
+    }
 #endif
-	label_pokerthVersion->setText(QString(tr("PokerTH %1 for Android (API%2)").arg(POKERTH_BETA_RELEASE_STRING).arg(api)));
+    label_pokerthVersion->setText(QString(tr("PokerTH %1 for Android (API%2)").arg(POKERTH_BETA_RELEASE_STRING).arg(api)));
 #else
-	label_pokerthVersion->setText(QString(tr("PokerTH %1").arg(POKERTH_BETA_RELEASE_STRING)));
+    label_pokerthVersion->setText(QString(tr("PokerTH %1").arg(POKERTH_BETA_RELEASE_STRING)));
 #endif
 	this->setWindowTitle(QString(tr("About PokerTH %1").arg(POKERTH_BETA_RELEASE_STRING)));
 

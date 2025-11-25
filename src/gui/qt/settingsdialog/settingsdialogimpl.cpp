@@ -50,12 +50,23 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	setupUi(this);
 
 #ifdef ANDROID
-	stackedWidget->removeWidget(page_styles);
-	listWidget->takeItem(1);
-	label_soundvol->hide();
-	label_soundVolume->hide();
-	horizontalSlider_soundVolume->hide();
-	this->setWindowState(Qt::WindowFullScreen);
+    // Entfernen Sie Styles-Seite für Android
+    QWidget* stylesPage = this->findChild<QWidget*>("page_styles");
+    if (stylesPage) {
+        stackedWidget->removeWidget(stylesPage);
+    }
+    
+    // Entfernen Sie das entsprechende ListWidget-Item
+    for (int i = 0; i < listWidget->count(); ++i) {
+        QListWidgetItem* item = listWidget->item(i);
+        if (item && item->text().contains("Style", Qt::CaseInsensitive)) {
+            delete listWidget->takeItem(i);
+            break;
+        }
+    }
+    label_soundVolume->hide();
+    //disable player nicks page if the dialogs is called ingame to prevent changes during game
+    this->page_3->setDisabled(calledIngame); // KORRIGIERT von calledIn_game
 #endif
 
 	myManualBlindsOrderDialog = new manualBlindsOrderDialogImpl;
@@ -251,8 +262,10 @@ void settingsDialogImpl::prepareDialog()
 	lineEdit_InternetServerPassword->setText(QString::fromUtf8(myConfig->readConfigString("ServerPassword").c_str()));
 	spinBox_InternetServerPort->setValue(myConfig->readConfigInt("InternetServerPort"));
 	checkBox_InternetServerUseIpv6->setChecked(myConfig->readConfigInt("InternetServerUseIpv6"));
-	checkBox_InternetServerUseTls->setChecked(myConfig->readConfigInt("InternetServerUseTls"));
-	checkBox_InternetServerUseSctp->setChecked(myConfig->readConfigInt("InternetServerUseSctp"));
+#ifndef GUI_800x480
+    checkBox_InternetServerUseTls->setChecked(myConfig->readConfigInt("InternetServerUseTls"));
+#endif
+    checkBox_InternetServerUseSctp->setChecked(myConfig->readConfigInt("InternetServerUseSctp"));
 	if(myConfig->readConfigInt("UseAvatarServer")) {
 		lineEdit_avatarServerAddress->setText(QString::fromUtf8(myConfig->readConfigString("AvatarServerAddress").c_str()));
 		checkBox_useAvatarServer->setCheckState(Qt::Checked);
@@ -682,6 +695,9 @@ void settingsDialogImpl::isAccepted()
 	myConfig->writeConfigInt("ServerPort", spinBox_serverPort->value());
 	myConfig->writeConfigInt("ServerUseIpv6", checkBox_useIpv6->isChecked());
 	myConfig->writeConfigInt("ServerUseSctp", checkBox_useSctp->isChecked());
+#ifndef GUI_800x480
+    myConfig->writeConfigInt("InternetServerUseTls", checkBox_InternetServerUseTls->isChecked());
+#endif
 
 	//Internet Game Settings
 	if(groupBox_automaticServerConfig->isChecked()) {
@@ -719,7 +735,9 @@ void settingsDialogImpl::isAccepted()
 
 	myConfig->writeConfigInt("InternetServerUseIpv6", checkBox_InternetServerUseIpv6->isChecked());
 	myConfig->writeConfigInt("InternetServerUseSctp", checkBox_InternetServerUseSctp->isChecked());
-	myConfig->writeConfigInt("InternetServerUseTls", checkBox_InternetServerUseTls->isChecked());
+#ifndef GUI_800x480
+    myConfig->writeConfigInt("InternetServerUseTls", checkBox_InternetServerUseTls->isChecked());
+#endif
 	myConfig->writeConfigInt("UseInternetGamePassword", checkBox_UseInternetGamePassword->isChecked());
 	myConfig->writeConfigString("InternetGamePassword", lineEdit_InternetGamePassword->text().toUtf8().constData());
 	myConfig->writeConfigInt("UseLobbyChat", checkBox_UseLobbyChat->isChecked());
@@ -1168,6 +1186,7 @@ void settingsDialogImpl::showCurrentGameTableStylePreview()
 		if(style.getIfFixedWindowSize().toInt()) {
 			windowsSubString = "<b>"+WindowBehaviour+":</b> "+fixed+"<br><b>"+FixedSize+":</b> "+style.getFixedWindowWidth()+"x"+style.getFixedWindowHeight();
 		} else {
+
 			windowsSubString = "<b>"+WindowBehaviour+":</b> "+scaleable+"<br><b>"+MinimumSize+":</b> "+style.getMinimumWindowWidth()+"x"+style.getMinimumWindowHeight()+"<br><b>"+MaximumSize+":</b> "+style.getMaximumWindowWidth()+"x"+style.getMaximumWindowHeight();
 		}
 

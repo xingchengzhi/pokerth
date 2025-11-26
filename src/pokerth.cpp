@@ -55,6 +55,16 @@ int main(int argc, char *argv[])
  	QGuiApplication::setOrganizationDomain("pokerth.net");
 
     QApplication app(argc, argv);
+
+	// single instance check using QLockFile
+    QString lockPath = QDir::temp().absoluteFilePath("pokerth_qml-client.lock");
+    QLockFile lockFile(lockPath);
+    lockFile.setStaleLockTime(0);
+    if (!lockFile.tryLock()) {
+        return 0;
+    }
+
+
     QIcon::setThemeName("pokerth");
 
     boost::shared_ptr<ConfigFile> myConfig;
@@ -124,7 +134,6 @@ int main(int argc, char *argv[])
 #include "startsplash.h"
 #include "game_defs.h"
 #include <net/socket_startup.h>
-#include <third_party/singleapplication/singleapplication.h>
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -179,10 +188,15 @@ int main( int argc, char **argv )
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else
-	SingleApplication a( argc, argv );
-	if (a.sendMessage("Wake up!")) {
-		return 0;
-	}
+	QApplication a(argc, argv);
+
+	// single instance check using QLockFile
+    QString lockPath = QDir::temp().absoluteFilePath("pokerth_client.lock");
+    QLockFile lockFile(lockPath);
+    lockFile.setStaleLockTime(0);
+    if (!lockFile.tryLock()) {
+        return 0;
+    }
 #endif
 
 	//create defaultconfig
@@ -235,7 +249,7 @@ int main( int argc, char **argv )
 #else
 	QString font1String("QApplication, QWidget, QDialog { font-family: \"Nimbus Sans L\"; font-size: 12px; }");
 #endif
-	a.setStyleSheet(font1String + " QDialogButtonBox, QMessageBox { dialogbuttonbox-buttons-have-icons: 1; dialog-ok-icon: url(:/gfx/dialog_ok_apply.png); dialog-cancel-icon: url(:/gfx/dialog_close.png); dialog-close-icon: url(:/gfx/dialog_close.png); dialog-yes-icon: url(:/gfx/dialog_ok_apply.png); dialog-no-icon: url(:/gfx/dialog_close.png) }");
+	qApp->setStyleSheet(font1String + " QDialogButtonBox, QMessageBox { dialogbuttonbox-buttons-have-icons: 1; dialog-ok-icon: url(:/gfx/dialog_ok_apply.png); dialog-cancel-icon: url(:/gfx/dialog_close.png); dialog-close-icon: url(:/gfx/dialog_close.png); dialog-yes-icon: url(:/gfx/dialog_ok_apply.png); dialog-no-icon: url(:/gfx/dialog_close.png) }");
 
 #ifdef ANDROID
 	//check if custom background pictures for the resolution are there. Otherwise create them!

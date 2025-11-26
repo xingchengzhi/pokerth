@@ -64,18 +64,14 @@ else()
     list(APPEND POKERTH_CLIENT_SRC "resources/pokerth.qrc")
 endif()
 
-file(GLOB QTSINGLEAPPLICATION_SRC ../../third_party/singleapplication/*.cpp)
-
 # Android benötigt qt_add_executable für deployment-settings.json
 if(ANDROID)
     # Verwende qt_add_executable mit MANUAL_FINALIZATION
-    qt_add_executable(pokerth_client MANUAL_FINALIZATION "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+    qt_add_executable(pokerth_client MANUAL_FINALIZATION "${POKERTH_CLIENT_SRC}")
 else()
-    add_executable(pokerth_client "${POKERTH_CLIENT_SRC}" "${QTSINGLEAPPLICATION_SRC}")
+    add_executable(pokerth_client "${POKERTH_CLIENT_SRC}")
 endif()
 
-target_include_directories(pokerth_client PUBLIC ../../third_party/qtlockedfile)
-target_include_directories(pokerth_client PUBLIC ../../third_party/singleapplication)
 target_include_directories(pokerth_client PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_client PUBLIC ".uics/")
 target_include_directories(pokerth_client PUBLIC
@@ -122,9 +118,6 @@ target_link_libraries(pokerth_client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_client PUBLIC pokerth_db)
 
 target_link_libraries(pokerth_client PUBLIC pokerth_protocol)
-
-set(QAPPLICATION_CLASS QApplication CACHE STRING "Inheritance class for SingleApplication")
-add_subdirectory(../../third_party/singleapplication build_singleapplication)
 
 # Android: Konfiguriere und finalisiere Target
 if(ANDROID)

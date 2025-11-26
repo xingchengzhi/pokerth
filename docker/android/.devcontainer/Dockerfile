@@ -10,7 +10,7 @@ ENV ANDROID_ARCH=x86_64
 ENV VCPKG_ARCH=x64
 ENV QT_ARCH=x86_64
 # set target (pokerth_client or pokerth_qml-client)
-ENV TARGET=pokerth_qml-client
+ENV TARGET=pokerth_client
 
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://de.archive.ubuntu.com/ubuntu/|' /etc/apt/sources.list.d/ubuntu.sources
 

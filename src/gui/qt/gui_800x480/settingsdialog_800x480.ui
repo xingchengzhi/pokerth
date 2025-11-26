@@ -2030,6 +2030,23 @@ p, li { white-space: pre-wrap; }
                 </widget>
                </item>
                <item>
+                <widget class="QCheckBox" name="checkBox_InternetServerUseTls">
+                 <property name="text">
+                  <string>Use TLS</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_whatIsTls">
+                 <property name="text">
+                  <string>&lt;a href=&quot;http://en.wikipedia.org/wiki/Transport_Layer_Security&quot;&gt;What is this?&lt;/a&gt;</string>
+                 </property>
+                 <property name="openExternalLinks">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
                 <spacer name="horizontalSpacer_8">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>

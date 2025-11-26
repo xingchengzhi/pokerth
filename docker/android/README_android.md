@@ -1,6 +1,7 @@
 Best practice is to use the VS Code Dev-Container feature.
 
 Before building the container Image, edit Dockerfile in `.devcontainer` folder and set architecture and target to build for.
+... you might also need to edit docker-compose.yml for network settings
 
 Inside the running container:
 

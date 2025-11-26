@@ -4,6 +4,11 @@ set(QT_MIN_VERSION "6.7.0")
 
 project(POKERTH)
 
+if(CMAKE_CROSSCOMPILING)
+    set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "" FORCE)
+    set(X_VCPKG_APPLOCAL_DEPS_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
+
 option(CMAKE_AUTORCC "" ON)
 option(CMAKE_AUTOUIC "" ON)
 option(CMAKE_AUTOMOC "" ON)
@@ -41,17 +46,21 @@ endif()
 find_package(Protobuf REQUIRED)
 find_package(Protobuf CONFIG)
 
-# Find abseil (required for protobuf >= 5.27)
-if(ANDROID)
-    add_definitions(-DPROTOBUF_USE_DLLS)  # Kann TLS-Probleme umgehen
-    find_package(absl CONFIG REQUIRED)
-endif()
+# Find abseil and utf8_range (required for protobuf >= 5.27)
+find_package(absl CONFIG REQUIRED)
+find_package(utf8_range CONFIG REQUIRED)
+
+# Stelle sicher, dass das Ausgabeverzeichnis existiert
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
 
 protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
     chatcleaner.proto pokerth.proto
     PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
+# Füge die generierten Dateien zur Quellenliste hinzu
+list(APPEND POKERTH_LIB_SRC ${PROTOBUF_GEN_SRC})
+
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
 # POKERTH.lib
 
@@ -129,6 +138,8 @@ endif()
 
 add_library(pokerth_lib STATIC ${POKERTH_LIB_SRC})
 
+# Füge Include-Pfad für generierte Protobuf-Header hinzu
+target_include_directories(pokerth_lib PRIVATE "${CMAKE_SOURCE_DIR}/src/third_party/protobuf")
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_lib PUBLIC
     src
@@ -146,6 +157,7 @@ target_include_directories(pokerth_lib PUBLIC
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
+target_link_libraries(pokerth_lib PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti -Wno-stringop-overflow)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
@@ -174,7 +186,7 @@ target_include_directories(pokerth_db PUBLIC src/)
 
 # POKERTH.protocol
 
-add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
+add_library(pokerth_protocol STATIC ${PROTOBUF_GEN_SRC})
 
 message(STATUS "Protobuf include dir: ${Protobuf_INCLUDE_DIR}")
 
@@ -183,92 +195,21 @@ target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
 
 target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 
-# Link abseil libraries for Android (required by protobuf >= 5.27)
-if(ANDROID)
-    # WICHTIG: Die Reihenfolge ist entscheidend!
-    target_link_libraries(pokerth_protocol PUBLIC 
-        # CRITICAL: Protobuf muss VOR Abseil gelinkt werden
-        # Dann Base-Bibliotheken (enthalten TLS-Symbole)
-        absl::base
-        absl::raw_logging_internal
-        absl::spinlock_wait
-        absl::malloc_internal
-        absl::log_severity
-        
-        # NEUE: Status & StatusOr (für FailedPreconditionError)
-        absl::status
-        absl::statusor
-        
-        # NEUE: Log Every Pow2 State
-        absl::log_internal_conditions
-        
-        # Debugging & Demangle
-        absl::debugging_internal
-        absl::demangle_internal
-        absl::demangle_rust
-        absl::decode_rust_punycode
-        absl::utf8_for_code_point
-        absl::tracing_internal
-        
-        # Strings
-        absl::strings
-        absl::strings_internal
-        absl::string_view
-        absl::int128
-        absl::throw_delegate
-        
-        # Time & Sync
-        absl::time
-        absl::civil_time
-        absl::time_zone
-        absl::synchronization
-        absl::graphcycles_internal
-        absl::kernel_timeout_internal
-        
-        # Hash (WICHTIG: Nach Base, vor Cord)
-        absl::city
-        absl::hash
-        absl::raw_hash_set
-        absl::hashtablez_sampler
-        absl::exponential_biased
-        
-        # Cord
-        absl::cord
-        absl::cordz_info
-        absl::cord_internal
-        absl::cordz_functions
-        absl::cordz_handle
-        absl::crc_cord_state
-        absl::crc32c
-        absl::crc_internal
-        absl::crc_cpu_detect
-        absl::str_format_internal
-        
-        # Logging
-        absl::log_internal_check_op
-        absl::log_internal_message
-        absl::log_internal_log_sink_set
-        absl::log_internal_globals
-        absl::log_globals
-        absl::vlog_config_internal
-        absl::log_internal_fnmatch
-        absl::log_sink
-        absl::log_entry
-        absl::log_internal_proto
-        absl::log_internal_nullguard
-        absl::examine_stack
-        absl::log_internal_format
-        absl::log_internal_structured_proto
-        absl::strerror
-        absl::leak_check
-        absl::stacktrace
-        absl::symbolize
-        
-        # UTF8
-        utf8_range::utf8_range
-        utf8_range::utf8_validity
-    )
-endif()
+# Link abseil and utf8_range libraries (required by protobuf >= 5.27)
+target_link_libraries(pokerth_protocol PUBLIC 
+    absl::base
+    absl::log_internal_message
+    absl::log_internal_check_op
+    absl::strings
+    absl::cord
+    absl::status
+    absl::statusor
+    absl::hash
+    absl::flat_hash_map
+    absl::raw_hash_set
+    utf8_range::utf8_range
+    utf8_range::utf8_validity
+)
 
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)

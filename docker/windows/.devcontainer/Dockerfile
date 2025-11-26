@@ -24,12 +24,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build dependencies for Windows cross-compilation
 RUN apt-get update && apt-get install -y \
+    locales \
     mingw-w64 \
     cmake \
     git \
     wget \
     curl \
-    unzip \
+    zip unzip \
     p7zip-full \
     build-essential \
     pkg-config \
@@ -38,7 +39,7 @@ RUN apt-get update && apt-get install -y \
     libtool \
     nsis \
     python3 python3-pip python3-venv jq \
-    && rm -rf /var/lib/apt/lists/*
+        && rm -rf /var/lib/apt/lists/*
 
 # Install docker
 RUN install -m 0755 -d /etc/apt/keyrings && \
@@ -63,7 +64,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get autoremove --purge && rm -Rf /var/cache/apt/archives && \
     unset DEBIAN_FRONTEND
 
-    # vscode user
+# vscode user
 RUN userdel ubuntu && \
     rm -Rf /home/ubuntu && \
     groupadd -g $USER_GID $USERNAME && \
@@ -75,14 +76,16 @@ RUN userdel ubuntu && \
     usermod -aG systemd-journal $USERNAME
 
 # entry-point
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-RUN chmod u+rwx,g+rx,o+rx /usr/local/bin/docker-entrypoint
+# COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+# RUN chmod u+rwx,g+rx,o+rx /usr/local/bin/docker-entrypoint
+
+RUN mkdir -p ${ROOT} && chown -R vscode:vscode ${ROOT}
 
 USER vscode
 
 # Install vcpkg for Windows dependencies
-RUN git clone https://github.com/Microsoft/vcpkg.git ${ROOT}/vcpkg && \
-    ${ROOT}/vcpkg/bootstrap-vcpkg.sh
+RUN git clone https://github.com/Microsoft/vcpkg.git ${ROOT}/vcpkg 
+RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh
 
 ENV VCPKG_ROOT=${ROOT}/vcpkg
 ENV PATH="${VCPKG_ROOT}:${PATH}"
@@ -97,7 +100,7 @@ RUN mkdir -p ${ROOT}/Qt
 
 # install Qt for Windows
 RUN cd ${ROOT}/Qt && aqt install-qt windows desktop ${QT_VERSION} win64_mingw --autodesktop --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
-ENV QT_WINDOWS_DIR=${ROOT}/Qt/${QT_VERSION}/win64_mingw
+ENV QT_WINDOWS_DIR=${ROOT}/Qt/${QT_VERSION}/mingw_64
 # install host (desktop) Qt needed as QT_HOST_PATH for cross-build
 RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --modules qt3d qt5compat qtcharts qtconnectivity qtdatavis3d qtgraphs qtgrpc qthttpserver qtimageformats qtlocation qtlottie qtmultimedia qtnetworkauth qtpositioning qtquick3d qtquick3dphysics qtquicktimeline qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtshadertools qtspeech qtvirtualkeyboard qtwebchannel qtwebsockets qtwebview
 

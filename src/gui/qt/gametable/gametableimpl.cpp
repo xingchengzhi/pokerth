@@ -1559,15 +1559,20 @@ void gameTableImpl::dealFlopCards4()
 void gameTableImpl::dealFlopCards5()
 {
 
-	int tempBoardCardsArray[5];
-	myStartWindow->getSession()->getCurrentGame()->getCurrentHand()->getBoard()->getMyCards(tempBoardCardsArray);
-	QPixmap card = QPixmap::fromImage(QImage(myCardDeckStyle->getCurrentDir()+QString::number(tempBoardCardsArray[1], 10)+".png"));
+    int tempBoardCardsArray[5];
+    myStartWindow->getSession()->getCurrentGame()->getCurrentHand()->getBoard()->getMyCards(tempBoardCardsArray);
+    QPixmap card = QPixmap::fromImage(QImage(myCardDeckStyle->getCurrentDir()+QString::number(tempBoardCardsArray[1], 10)+".png"));
 
-	//Config? mit oder ohne Eye-Candy?
-	if(myConfig->readConfigInt("ShowFlipCardsAnimation")) {
-		//with Eye-Candy
-	}
-	dealFlopCards5Timer->start(dealCardsSpeed);
+    //Config? mit oder ohne Eye-Candy?
+    if(myConfig->readConfigInt("ShowFlipCardsAnimation")) {
+        //with Eye-Candy
+        boardCardsArray[1]->startFlipCards(guiGameSpeed, card, flipside);
+    } else {
+        //without Eye-Candy
+        boardCardsArray[1]->setFront(card);
+        boardCardsArray[1]->setPixmap(card, false);
+    }
+    dealFlopCards5Timer->start(dealCardsSpeed);
 }
 
 void gameTableImpl::dealFlopCards6()

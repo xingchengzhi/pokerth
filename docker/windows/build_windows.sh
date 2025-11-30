@@ -105,13 +105,37 @@ cp -r ${QT_WINDOWS_DIR}/plugins/imageformats/*.dll $DEPLOY_DIR/plugins/imageform
 cp -r ${QT_WINDOWS_DIR}/plugins/sqldrivers/*.dll $DEPLOY_DIR/plugins/sqldrivers/ 2>/dev/null || true
 
 
-# echo "Copying vcpkg DLLs..."
-# cp ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/bin/*.dll $DEPLOY_DIR/ 2>/dev/null || true
+echo "Copying MinGW runtime DLLs from vcpkg..."
+# vcpkg installiert MinGW-Runtime-DLLs im bin-Verzeichnis
+VCPKG_BIN_DIR=${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/bin
 
-echo "Copying MinGW runtime DLLs..."
-cp ${MINGW_DIR}/bin/libgcc_s_seh-1.dll $DEPLOY_DIR/ 2>/dev/null || true
-cp ${MINGW_DIR}/bin/libstdc++-6.dll $DEPLOY_DIR/ 2>/dev/null || true
-cp ${MINGW_DIR}/bin/libwinpthread-1.dll $DEPLOY_DIR/ 2>/dev/null || true
+# Kopiere MinGW Runtime DLLs
+if [ -d "$VCPKG_BIN_DIR" ]; then
+    echo "  Copying from vcpkg: $VCPKG_BIN_DIR"
+    cp ${VCPKG_BIN_DIR}/*.dll $DEPLOY_DIR/ 2>/dev/null || true
+fi
+
+# Fallback: Suche die DLLs im System-MinGW
+if [ ! -f "$DEPLOY_DIR/libgcc_s_seh-1.dll" ]; then
+    echo "  Searching for MinGW runtime DLLs in system paths..."
+    find /usr/lib/gcc/x86_64-w64-mingw32 -name "libgcc_s_seh-1.dll" -exec cp {} $DEPLOY_DIR/ \; 2>/dev/null || true
+    find /usr/lib/gcc/x86_64-w64-mingw32 -name "libstdc++-6.dll" -exec cp {} $DEPLOY_DIR/ \; 2>/dev/null || true
+    find /usr/x86_64-w64-mingw32 -name "libwinpthread-1.dll" -exec cp {} $DEPLOY_DIR/ \; 2>/dev/null || true
+    
+    # Alternative Pfade
+    find /usr/lib/gcc-cross -name "libgcc_s_seh-1.dll" -exec cp {} $DEPLOY_DIR/ \; 2>/dev/null || true
+    find /usr/lib/gcc-cross -name "libstdc++-6.dll" -exec cp {} $DEPLOY_DIR/ \; 2>/dev/null || true
+fi
+
+# Überprüfe, ob alle DLLs gefunden wurden
+echo "  Verifying MinGW runtime DLLs..."
+for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
+    if [ -f "$DEPLOY_DIR/$dll" ]; then
+        echo "    ✓ $dll"
+    else
+        echo "    ✗ $dll (MISSING!)"
+    fi
+done
 
 # Copy data directory
 echo "Copying data directory..."
@@ -128,6 +152,52 @@ cat > $DEPLOY_DIR/qt.conf << EOF
 [Paths]
 Plugins = plugins
 EOF
+
+# Create launcher script with proper locale and Qt settings
+echo "Creating launcher script..."
+cat > $DEPLOY_DIR/pokerth_launcher.bat << 'EOF'
+@echo off
+chcp 65001
+set LANG=en_US.UTF-8
+set LC_ALL=en_US.UTF-8
+set QT_QPA_PLATFORM=windows
+set QT_DEBUG_PLUGINS=0
+start "" "%~dp0pokerth_client.exe" %*
+EOF
+
+# Create Wine launcher with locale and Qt settings
+cat > $DEPLOY_DIR/run_pokerth.sh << 'EOF'
+#!/bin/bash
+cd "$(dirname "$0")"
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export QT_QPA_PLATFORM=windows
+export WINEDEBUG=-all
+wine pokerth_client.exe "$@"
+EOF
+chmod +x $DEPLOY_DIR/run_pokerth.sh
+
+# Check if qwindows.dll exists in platforms plugin
+echo "Verifying Qt platform plugin..."
+if [ -f "$DEPLOY_DIR/plugins/platforms/qwindows.dll" ]; then
+    echo "  ✓ qwindows.dll found"
+else
+    echo "  ✗ qwindows.dll MISSING!"
+    echo "  Searching for qwindows.dll..."
+    find ${QT_WINDOWS_DIR} -name "qwindows.dll" -exec cp {} $DEPLOY_DIR/plugins/platforms/ \; 2>/dev/null || true
+fi
+
+# Copy additional Qt dependencies
+echo "Copying additional Qt dependencies..."
+mkdir -p $DEPLOY_DIR/plugins/generic
+cp -r ${QT_WINDOWS_DIR}/plugins/generic/*.dll $DEPLOY_DIR/plugins/generic/ 2>/dev/null || true
+
+# Copy zlib and other common dependencies
+if [ -d "$VCPKG_BIN_DIR" ]; then
+    cp ${VCPKG_BIN_DIR}/zlib*.dll $DEPLOY_DIR/ 2>/dev/null || true
+    cp ${VCPKG_BIN_DIR}/libpng*.dll $DEPLOY_DIR/ 2>/dev/null || true
+    cp ${VCPKG_BIN_DIR}/libjpeg*.dll $DEPLOY_DIR/ 2>/dev/null || true
+fi
 
 echo ""
 echo "======================================"

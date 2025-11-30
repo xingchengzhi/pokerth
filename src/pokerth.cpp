@@ -48,9 +48,35 @@
 #include <retranslate.h>
 #include <settingsxmlhandler.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <locale>
+#include <codecvt>
+#endif
+
 int main(int argc, char *argv[])
 {
-	QGuiApplication::setApplicationName("PokerTH");
+#ifdef _WIN32
+    // Set UTF-8 mode for Windows
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    
+    // Enable UTF-8 for C++ standard library
+    std::setlocale(LC_ALL, ".UTF8");
+    
+    // Set global locale to UTF-8
+    try {
+        std::locale::global(std::locale(".UTF8"));
+    } catch (...) {
+        // If .UTF8 fails, try classic locale
+        std::locale::global(std::locale::classic());
+    }
+    
+    // Enable UTF-8 manifest mode (Windows 10 1903+)
+    SetEnvironmentVariableW(L"PYTHONIOENCODING", L"utf-8");
+#endif
+
+    QGuiApplication::setApplicationName("PokerTH");
     QGuiApplication::setOrganizationName("PokerTH");
  	QGuiApplication::setOrganizationDomain("pokerth.net");
 
@@ -135,6 +161,12 @@ int main(int argc, char *argv[])
 #include "game_defs.h"
 #include <net/socket_startup.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <locale>
+#include <codecvt>
+#endif
+
 #ifdef _MSC_VER
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
@@ -167,12 +199,30 @@ class Game;
 
 int main( int argc, char **argv )
 {
+#ifdef _WIN32
+    // Set UTF-8 mode for Windows
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    
+    // Enable UTF-8 for C++ standard library
+    std::setlocale(LC_ALL, ".UTF8");
+    
+    // Set global locale to UTF-8
+    try {
+        std::locale::global(std::locale(".UTF8"));
+    } catch (...) {
+        // If .UTF8 fails, try classic locale
+        std::locale::global(std::locale::classic());
+    }
+    
+    // Enable UTF-8 manifest mode (Windows 10 1903+)
+    SetEnvironmentVariableW(L"PYTHONIOENCODING", L"utf-8");
+#endif
+    //ENABLE_LEAK_CHECK();
 
-	//ENABLE_LEAK_CHECK();
-
-	//_CrtSetBreakAlloc(49937);
-	socket_startup();
-	curl_global_init(CURL_GLOBAL_NOTHING);
+    //_CrtSetBreakAlloc(49937);
+    socket_startup();
+    curl_global_init(CURL_GLOBAL_NOTHING);
 
 #ifdef __APPLE__
 	// The following needs to be done before the application is created, otherwise loading platforms plugin fails.

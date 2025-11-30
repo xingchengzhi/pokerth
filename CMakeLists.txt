@@ -4,9 +4,18 @@ set(QT_MIN_VERSION "6.7.0")
 
 project(POKERTH)
 
+# Disable vcpkg applocal deployment for cross-compilation
 if(CMAKE_CROSSCOMPILING)
     set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "" FORCE)
     set(X_VCPKG_APPLOCAL_DEPS_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
+
+# Fix filesystem encoding issues for Windows
+if(WIN32)
+    add_compile_definitions(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+    add_compile_definitions(UNICODE)
+    add_compile_definitions(_UNICODE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -finput-charset=UTF-8 -fexec-charset=UTF-8")
 endif()
 
 option(CMAKE_AUTORCC "" ON)

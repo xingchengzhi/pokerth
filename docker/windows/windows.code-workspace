@@ -1,18 +1,14 @@
 {
   "folders": [
     {
-      "path": "build"
+      "path": "."
     },
     {
-      "path": ".devcontainer"
+      "path": "/opt/pokerth-windows"
     },
     {
-      "path": ".vscode"
+      "path": "/opt/pokerth-windows/pokerth"
     }
   ],
-  "settings": {
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "cmake.configureOnOpen": true,
-    "cmake.buildDirectory": "${workspaceFolder}/build"
-  }
+  "settings": {}
 }

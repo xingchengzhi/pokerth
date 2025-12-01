@@ -40,7 +40,6 @@ if(ANDROID)
     set(Protobuf_USE_STATIC_LIBS ON)
     set(protobuf_MODULE_COMPATIBLE ON)
     # Force Protobuf to use emulated TLS instead of native TLS
-    add_definitions(-DPROTOBUF_USE_DLLS)
     add_compile_options(-femulated-tls)  # WICHTIG: Emuliere TLS für Android
 endif()
 
@@ -201,6 +200,22 @@ target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 if(ANDROID)
     target_compile_definitions(pokerth_protocol PUBLIC PROTOBUF_USE_DLLS)
     # Link abseil and utf8_range libraries (required by protobuf >= 5.27)
+    target_link_libraries(pokerth_protocol PUBLIC 
+        absl::base
+        absl::log_internal_message
+        absl::log_internal_check_op
+        absl::strings
+        absl::cord
+        absl::status
+        absl::statusor
+        absl::hash
+        absl::flat_hash_map
+        absl::raw_hash_set
+        utf8_range::utf8_range
+        utf8_range::utf8_validity
+    )
+elseif(WIN32)
+    # Für Windows: Verlinke nur die Abseil-Bibliotheken ohne PROTOBUF_USE_DLLS
     target_link_libraries(pokerth_protocol PUBLIC 
         absl::base
         absl::log_internal_message

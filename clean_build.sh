@@ -1,5 +1,6 @@
 #!/bin/bash
 rm -rf ./build/*.a
+rm -rf ./build/Make*
 rm -rf ./build/src
 rm -rf ./build/pokerth_*
 rm -rf ./build/.lupdate

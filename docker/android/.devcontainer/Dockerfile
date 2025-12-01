@@ -164,7 +164,7 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
 
 ### ###
 
-RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout android-build
+RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
 
 # build protobuf with tls-emulation
 RUN mkdir -p ${ROOT}/vcpkg-overlays/protobuf

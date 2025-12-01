@@ -47,9 +47,11 @@ endif()
 find_package(Protobuf REQUIRED)
 find_package(Protobuf CONFIG)
 
-# Find abseil and utf8_range (required for protobuf >= 5.27)
-find_package(absl CONFIG REQUIRED)
-find_package(utf8_range CONFIG REQUIRED)
+if(ANDROID)
+    # Find abseil and utf8_range (required for protobuf >= 5.27)
+    find_package(absl CONFIG REQUIRED)
+    find_package(utf8_range CONFIG REQUIRED)
+endif()
 
 # Stelle sicher, dass das Ausgabeverzeichnis existiert
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
@@ -196,21 +198,24 @@ target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
 
 target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 
-# Link abseil and utf8_range libraries (required by protobuf >= 5.27)
-target_link_libraries(pokerth_protocol PUBLIC 
-    absl::base
-    absl::log_internal_message
-    absl::log_internal_check_op
-    absl::strings
-    absl::cord
-    absl::status
-    absl::statusor
-    absl::hash
-    absl::flat_hash_map
-    absl::raw_hash_set
-    utf8_range::utf8_range
-    utf8_range::utf8_validity
-)
+if(ANDROID)
+    target_compile_definitions(pokerth_protocol PUBLIC PROTOBUF_USE_DLLS)
+    # Link abseil and utf8_range libraries (required by protobuf >= 5.27)
+    target_link_libraries(pokerth_protocol PUBLIC 
+        absl::base
+        absl::log_internal_message
+        absl::log_internal_check_op
+        absl::strings
+        absl::cord
+        absl::status
+        absl::statusor
+        absl::hash
+        absl::flat_hash_map
+        absl::raw_hash_set
+        utf8_range::utf8_range
+        utf8_range::utf8_validity
+    )
+endif()
 
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)

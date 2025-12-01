@@ -61,8 +61,8 @@
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
-#include "QtGui/5.7.1/QtGui/qpa/qplatformnativeinterface.h"
-#include <jni.h>
+#include <QJniEnvironment>
+#include <QJniObject>
 #endif
 #endif
 
@@ -101,13 +101,16 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 //	this->menubar->clear();
 //	this->menubar->hide();
 
-	//check if custom background picture for the resolution is there. Otherwise create it!
+	//check if custom background pictures for the resolution are there. Otherwise create them!
 	QString UserDataDir = QString::fromUtf8(myConfig->readConfigString("UserDataDir").c_str());
-	QDesktopWidget dw;
-	int screenWidth = dw.setGeometry().width();
-	int screenHeight = dw.setGeometry().height();
+	QScreen *screen = QGuiApplication::primaryScreen();
+	QRect screenGeometry = screen->geometry();
+	int screenWidth = screenGeometry.width();
+	int screenHeight = screenGeometry.height();
 	QString customStartWindowBgFileString(UserDataDir+"/startwindowbg10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
+	QString customWelcomePokerTHFileString(UserDataDir+"/welcomepokerth10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
 	QFile customStartWindowBgFile(customStartWindowBgFileString);
+	QFile customWelcomePokerTHFile(customWelcomePokerTHFileString);
 	if(customStartWindowBgFile.exists()) {
 		centralwidget->setStyleSheet(".QWidget { background-image: url("+QFileInfo(customStartWindowBgFile).absoluteFilePath()+"); background-position: top center; background-origin: content; background-repeat: no-repeat;}");
 	} else {
@@ -770,23 +773,11 @@ void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 	break;
 	case ERR_SOCK_CONNECT_FAILED: {
 		MyMessageBox::warning(this, tr("Network Error"),
-							  tr("Could not connect to the server."),
-							  QMessageBox::Close);
-	}
-	break;
-	case ERR_SOCK_CONNECT_IPV6_FAILED: {
-		MyMessageBox::warning(this, tr("Network Error"),
 							  tr("Could not connect to the server.\n\nPlease note: IPv6 is enabled in the settings. The connection fails if your provider does not support IPv6.\nThis may be fixed by unchecking the \"Use IPv6\" checkbox in the settings."),
 							  QMessageBox::Close);
 	}
 	break;
 	case ERR_SOCK_CONNECT_TIMEOUT: {
-		MyMessageBox::warning(this, tr("Network Error"),
-							  tr("Connection timed out.\nPlease check the server address.\n\nIf the server is behind a NAT-Router, make sure port forwarding has been set up on server side."),
-							  QMessageBox::Close);
-	}
-	break;
-	case ERR_SOCK_CONNECT_IPV6_TIMEOUT: {
 		MyMessageBox::warning(this, tr("Network Error"),
 							  tr("Connection timed out.\nPlease check the server address.\n\nPlease note: IPv6 is enabled in the settings. The connection fails if your provider does not support IPv6.\nThis may be fixed by unchecking the \"Use IPv6\" checkbox in the settings."),
 							  QMessageBox::Close);

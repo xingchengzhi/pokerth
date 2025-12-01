@@ -4,6 +4,12 @@ set(QT_MIN_VERSION "6.7.0")
 
 project(POKERTH)
 
+# Disable vcpkg applocal deployment for cross-compilation
+if(CMAKE_CROSSCOMPILING)
+    set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "" FORCE)
+    set(X_VCPKG_APPLOCAL_DEPS_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
+
 option(CMAKE_AUTORCC "" ON)
 option(CMAKE_AUTOUIC "" ON)
 option(CMAKE_AUTOMOC "" ON)
@@ -24,29 +30,38 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FindBoost)
-include(FindMySQL)
+include(FindProtobuf)
 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
-find_package(MySQL REQUIRED)
-find_package(Protobuf REQUIRED)
-    protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
-    chatcleaner.proto pokerth.proto
-    PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
-# @TODO: better use a FindCurl.cmake file?
-add_library(LibCurl INTERFACE IMPORTED)
-set_target_properties(LibCurl PROPERTIES
-INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}")
-if(WIN32)
-    target_link_libraries(LibCurl INTERFACE "${CURL_LIBRARY}")
-else()
-    set_target_properties(LibCurl PROPERTIES
-        INTERFACE_LINK_LIBRARIES "${CURL_LIBRARY}")
+if(ANDROID)
+    set(Protobuf_USE_STATIC_LIBS ON)
+    set(protobuf_MODULE_COMPATIBLE ON)
+    # Force Protobuf to use emulated TLS instead of native TLS
+    add_definitions(-DPROTOBUF_USE_DLLS)
+    add_compile_options(-femulated-tls)  # WICHTIG: Emuliere TLS für Android
 endif()
 
+find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG)
+
+# Find abseil and utf8_range (required for protobuf >= 5.27)
+find_package(absl CONFIG REQUIRED)
+find_package(utf8_range CONFIG REQUIRED)
+
+# Stelle sicher, dass das Ausgabeverzeichnis existiert
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
+
+protobuf_generate_cpp(PROTOBUF_GEN_SRC PROTOBUF_GEN_HDRS
+    chatcleaner.proto pokerth.proto
+    PROTOC_OUT_DIR  ${CMAKE_SOURCE_DIR}/src/third_party/protobuf)
+
+# Füge die generierten Dateien zur Quellenliste hinzu
+list(APPEND POKERTH_LIB_SRC ${PROTOBUF_GEN_SRC})
+
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Sql Xml WebSockets Qml Quick QuickControls2 Widgets Svg Network LinguistTools Multimedia REQUIRED)
 
 # POKERTH.lib
 
@@ -124,6 +139,8 @@ endif()
 
 add_library(pokerth_lib STATIC ${POKERTH_LIB_SRC})
 
+# Füge Include-Pfad für generierte Protobuf-Header hinzu
+target_include_directories(pokerth_lib PRIVATE "${CMAKE_SOURCE_DIR}/src/third_party/protobuf")
 target_include_directories(pokerth_lib PRIVATE "${Boost_INCLUDE_DIRS}")
 target_include_directories(pokerth_lib PUBLIC
     src
@@ -140,10 +157,11 @@ target_include_directories(pokerth_lib PUBLIC
 
 target_link_libraries(pokerth_lib PUBLIC "${Boost_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
+target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
+target_link_libraries(pokerth_lib PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
-
 target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti -Wno-stringop-overflow)
-target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED MYSQLPP_MYSQL_HEADERS_BURIED)
+target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
 
 # POKERTH.dbofficial
@@ -169,12 +187,30 @@ target_include_directories(pokerth_db PUBLIC src/)
 
 # POKERTH.protocol
 
-add_library(pokerth_protocol "${PROTOBUF_GEN_SRC}")
+add_library(pokerth_protocol STATIC ${PROTOBUF_GEN_SRC})
+
+message(STATUS "Protobuf include dir: ${Protobuf_INCLUDE_DIR}")
 
 target_include_directories(pokerth_protocol PRIVATE "${Protobuf_INCLUDE_DIR}")
 target_include_directories(pokerth_protocol PUBLIC "src/third_party/protobuf")
 
 target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
+
+# Link abseil and utf8_range libraries (required by protobuf >= 5.27)
+target_link_libraries(pokerth_protocol PUBLIC 
+    absl::base
+    absl::log_internal_message
+    absl::log_internal_check_op
+    absl::strings
+    absl::cord
+    absl::status
+    absl::statusor
+    absl::hash
+    absl::flat_hash_map
+    absl::raw_hash_set
+    utf8_range::utf8_range
+    utf8_range::utf8_validity
+)
 
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.cc PROPERTY SKIP_AUTOGEN ON)
 set_property(SOURCE src/third_party/protobuf/chatcleaner.pb.h PROPERTY SKIP_AUTOGEN ON)

@@ -69,8 +69,9 @@
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
-#include "QtGui/5.7.1/QtGui/qpa/qplatformnativeinterface.h"
-#include <jni.h>
+// Qt6: Verwende QJniEnvironment statt direktem JNI-Zugriff
+#include <QJniEnvironment>
+#include <QJniObject>
 #endif
 #endif
 
@@ -528,8 +529,10 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 
 	//hide left and right icon and menubar from maemo gui for ANDROID
 #ifdef ANDROID
-	fullscreenButton->hide();
-	this->setMenuBar(0);
+    // fullscreenButton existiert nur in Desktop-Version
+    // Entfernen oder kommentieren Sie die Zeile:
+    // fullscreenButton->hide();
+    this->setMenuBar(0);
 #endif
 
 	//Connects
@@ -575,7 +578,10 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	connect(enableCallCheckPushButtonTimer, SIGNAL(timeout()), this, SLOT(enableCallCheckPushButton()));
 
 #ifdef ANDROID
+    // tabs ist nur für GUI_800x480 definiert
+    #ifdef GUI_800x480
 	connect( tabs.pushButton_settings, SIGNAL( clicked() ), this, SLOT( callSettingsDialog() ) );
+    #endif
 #else
 	connect( actionConfigure_PokerTH, SIGNAL( triggered() ), this, SLOT( callSettingsDialog() ) );
 #endif
@@ -1553,20 +1559,20 @@ void gameTableImpl::dealFlopCards4()
 void gameTableImpl::dealFlopCards5()
 {
 
-	int tempBoardCardsArray[5];
-	myStartWindow->getSession()->getCurrentGame()->getCurrentHand()->getBoard()->getMyCards(tempBoardCardsArray);
-	QPixmap card = QPixmap::fromImage(QImage(myCardDeckStyle->getCurrentDir()+QString::number(tempBoardCardsArray[1], 10)+".png"));
+    int tempBoardCardsArray[5];
+    myStartWindow->getSession()->getCurrentGame()->getCurrentHand()->getBoard()->getMyCards(tempBoardCardsArray);
+    QPixmap card = QPixmap::fromImage(QImage(myCardDeckStyle->getCurrentDir()+QString::number(tempBoardCardsArray[1], 10)+".png"));
 
-	//Config? mit oder ohne Eye-Candy?
-	if(myConfig->readConfigInt("ShowFlipCardsAnimation")) {
-		//with Eye-Candy
-		boardCardsArray[1]->startFlipCards(guiGameSpeed, card, flipside);
-	} else {
-		//without Eye-Candy
-		boardCardsArray[1]->setFront(card);
-		boardCardsArray[1]->setPixmap(card, false);
-	}
-	dealFlopCards5Timer->start(dealCardsSpeed);
+    //Config? mit oder ohne Eye-Candy?
+    if(myConfig->readConfigInt("ShowFlipCardsAnimation")) {
+        //with Eye-Candy
+        boardCardsArray[1]->startFlipCards(guiGameSpeed, card, flipside);
+    } else {
+        //without Eye-Candy
+        boardCardsArray[1]->setFront(card);
+        boardCardsArray[1]->setPixmap(card, false);
+    }
+    dealFlopCards5Timer->start(dealCardsSpeed);
 }
 
 void gameTableImpl::dealFlopCards6()
@@ -2772,12 +2778,6 @@ void gameTableImpl::postRiverRunAnimation5()
 void gameTableImpl::postRiverRunAnimation6()
 {
 
-	//GUI HACK show every nick label
-	int i;
-	for (i=0; i<MAX_NUMBER_OF_PLAYERS; i++) {
-		playerNameLabelArray[i]->show();
-	}
-
 	boost::shared_ptr<HandInterface> currentHand = myStartWindow->getSession()->getCurrentGame()->getCurrentHand();
 
 	refreshCash();
@@ -2918,11 +2918,11 @@ void gameTableImpl::startNewHand()
 			QFontMetrics tempMetrics = this->fontMetrics();
 			int width = tempMetrics.horizontalAdvance(tr("Start"));
 #ifdef GUI_800x480
-			tabs.pushButton_break->setMinimumSize(width+10,20);
 			tabs.pushButton_break->setText(tr("Start"));
+			tabs.pushButton_break->setMinimumSize(width+10,20);
 #else
-			pushButton_break->setMinimumSize(width+10,20);
 			pushButton_break->setText(tr("Start"));
+			pushButton_break->setMinimumSize(width+10,20);
 #endif
 
 			breakAfterCurrentHand=false;
@@ -4316,9 +4316,13 @@ void gameTableImpl::restoreGameTableGeometry()
 	}
 #ifdef ANDROID
 	if(getAndroidApiVersion() == 10) {
-		QDesktopWidget dw;
-		int availableWidth = dw.screenGeometry().width();
-		int availableHeight = dw.screenGeometry().height();
+		QScreen *screen = QGuiApplication::primaryScreen();
+		QRect screenGeometry = screen->geometry();
+		int availableWidth = screenGeometry.width();
+		int availableHeight = screenGeometry.height(); 
+		// QDesktopWidget dw;
+		// int availableWidth = dw.screenGeometry().width();
+		// int availableHeight = dw.screenGeometry().height();
 		this->showNormal();
 		this->setGeometry(0,0,availableWidth, availableHeight);
 	}
@@ -4525,21 +4529,15 @@ void gameTableImpl::pingUpdate(unsigned minPing, unsigned avgPing, unsigned maxP
 
 int gameTableImpl::getAndroidApiVersion()
 {
-	int api = -1;
+    int api = -1;
 #ifdef ANDROID
 #ifndef ANDROID_TEST
-	JavaVM *currVM = (JavaVM *)QApplication::platformNativeInterface()->nativeResourceForIntegration("JavaVM");
-	JNIEnv* env;
-	if (currVM->AttachCurrentThread(&env, NULL)<0) {
-		qCritical()<<"AttachCurrentThread failed";
-	} else {
-		jclass jclassApplicationClass = env->FindClass("android/os/Build$VERSION");
-		if (jclassApplicationClass) {
-			api = env->GetStaticIntField(jclassApplicationClass, env->GetStaticFieldID(jclassApplicationClass,"SDK_INT", "I"));
-		}
-		currVM->DetachCurrentThread();
-	}
+    // Qt6: Verwende QJniEnvironment für Android API-Zugriff
+    QJniEnvironment env;
+    if (env.isValid()) {
+        api = QJniObject::getStaticField<jint>("android/os/Build$VERSION", "SDK_INT");
+    }
 #endif
 #endif
-	return api;
+    return api;
 }

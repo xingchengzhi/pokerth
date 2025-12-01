@@ -479,23 +479,15 @@ public:
     {
         using boost::asio::ip::tcp;
         tcp::resolver r(*m_io_service);
-        boost::system::error_code bec;
-        tcp::resolver::results_type results = r.resolve(host, service, bec);
-
-        if (bec) {
+        tcp::resolver::results_type endpoint_iterator = r.resolve(host, service);
+        tcp::resolver::results_type end;
+        if (endpoint_iterator == end) {
             m_elog->write(log::elevel::library,
-                "asio::listen could not resolve the supplied host or service: " + bec.message());
+                "asio::listen could not resolve the supplied host or service");
             ec = make_error_code(error::invalid_host_service);
             return;
         }
-
-        if (results.empty()) {
-            m_elog->write(log::elevel::library,
-                "asio::listen resolved host but returned no endpoints");
-            ec = make_error_code(error::invalid_host_service);
-            return;
-        }
-        listen(results.begin()->endpoint(), ec);
+        listen(*endpoint_iterator,ec);
     }
 
     /// Set up endpoint for listening on a host and service
@@ -913,8 +905,9 @@ protected:
             std::stringstream s;
             s << "Async DNS resolve successful. Results: ";
 
-            for (auto const& result : iterator) {
-                s << result.endpoint() << " ";
+            boost::asio::ip::tcp::resolver::results_type it, end;
+            for (it = iterator; it != end; ++it) {
+                s << (*it).endpoint() << " ";
             }
 
             m_alog->write(log::alevel::devel,s.str());

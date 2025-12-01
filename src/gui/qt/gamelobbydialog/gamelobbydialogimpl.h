@@ -173,6 +173,7 @@ public slots:
 	void gameRemoveSpectator(unsigned, unsigned);
 
 private:
+    void updateGameListStyleSheet();
 
 	gameTableImpl* myW;
 	startWindowImpl* myStartWindow;
@@ -234,8 +235,8 @@ private:
 	int lastNickListFilterState;
 
 protected:
-	bool eventFilter(QObject *obj, QEvent *event);
-
+    bool eventFilter(QObject *obj, QEvent *event);
+    void changeEvent(QEvent *event);
 };
 
 #endif

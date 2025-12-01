@@ -14,7 +14,8 @@ pokerth_qml-client
 moc_*
 *.o
 .qmake.stash
-build/
+build*/
+docker/android/build/
 /chatcleaner
 lib/
 mocs/

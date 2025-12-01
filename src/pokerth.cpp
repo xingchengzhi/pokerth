@@ -50,11 +50,21 @@
 
 int main(int argc, char *argv[])
 {
-	QGuiApplication::setApplicationName("PokerTH");
+    QGuiApplication::setApplicationName("PokerTH");
     QGuiApplication::setOrganizationName("PokerTH");
  	QGuiApplication::setOrganizationDomain("pokerth.net");
 
     QApplication app(argc, argv);
+
+	// single instance check using QLockFile
+    QString lockPath = QDir::temp().absoluteFilePath("pokerth_qml-client.lock");
+    QLockFile lockFile(lockPath);
+    lockFile.setStaleLockTime(0);
+    if (!lockFile.tryLock()) {
+        return 0;
+    }
+
+
     QIcon::setThemeName("pokerth");
 
     boost::shared_ptr<ConfigFile> myConfig;
@@ -112,6 +122,8 @@ int main(int argc, char *argv[])
 #include <QtGui>
 #include <QtCore>
 #include <QDebug>
+#include <QScreen>
+#include <QGuiApplication>
 
 #include <curl/curl.h>
 
@@ -122,7 +134,7 @@ int main(int argc, char *argv[])
 #include "startsplash.h"
 #include "game_defs.h"
 #include <net/socket_startup.h>
-#include <third_party/singleapplication/singleapplication.h>
+
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -156,12 +168,11 @@ class Game;
 
 int main( int argc, char **argv )
 {
+    //ENABLE_LEAK_CHECK();
 
-	//ENABLE_LEAK_CHECK();
-
-	//_CrtSetBreakAlloc(49937);
-	socket_startup();
-	curl_global_init(CURL_GLOBAL_NOTHING);
+    //_CrtSetBreakAlloc(49937);
+    socket_startup();
+    curl_global_init(CURL_GLOBAL_NOTHING);
 
 #ifdef __APPLE__
 	// The following needs to be done before the application is created, otherwise loading platforms plugin fails.
@@ -177,10 +188,15 @@ int main( int argc, char **argv )
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else
-	SingleApplication a( argc, argv );
-	if (a.sendMessage("Wake up!")) {
-		return 0;
-	}
+	QApplication a(argc, argv);
+
+	// single instance check using QLockFile
+    QString lockPath = QDir::temp().absoluteFilePath("pokerth_client.lock");
+    QLockFile lockFile(lockPath);
+    lockFile.setStaleLockTime(0);
+    if (!lockFile.tryLock()) {
+        return 0;
+    }
 #endif
 
 	//create defaultconfig
@@ -233,14 +249,15 @@ int main( int argc, char **argv )
 #else
 	QString font1String("QApplication, QWidget, QDialog { font-family: \"Nimbus Sans L\"; font-size: 12px; }");
 #endif
-	a.setStyleSheet(font1String + " QDialogButtonBox, QMessageBox { dialogbuttonbox-buttons-have-icons: 1; dialog-ok-icon: url(:/gfx/dialog_ok_apply.png); dialog-cancel-icon: url(:/gfx/dialog_close.png); dialog-close-icon: url(:/gfx/dialog_close.png); dialog-yes-icon: url(:/gfx/dialog_ok_apply.png); dialog-no-icon: url(:/gfx/dialog_close.png) }");
+	qApp->setStyleSheet(font1String + " QDialogButtonBox, QMessageBox { dialogbuttonbox-buttons-have-icons: 1; dialog-ok-icon: url(:/gfx/dialog_ok_apply.png); dialog-cancel-icon: url(:/gfx/dialog_close.png); dialog-close-icon: url(:/gfx/dialog_close.png); dialog-yes-icon: url(:/gfx/dialog_ok_apply.png); dialog-no-icon: url(:/gfx/dialog_close.png) }");
 
 #ifdef ANDROID
 	//check if custom background pictures for the resolution are there. Otherwise create them!
 	QString UserDataDir = QString::fromUtf8(myConfig->readConfigString("UserDataDir").c_str());
-	QDesktopWidget dw;
-	int screenWidth = dw.screenGeometry().width();
-	int screenHeight = dw.screenGeometry().height();
+	QScreen *screen = QGuiApplication::primaryScreen();
+	QRect screenGeometry = screen->geometry();
+	int screenWidth = screenGeometry.width();
+	int screenHeight = screenGeometry.height(); 
 	QString customStartWindowBgFileString(UserDataDir+"/startwindowbg10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
 	QString customWelcomePokerTHFileString(UserDataDir+"/welcomepokerth10_"+QString::number(screenWidth)+"x"+QString::number(screenHeight)+".png");
 	QFile customStartWindowBgFile(customStartWindowBgFileString);

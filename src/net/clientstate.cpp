@@ -567,10 +567,13 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
 {
     if (&client->GetState() == this) {
         if (!ec) {
+            qDebug() << "[TLS-CONNECT] SSL Handshake completed successfully!";
             client->GetCallback().SignalNetClientConnect(MSG_SOCK_CONNECT_DONE);
             client->SetState(ClientStateStartSession::Instance());
         } else {
             if (ec != boost::asio::error::operation_aborted) {
+                qDebug() << "[TLS-CONNECT] SSL Handshake FAILED:" << ec.message().c_str() 
+                         << "(code:" << ec.value() << ")";
                 throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
             }
         }
@@ -2101,35 +2104,29 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 void
 ClientStateRunHand::ResetPlayerActions(Game &curGame)
 {
-	// Reset player actions
-	PlayerListIterator i = curGame.getSeatsList()->begin();
-	PlayerListIterator end = curGame.getSeatsList()->end();
-
-	while (i != end) {
-		int action = (*i)->getMyAction();
-		if (action != 1 && action != 6)
-			(*i)->setMyAction(PLAYER_ACTION_NONE);
-		(*i)->setMySetNull();
-		++i;
-	}
+    PlayerListIterator i = curGame.getActivePlayerList()->begin();
+    PlayerListIterator end = curGame.getActivePlayerList()->end();
+    while (i != end) {
+        (*i)->setMyAction(PLAYER_ACTION_NONE);
+        ++i;
+    }
 }
 
 void
 ClientStateRunHand::ResetPlayerSets(Game &curGame)
 {
-	PlayerListIterator i = curGame.getSeatsList()->begin();
-	PlayerListIterator end = curGame.getSeatsList()->end();
-	while (i != end) {
-		(*i)->setMySetNull();
-		++i;
-	}
+    PlayerListIterator i = curGame.getActivePlayerList()->begin();
+    PlayerListIterator end = curGame.getActivePlayerList()->end();
+    while (i != end) {
+        (*i)->setMySet(0);
+        ++i;
+    }
 }
-
-//-----------------------------------------------------------------------------
 
 ClientStateFinal &
 ClientStateFinal::Instance()
 {
-	static ClientStateFinal state;
-	return state;
+    static ClientStateFinal state;
+    return state;
 }
+

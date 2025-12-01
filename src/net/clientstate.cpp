@@ -325,7 +325,8 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 
 	// Parse the server address.
 	QDomDocument xmlDoc;
-	QFile file(std::filesystem::path(xmlServerListPath.string()));
+	QString qPath = QString::fromLocal8Bit(xmlServerListPath.string().c_str());
+	QFile file(qPath);
 	if (file.open(QIODevice::ReadOnly) && xmlDoc.setContent(&file)) {
 		file.close();
 

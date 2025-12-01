@@ -172,11 +172,11 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	treeView_GameList->setColumnWidth(2,65);
 	treeView_GameList->setColumnWidth(3,25);
 	treeView_GameList->setColumnWidth(4,25);
-	treeView_GameList->setColumnWidth(5,30);
+    treeView_GameList->setColumnWidth(5,30);
 
-	treeView_GameList->setStyleSheet("QTreeView {background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}");
+    updateGameListStyleSheet();
 #endif
-	treeView_GameList->setAutoFillBackground(true);
+    treeView_GameList->setAutoFillBackground(true);
 
 	myNickListModel = new QStandardItemModel(this);
 	myNickListSortFilterProxyModel = new MyNickListSortFilterProxyModel(this);
@@ -2240,4 +2240,27 @@ void gameLobbyDialogImpl::adminActionTotalKickBan()
 			mySession->adminActionBanPlayer(playerId);
 		}
 	}
+}
+
+void gameLobbyDialogImpl::changeEvent(QEvent *event)
+{
+    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange) {
+        updateGameListStyleSheet();
+    }
+    
+    QDialog::changeEvent(event);
+}
+
+void gameLobbyDialogImpl::updateGameListStyleSheet()
+{
+    QPalette palette = QApplication::palette();
+    QColor windowColor = palette.color(QPalette::Window);
+    
+    // Dark Mode?
+    bool isDarkMode = windowColor.lightness() < 128;
+    
+    QString backgroundColor = isDarkMode ? "#2b2b2b" : "white";
+
+    QString styleSheet = QString("QTreeView {background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}").arg(backgroundColor).arg(myAppDataPath);
+    treeView_GameList->setStyleSheet(styleSheet);
 }

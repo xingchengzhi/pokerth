@@ -6,9 +6,9 @@ FROM ubuntu:25.10
 # ANDROID_ARCH: armeabi-v7a, arm64-v8a, x86, x86_64
 # VCPKG_ARCH: arm, arm64, x86, x64
 # QT_ARCH: armv7, arm64_v8a, x86, x86_64
-ENV ANDROID_ARCH=x86_64
-ENV VCPKG_ARCH=x64
-ENV QT_ARCH=x86_64
+ENV ANDROID_ARCH=arm64-v8a
+ENV VCPKG_ARCH=arm64
+ENV QT_ARCH=arm64_v8a
 # set target (pokerth_client or pokerth_qml-client)
 ENV TARGET=pokerth_client
 

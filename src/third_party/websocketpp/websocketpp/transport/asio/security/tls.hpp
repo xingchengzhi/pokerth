@@ -236,7 +236,7 @@ protected:
         if (m_strand) {
             m_socket->async_handshake(
                 get_handshake_type(),
-                m_strand->wrap(lib::bind(
+                boost::asio::bind_executor(*m_strand, lib::bind(
                     &type::handle_init, get_shared(),
                     callback,
                     lib::placeholders::_1

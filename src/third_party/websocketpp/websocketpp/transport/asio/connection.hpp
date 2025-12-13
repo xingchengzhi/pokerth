@@ -299,7 +299,7 @@ public:
         timer_ptr new_timer = lib::make_shared<boost::asio::deadline_timer>(*m_io_service, boost::posix_time::milliseconds(duration));
 
         if (config::enable_multithreading) {
-            new_timer->async_wait(m_strand->wrap(lib::bind(
+            new_timer->async_wait(boost::asio::bind_executor(*m_strand, lib::bind(
                 &type::handle_timer, get_shared(),
                 new_timer,
                 callback,
@@ -422,11 +422,11 @@ protected:
         if (config::enable_multithreading) {
             m_strand = lib::make_shared<boost::asio::io_context::strand>(*io_context);
 
-            m_async_read_handler = m_strand->wrap(lib::bind(
+            m_async_read_handler = boost::asio::bind_executor(*m_strand, lib::bind(
                 &type::handle_async_read, get_shared(),lib::placeholders::_1,
                 lib::placeholders::_2));
 
-            m_async_write_handler = m_strand->wrap(lib::bind(
+            m_async_write_handler = boost::asio::bind_executor(*m_strand, lib::bind(
                 &type::handle_async_write, get_shared(),lib::placeholders::_1,
                 lib::placeholders::_2));
         } else {
@@ -608,7 +608,7 @@ protected:
             boost::asio::async_write(
                 socket_con_type::get_next_layer(),
                 m_bufs,
-                m_strand->wrap(lib::bind(
+                boost::asio::bind_executor(*m_strand, lib::bind(
                     &type::handle_proxy_write, get_shared(),
                     m_init_handler,
                     lib::placeholders::_1
@@ -692,7 +692,7 @@ protected:
                 socket_con_type::get_next_layer(),
                 m_proxy_data->read_buf,
                 "\r\n\r\n",
-                m_strand->wrap(lib::bind(
+                boost::asio::bind_executor(*m_strand, lib::bind(
                     &type::handle_proxy_read, get_shared(),
                     callback,
                     lib::placeholders::_1, lib::placeholders::_2
@@ -968,7 +968,7 @@ protected:
      */
     lib::error_code interrupt(interrupt_handler handler) {
         if (config::enable_multithreading) {
-            boost::asio::post(*m_io_service, m_strand->wrap(handler));
+            boost::asio::post(*m_io_service, boost::asio::bind_executor(*m_strand, handler));
         } else {
             boost::asio::post(*m_io_service, handler);
         }

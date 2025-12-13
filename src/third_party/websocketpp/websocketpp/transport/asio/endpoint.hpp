@@ -40,6 +40,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/asio/bind_executor.hpp>
 
 #include <sstream>
 #include <string>
@@ -707,7 +708,7 @@ public:
         if (config::enable_multithreading) {
             m_acceptor->async_accept(
                 tcon->get_raw_socket(),
-                tcon->get_strand()->wrap(lib::bind(
+                boost::asio::bind_executor(*tcon->get_strand(), lib::bind(
                     &type::handle_accept,
                     this,
                     callback,
@@ -831,7 +832,7 @@ protected:
             m_resolver->async_resolve(
                 host,
                 port,
-                tcon->get_strand()->wrap(lib::bind(
+                boost::asio::bind_executor(*tcon->get_strand(), lib::bind(
                     &type::handle_resolve,
                     this,
                     tcon,
@@ -940,7 +941,7 @@ protected:
             boost::asio::async_connect(
                 tcon->get_raw_socket(),
                 iterator,
-                tcon->get_strand()->wrap(lib::bind(
+                boost::asio::bind_executor(*tcon->get_strand(), lib::bind(
                     &type::handle_connect,
                     this,
                     tcon,

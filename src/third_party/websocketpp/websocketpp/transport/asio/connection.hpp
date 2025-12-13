@@ -977,7 +977,7 @@ protected:
 
     lib::error_code dispatch(dispatch_handler handler) {
         if (config::enable_multithreading) {
-            boost::asio::post(*m_io_service, m_strand->wrap(handler));
+            boost::asio::post(*m_io_service, boost::asio::bind_executor(*m_strand, handler));
         } else {
             boost::asio::post(*m_io_service, handler);
         }

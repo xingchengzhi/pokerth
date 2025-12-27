@@ -100,7 +100,18 @@ log "Bootstrapping vcpkg…"
 # vcpkg dependencies
 ########################################
 
-VCPKG_PORTS=(
+brew install \
+  cmake \
+  ninja \
+  git \
+  python \
+  pkg-config \
+  autoconf \
+  autoconf-archive \
+  automake \
+  libtool
+
+declare -a VCPKG_PORTS=(
   boost
   protobuf
   curl

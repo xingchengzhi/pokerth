@@ -31,7 +31,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FindBoost)
 include(FindProtobuf)
-
+ 
 find_package(Boost REQUIRED COMPONENTS iostreams random thread filesystem program_options)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
@@ -200,6 +200,24 @@ target_link_libraries(pokerth_protocol PUBLIC "${Protobuf_LIBRARIES}")
 if(ANDROID)
     target_compile_definitions(pokerth_protocol PUBLIC PROTOBUF_USE_DLLS)
     # Link abseil and utf8_range libraries (required by protobuf >= 5.27)
+    target_link_libraries(pokerth_protocol PUBLIC 
+        absl::base
+        absl::log_internal_message
+        absl::log_internal_check_op
+        absl::strings
+        absl::cord
+        absl::status
+        absl::statusor
+        absl::hash
+        absl::flat_hash_map
+        absl::raw_hash_set
+        utf8_range::utf8_range
+        utf8_range::utf8_validity
+    )
+elseif(APPLE)
+    # macOS: protobuf (from vcpkg/aqt) may require abseil and utf8_range symbols
+    find_package(absl CONFIG REQUIRED)
+    find_package(utf8_range CONFIG REQUIRED)
     target_link_libraries(pokerth_protocol PUBLIC 
         absl::base
         absl::log_internal_message

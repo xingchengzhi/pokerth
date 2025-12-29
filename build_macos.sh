@@ -190,7 +190,8 @@ cmake -S "$SCRIPT_DIR" -B "$BUILD_DIR" \
   -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$QT_DIR" \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_DIR/scripts/buildsystems/vcpkg.cmake"
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_DIR/scripts/buildsystems/vcpkg.cmake" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
 
 log "Building pokerth_client…"
 ninja -C "$BUILD_DIR" pokerth_client

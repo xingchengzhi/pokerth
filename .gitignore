@@ -36,3 +36,4 @@ qrc_qmake_qmake_qm_files.cpp
 tests/*
 .DS_Store
 *.log
+*lldb*

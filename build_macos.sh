@@ -174,6 +174,100 @@ aqt install-qt mac desktop "$QT_VERSION" clang_64 \
 
 QT_DIR="$QT_OUTPUT_DIR/$QT_VERSION/macos"
 log "Qt installed at: $QT_DIR"
+
+########################################
+# Build PokerTH
+########################################
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BUILD_DIR="$SCRIPT_DIR/build_macos"
+
+log "Configuring CMake build…"
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+
+cmake -S "$SCRIPT_DIR" -B "$BUILD_DIR" \
+  -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$QT_DIR" \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_DIR/scripts/buildsystems/vcpkg.cmake"
+
+log "Building pokerth_client…"
+ninja -C "$BUILD_DIR" pokerth_client
+
+########################################
+# Create macOS App Bundle
+########################################
+
+APP_NAME="PokerTH"
+APP_BUNDLE="$BUILD_DIR/${APP_NAME}.app"
+APP_CONTENTS="$APP_BUNDLE/Contents"
+APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
+
+log "Creating app bundle structure…"
+mkdir -p "$APP_MACOS"
+mkdir -p "$APP_RESOURCES"
+
+log "Copying binary and resources…"
+cp "$BUILD_DIR/bin/pokerth_client" "$APP_MACOS/$APP_NAME"
+cp -r "$SCRIPT_DIR/data" "$APP_RESOURCES/"
+
+log "Creating Info.plist…"
+cat > "$APP_CONTENTS/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.pokerth.PokerTH</string>
+    <key>CFBundleName</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleDisplayName</key>
+    <string>$APP_NAME</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleIconFile</key>
+    <string>pokerth.icns</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>
+EOF
+
+log "Deploying Qt frameworks with macdeployqt…"
+"$QT_DIR/bin/macdeployqt" "$APP_BUNDLE" -verbose=1
+
+########################################
+# Create DMG
+########################################
+
+DMG_NAME="${APP_NAME}.dmg"
+DMG_PATH="$BUILD_DIR/$DMG_NAME"
+
+log "Creating DMG installer…"
+rm -f "$DMG_PATH"
+hdiutil create -volname "$APP_NAME" -srcfolder "$APP_BUNDLE" -ov -format UDZO "$DMG_PATH"
+
+########################################
+# Summary
+########################################
+
+log "Build complete!"
+echo ""
+echo "✓ App Bundle: $APP_BUNDLE"
+echo "✓ DMG Installer: $DMG_PATH"
+echo ""
+echo "To run: open $APP_BUNDLE"
+echo "To install: open $DMG_PATH"
 ########################################
 
 

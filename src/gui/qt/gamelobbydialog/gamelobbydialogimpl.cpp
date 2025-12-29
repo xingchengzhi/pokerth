@@ -2253,6 +2253,11 @@ void gameLobbyDialogImpl::changeEvent(QEvent *event)
 
 void gameLobbyDialogImpl::updateGameListStyleSheet()
 {
+    // Guard against being called before widget is fully constructed
+    if (!treeView_GameList) {
+        return;
+    }
+    
     QPalette palette = QApplication::palette();
     QColor windowColor = palette.color(QPalette::Window);
     

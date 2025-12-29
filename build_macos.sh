@@ -247,6 +247,33 @@ log "Deploying Qt frameworks with macdeployqt…"
 "$QT_DIR/bin/macdeployqt" "$APP_BUNDLE" -verbose=1
 
 ########################################
+# Code Signing (Optional)
+########################################
+
+# Check if CODESIGN_IDENTITY environment variable is set
+# Usage: export CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+    log "Code signing with identity: $CODESIGN_IDENTITY"
+    
+    # Sign all frameworks and dylibs first
+    find "$APP_BUNDLE/Contents/Frameworks" -type f \( -name "*.dylib" -o -name "Qt*" \) -exec codesign --force --sign "$CODESIGN_IDENTITY" --timestamp --options runtime {} \;
+    
+    # Sign the main executable
+    codesign --force --sign "$CODESIGN_IDENTITY" --timestamp --options runtime "$APP_BUNDLE/Contents/MacOS/PokerTH"
+    
+    # Sign the app bundle
+    codesign --force --sign "$CODESIGN_IDENTITY" --timestamp --options runtime --entitlements /dev/null "$APP_BUNDLE"
+    
+    # Verify signature
+    codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+    
+    log "Code signing complete!"
+else
+    log "Skipping code signing (CODESIGN_IDENTITY not set)"
+    echo "  To enable code signing, set: export CODESIGN_IDENTITY=\"Developer ID Application: Your Name (TEAM_ID)\""
+fi
+
+########################################
 # Create DMG
 ########################################
 

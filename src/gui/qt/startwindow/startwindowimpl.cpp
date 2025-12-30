@@ -643,6 +643,23 @@ void startWindowImpl::showClientDialog()
 
 void startWindowImpl::showLobbyDialog()
 {
+#ifdef __APPLE__
+	// On macOS, show the dialog non-modally to keep menu accessible
+	// Connect to finished signal to handle result
+	connect(myGameLobbyDialog, &QDialog::finished, this, [this](int result) {
+		disconnect(myGameLobbyDialog, &QDialog::finished, this, nullptr);
+		if (result == QDialog::Accepted) {
+			this->hide();
+			myGuiInterface->getMyW()->networkGameModification();
+		} else {
+			myGameLobbyDialog->clearDialog();
+			mySession->terminateNetworkClient();
+		}
+	}, Qt::UniqueConnection);
+	myGameLobbyDialog->show();
+	myGameLobbyDialog->raise();
+	myGameLobbyDialog->activateWindow();
+#else
 	myGameLobbyDialog->exec();
 
 	if (myGameLobbyDialog->result() == QDialog::Accepted ) {
@@ -653,6 +670,7 @@ void startWindowImpl::showLobbyDialog()
 		myGameLobbyDialog->clearDialog();
 		mySession->terminateNetworkClient();
 	}
+#endif
 }
 
 void startWindowImpl::showNetworkStartDialog()

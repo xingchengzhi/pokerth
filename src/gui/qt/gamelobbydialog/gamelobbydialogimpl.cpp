@@ -50,7 +50,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 {
 
 #ifdef __APPLE__
-	setWindowModality(Qt::ApplicationModal);
+	// Don't use ApplicationModal on macOS - it disables the parent's menu
 	setWindowFlags(Qt::WindowSystemMenuHint | Qt::CustomizeWindowHint | Qt::Dialog);
 #elif _WIN32
 //	setWindowFlags(Qt::Dialog | Qt::WindowMinimizeButtonHint);
@@ -2253,6 +2253,11 @@ void gameLobbyDialogImpl::changeEvent(QEvent *event)
 
 void gameLobbyDialogImpl::updateGameListStyleSheet()
 {
+    // Guard against being called before widget is fully constructed
+    if (!treeView_GameList) {
+        return;
+    }
+    
     QPalette palette = QApplication::palette();
     QColor windowColor = palette.color(QPalette::Window);
     

@@ -41,7 +41,10 @@ if(ANDROID)
     set(protobuf_MODULE_COMPATIBLE ON)
     # Force Protobuf to use emulated TLS instead of native TLS
     add_compile_options(-femulated-tls)  # WICHTIG: Emuliere TLS für Android
-    # Use CONFIG mode for vcpkg cross-compilation
+endif()
+
+# vcpkg uses CONFIG mode for all platforms
+if(DEFINED VCPKG_TOOLCHAIN OR DEFINED CMAKE_TOOLCHAIN_FILE)
     find_package(Protobuf CONFIG REQUIRED)
 else()
     find_package(Protobuf REQUIRED)

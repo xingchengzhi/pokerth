@@ -41,10 +41,11 @@ if(ANDROID)
     set(protobuf_MODULE_COMPATIBLE ON)
     # Force Protobuf to use emulated TLS instead of native TLS
     add_compile_options(-femulated-tls)  # WICHTIG: Emuliere TLS für Android
+    # Use CONFIG mode for vcpkg cross-compilation
+    find_package(Protobuf CONFIG REQUIRED)
+else()
+    find_package(Protobuf REQUIRED)
 endif()
-
-find_package(Protobuf REQUIRED)
-find_package(Protobuf CONFIG)
 
 if(ANDROID)
     # Find abseil and utf8_range (required for protobuf >= 5.27)

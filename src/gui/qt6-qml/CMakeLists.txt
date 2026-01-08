@@ -8,7 +8,11 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     ../../core/qttools/qttoolswrapper.cpp
     ../../core/qttoolsinterface.cpp
     cpp/retranslate.cpp
-    cpp/settingsxmlhandler.cpp)
+    cpp/settingsxmlhandler.cpp
+    cpp/settingsmanager.cpp
+    cpp/serverconnectionhandler.cpp
+    cpp/lobbyhandler.cpp
+    cpp/qmlguiinterface.cpp)
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
 
@@ -72,6 +76,7 @@ target_include_directories(pokerth_qml-client PUBLIC
     ../../core/qttools
     ../../core/qttools/qthelper
     ../
+    .
     cpp)
 
 # Fix für Android: Abseil-Bibliotheken die von Protobuf benötigt werden

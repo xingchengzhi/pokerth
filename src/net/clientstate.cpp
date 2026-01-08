@@ -459,6 +459,7 @@ ClientStateStartConnect::Instance()
 }
 
 ClientStateStartConnect::ClientStateStartConnect()
+	: m_handshakeRetryCount(0)
 {
 }
 
@@ -469,6 +470,7 @@ ClientStateStartConnect::~ClientStateStartConnect()
 void
 ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
 {
+    m_handshakeRetryCount = 0; // Reset retry counter
     client->GetStateTimer().expires_after(seconds(CLIENT_CONNECT_TIMEOUT_SEC));
     client->GetStateTimer().async_wait(
         boost::bind(
@@ -568,6 +570,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
     if (&client->GetState() == this) {
         if (!ec) {
             qDebug() << "[TLS-CONNECT] SSL Handshake completed successfully!";
+            m_handshakeRetryCount = 0; // Reset counter on success
             client->GetCallback().SignalNetClientConnect(MSG_SOCK_CONNECT_DONE);
             client->SetState(ClientStateStartSession::Instance());
         } else {
@@ -586,10 +589,44 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     }
                 }
                 
-                throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
+                // Retry handshake up to 3 times
+                if (m_handshakeRetryCount < 3) {
+                    m_handshakeRetryCount++;
+                    qDebug() << "[TLS-CONNECT] Retrying TLS handshake (attempt" << m_handshakeRetryCount << "of 3)...";
+                    RetryHandshake(client);
+                } else {
+                    qDebug() << "[TLS-CONNECT] TLS handshake failed after 3 attempts, giving up.";
+                    throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
+                }
             }
         }
     }
+}
+
+void
+ClientStateStartConnect::RetryHandshake(boost::shared_ptr<ClientThread> client)
+{
+    ClientContext &context = client->GetContext();
+    
+    // Close the current SSL stream
+    boost::system::error_code closeEc;
+    context.GetSessionData()->GetSslStream()->lowest_layer().close(closeEc);
+    
+    // Recreate the session with a new SSL stream
+    qDebug() << "[TLS-CONNECT] Recreating SSL session for retry...";
+    client->CreateContextSession();
+    
+    // Get the current endpoint
+    boost::asio::ip::tcp::endpoint endpoint = m_remoteEndpointIterator->endpoint();
+    
+    // Try to connect again
+    context.GetSessionData()->GetSslStream()->lowest_layer().async_connect(
+        endpoint,
+        boost::bind(&ClientStateStartConnect::HandleConnect,
+                    this,
+                    boost::asio::placeholders::error,
+                    m_remoteEndpointIterator,
+                    client));
 }
 
 void

@@ -40,7 +40,7 @@ Var StartMenuFolder
 ; Interface Settings
 
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
+!define MUI_ICON "pokerth.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
 ; Welcome page
@@ -111,17 +111,17 @@ Section "Hauptprogramm" SecMain
   ; Create Start Menu shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
     CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\${PRODUCT_NAME}.lnk" "$INSTDIR\pokerth_client.exe"
+    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\${PRODUCT_NAME}.lnk" "$INSTDIR\pokerth_client.exe" "" "$INSTDIR\pokerth.ico" 0
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
     
     ; Create shortcuts for other executables if they exist
     IfFileExists "$INSTDIR\pokerth_dedicated_server.exe" 0 +2
-      CreateShortcut "$SMPROGRAMS\$StartMenuFolder\PokerTH Dedicated Server.lnk" "$INSTDIR\pokerth_dedicated_server.exe"
+      CreateShortcut "$SMPROGRAMS\$StartMenuFolder\PokerTH Dedicated Server.lnk" "$INSTDIR\pokerth_dedicated_server.exe" "" "$INSTDIR\pokerth.ico" 0
     
   !insertmacro MUI_STARTMENU_WRITE_END
   
   ; Create Desktop shortcut
-  CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\pokerth_client.exe"
+  CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\pokerth_client.exe" "" "$INSTDIR\pokerth.ico" 0
   
   ; Create README
   FileOpen $0 "$INSTDIR\README.txt" w
@@ -180,6 +180,7 @@ Section "Uninstall"
   Delete "$INSTDIR\qt.conf"
   Delete "$INSTDIR\*.bat"
   Delete "$INSTDIR\*.sh"
+  Delete "$INSTDIR\*.ico"
   Delete "$INSTDIR\README.txt"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"

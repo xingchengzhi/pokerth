@@ -37,3 +37,7 @@ tests/*
 .DS_Store
 *.log
 *lldb*
+
+# Windows installer artifacts
+docker/windows/*.exe
+docker/windows/pokerth.ico

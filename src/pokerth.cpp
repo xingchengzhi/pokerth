@@ -47,6 +47,7 @@
 #include <QDebug>
 #include <retranslate.h>
 #include <settingsxmlhandler.h>
+#include <settingsmanager.h>
 
 int main(int argc, char *argv[])
 {
@@ -94,7 +95,9 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
+    SettingsManager settingsMgr(myConfig);
     LanguageManager langMgr(&engine);
+    engine.rootContext()->setContextProperty("SettingsManager", &settingsMgr);
     engine.rootContext()->setContextProperty("LanguageManager", &langMgr);
 	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
 

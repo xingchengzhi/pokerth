@@ -58,6 +58,8 @@ Rectangle {
                     Layout.fillWidth: true
                     onClicked: {
                         usernameLabel.text = "Guest" + Math.floor(Math.random() * 10000)
+                        connectionProgress.value = 0
+                        connectionTimer.start()
                         mainStack.currentIndex = 2 // Switch to connecting
                     }
                 }
@@ -127,6 +129,8 @@ Rectangle {
                     onClicked: {
                         console.log("Login clicked. Username:", usernameInput.text, "Password:", passwordInput.text, "Remember me:", rememberMeCheckbox.checked)
                         usernameLabel.text = usernameInput.text
+                        connectionProgress.value = 0
+                        connectionTimer.start()
                         mainStack.currentIndex = 2 // Go to login section
                         // Login Logic
                     }
@@ -149,7 +153,11 @@ Rectangle {
                 Layout.minimumWidth: 0
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                spacing: 15
+                spacing: 20
+
+                Item {
+                    Layout.fillHeight: true
+                }
 
                 Text {
                     text: qsTr("Connecting as...")
@@ -159,6 +167,7 @@ Rectangle {
                     color: Config.StaticData.palette.secondary.col200
                     Layout.alignment: Qt.AlignHCenter
                 }
+
                 Text {
                     id: usernameLabel
                     text: qsTr("Username/Guest")
@@ -168,22 +177,95 @@ Rectangle {
                     color: Config.StaticData.palette.secondary.col200
                     Layout.alignment: Qt.AlignHCenter
                 }
-                Text {
-                    text: qsTr("STATUS INDICATOR ??%")
-                    font.pixelSize: 16
-                    Layout.fillWidth: false
-                    font.family: Config.StaticData.loadedFont.font.family
-                    color: Config.StaticData.palette.secondary.col200
+
+                // Progress Bar
+                ColumnLayout {
+                    Layout.fillWidth: true
                     Layout.alignment: Qt.AlignHCenter
+                    spacing: 10
+
+                    ProgressBar {
+                        id: connectionProgress
+                        Layout.preferredWidth: Math.min(parent.width * 0.8, 300)
+                        Layout.alignment: Qt.AlignHCenter
+                        from: 0
+                        to: 100
+                        value: 0
+
+                        background: Rectangle {
+                            implicitWidth: 300
+                            implicitHeight: 8
+                            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.5)
+                            radius: 4
+                        }
+
+                        contentItem: Item {
+                            implicitWidth: 300
+                            implicitHeight: 6
+
+                            Rectangle {
+                                width: connectionProgress.visualPosition * parent.width
+                                height: parent.height
+                                radius: 4
+                                color: Config.StaticData.palette.secondary.col500
+                            }
+                        }
+                    }
+
+                    Text {
+                        id: statusText
+                        text: qsTr("Initializing connection...")
+                        font.pixelSize: 14
+                        font.family: Config.StaticData.loadedFont.font.family
+                        color: Config.StaticData.palette.secondary.col300
+                        Layout.alignment: Qt.AlignHCenter
+                    }
                 }
-                 Button {
+
+                Item {
+                    Layout.fillHeight: true
+                }
+
+                Button {
                     text: qsTr("Cancel")
                     Layout.alignment: Qt.AlignHCenter
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: 14
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: 120
                     onClicked: {
+                        connectionTimer.stop()
+                        connectionProgress.value = 0
                         mainStack.currentIndex = 0 // Go back to initial choices
+                    }
+                }
+
+                // Timer to simulate connection progress
+                Timer {
+                    id: connectionTimer
+                    interval: 100
+                    repeat: true
+                    running: false
+                    onTriggered: {
+                        if (connectionProgress.value < 100) {
+                            connectionProgress.value += Math.random() * 15
+                            
+                            // Update status text based on progress
+                            if (connectionProgress.value < 30) {
+                                statusText.text = qsTr("Connecting to server...")
+                            } else if (connectionProgress.value < 60) {
+                                statusText.text = qsTr("Authenticating...")
+                            } else if (connectionProgress.value < 90) {
+                                statusText.text = qsTr("Loading lobby data...")
+                            } else {
+                                statusText.text = qsTr("Connection successful!")
+                            }
+                        } else {
+                            connectionTimer.stop()
+                            // Navigate to lobby after a short delay
+                            Qt.callLater(function() {
+                                mainStackView.push("LobbyPage.qml")
+                            })
+                        }
                     }
                 }
             }

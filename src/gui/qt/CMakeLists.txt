@@ -68,6 +68,9 @@ endif()
 if(ANDROID)
     # Verwende qt_add_executable mit MANUAL_FINALIZATION
     qt_add_executable(pokerth_client MANUAL_FINALIZATION "${POKERTH_CLIENT_SRC}")
+elseif(WIN32)
+    # Windows GUI app ohne Konsolenfenster
+    add_executable(pokerth_client WIN32 "${POKERTH_CLIENT_SRC}")
 else()
     add_executable(pokerth_client "${POKERTH_CLIENT_SRC}")
 endif()

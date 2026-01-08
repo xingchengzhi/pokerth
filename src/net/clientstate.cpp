@@ -1099,6 +1099,8 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
             netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
             netInit->set_buildid(0);
+            
+            // Include session GUID and server password BEFORE setting login type
             if (!context.GetSessionGuid().empty()) {
                 qDebug() << "[AUTH DEBUG] TimerLoop - Using previous session GUID:" << QString::fromStdString(context.GetSessionGuid());
                 netInit->set_mylastsessionid(context.GetSessionGuid());

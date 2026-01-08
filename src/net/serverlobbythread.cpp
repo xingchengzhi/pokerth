@@ -1084,8 +1084,12 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
         noAuth = true;
     } else if (initMessage.login() == InitMessage::authenticatedLogin) {
         playerName = initMessage.nickname();
+        LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - authenticatedLogin for player: " << playerName 
+                << " has_clientuserdata: " << initMessage.has_clientuserdata()
+                << " has_mylastsessionid: " << initMessage.has_mylastsessionid());
         if (initMessage.has_clientuserdata()) {
             session->AuthSetPassword(initMessage.clientuserdata());
+            LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - Password set, length: " << initMessage.clientuserdata().length());
         }
         noAuth = false;
     } else {
@@ -1127,6 +1131,10 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 	// Set player data for session.
 	m_sessionManager.SetSessionPlayerData(session->GetId(), tmpPlayerData);
 	session->SetPlayerData(tmpPlayerData);
+
+	LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - noAuth: " << noAuth 
+	        << " player: " << playerName 
+	        << " has OldGuid: " << !tmpPlayerData->GetOldGuid().empty());
 
 	if (noAuth)
 		InitAfterLogin(session);
@@ -1755,6 +1763,9 @@ void
 ServerLobbyThread::AuthenticatePlayer(boost::shared_ptr<SessionData> session)
 {
 	if(session->GetPlayerData()) {
+		LOG_MSG("[AUTH DEBUG] AuthenticatePlayer - Player ID: " << session->GetPlayerData()->GetUniqueId() 
+		        << " Name: " << session->GetPlayerData()->GetName() 
+		        << " Has OldGuid: " << !session->GetPlayerData()->GetOldGuid().empty());
 		m_database->AsyncPlayerLogin(session->GetPlayerData()->GetUniqueId(), session->GetPlayerData()->GetName());
 	}
 }
@@ -1765,11 +1776,17 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
     boost::shared_ptr<SessionData> tmpSession = m_sessionManager.GetSessionByUniquePlayerId(playerId, true);
 
     if (!tmpSession) {
+        LOG_MSG("[AUTH DEBUG] UserValid - Session not found for player ID: " << playerId);
         return;
     }
 
     std::string providedPassword = tmpSession->AuthGetPassword();
+    LOG_MSG("[AUTH DEBUG] UserValid - Player ID: " << playerId 
+            << " Provided password length: " << providedPassword.length()
+            << " DB secret length: " << dbPlayerData.secret.length()
+            << " Match: " << (providedPassword == dbPlayerData.secret));
     if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
+        LOG_MSG("[AUTH DEBUG] UserValid - Password match, establishing session");
         EstablishSession(tmpSession);
     } else {
         LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");
@@ -1780,6 +1797,7 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
 void
 ServerLobbyThread::UserInvalid(unsigned playerId)
 {
+	LOG_MSG("[AUTH DEBUG] UserInvalid - Player ID: " << playerId << " - sending ERR_NET_INVALID_PASSWORD");
 	SessionError(m_sessionManager.GetSessionByUniquePlayerId(playerId, true), ERR_NET_INVALID_PASSWORD);
 }
 

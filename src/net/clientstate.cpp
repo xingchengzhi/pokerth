@@ -573,7 +573,19 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
         } else {
             if (ec != boost::asio::error::operation_aborted) {
                 qDebug() << "[TLS-CONNECT] SSL Handshake FAILED:" << ec.message().c_str() 
-                         << "(code:" << ec.value() << ")";
+                         << "(code:" << ec.value() << "category:" << ec.category().name() << ")";
+                
+                // Try to get more detailed SSL error information
+                SSL* ssl = client->GetContext().GetSessionData()->GetSslStream()->native_handle();
+                if (ssl) {
+                    unsigned long ssl_err = ERR_get_error();
+                    if (ssl_err != 0) {
+                        char err_buf[256];
+                        ERR_error_string_n(ssl_err, err_buf, sizeof(err_buf));
+                        qDebug() << "[TLS-CONNECT] OpenSSL error:" << err_buf;
+                    }
+                }
+                
                 throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
             }
         }

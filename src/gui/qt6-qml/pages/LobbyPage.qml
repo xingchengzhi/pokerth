@@ -87,22 +87,18 @@ Rectangle {
                         Layout.fillHeight: true
                         clip: true
                         
-                        model: ListModel {
-                            // Mock data
-                            ListElement { playerName: "Player1"; isGuest: false }
-                            ListElement { playerName: "Guest4521"; isGuest: true }
-                            ListElement { playerName: "PokerPro"; isGuest: false }
-                            ListElement { playerName: "Guest1234"; isGuest: true }
-                        }
+                        model: Lobby.playerListModel
 
                         delegate: ItemDelegate {
                             width: playerListView.width
                             height: 30
                             
                             contentItem: Text {
-                                text: playerName
+                                text: model.playerName
                                 font.family: Config.StaticData.loadedFont.font.family
-                                color: isGuest ? Config.StaticData.palette.secondary.col300 : Config.StaticData.palette.secondary.col200
+                                font.pixelSize: 12
+                                color: model.isAdmin ? "#FFD700" : Config.StaticData.palette.secondary.col200
+                                font.bold: model.isAdmin
                                 verticalAlignment: Text.AlignVCenter
                             }
                             
@@ -174,12 +170,7 @@ Rectangle {
                             Layout.fillHeight: true
                             clip: true
 
-                            model: ListModel {
-                                // Mock data
-                                ListElement { gameName: "High Rollers"; players: "3/10"; gameState: "Open"; blinds: "10/20" }
-                                ListElement { gameName: "Beginners Table"; players: "8/10"; gameState: "Open"; blinds: "5/10" }
-                                ListElement { gameName: "Pro Tournament"; players: "10/10"; gameState: "Running"; blinds: "50/100" }
-                            }
+                            model: Lobby.gameListModel
 
                             delegate: ItemDelegate {
                                 width: gameListView.width
@@ -190,25 +181,25 @@ Rectangle {
                                     spacing: 5
 
                                     Text {
-                                        text: gameName
+                                        text: model.gameName || ("Game #" + model.gameId)
                                         font.family: Config.StaticData.loadedFont.font.family
                                         color: Config.StaticData.palette.secondary.col200
                                         Layout.fillWidth: true
                                     }
                                     Text {
-                                        text: players
+                                        text: (model.playerCount || 0) + "/" + (model.maxPlayers || 10)
                                         font.family: Config.StaticData.loadedFont.font.family
                                         color: Config.StaticData.palette.secondary.col200
                                         Layout.preferredWidth: 60
                                     }
                                     Text {
-                                        text: gameState
+                                        text: (model.playerCount || 0) < (model.maxPlayers || 10) ? "Open" : "Full"
                                         font.family: Config.StaticData.loadedFont.font.family
-                                        color: gameState === "Open" ? "#4CAF50" : "#FFC107"
+                                        color: (model.playerCount || 0) < (model.maxPlayers || 10) ? "#4CAF50" : "#FFC107"
                                         Layout.preferredWidth: 80
                                     }
                                     Text {
-                                        text: blinds
+                                        text: "10/20"
                                         font.family: Config.StaticData.loadedFont.font.family
                                         color: Config.StaticData.palette.secondary.col200
                                         Layout.preferredWidth: 60
@@ -218,6 +209,10 @@ Rectangle {
                                 background: Rectangle {
                                     color: parent.hovered ? Qt.lighter(Config.StaticData.palette.secondary.col700, 1.3) : "transparent"
                                     radius: 3
+                                }
+                                
+                                onClicked: {
+                                    Lobby.joinGame(model.gameId)
                                 }
                             }
                         }
@@ -229,13 +224,19 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 10
 
-                    Button {
-                        text: qsTr("Create Game")
-                        font.family: Config.StaticData.loadedFont.font.family
-                        Layout.fillWidth: true
-                        onClicked: {
-                            console.log("Create Game clicked")
+Label {
+                            text: qsTr("Player: %1").arg(Lobby.myPlayerName !== "" ? Lobby.myPlayerName : "Guest")
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.bold: true
+                            font.pixelSize: 14
+                            color: Config.StaticData.palette.secondary.col100
                         }
+
+                        Button {
+                            text: qsTr("Create Game")
+                            font.family: Config.StaticData.loadedFont.font.family
+                            Layout.fillWidth: true
+                            onClicked: Lobby.createGame()
                     }
 
                     Button {
@@ -337,12 +338,9 @@ Rectangle {
                             }
                             placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                             
-                            onAccepted: {
-                                if (text.trim() !== "") {
-                                    console.log("Chat message:", text)
-                                    text = ""
-                                }
-                            }
+                            onAccepted: sendChatMessage()
+                            
+                            Keys.onReturnPressed: sendChatMessage()
                         }
                     }
                 }
@@ -389,5 +387,28 @@ Rectangle {
                 onLinkActivated: Qt.openUrlExternally(link)
             }
         }
+    }
+    
+    // Chat message handler
+    Connections {
+        target: Lobby
+        function onChatMessageReceived(playerName, message) {
+            var timestamp = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
+            chatArea.text += "\n[" + timestamp + "] " + playerName + ": " + message
+        }
+    }
+    
+    function sendChatMessage() {
+        if(chatInput.text.trim() !== "") {
+            Lobby.sendChatMessage(chatInput.text)
+            chatInput.text = ""
+        }
+    }
+    
+    Component.onCompleted: {
+        console.log("LobbyPage loaded")
+        console.log("My player name:", Lobby.myPlayerName)
+        console.log("Player model count:", Lobby.playerListModel.rowCount())
+        console.log("Game model count:", Lobby.gameListModel.rowCount())
     }
 }

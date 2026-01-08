@@ -9,7 +9,10 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     ../../core/qttoolsinterface.cpp
     cpp/retranslate.cpp
     cpp/settingsxmlhandler.cpp
-    cpp/settingsmanager.cpp)
+    cpp/settingsmanager.cpp
+    cpp/serverconnectionhandler.cpp
+    cpp/lobbyhandler.cpp
+    cpp/qmlguiinterface.cpp)
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
 

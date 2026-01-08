@@ -11,6 +11,48 @@ Rectangle {
     height: mainWindow.height
     color: Config.StaticData.palette.secondary.col700
 
+    Component.onCompleted: {
+        // Load saved credentials from config
+        usernameInput.text = ServerConnection.savedUsername
+        passwordInput.text = ServerConnection.savedPassword
+        rememberMeCheckbox.checked = ServerConnection.rememberPassword
+    }
+
+    // Connections to backend signals
+    Connections {
+        target: ServerConnection
+        
+        function onConnectionProgressChanged(progress) {
+            connectionProgress.value = progress
+        }
+        
+        function onStatusMessageChanged(message) {
+            statusText.text = message
+        }
+        
+        function onConnectionSucceeded() {
+            console.log("Connection succeeded!")
+        }
+        
+        function onConnectionFailed(errorMessage) {
+            console.log("Connection failed:", errorMessage)
+            // Show error and go back to initial view
+            statusText.text = errorMessage
+            statusText.color = "#FF5252"
+            
+            // Reset after delay
+            Qt.callLater(function() {
+                mainStack.currentIndex = 0
+                statusText.color = Config.StaticData.palette.secondary.col300
+            })
+        }
+        
+        function onShowLobby() {
+            console.log("Showing lobby...")
+            mainStackView.push("LobbyPage.qml")
+        }
+    }
+
     StackLayout {
         id: mainStack
         anchors.centerIn: parent
@@ -57,10 +99,13 @@ Rectangle {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     onClicked: {
-                        usernameLabel.text = "Guest" + Math.floor(Math.random() * 10000)
+                        var guestName = "Guest" + Math.floor(Math.random() * 10000)
+                        usernameLabel.text = guestName
                         connectionProgress.value = 0
-                        connectionTimer.start()
                         mainStack.currentIndex = 2 // Switch to connecting
+                        
+                        // Call backend to connect (guest, don't save credentials)
+                        ServerConnection.connectToServer(guestName, "", true, false)
                     }
                 }
             }
@@ -130,9 +175,10 @@ Rectangle {
                         console.log("Login clicked. Username:", usernameInput.text, "Password:", passwordInput.text, "Remember me:", rememberMeCheckbox.checked)
                         usernameLabel.text = usernameInput.text
                         connectionProgress.value = 0
-                        connectionTimer.start()
                         mainStack.currentIndex = 2 // Go to login section
-                        // Login Logic
+                        
+                        // Call backend to connect with username and password, passing remember me flag
+                        ServerConnection.connectToServer(usernameInput.text, passwordInput.text, false, rememberMeCheckbox.checked)
                     }
                 }
 
@@ -233,39 +279,9 @@ Rectangle {
                     font.pixelSize: 14
                     Layout.preferredWidth: 120
                     onClicked: {
-                        connectionTimer.stop()
+                        ServerConnection.cancelConnection()
                         connectionProgress.value = 0
                         mainStack.currentIndex = 0 // Go back to initial choices
-                    }
-                }
-
-                // Timer to simulate connection progress
-                Timer {
-                    id: connectionTimer
-                    interval: 100
-                    repeat: true
-                    running: false
-                    onTriggered: {
-                        if (connectionProgress.value < 100) {
-                            connectionProgress.value += Math.random() * 15
-                            
-                            // Update status text based on progress
-                            if (connectionProgress.value < 30) {
-                                statusText.text = qsTr("Connecting to server...")
-                            } else if (connectionProgress.value < 60) {
-                                statusText.text = qsTr("Authenticating...")
-                            } else if (connectionProgress.value < 90) {
-                                statusText.text = qsTr("Loading lobby data...")
-                            } else {
-                                statusText.text = qsTr("Connection successful!")
-                            }
-                        } else {
-                            connectionTimer.stop()
-                            // Navigate to lobby after a short delay
-                            Qt.callLater(function() {
-                                mainStackView.push("LobbyPage.qml")
-                            })
-                        }
                     }
                 }
             }

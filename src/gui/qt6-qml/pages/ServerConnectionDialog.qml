@@ -1,45 +1,39 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Window
 
 import "../config" as Config
 
 
-Window {
-    id: serverConnectDialogWindow
-    width: 200
-    height: 150
-    visible: true
-    title: qsTr("Server Connection")
+Rectangle {
+    id: serverConnectionPage
+    width: mainWindow.width
+    height: mainWindow.height
+    color: Config.StaticData.palette.secondary.col700
 
-    Rectangle {
-        color: Config.StaticData.palette.secondary.col700
-        anchors.fill: parent
+    StackLayout {
+        id: mainStack
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.9, 500)
+        height: Math.min(parent.height * 0.9, 400)
+        currentIndex: 0 // Start with the initial choices view
 
-        StackLayout {
-            id: mainStack
-            anchors.fill: parent
-            currentIndex: 0 // Start with the initial choices view
+        // View 0: Initial choices
+        ColumnLayout {
+            id: initialChoicesView
+            spacing: 15
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
-            // View 0: Initial choices
-            ColumnLayout {
-                id: initialChoicesView
-                spacing: 15
+            Button {
+                text: qsTr("Login as User")
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 16
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-
-                Button {
-                    text: qsTr("Login as User")
-                    font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 16
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                    onClicked: {
-                        serverConnectDialogWindow.width = 500
-                        serverConnectDialogWindow.height = 280
-                        mainStack.currentIndex = 1 // Switch to login form view
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                onClicked: {
+                    mainStack.currentIndex = 1 // Switch to login form view
                     }
                 }
 
@@ -63,9 +57,6 @@ Window {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     onClicked: {
-                        serverConnectDialogWindow.width = 300
-                        serverConnectDialogWindow.height = 135
-
                         usernameLabel.text = "Guest" + Math.floor(Math.random() * 10000)
                         mainStack.currentIndex = 2 // Switch to connecting
                     }
@@ -136,9 +127,6 @@ Window {
                     onClicked: {
                         console.log("Login clicked. Username:", usernameInput.text, "Password:", passwordInput.text, "Remember me:", rememberMeCheckbox.checked)
                         usernameLabel.text = usernameInput.text
-
-                        serverConnectDialogWindow.width = 300
-                        serverConnectDialogWindow.height = 135
                         mainStack.currentIndex = 2 // Go to login section
                         // Login Logic
                     }
@@ -150,8 +138,6 @@ Window {
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: 14
                     onClicked: {
-                        serverConnectDialogWindow.width = 200
-                        serverConnectDialogWindow.height = 150
                         mainStack.currentIndex = 0 // Go back to initial choices
                     }
                 }
@@ -197,13 +183,9 @@ Window {
                     font.pixelSize: 14
                     Layout.fillWidth: true
                     onClicked: {
-                        serverConnectDialogWindow.width = 200
-                        serverConnectDialogWindow.height = 150
-
                         mainStack.currentIndex = 0 // Go back to initial choices
                     }
                 }
             }
         }
-    }
 }

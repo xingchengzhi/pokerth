@@ -1687,14 +1687,23 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	if (!session->GetPlayerData())
 		throw ServerException(__FILE__, __LINE__, ERR_NET_INVALID_SESSION, 0);
 
+	LOG_MSG("[AUTH DEBUG] EstablishSession - START for player: " << session->GetPlayerData()->GetName() 
+	        << " ID: " << session->GetPlayerData()->GetUniqueId()
+	        << " Has OldGuid: " << !session->GetPlayerData()->GetOldGuid().empty());
+
 	unsigned rejoinPlayerId = 0;
 	u_int32_t rejoinGameId = GetRejoinGameIdForPlayer(session->GetPlayerData()->GetName(), session->GetPlayerData()->GetOldGuid(), rejoinPlayerId);
+	LOG_MSG("[AUTH DEBUG] EstablishSession - GetRejoinGameIdForPlayer returned: " << rejoinGameId 
+	        << " rejoinPlayerId: " << rejoinPlayerId);
+	
 	if (rejoinGameId != 0) {
+		LOG_MSG("[AUTH DEBUG] EstablishSession - Offering rejoin for game: " << rejoinGameId);
 		// Offer rejoin, and disconnect current player with the same name.
 		InternalRemovePlayer(rejoinPlayerId, ERR_NET_PLAYER_NAME_IN_USE);
 	} else {
 		// Check whether this player is already connected.
 		unsigned previousPlayerId = GetPlayerId(session->GetPlayerData()->GetName());
+		LOG_MSG("[AUTH DEBUG] EstablishSession - GetPlayerId returned: " << previousPlayerId);
 		if (previousPlayerId != 0 && previousPlayerId != session->GetPlayerData()->GetUniqueId()) {
 #ifdef POKERTH_OFFICIAL_SERVER
 			// If this is a login server with a websocket connection, decline connection.
@@ -1728,6 +1737,8 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	boost::uuids::uuid sessionGuid(m_sessionIdGenerator());
 	session->GetPlayerData()->SetGuid(string((char *)&sessionGuid, boost::uuids::uuid::static_size()));
 
+	LOG_MSG("[AUTH DEBUG] EstablishSession - Sending InitAckMessage to player ID: " << session->GetPlayerData()->GetUniqueId());
+
 	// Send ACK to client.
 	boost::shared_ptr<NetPacket> ack(new NetPacket);
 	ack->GetMsg()->set_messagetype(PokerTHMessage::Type_InitAckMessage);
@@ -1739,6 +1750,7 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 		netInitAck->set_rejoingameid(rejoinGameId);
 	}
 	GetSender().Send(session, ack);
+	LOG_MSG("[AUTH DEBUG] EstablishSession - InitAckMessage sent successfully");
 
 	// Send the connected players list to the client.
 	SendPlayerList(session);
@@ -1757,6 +1769,8 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	NotifyPlayerJoinedLobby(session->GetPlayerData()->GetUniqueId());
 
 	UpdateStatisticsNumberOfPlayers();
+	
+	LOG_MSG("[AUTH DEBUG] EstablishSession - COMPLETED for player ID: " << session->GetPlayerData()->GetUniqueId());
 }
 
 void

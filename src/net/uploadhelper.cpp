@@ -86,8 +86,8 @@ UploadHelper::InternalInit(const string &/*url*/, const string &targetFileName, 
 		// Curl will handle file I/O.
 		curl_mime *mime = curl_mime_init(&GetData()->curlHandle);
 		curl_mimepart *part = curl_mime_addpart(mime);
-		curl_mime_filedata(part, targetFileName.c_str ());
-		curl_mime_name(part, httpPost.c_str ());
+		curl_mime_filedata(part, targetFileName.c_str());
+		curl_mime_name(part, httpPost.c_str());
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_MIMEPOST, mime);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_WRITEFUNCTION, writeFunction);
 		curl_easy_setopt(GetData()->curlHandle, CURLOPT_WRITEDATA, &GetData()->returnMessage);

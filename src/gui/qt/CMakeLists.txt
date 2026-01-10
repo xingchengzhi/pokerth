@@ -114,7 +114,6 @@ target_include_directories(pokerth_client PUBLIC
     logfiledialog
     mymessagebox/)
 
-target_link_libraries(pokerth_client PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_client PRIVATE Qt6::Core Qt6::Gui Qt6::Sql Qt6::Xml Qt6::Widgets Qt6::Network Qt6::Multimedia)
 
 target_link_libraries(pokerth_client PUBLIC pokerth_lib)

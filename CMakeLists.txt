@@ -24,6 +24,12 @@ if(GUI_800_480)
     add_definitions(-DGUI_800x480)
 endif()
 
+# macOS-only workaround for Qt 6.9 setStyleSheet crashes on Monterey
+# Using __APPLE__ preprocessor define in source code instead
+# if(APPLE)
+#     add_definitions(-DDISABLE_COMPLEX_STYLESHEETS_MACOS)
+# endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -165,7 +171,7 @@ target_link_libraries(pokerth_lib PUBLIC "${OPENSSL_LIBRARIES}")
 target_link_libraries(pokerth_lib PUBLIC CURL::libcurl)
 target_link_libraries(pokerth_lib PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
-target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti -Wno-stringop-overflow)
+target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
 

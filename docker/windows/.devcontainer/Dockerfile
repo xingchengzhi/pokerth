@@ -120,8 +120,7 @@ RUN vcpkg install --triplet=x64-mingw-static \
     boost-foreach \
     boost-uuid \
     protobuf \
-    openssl \
-    curl
+    openssl
 RUN vcpkg install protobuf:x64-linux
 
 RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable

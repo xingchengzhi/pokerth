@@ -132,10 +132,10 @@ declare -a VCPKG_PORTS=(
   boost-serialization
   boost-smart-ptr
   protobuf
-  curl
 )
 # Note: Main 'boost' package removed - it would include all submodules including boost-cobalt
 # Only essential modules are installed instead
+# Note: curl removed - using Qt Network instead
 
 
 # Architektur bestimmen
@@ -156,48 +156,51 @@ log "Installing vcpkg dependencies (${VCPKG_TRIPLET})…"
 
 QT_VERSION="6.9.2"
 QT_OUTPUT_DIR="$HOME/Qt"
-
-# Force fresh Qt download for this macOS version
-rm -rf "$QT_OUTPUT_DIR/$QT_VERSION"
-
-QT_MODULES=(
-  qt3d
-  qt5compat
-  qtcharts
-  qtconnectivity
-  qtdatavis3d
-  qtgraphs
-  qtgrpc
-  qthttpserver
-  qtimageformats
-  qtlocation
-  qtlottie
-  qtmultimedia
-  qtnetworkauth
-  qtpositioning
-  qtquick3d
-  qtquick3dphysics
-  qtquicktimeline
-  qtremoteobjects
-  qtscxml
-  qtsensors
-  qtserialbus
-  qtserialport
-  qtshadertools
-  qtspeech
-  qtvirtualkeyboard
-  qtwebchannel
-  qtwebsockets
-  qtwebview
-)
-
-log "Installing Qt ${QT_VERSION} for macOS (clang_64) with modules…"
-aqt install-qt mac desktop "$QT_VERSION" clang_64 \
-  --outputdir "$QT_OUTPUT_DIR" \
-  --modules "${QT_MODULES[@]}"
-
 QT_DIR="$QT_OUTPUT_DIR/$QT_VERSION/macos"
-log "Qt installed at: $QT_DIR"
+
+# Check if Qt is already installed
+if [ -d "$QT_DIR" ] && [ -f "$QT_DIR/bin/qmake" ] && [ -f "$QT_DIR/bin/macdeployqt" ]; then
+  log "Qt ${QT_VERSION} already installed at: $QT_DIR"
+else
+  log "Installing Qt ${QT_VERSION} for macOS (clang_64) with modules…"
+  
+  QT_MODULES=(
+    qt3d
+    qt5compat
+    qtcharts
+    qtconnectivity
+    qtdatavis3d
+    qtgraphs
+    qtgrpc
+    qthttpserver
+    qtimageformats
+    qtlocation
+    qtlottie
+    qtmultimedia
+    qtnetworkauth
+    qtpositioning
+    qtquick3d
+    qtquick3dphysics
+    qtquicktimeline
+    qtremoteobjects
+    qtscxml
+    qtsensors
+    qtserialbus
+    qtserialport
+    qtshadertools
+    qtspeech
+    qtvirtualkeyboard
+    qtwebchannel
+    qtwebsockets
+    qtwebview
+  )
+  
+  aqt install-qt mac desktop "$QT_VERSION" clang_64 \
+    --outputdir "$QT_OUTPUT_DIR" \
+    --modules "${QT_MODULES[@]}"
+  
+  log "Qt installed at: $QT_DIR"
+fi
 
 ########################################
 # Build PokerTH

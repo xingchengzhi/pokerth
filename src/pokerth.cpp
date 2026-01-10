@@ -178,8 +178,6 @@ int main(int argc, char *argv[])
 #include <QScreen>
 #include <QGuiApplication>
 
-#include <curl/curl.h>
-
 #include "session.h"
 #include "startwindowimpl.h"
 #include "configfile.h"
@@ -225,7 +223,6 @@ int main( int argc, char **argv )
 
     //_CrtSetBreakAlloc(49937);
     socket_startup();
-    curl_global_init(CURL_GLOBAL_NOTHING);
 
 #ifdef __APPLE__
 	// The following needs to be done before the application is created, otherwise loading platforms plugin fails.
@@ -417,8 +414,6 @@ int main( int argc, char **argv )
 	// a.setActivationWindow(&mainWin, true);
 #endif
 	int retVal = a.exec();
-	curl_global_cleanup();
-	socket_cleanup();
 	return retVal;
 }
 

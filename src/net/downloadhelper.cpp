@@ -68,6 +68,7 @@ DownloadHelper::InternalInit(const string &/*url*/, const string &targetFileName
 
 	QUrl qUrl(QString::fromStdString(urlWithProtocol));
 	QNetworkRequest request(qUrl);
+	request.setRawHeader("User-Agent", "PokerTH/2.0 (Qt Network)");
 
 	GetData()->networkReply = GetData()->networkManager->get(request);
 

@@ -66,6 +66,7 @@ UploadHelper::InternalInit(const string &/*url*/, const string &targetFileName, 
 
 	QUrl qUrl(QString::fromStdString(urlWithProtocol));
 	QNetworkRequest request(qUrl);
+	request.setRawHeader("User-Agent", "PokerTH/2.0 (Qt Network)");
 
 	// Disable SSL certificate verification (matching old curl behavior)
 	QSslConfiguration sslConfig = request.sslConfiguration();

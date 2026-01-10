@@ -27,6 +27,7 @@ qrc_qml.cpp
 uics/
 make.sh
 gitpush_serverstuff_stable
+create_app_bundle.sh
 .vscode/
 .project
 .classpath

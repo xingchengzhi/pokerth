@@ -28,6 +28,7 @@ uics/
 make.sh
 gitpush_serverstuff_stable
 create_app_bundle.sh
+build_clean.sh
 .vscode/
 .project
 .classpath

@@ -425,7 +425,7 @@ rm -f "$ARROW_SVG"
 # Create temporary RW DMG
 TMP_DMG="$BUILD_DIR/temp.dmg"
 hdiutil create -srcfolder "$DMG_TEMP_DIR" -volname "$APP_NAME" -fs HFS+ \
-      -fsargs "-c c=64,a=16,e=16" -format UDRW -size 200m "$TMP_DMG"
+      -fsargs "-c c=64,a=16,e=16" -format UDRW -size 500m "$TMP_DMG"
 
 # Mount it
 DEVICE=$(hdiutil attach -readwrite -noverify -noautoopen "$TMP_DMG" | \

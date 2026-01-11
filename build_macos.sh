@@ -10,8 +10,8 @@ set -euo pipefail
 ########################################
 
 # Build target selection (can be overridden via environment variable)
-# Options: pokerth_client, pokerth_qml-client, pokerth_server
-BUILD_TARGET="${BUILD_TARGET:-pokerth_qml-client}"
+# Options: pokerth_client, pokerth_qml-client
+BUILD_TARGET="${BUILD_TARGET:-pokerth_client}"
 
 BREW_PREFIX_DEFAULT="/opt/homebrew"   # Apple Silicon
 VCPKG_DIR="$HOME/vcpkg"

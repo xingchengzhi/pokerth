@@ -9,6 +9,10 @@ set -euo pipefail
 # Configuration
 ########################################
 
+# Build target selection (can be overridden via environment variable)
+# Options: pokerth_client, pokerth_qml-client, pokerth_server
+BUILD_TARGET="${BUILD_TARGET:-pokerth_qml-client}"
+
 BREW_PREFIX_DEFAULT="/opt/homebrew"   # Apple Silicon
 VCPKG_DIR="$HOME/vcpkg"
 PYTHON_USER_BASE="$HOME/.local"
@@ -221,8 +225,8 @@ cmake -S "$SCRIPT_DIR" -B "$BUILD_DIR" \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_DIR/scripts/buildsystems/vcpkg.cmake" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
 
-log "Building pokerth_client…"
-ninja -C "$BUILD_DIR" pokerth_client
+log "Building ${BUILD_TARGET}…"
+ninja -C "$BUILD_DIR" "$BUILD_TARGET"
 
 ########################################
 # Create macOS App Bundle
@@ -239,7 +243,13 @@ mkdir -p "$APP_MACOS"
 mkdir -p "$APP_RESOURCES"
 
 log "Copying binary and resources…"
-cp "$BUILD_DIR/bin/pokerth_client" "$APP_MACOS/$APP_NAME"
+# Convert build target to binary name (remove hyphens for binary name)
+BINARY_NAME="${BUILD_TARGET//-/_}"
+if [ ! -f "$BUILD_DIR/bin/$BINARY_NAME" ]; then
+    # Try with hyphens
+    BINARY_NAME="$BUILD_TARGET"
+fi
+cp "$BUILD_DIR/bin/$BINARY_NAME" "$APP_MACOS/$APP_NAME"
 cp -r "$SCRIPT_DIR/data" "$APP_RESOURCES/"
 
 # Create app icon from PNG (preferred for transparency) or SVG
@@ -324,7 +334,13 @@ cat > "$APP_CONTENTS/Info.plist" <<EOF
 EOF
 
 log "Deploying Qt frameworks with macdeployqt…"
-"$QT_DIR/bin/macdeployqt" "$APP_BUNDLE" -verbose=1
+# For QML apps, specify the QML source directory
+if [[ "$BUILD_TARGET" == *"qml"* ]]; then
+    QML_DIR="$SCRIPT_DIR/src/gui/qt6-qml"
+    "$QT_DIR/bin/macdeployqt" "$APP_BUNDLE" -qmldir="$QML_DIR" -verbose=1
+else
+    "$QT_DIR/bin/macdeployqt" "$APP_BUNDLE" -verbose=1
+fi
 
 ########################################
 # Code Signing (Optional)

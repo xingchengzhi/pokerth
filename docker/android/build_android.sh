@@ -196,43 +196,71 @@ mkdir -p "$ANDROID_BUILD_DIR/libs/$ARCH"
 if [[ -d "$ANDROID_SOURCE_DIR" ]]; then
   echo "Copying Android source files from: $ANDROID_SOURCE_DIR"
   cp -rv "$ANDROID_SOURCE_DIR"/* "$ANDROID_BUILD_DIR/" || true
-else
-  echo "WARNING: Android source directory not found: $ANDROID_SOURCE_DIR"
-  echo "Creating minimal Android directory structure..."
-  mkdir -p "$ANDROID_BUILD_DIR/res/values"
-  
-  # Erstelle minimales AndroidManifest.xml mit korrektem lib_name
-  cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
+fi
+
+# Erstelle immer das dynamische AndroidManifest.xml mit korrektem lib_name und Version
+mkdir -p "$ANDROID_BUILD_DIR/res/values"
+cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
 <?xml version="1.0"?>
-<manifest package="org.pokerth.widget" xmlns:android="http://schemas.android.com/apk/res/android" 
-          android:versionName="1.1.0" android:versionCode="11" android:installLocation="auto">
-    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="$API_LEVEL"/>
-    <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
-    <application android:hardwareAccelerated="true" 
-                 android:name="org.qtproject.qt.android.bindings.QtApplication" 
-                 android:label="PokerTH"
-                 android:extractNativeLibs="true">
-        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density" 
-                  android:name="org.qtproject.qt.android.bindings.QtActivity" 
-                  android:label="PokerTH" 
-                  android:screenOrientation="landscape" 
-                  android:launchMode="singleTop"
-                  android:exported="true">
+<manifest package="org.pokerth.widget"
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          android:versionName="2.0"
+          android:versionCode="20"
+          android:installLocation="auto">
+
+    <uses-sdk
+        android:minSdkVersion="28"
+        android:targetSdkVersion="$API_LEVEL"/>
+
+    <supports-screens
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:anyDensity="true"
+        android:smallScreens="true"/>
+
+    <application
+        android:hardwareAccelerated="true"
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:label="PokerTH"
+        android:icon="@drawable/ic_launcher"
+        android:extractNativeLibs="true"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"> <!-- ← FIX -->
+
+        <activity
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:label="PokerTH"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTop"
+            android:exported="true"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <meta-data android:name="android.app.lib_name" android:value="$TARGET"/>
-            <meta-data android:name="android.app.extract_android_style" android:value="minimal"/>
+
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="$TARGET"/>
+
+            <meta-data
+                android:name="android.app.extract_android_style"
+                android:value="minimal"/>
+
         </activity>
     </application>
+
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
 </manifest>
 MANIFEST
-  
-  echo "Created minimal AndroidManifest.xml with lib_name=$TARGET"
-fi
+
+echo "Created dynamic AndroidManifest.xml with lib_name=$TARGET"
+
+# Kopiere PokerTH Icon für Android
+mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
+cp -v "/opt/pokerth_env/repos/pokerth-test/data/gfx/gui/misc/windowicon.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
 
 # Finde .so-Datei - suche sowohl nach lib${TARGET}.so als auch nach Varianten
 SO_FILE=$(find "$BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)

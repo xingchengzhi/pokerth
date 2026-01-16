@@ -260,7 +260,7 @@ echo "Created dynamic AndroidManifest.xml with lib_name=$TARGET"
 
 # Kopiere PokerTH Icon für Android
 mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
-cp -v "/opt/pokerth_env/repos/pokerth-test/data/gfx/gui/misc/windowicon.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
+cp -v "${ROOT}/pokerth/data/gfx/gui/misc/windowicon.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
 
 # Finde .so-Datei - suche sowohl nach lib${TARGET}.so als auch nach Varianten
 SO_FILE=$(find "$BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)

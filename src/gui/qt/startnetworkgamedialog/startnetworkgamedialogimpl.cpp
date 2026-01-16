@@ -33,6 +33,7 @@
 #include "session.h"
 #include "configfile.h"
 #include "chattools.h"
+#include <QScreen>
 #include "soundevents.h"
 #include <net/socket_msg.h>
 

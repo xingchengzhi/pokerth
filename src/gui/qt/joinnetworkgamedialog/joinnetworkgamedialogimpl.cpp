@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "joinnetworkgamedialogimpl.h"
 #include "session.h"
+#include <QScreen>
 #include "mymessagebox.h"
 #include "configfile.h"
 #include <QDomDocument>

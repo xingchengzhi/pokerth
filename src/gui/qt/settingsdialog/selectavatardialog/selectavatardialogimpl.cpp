@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "selectavatardialogimpl.h"
 #include "myavatarlistitem.h"
+#include <QScreen>
 #include "mymessagebox.h"
 #include "configfile.h"
 #include <iostream>

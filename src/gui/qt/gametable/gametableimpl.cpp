@@ -33,6 +33,7 @@
 #include "mymessagedialogimpl.h"
 #include "settingsdialogimpl.h"
 #include "startwindowimpl.h"
+#include <QScreen>
 
 #include "startsplash.h"
 #include "mycardspixmaplabel.h"
@@ -696,6 +697,16 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 
 #ifdef GUI_800x480
 	connect( tabsButton, SIGNAL( clicked() ), this, SLOT( tabsButtonClicked() ) );
+#endif
+
+#ifdef ANDROID
+	// Qt6 Android: Setze explizite Geometrie nach Initialisierung für korrektes Vollbild
+	// Dies behebt das Querformat-Problem, bei dem der untere/rechte Bereich abgeschnitten wird
+	QScreen *screen = QGuiApplication::primaryScreen();
+	if (screen) {
+		QRect screenGeometry = screen->geometry();
+		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
+	}
 #endif
 }
 
@@ -4315,16 +4326,13 @@ void gameTableImpl::restoreGameTableGeometry()
 		}
 	}
 #ifdef ANDROID
-	if(getAndroidApiVersion() == 10) {
-		QScreen *screen = QGuiApplication::primaryScreen();
+	// Für Android: Setze explizit die Vollbild-Geometrie für alle API-Versionen
+	// Dies ist notwendig, da Qt6 setWindowState(Qt::WindowFullScreen) allein
+	// nicht ausreicht, um die korrekte Größe in allen Orientierungen zu gewährleisten
+	QScreen *screen = QGuiApplication::primaryScreen();
+	if (screen) {
 		QRect screenGeometry = screen->geometry();
-		int availableWidth = screenGeometry.width();
-		int availableHeight = screenGeometry.height(); 
-		// QDesktopWidget dw;
-		// int availableWidth = dw.screenGeometry().width();
-		// int availableHeight = dw.screenGeometry().height();
-		this->showNormal();
-		this->setGeometry(0,0,availableWidth, availableHeight);
+		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
 #endif
 }

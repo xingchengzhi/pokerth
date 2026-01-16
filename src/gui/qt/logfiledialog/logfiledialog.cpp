@@ -35,6 +35,7 @@
 #else
 #include "ui_logfiledialog.h"
 #endif
+#include <QScreen>
 
 #include <QtCore>
 #include "guilog.h"

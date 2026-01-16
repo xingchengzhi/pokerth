@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>424</height>
+    <width>320</width>
+    <height>240</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>800</width>
-    <height>424</height>
+    <width>320</width>
+    <height>240</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -39,16 +39,16 @@
     <layout class="QGridLayout" name="gridLayout_10">
      <item row="0" column="0">
       <widget class="QListWidget" name="listWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
-         <width>200</width>
+         <width>220</width>
          <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>200</width>
-         <height>16777215</height>
         </size>
        </property>
        <property name="iconSize">
@@ -210,7 +210,7 @@
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
-                   <width>40</width>
+                   <width>0</width>
                    <height>20</height>
                   </size>
                  </property>
@@ -421,12 +421,6 @@
                  <height>170</height>
                 </size>
                </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>170</height>
-                </size>
-               </property>
                <property name="title">
                 <string>Preview - Information:</string>
                </property>
@@ -434,12 +428,6 @@
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_gameTableStylePreview">
                   <property name="minimumSize">
-                   <size>
-                    <width>160</width>
-                    <height>120</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
                    <size>
                     <width>160</width>
                     <height>120</height>
@@ -455,13 +443,7 @@
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
-                    <height>150</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>150</height>
+                    <height>0</height>
                    </size>
                   </property>
                   <property name="styleSheet">
@@ -501,12 +483,6 @@ p, li { white-space: pre-wrap; }
                 <size>
                  <width>0</width>
                  <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>16777215</height>
                 </size>
                </property>
                <property name="indentation">
@@ -609,12 +585,6 @@ p, li { white-space: pre-wrap; }
                  <height>170</height>
                 </size>
                </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>170</height>
-                </size>
-               </property>
                <property name="title">
                 <string>Preview - Information:</string>
                </property>
@@ -622,12 +592,6 @@ p, li { white-space: pre-wrap; }
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_cardDeckStylePreview">
                   <property name="minimumSize">
-                   <size>
-                    <width>160</width>
-                    <height>120</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
                    <size>
                     <width>160</width>
                     <height>120</height>
@@ -643,12 +607,6 @@ p, li { white-space: pre-wrap; }
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
-                    <height>160</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
                     <height>160</height>
                    </size>
                   </property>
@@ -802,12 +760,6 @@ p, li { white-space: pre-wrap; }
                     <bool>false</bool>
                    </property>
                    <property name="minimumSize">
-                    <size>
-                     <width>27</width>
-                     <height>26</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
                     <size>
                      <width>27</width>
                      <height>26</height>
@@ -1519,12 +1471,6 @@ p, li { white-space: pre-wrap; }
           <layout class="QHBoxLayout">
            <item>
             <widget class="QGroupBox" name="groupBox_8">
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>105</height>
-              </size>
-             </property>
              <property name="styleSheet">
               <string notr="true"/>
              </property>
@@ -1614,12 +1560,6 @@ p, li { white-space: pre-wrap; }
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>105</height>
-              </size>
              </property>
              <property name="styleSheet">
               <string notr="true"/>
@@ -1765,7 +1705,7 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="QSpinBox" name="spinBox_serverPort">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -2006,7 +1946,7 @@ p, li { white-space: pre-wrap; }
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
-                   <width>40</width>
+                   <width>0</width>
                    <height>20</height>
                   </size>
                  </property>
@@ -2053,7 +1993,7 @@ p, li { white-space: pre-wrap; }
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
-                   <width>40</width>
+                   <width>0</width>
                    <height>20</height>
                   </size>
                  </property>
@@ -2125,7 +2065,7 @@ p, li { white-space: pre-wrap; }
                <item>
                 <widget class="QComboBox" name="comboBox_internetGameType">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -2290,7 +2230,7 @@ p, li { white-space: pre-wrap; }
              <item>
               <widget class="QLineEdit" name="lineEdit_HumanPlayerName">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -2311,18 +2251,12 @@ p, li { white-space: pre-wrap; }
                  <height>60</height>
                 </size>
                </property>
-               <property name="maximumSize">
-                <size>
-                 <width>60</width>
-                 <height>60</height>
-                </size>
-               </property>
                <property name="text">
                 <string/>
                </property>
                <property name="iconSize">
                 <size>
-                 <width>50</width>
+                 <width>0</width>
                  <height>50</height>
                 </size>
                </property>
@@ -2393,12 +2327,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -2417,14 +2345,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -2482,15 +2404,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -2547,12 +2463,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -2571,14 +2481,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -2636,15 +2540,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -2697,14 +2595,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -2724,12 +2616,6 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="minimumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
                    <size>
                     <width>110</width>
                     <height>25</height>
@@ -2790,15 +2676,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -2855,12 +2735,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -2879,14 +2753,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -2944,15 +2812,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3005,14 +2867,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -3070,15 +2926,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3111,12 +2961,6 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="minimumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
                    <size>
                     <width>110</width>
                     <height>25</height>
@@ -3200,15 +3044,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3246,12 +3084,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -3270,14 +3102,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -3354,15 +3180,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3400,12 +3220,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -3424,14 +3238,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -3508,15 +3316,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3554,12 +3356,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -3578,14 +3374,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -3662,15 +3452,9 @@ p, li { white-space: pre-wrap; }
                       <height>60</height>
                      </size>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>60</width>
-                      <height>60</height>
-                     </size>
-                    </property>
                     <property name="iconSize">
                      <size>
-                      <width>50</width>
+                      <width>0</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -3708,12 +3492,6 @@ p, li { white-space: pre-wrap; }
                     <height>25</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>110</width>
-                    <height>25</height>
-                   </size>
-                  </property>
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -3732,14 +3510,8 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>100</width>
+                    <width>0</width>
                     <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -3893,12 +3665,6 @@ p, li { white-space: pre-wrap; }
                   <height>26</height>
                  </size>
                 </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>27</width>
-                  <height>26</height>
-                 </size>
-                </property>
                 <property name="icon">
                  <iconset resource="../resources/pokerth.qrc">
                   <normaloff>:/gfx/document-open-folder.png</normaloff>:/gfx/document-open-folder.png</iconset>
@@ -4008,7 +3774,7 @@ p, li { white-space: pre-wrap; }
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>40</width>
+               <width>0</width>
                <height>20</height>
               </size>
              </property>
@@ -4042,7 +3808,7 @@ p, li { white-space: pre-wrap; }
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>40</width>
+               <width>0</width>
                <height>20</height>
               </size>
              </property>
@@ -4096,7 +3862,7 @@ p, li { white-space: pre-wrap; }
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>0</width>
          <height>20</height>
         </size>
        </property>
@@ -4135,7 +3901,7 @@ p, li { white-space: pre-wrap; }
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>0</width>
          <height>20</height>
         </size>
        </property>

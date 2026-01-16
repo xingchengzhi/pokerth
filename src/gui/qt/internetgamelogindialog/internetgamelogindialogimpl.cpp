@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "internetgamelogindialogimpl.h"
 #include "configfile.h"
+#include <QScreen>
 #include <tools.h>
 #include <QtCore>
 #include <QtGui>

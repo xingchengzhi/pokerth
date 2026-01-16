@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "createinternetgamedialogimpl.h"
 #include "session.h"
+#include <QScreen>
 #include "configfile.h"
 #include "gamedata.h"
 #include "changecompleteblindsdialogimpl.h"

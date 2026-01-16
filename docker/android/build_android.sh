@@ -198,8 +198,11 @@ if [[ -d "$ANDROID_SOURCE_DIR" ]]; then
   cp -rv "$ANDROID_SOURCE_DIR"/* "$ANDROID_BUILD_DIR/" || true
 fi
 
-# Erstelle immer das dynamische AndroidManifest.xml mit korrektem lib_name und Version
+# Erstelle Verzeichnisse für Ressourcen
+mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
 mkdir -p "$ANDROID_BUILD_DIR/res/values"
+
+# Erstelle immer das dynamische AndroidManifest.xml mit korrektem lib_name und Version
 cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
 <?xml version="1.0"?>
 <manifest package="org.pokerth.widget"
@@ -258,10 +261,6 @@ MANIFEST
 
 echo "Created dynamic AndroidManifest.xml with lib_name=$TARGET"
 
-# Kopiere PokerTH Icon für Android
-mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
-cp -v "${ROOT}/pokerth/data/gfx/gui/misc/windowicon.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
-
 # Finde .so-Datei - suche sowohl nach lib${TARGET}.so als auch nach Varianten
 SO_FILE=$(find "$BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)
 
@@ -306,13 +305,23 @@ set +e
   --output "$ANDROID_BUILD_DIR" \
   --android-platform "android-${API_LEVEL}" \
   --jdk "$JAVA_HOME" \
-  --gradle \
   --verbose
 DEPLOYQT_EXIT=$?
 set -e
 
 echo ""
 echo "androiddeployqt exit code: $DEPLOYQT_EXIT"
+
+# Kopiere PokerTH Icon NACH androiddeployqt, da es das Verzeichnis neu anlegt
+echo ""
+echo "Copying PokerTH icon after androiddeployqt..."
+mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
+cp -v "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
+if [[ -f "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png" ]]; then
+  echo "Icon successfully copied to: $ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
+else
+  echo "WARNING: Failed to copy icon"
+fi
 
 # Prüfe und patche gradle.properties (nicht build.gradle!)
 if [[ -f "$ANDROID_BUILD_DIR/gradle.properties" ]]; then

@@ -33,6 +33,7 @@
 #include "configfile.h"
 #include <QtGui>
 #include <QtCore>
+#include <QScreen>
 
 changeContentDialogImpl::changeContentDialogImpl(QWidget *parent, ConfigFile *config, DialogType t)
 	: QDialog(parent), myConfig(config), myType(t)

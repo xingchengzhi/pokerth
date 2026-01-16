@@ -33,6 +33,7 @@
 #include "mynicklistsortfilterproxymodel.h"
 #include "startwindowimpl.h"
 #include "chattools.h"
+#include <QScreen>
 #include "changecompleteblindsdialogimpl.h"
 #include "session.h"
 #include "configfile.h"

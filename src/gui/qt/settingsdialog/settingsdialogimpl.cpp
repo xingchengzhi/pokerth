@@ -67,6 +67,21 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
     }
     
     label_soundVolume->hide();
+    
+	// Setze Column Stretch für listWidget (Spalte 0) und stackedWidget (Spalte 1)
+	QGridLayout* grid = qobject_cast<QGridLayout*>(layout()->itemAt(0)->layout());
+	if (grid) {
+		grid->setColumnStretch(0, 1);  // listWidget
+		grid->setColumnStretch(1, 3);  // stackedWidget
+	}
+	
+	// Setze Vollbild-Geometrie bereits im Konstruktor für sofortige Verfügbarkeit
+	this->setWindowState(Qt::WindowFullScreen);
+	QScreen *screen = QGuiApplication::primaryScreen();
+	if (screen) {
+		QRect screenGeometry = screen->geometry();
+		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
+	}
 #endif
 
 	myManualBlindsOrderDialog = new manualBlindsOrderDialogImpl;
@@ -603,6 +618,15 @@ void settingsDialogImpl::exec(bool in_game)
 {
 	calledIngame = in_game;
 	prepareDialog();
+	
+#ifdef ANDROID
+	// Ensure Dialog ist sichtbar und hat korrekte Geometrie vor exec()
+	this->show();
+	this->raise();
+	this->activateWindow();
+	QCoreApplication::processEvents(); // Force event processing
+#endif
+	
 	QDialog::exec();
 }
 

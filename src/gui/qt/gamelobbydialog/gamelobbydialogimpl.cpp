@@ -59,6 +59,11 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
 #ifdef ANDROID
 	this->setWindowState(Qt::WindowFullScreen);
+	QScreen *screen = QGuiApplication::primaryScreen();
+	if (screen) {
+		QRect screenGeometry = screen->geometry();
+		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
+	}
 #endif
 	//wait start game message
 	waitStartGameMsgBox = new MyMessageBox(this);

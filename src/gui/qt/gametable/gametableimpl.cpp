@@ -704,7 +704,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	// Dies behebt das Querformat-Problem, bei dem der untere/rechte Bereich abgeschnitten wird
 	QScreen *screen = QGuiApplication::primaryScreen();
 	if (screen) {
-		QRect screenGeometry = screen->geometry();
+		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
 #endif
@@ -4359,7 +4359,7 @@ void gameTableImpl::restoreGameTableGeometry()
 	// nicht ausreicht, um die korrekte Größe in allen Orientierungen zu gewährleisten
 	QScreen *screen = QGuiApplication::primaryScreen();
 	if (screen) {
-		QRect screenGeometry = screen->geometry();
+		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
 #endif

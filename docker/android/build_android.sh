@@ -234,6 +234,7 @@ cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
             android:label="PokerTH"
             android:screenOrientation="landscape"
             android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density">
 

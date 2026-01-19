@@ -79,7 +79,7 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	this->setWindowState(Qt::WindowFullScreen);
 	QScreen *screen = QGuiApplication::primaryScreen();
 	if (screen) {
-		QRect screenGeometry = screen->geometry();
+		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
 #endif

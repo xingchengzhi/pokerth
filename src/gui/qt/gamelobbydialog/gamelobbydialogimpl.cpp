@@ -61,7 +61,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	this->setWindowState(Qt::WindowFullScreen);
 	QScreen *screen = QGuiApplication::primaryScreen();
 	if (screen) {
-		QRect screenGeometry = screen->geometry();
+		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
 #endif
@@ -289,6 +289,12 @@ int gameLobbyDialogImpl::exec()
 
 #ifdef ANDROID
 	this->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+	
+	// Ensure Dialog ist sichtbar und hat korrekte Geometrie vor exec()
+	this->show();
+	this->raise();
+	this->activateWindow();
+	QCoreApplication::processEvents(); // Force event processing
 #endif
 	int ret = QDialog::exec();
 	waitStartGameMsgBoxTimer->stop();

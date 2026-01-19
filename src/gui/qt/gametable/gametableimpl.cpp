@@ -3285,7 +3285,35 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 	} else if (event->type() == QEvent::Resize) {
 		refreshSpectatorsDisplay();
 		return true;
+	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up && 
+#ifdef GUI_800x480
+	           tabs.lineEdit_ChatInput->hasFocus()
+#else
+	           lineEdit_ChatInput->hasFocus()
+#endif
+	          ) {
+		if((keyUpDownChatCounter + 1) <= myChat->getChatLinesHistorySize()) {
+			keyUpDownChatCounter++;
+		}
+		myChat->showChatHistoryIndex(keyUpDownChatCounter);
+		return true;
+	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down && 
+#ifdef GUI_800x480
+	           tabs.lineEdit_ChatInput->hasFocus()
+#else
+	           lineEdit_ChatInput->hasFocus()
+#endif
+	          ) {
+		if((keyUpDownChatCounter - 1) >= 0) {
+			keyUpDownChatCounter--;
+		}
+		myChat->showChatHistoryIndex(keyUpDownChatCounter);
+		return true;
 	} else {
+		// Reset counter for other keys
+		if (event->type() == QEvent::KeyPress) {
+			keyUpDownChatCounter = 0;
+		}
 		// pass the event on to the parent class
 		return QMainWindow::eventFilter(obj, event);
 	}

@@ -1421,7 +1421,23 @@ bool gameLobbyDialogImpl::eventFilter(QObject *obj, QEvent *event)
 		event->ignore();
 		this->reject();
 		return false;
+	} else if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up) {
+		if((keyUpCounter + 1) <= myChat->getChatLinesHistorySize()) {
+			keyUpCounter++;
+		}
+		myChat->showChatHistoryIndex(keyUpCounter);
+		return true;
+	} else if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down) {
+		if((keyUpCounter - 1) >= 0) {
+			keyUpCounter--;
+		}
+		myChat->showChatHistoryIndex(keyUpCounter);
+		return true;
 	} else {
+		// Reset counter for other keys when chat input has focus
+		if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress) {
+			keyUpCounter = 0;
+		}
 		// pass the event on to the parent class
 		return QDialog::eventFilter(obj, event);
 	}

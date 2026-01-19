@@ -745,7 +745,7 @@ p, li { white-space: pre-wrap; }
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="lineEdit_OwnFlipsideFilename">
+                  <widget class="AndroidLineEdit" name="lineEdit_OwnFlipsideFilename">
                    <property name="enabled">
                     <bool>false</bool>
                    </property>
@@ -1806,7 +1806,7 @@ p, li { white-space: pre-wrap; }
                  </widget>
                 </item>
                 <item row="0" column="1">
-                 <widget class="QLineEdit" name="lineEdit_InternetServerListAddress">
+                 <widget class="AndroidLineEdit" name="lineEdit_InternetServerListAddress">
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -1864,7 +1864,7 @@ p, li { white-space: pre-wrap; }
                  </widget>
                 </item>
                 <item row="3" column="1">
-                 <widget class="QLineEdit" name="lineEdit_avatarServerAddress">
+                 <widget class="AndroidLineEdit" name="lineEdit_avatarServerAddress">
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -1881,7 +1881,7 @@ p, li { white-space: pre-wrap; }
                  </widget>
                 </item>
                 <item row="0" column="1">
-                 <widget class="QLineEdit" name="lineEdit_InternetServerAddress">
+                 <widget class="AndroidLineEdit" name="lineEdit_InternetServerAddress">
                   <property name="inputMethodHints">
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
@@ -1898,7 +1898,7 @@ p, li { white-space: pre-wrap; }
                  </widget>
                 </item>
                 <item row="2" column="1">
-                 <widget class="QLineEdit" name="lineEdit_InternetServerPassword">
+                 <widget class="AndroidLineEdit" name="lineEdit_InternetServerPassword">
                   <property name="echoMode">
                    <enum>QLineEdit::Password</enum>
                   </property>
@@ -2031,7 +2031,7 @@ p, li { white-space: pre-wrap; }
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_internetGameName">
+                <widget class="AndroidLineEdit" name="lineEdit_internetGameName">
                  <property name="inputMethodHints">
                   <set>Qt::ImhNoPredictiveText</set>
                  </property>
@@ -2127,7 +2127,7 @@ p, li { white-space: pre-wrap; }
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_InternetGamePassword">
+                <widget class="AndroidLineEdit" name="lineEdit_InternetGamePassword">
                  <property name="enabled">
                   <bool>false</bool>
                  </property>
@@ -2228,7 +2228,7 @@ p, li { white-space: pre-wrap; }
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit_HumanPlayerName">
+              <widget class="AndroidLineEdit" name="lineEdit_HumanPlayerName">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>
@@ -2314,7 +2314,7 @@ p, li { white-space: pre-wrap; }
                  <number>0</number>
                 </property>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent1Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent1Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -2450,7 +2450,7 @@ p, li { white-space: pre-wrap; }
                  <number>0</number>
                 </property>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent2Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent2Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -2608,7 +2608,7 @@ p, li { white-space: pre-wrap; }
                  </widget>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent3Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent3Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -2722,7 +2722,7 @@ p, li { white-space: pre-wrap; }
                  <number>0</number>
                 </property>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent4Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent4Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -2953,7 +2953,7 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent5Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent5Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -3071,7 +3071,7 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent6Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent6Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -3207,7 +3207,7 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent7Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent7Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -3343,7 +3343,7 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent8Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent8Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -3479,7 +3479,7 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLineEdit" name="lineEdit_Opponent9Name">
+                 <widget class="AndroidLineEdit" name="lineEdit_Opponent9Name">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -3651,7 +3651,7 @@ p, li { white-space: pre-wrap; }
                <number>0</number>
               </property>
               <item>
-               <widget class="QLineEdit" name="lineEdit_logDir">
+               <widget class="AndroidLineEdit" name="lineEdit_logDir">
                 <property name="inputMethodHints">
                  <set>Qt::ImhNoPredictiveText</set>
                 </property>
@@ -4135,4 +4135,11 @@ p, li { white-space: pre-wrap; }
    </hints>
   </connection>
  </connections>
+ <customwidgets>
+  <customwidget>
+   <class>AndroidLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>androidlineedit.h</header>
+  </customwidget>
+ </customwidgets>
 </ui>

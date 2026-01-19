@@ -21,7 +21,7 @@
                   android:label="PokerTH" 
                   android:screenOrientation="landscape" 
                   android:launchMode="singleTop"
-                  android:windowSoftInputMode="adjustResize"
+                  android:windowSoftInputMode="adjustNothing"
                   android:exported="true">
             
             <intent-filter>

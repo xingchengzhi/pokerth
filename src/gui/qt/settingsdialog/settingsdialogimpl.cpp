@@ -36,6 +36,10 @@
 #include "configfile.h"
 #include <net/socket_startup.h>
 #include <QSet>
+#ifdef ANDROID
+#include "mobileinputhelper.h"
+#include <QScrollArea>
+#endif
 enum StyleType { POKERTH_DISTRIBUTED_STYLE, ADDITIONAL_STYLE };
 
 using namespace std;
@@ -81,6 +85,12 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	if (screen) {
 		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
+	}
+	
+	// Prepare all QLineEdit widgets for mobile input
+	QList<QLineEdit*> lineEdits = this->findChildren<QLineEdit*>();
+	for (QLineEdit* le : lineEdits) {
+		MobileInputHelper::prepareMobileLineEdit(le);
 	}
 #endif
 

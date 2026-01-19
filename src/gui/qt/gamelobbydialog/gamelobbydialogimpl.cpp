@@ -42,6 +42,9 @@
 #include <net/socket_msg.h>
 #include "mymessagedialogimpl.h"
 #include "soundevents.h"
+#ifdef ANDROID
+#include "mobileinputhelper.h"
+#endif
 
 using namespace std;
 
@@ -64,6 +67,8 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 		QRect screenGeometry = screen->availableGeometry();
 		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
 	}
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_ChatInput);
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_searchForPlayers);
 #endif
 	//wait start game message
 	waitStartGameMsgBox = new MyMessageBox(this);

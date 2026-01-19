@@ -384,7 +384,7 @@ void settingsDialogImpl::prepareDialog()
 		if(defaultTableStyle.getState()) defaultTableItem->setIcon(2, QIcon(":/gfx/emblem-important.png"));
 		else defaultTableItem->setIcon(2, QIcon(":/gfx/dialog_ok_apply.png"));
 	}
-	//add danuxi table
+	//add danuxi1 table
 	GameTableStyleReader danuxi1TableStyle(myConfig, this);
 	danuxi1TableStyle.readStyleFile(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"gfx/gui/table/danuxi1/danuxi1tablestyle.xml");
 	if(danuxi1TableStyle.getLoadedSuccessfull()) {

@@ -107,7 +107,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit">
+      <widget class="AndroidLineEdit" name="lineEdit">
        <property name="minimumSize">
         <size>
          <width>600</width>

@@ -913,7 +913,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="QLineEdit" name="lineEdit_searchForPlayers">
+            <widget class="AndroidLineEdit" name="lineEdit_searchForPlayers">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -1076,7 +1076,7 @@ p, li { white-space: pre-wrap; }
              </widget>
             </item>
             <item row="1" column="0">
-             <widget class="QLineEdit" name="lineEdit_ChatInput">
+             <widget class="AndroidLineEdit" name="lineEdit_ChatInput">
               <property name="styleSheet">
                <string notr="true">QObject {font: 26px;}</string>
               </property>

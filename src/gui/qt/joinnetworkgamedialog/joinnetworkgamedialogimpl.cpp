@@ -38,6 +38,9 @@
 #include <QDebug>
 #include <QFile>
 #include <net/socket_startup.h>
+#ifdef ANDROID
+#include "mobileinputhelper.h"
+#endif
 
 using namespace std;
 
@@ -51,6 +54,8 @@ joinNetworkGameDialogImpl::joinNetworkGameDialogImpl(QWidget *parent, ConfigFile
 	setupUi(this);
 #ifdef ANDROID
 	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_profileName);
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_ipAddress);
 #endif
 // 	QShortcut *connectKey = new QShortcut(QKeySequence(Qt::Key_Enter), this);
 // 	connect( connectKey, SIGNAL(activated() ), pushButton_connect, SLOT( click() ) );

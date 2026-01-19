@@ -83,7 +83,7 @@
        <number>0</number>
       </property>
       <item row="0" column="0">
-       <widget class="QLineEdit" name="lineEdit">
+      <widget class="AndroidLineEdit" name="lineEdit">
         <property name="inputMethodHints">
          <set>Qt::ImhNoPredictiveText</set>
         </property>

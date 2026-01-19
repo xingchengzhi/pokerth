@@ -34,6 +34,9 @@
 #include <tools.h>
 #include <QtCore>
 #include <QtGui>
+#ifdef ANDROID
+#include "mobileinputhelper.h"
+#endif
 
 internetGameLoginDialogImpl::internetGameLoginDialogImpl(QWidget *parent, ConfigFile *c) :
 	QDialog(parent), myConfig(c)
@@ -42,6 +45,8 @@ internetGameLoginDialogImpl::internetGameLoginDialogImpl(QWidget *parent, Config
 	this->installEventFilter(this);
 #ifdef ANDROID
 	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_username);
+	MobileInputHelper::prepareMobileLineEdit(lineEdit_password);
 #endif
 	//html stuff
 	QString createAccount(QString("<a href='https://create-gaming-account.pokerth.net'>%1</a>").arg(tr("Create new user account")));

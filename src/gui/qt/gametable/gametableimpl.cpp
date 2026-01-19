@@ -46,6 +46,9 @@
 #include "mytimeoutlabel.h"
 #include "guilog.h"
 #include "chattools.h"
+#ifdef ANDROID
+#include "mobileinputhelper.h"
+#endif
 
 #include "playerinterface.h"
 #include "boardinterface.h"
@@ -118,6 +121,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 #ifdef ANDROID
 	tabsDiag->setStyleSheet("QObject { font: 26px; } QDialog { background-image: url(:/android/android-data/gfx/gui/table/default_800x480/table_dark.png); background-position: bottom center; background-origin: content;  background-repeat: no-repeat;}");
 	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareMobileLineEdit(tabs.lineEdit_ChatInput);
 #else
 	tabs.pushButton_settings->hide();
 #endif

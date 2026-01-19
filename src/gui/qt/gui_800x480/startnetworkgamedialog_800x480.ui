@@ -70,7 +70,7 @@
          <widget class="QTextBrowser" name="textBrowser_ChatDisplay"/>
         </item>
         <item row="1" column="0">
-         <widget class="QLineEdit" name="lineEdit_ChatInput">
+         <widget class="AndroidLineEdit" name="lineEdit_ChatInput">
           <property name="styleSheet">
            <string notr="true">QObject {font: 26px}</string>
           </property>

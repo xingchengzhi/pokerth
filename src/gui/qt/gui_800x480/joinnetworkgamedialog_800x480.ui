@@ -103,7 +103,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_profileName">
+         <widget class="AndroidLineEdit" name="lineEdit_profileName">
           <property name="inputMethodHints">
            <set>Qt::ImhFormattedNumbersOnly|Qt::ImhNoPredictiveText</set>
           </property>
@@ -124,7 +124,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_ipAddress">
+         <widget class="AndroidLineEdit" name="lineEdit_ipAddress">
           <property name="inputMethodHints">
            <set>Qt::ImhNoPredictiveText</set>
           </property>

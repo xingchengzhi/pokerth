@@ -35,7 +35,6 @@
 #include "configfile.h"
 #include <QDomDocument>
 #include <QDomElement>
-#include <QDebug>
 #include <QFile>
 #include <net/socket_startup.h>
 #ifdef ANDROID
@@ -116,7 +115,6 @@ int joinNetworkGameDialogImpl::exec()
 			QFile file( QString::fromUtf8(myServerProfilesFile.c_str()) );
 			if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
 			{
-				qDebug( "Failed to open file for writing." );
 			}else{
 				QTextStream stream( &file );
 				stream << xmlDoc.toString();

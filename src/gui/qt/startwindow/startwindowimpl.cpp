@@ -263,7 +263,6 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 
 	//update HACKS
 	if(!checkForFirstStartAfterUpdated().isEmpty()) {
-		qDebug() << checkForFirstStartAfterUpdated();
 	}
 
 }

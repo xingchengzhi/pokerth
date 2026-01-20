@@ -34,7 +34,6 @@
 #include <core/loghelper.h>
 #include <QDomDocument>
 #include <QDomElement>
-#include <QDebug>
 #include <QFile>
 
 #define MODUS 0711
@@ -599,7 +598,6 @@ void ConfigFile::updateConfig(ConfigState myConfigState)
 		QFile file(QString::fromStdString(configFileName));
 		if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
 		{
-			qDebug("Failed to open file for writing.");
 		}
 		else
 		{
@@ -749,7 +747,6 @@ void ConfigFile::updateConfig(ConfigState myConfigState)
 			QFile file(QString::fromStdString(configFileName));
 			if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
 			{
-				qDebug("Failed to open file for writing.");
 			}
 			else
 			{

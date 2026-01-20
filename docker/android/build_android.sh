@@ -227,6 +227,7 @@ cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
         android:label="PokerTH"
         android:icon="@drawable/ic_launcher"
         android:extractNativeLibs="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"> <!-- ← FIX -->
 
         <activity
@@ -289,6 +290,37 @@ if [[ ! -f "$ANDROID_BUILD_DIR/libs/$ARCH/$EXPECTED_SO_NAME" ]]; then
 fi
 
 echo "Library successfully copied to: $ANDROID_BUILD_DIR/libs/$ARCH/$EXPECTED_SO_NAME"
+
+# Download OpenSSL 3.x libraries for Android (required for Qt Network HTTPS)
+echo ""
+echo "Downloading OpenSSL 3.x libraries for Android..."
+OPENSSL_DIR="$ANDROID_BUILD_DIR/libs/$ARCH"
+mkdir -p "$OPENSSL_DIR"
+
+OPENSSL_BASE_URL="https://github.com/KDAB/android_openssl/raw/master/ssl_3"
+if [[ "$ARCH" == "arm64-v8a" ]]; then
+  OPENSSL_ARCH="arm64-v8a"
+elif [[ "$ARCH" == "armeabi-v7a" ]]; then
+  OPENSSL_ARCH="armeabi-v7a"
+elif [[ "$ARCH" == "x86_64" ]]; then
+  OPENSSL_ARCH="x86_64"
+elif [[ "$ARCH" == "x86" ]]; then
+  OPENSSL_ARCH="x86"
+else
+  echo "WARNING: Unknown architecture $ARCH for OpenSSL download"
+  OPENSSL_ARCH="$ARCH"
+fi
+
+echo "Downloading OpenSSL for architecture: $OPENSSL_ARCH"
+wget -q -O "$OPENSSL_DIR/libssl_3.so" "$OPENSSL_BASE_URL/$OPENSSL_ARCH/libssl_3.so" || echo "WARNING: Failed to download libssl_3.so"
+wget -q -O "$OPENSSL_DIR/libcrypto_3.so" "$OPENSSL_BASE_URL/$OPENSSL_ARCH/libcrypto_3.so" || echo "WARNING: Failed to download libcrypto_3.so"
+
+if [[ -f "$OPENSSL_DIR/libssl_3.so" && -f "$OPENSSL_DIR/libcrypto_3.so" ]]; then
+  echo "OpenSSL libraries downloaded successfully"
+  ls -lh "$OPENSSL_DIR"/lib{ssl,crypto}_3.so
+else
+  echo "WARNING: OpenSSL download incomplete - HTTPS may not work"
+fi
 
 # Verwende androiddeployqt
 ANDROIDDEPLOYQT="${QT_HOST_PATH}/bin/androiddeployqt"

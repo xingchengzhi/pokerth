@@ -155,10 +155,17 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	treeView_GameList->setColumnWidth(4,20);
 	treeView_GameList->setColumnWidth(5,75);
 
+	// Detect dark mode for Android
+	QPalette palette = QApplication::palette();
+	QColor windowColor = palette.color(QPalette::Window);
+	bool isDarkMode = windowColor.lightness() < 128;
+	QString backgroundColor = isDarkMode ? "#2b2b2b" : "white";
+	QString textColor = isDarkMode ? "#ffffff" : "rgb(0, 0, 0)";
+
 #ifdef __APPLE__
 	// macOS workaround: background-image in stylesheets crashes on Monterey - disabled
 #else
-	treeView_GameList->setStyleSheet("QTreeView {background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color:rgb(0, 0, 0); font: 22px}");
+	treeView_GameList->setStyleSheet(QString("QTreeView {background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; font: 22px}").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
 #endif
 	treeView_GameList->header()->setStyleSheet("QObject {font: bold 18px}");
 
@@ -1627,25 +1634,33 @@ void gameLobbyDialogImpl::changeGameListFilter(int index)
 
 	writeDialogSettings(1);
 
+	// Detect dark mode
+	QPalette palette = QApplication::palette();
+	QColor windowColor = palette.color(QPalette::Window);
+	bool isDarkMode = windowColor.lightness() < 128;
+	
+	QString backgroundColor = isDarkMode ? "#2b2b2b" : "white";
+	QString textColor = isDarkMode ? "#ffffff" : "rgb(0, 0, 0)";
+
 #ifdef GUI_800x480
 #ifdef __APPLE__
 	// macOS workaround: background-image in stylesheets crashes on Monterey
-	if(index) treeView_GameList->setStyleSheet("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: white; color:rgb(0, 0, 0); font: 20px}");
-	else treeView_GameList->setStyleSheet("QTreeView { background-color: white; color:rgb(0, 0, 0); font: 20px}");
+	if(index) treeView_GameList->setStyleSheet(QString("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: %1; color: %2; font: 20px}").arg(backgroundColor).arg(textColor));
+	else treeView_GameList->setStyleSheet(QString("QTreeView { background-color: %1; color: %2; font: 20px}").arg(backgroundColor).arg(textColor));
 #else
-	if(index) treeView_GameList->setStyleSheet("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color:rgb(0, 0, 0); font: 20px}");
-	else treeView_GameList->setStyleSheet("QTreeView { background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color:rgb(0, 0, 0); font: 20px}");
+	if(index) treeView_GameList->setStyleSheet(QString("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; font: 20px}").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
+	else treeView_GameList->setStyleSheet(QString("QTreeView { background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; font: 20px}").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
 #endif
 
 	treeView_GameList->header()->setStyleSheet("QObject {font: bold 18px}");
 #else
 #ifdef __APPLE__
 	// macOS workaround: background-image in stylesheets crashes on Monterey
-	if(index) treeView_GameList->setStyleSheet("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: white; }");
-	else treeView_GameList->setStyleSheet("QTreeView { background-color: white; }");
+	if(index) treeView_GameList->setStyleSheet(QString("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: %1; color: %2; }").arg(backgroundColor).arg(textColor));
+	else treeView_GameList->setStyleSheet(QString("QTreeView { background-color: %1; color: %2; }").arg(backgroundColor).arg(textColor));
 #else
-	if(index) treeView_GameList->setStyleSheet("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}");
-	else treeView_GameList->setStyleSheet("QTreeView { background-color: white; background-image: url(\""+myAppDataPath +"gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}");
+	if(index) treeView_GameList->setStyleSheet(QString("QTreeView { border-radius: 4px; border: 2px solid blue; background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; }").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
+	else treeView_GameList->setStyleSheet(QString("QTreeView { background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; }").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
 #endif
 #endif
 }
@@ -2318,9 +2333,10 @@ void gameLobbyDialogImpl::updateGameListStyleSheet()
     bool isDarkMode = windowColor.lightness() < 128;
     
     QString backgroundColor = isDarkMode ? "#2b2b2b" : "white";
+    QString textColor = isDarkMode ? "#ffffff" : "rgb(0, 0, 0)";
 
     // macOS workaround: background-image stylesheet causes crash on Monterey
-    // QString styleSheet = QString("QTreeView {background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}").arg(backgroundColor).arg(myAppDataPath);
-    QString styleSheet = QString("QTreeView {background-color: %1;}").arg(backgroundColor);
+    // QString styleSheet = QString("QTreeView {background-color: %1; color: %2; background-image: url(\"%3gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}").arg(backgroundColor).arg(textColor).arg(myAppDataPath);
+    QString styleSheet = QString("QTreeView {background-color: %1; color: %2;}").arg(backgroundColor).arg(textColor);
     treeView_GameList->setStyleSheet(styleSheet);
 }

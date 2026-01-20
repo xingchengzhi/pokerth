@@ -1052,18 +1052,23 @@ void
 ClientStateStartSession::Enter(boost::shared_ptr<ClientThread> client)
 {
 	// Now we finally start receiving data.
+	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Starting async read after TLS handshake";
 	client->StartAsyncRead();
+	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Async read started, waiting for AnnounceMessage";
 }
 
 void
 ClientStateStartSession::Exit(boost::shared_ptr<ClientThread> /*client*/)
 {
+	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Exit - Leaving session start state";
 }
 
 void
 ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> client, boost::shared_ptr<NetPacket> tmpPacket)
 {
+	qDebug() << "[SESSION DEBUG] ClientStateStartSession::InternalHandlePacket - Received message type:" << tmpPacket->GetMsg()->messagetype();
 	if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_AnnounceMessage) {
+		qDebug() << "[SESSION DEBUG] ClientStateStartSession - Received AnnounceMessage from server";
 		// Server has send announcement - check data.
 		const AnnounceMessage &netAnnounce = tmpPacket->GetMsg()->announcemessage();
 		// Check current game version.

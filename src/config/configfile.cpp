@@ -35,6 +35,7 @@
 #include <QDomDocument>
 #include <QDomElement>
 #include <QFile>
+#include <QTextStream>
 
 #define MODUS 0711
 

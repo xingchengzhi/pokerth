@@ -3,6 +3,7 @@
 #include "configfile.h"
 #include <QByteArray>
 #include <QTimer>
+#include <QDebug>
 
 ServerConnectionHandler::ServerConnectionHandler(QObject *parent)
     : QObject(parent)

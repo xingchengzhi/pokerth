@@ -544,6 +544,7 @@ ServerDBThread::HandleNextQuery()
 		}
 	}
 	if (nextQuery) {
+		bool queryFailed = false;
 		do {
 			nextQuery->Init(m_dbIdManager);
 			mysqlpp::Query executeQuery = m_connData->conn.query();
@@ -577,6 +578,7 @@ ServerDBThread::HandleNextQuery()
 					string tmpError = paramQuery.error();
 					m_connData->conn.disconnect();
 					boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::QueryError, &m_callback, tmpError));
+					queryFailed = true;
 					break;
 				}
 			}
@@ -593,6 +595,13 @@ ServerDBThread::HandleNextQuery()
 					nextQuery->HandleError(*m_ioService, m_callback);
 			}
 		} while (nextQuery->Next()); // Consider composite queries.
+		
+		// If query failed due to connection loss, put it back in the queue
+		// so it can be retried after reconnection
+		if (queryFailed) {
+			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
+			m_asyncQueue.push(nextQuery);
+		}
 	}
 }
 

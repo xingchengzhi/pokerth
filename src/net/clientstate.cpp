@@ -348,6 +348,7 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 			QDomElement addr4Node = nextServer.firstChildElement("IPv4Address");
 			QDomElement addr6Node = nextServer.firstChildElement("IPv6Address");
 			QDomElement sctpNode = nextServer.firstChildElement("SCTP");
+			QDomElement tlsNode = nextServer.firstChildElement("TLS");
 			QDomElement portNode = nextServer.firstChildElement("ProtobufPort");
 
 			// IPv6 support for avatar servers depends on this address and on libcurl.
@@ -370,6 +371,10 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 				int tmpSctp;
 				tmpSctp = sctpNode.attribute("value").toInt();
 				serverInfo.supportsSctp = tmpSctp == 1 ? true : false;
+			}
+			if (!tlsNode.isNull()) {
+				QString tlsValue = tlsNode.attribute("value").toLower();
+				serverInfo.useTLS = (tlsValue == "on" || tlsValue == "true" || tlsValue == "1" || tlsValue == "yes");
 			}
 			if (!avatarNode.isNull())
 				serverInfo.avatarServerAddr = avatarNode.attribute("value").toStdString();

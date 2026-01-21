@@ -119,48 +119,42 @@ ServerDBThread::Stop()
 void
 ServerDBThread::AsyncPlayerLogin(unsigned requestId, const string &playerName)
 {
-	if (IsConnected()) {
-		list<string> params;
-		params.push_back(m_connData->encryptionKey);
-		params.push_back(playerName);
-		boost::shared_ptr<AsyncDBQuery> asyncQuery(
-			new AsyncDBAuth(
-				requestId,
-				QUERY_NICK_PREPARE,
-				params));
+	// Always queue the request, even if not currently connected.
+	// The DB thread will process it once connection is re-established.
+	list<string> params;
+	params.push_back(m_connData->encryptionKey);
+	params.push_back(playerName);
+	boost::shared_ptr<AsyncDBQuery> asyncQuery(
+		new AsyncDBAuth(
+			requestId,
+			QUERY_NICK_PREPARE,
+			params));
 
-		{
-			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
-			m_asyncQueue.push(asyncQuery);
-		}
-		m_semaphore.post();
-	} else {
-		// If not connected to database, login fails.
-		boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::PlayerLoginFailed, &m_callback, requestId));
+	{
+		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
+		m_asyncQueue.push(asyncQuery);
 	}
+	m_semaphore.post();
 }
 
 void
 ServerDBThread::AsyncCheckAvatarBlacklist(unsigned requestId, const std::string &avatarHash)
 {
-	if (IsConnected()) {
-		list<string> params;
-		params.push_back(avatarHash);
-		boost::shared_ptr<AsyncDBQuery> asyncQuery(
-			new AsyncDBAvatarBlacklist(
-				requestId,
-				QUERY_AVATAR_BLACKLIST_PREPARE,
-				params));
+	// Always queue the request, even if not currently connected.
+	// The DB thread will process it once connection is re-established.
+	list<string> params;
+	params.push_back(avatarHash);
+	boost::shared_ptr<AsyncDBQuery> asyncQuery(
+		new AsyncDBAvatarBlacklist(
+			requestId,
+			QUERY_AVATAR_BLACKLIST_PREPARE,
+			params));
 
-		{
-			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
-			m_asyncQueue.push(asyncQuery);
-		}
-		m_semaphore.post();
-	} else {
-		// If not connected to database, all avatars are blacklisted.
-		boost::asio::post(*m_ioService, boost::bind(&ServerDBCallback::AvatarIsBlacklisted, &m_callback, requestId));
+	{
+		boost::mutex::scoped_lock lock(m_asyncQueueMutex);
+		m_asyncQueue.push(asyncQuery);
 	}
+	m_semaphore.post();
 }
 
 void

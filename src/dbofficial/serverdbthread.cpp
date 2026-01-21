@@ -584,15 +584,37 @@ ServerDBThread::HandleNextQuery()
 			}
 			if (nextQuery->RequiresResultSet()) {
 				mysqlpp::StoreQueryResult res = executeQuery.store();
-				if (res)
+				if (res) {
 					nextQuery->HandleResult(executeQuery, m_dbIdManager, res, *m_ioService, m_callback);
-				else
-					nextQuery->HandleError(*m_ioService, m_callback);
+				} else {
+					// Check if this is a connection error
+					string error = executeQuery.error();
+					if (error.find("Lost connection") != string::npos || 
+					    error.find("MySQL server has gone away") != string::npos ||
+					    !m_connData->conn.connected()) {
+						m_connData->conn.disconnect();
+						queryFailed = true;
+						break;
+					} else {
+						nextQuery->HandleError(*m_ioService, m_callback);
+					}
+				}
 			} else {
-				if (executeQuery.exec())
+				if (executeQuery.exec()) {
 					nextQuery->HandleNoResult(executeQuery, m_dbIdManager, *m_ioService, m_callback);
-				else
-					nextQuery->HandleError(*m_ioService, m_callback);
+				} else {
+					// Check if this is a connection error
+					string error = executeQuery.error();
+					if (error.find("Lost connection") != string::npos || 
+					    error.find("MySQL server has gone away") != string::npos ||
+					    !m_connData->conn.connected()) {
+						m_connData->conn.disconnect();
+						queryFailed = true;
+						break;
+					} else {
+						nextQuery->HandleError(*m_ioService, m_callback);
+					}
+				}
 			}
 		} while (nextQuery->Next()); // Consider composite queries.
 		
@@ -601,6 +623,8 @@ ServerDBThread::HandleNextQuery()
 		if (queryFailed) {
 			boost::mutex::scoped_lock lock(m_asyncQueueMutex);
 			m_asyncQueue.push(nextQuery);
+			// Post semaphore again so the query will be processed after reconnection
+			m_semaphore.post();
 		}
 	}
 }

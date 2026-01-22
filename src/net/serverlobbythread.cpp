@@ -921,17 +921,14 @@ ServerLobbyThread::TimerCheckInitSessions(const boost::system::error_code &ec)
 	if (!ec) {
 		std::vector<boost::shared_ptr<SessionData>> sessionsToClose;
 		
-		// Check all sessions
-		{
-			SessionManager::SessionList sessions = m_sessionManager.GetSessionList();
-			for (auto& session : sessions) {
-				if (session && session->GetState() == SessionData::Init) {
-					// Session stuck in Init state - force close
-					LOG_ERROR("Force-closing stuck Init session #" << session->GetId());
-					sessionsToClose.push_back(session);
-				}
+		// Check all sessions using ForEach
+		m_sessionManager.ForEach([&sessionsToClose](boost::shared_ptr<SessionData> session) {
+			if (session && session->GetState() == SessionData::Init) {
+				// Session stuck in Init state - force close
+				LOG_ERROR("Force-closing stuck Init session #" << session->GetId());
+				sessionsToClose.push_back(session);
 			}
-		}
+		});
 		
 		// Close stuck sessions outside of lock
 		for (auto& session : sessionsToClose) {

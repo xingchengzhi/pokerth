@@ -922,16 +922,23 @@ ServerLobbyThread::TimerCheckInitSessions(const boost::system::error_code &ec)
 	if (!ec) {
 		std::vector<boost::shared_ptr<SessionData>> sessionsToClose;
 		
-		// Check all sessions using ForEach
+		// Check all sessions - close any that are not properly established
 		m_sessionManager.ForEach([&sessionsToClose](boost::shared_ptr<SessionData> session) {
-			if (session && session->GetState() == SessionData::Init) {
-				// Session stuck in Init state - force close
-				LOG_ERROR("Force-closing stuck Init session #" << session->GetId());
-				sessionsToClose.push_back(session);
+			if (session) {
+				int state = session->GetState();
+				// Close sessions that are stuck (not Established, not in game, not closed)
+				if (state != SessionData::Established && 
+				    state != SessionData::Game && 
+				    state != SessionData::Spectating && 
+				    state != SessionData::SpectatorWaiting &&
+				    state != SessionData::Closed) {
+					LOG_ERROR("Force-closing stuck session #" << session->GetId() << " in state " << state);
+					sessionsToClose.push_back(session);
+				}
 			}
 		});
 		
-		// Close stuck sessions outside of lock
+		// Close stuck sessions
 		for (auto& session : sessionsToClose) {
 			session->CloseSocketHandle();
 			SessionError(session, ERR_NET_SESSION_TIMED_OUT);

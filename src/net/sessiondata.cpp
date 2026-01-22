@@ -231,8 +231,9 @@ SessionData::TimerInitTimeout(const boost::system::error_code &ec)
 	if (!ec) {
 		// Close session if not yet established (covers Init state and hanging TLS handshake)
 		if (GetState() != SessionData::Established && GetState() != SessionData::Closed) {
-			// Force-close the socket to abort any pending async operations (e.g., hanging TLS handshake)
-			CloseSocketHandle();
+			// Force-close the socket immediately to free up the connection
+			qDebug() << "[SERVER] Init timeout - forcing immediate socket close for session" << GetId();
+			Close();  // Complete immediate close instead of just socket handle
 			m_callback.SessionError(shared_from_this(), ERR_NET_SESSION_TIMED_OUT);
 		}
 	}

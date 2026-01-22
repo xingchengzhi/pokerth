@@ -512,7 +512,9 @@ ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
 void
 ClientStateStartConnect::Exit(boost::shared_ptr<ClientThread> client)
 {
-	qDebug() << "[TLS-CONNECT] Exit called - cancelling and resetting timers";
+	qDebug() << "[TLS-CONNECT] Exit called - cleaning up timers";
+	
+	// Cancel and reset all timers
 	client->GetStateTimer().cancel();
 	if (m_retryTimer) {
 		qDebug() << "[TLS-CONNECT] Cancelling and resetting retry timer";
@@ -526,7 +528,7 @@ ClientStateStartConnect::Exit(boost::shared_ptr<ClientThread> client)
 	}
 	// Retry-Counter auch zurücksetzen für den nächsten Verbindungsversuch
 	m_handshakeRetryCount = 0;
-	qDebug() << "[TLS-CONNECT] Exit complete - all state reset";
+	qDebug() << "[TLS-CONNECT] Exit complete - all timers reset";
 }
 
 void
@@ -665,10 +667,14 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     RetryHandshake(client);
                 } else {
                     qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
+                    // Close the session to clean up async operations
+                    client->GetContext().GetSessionData()->Close();
                     throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
                 }
             } else {
                 qDebug() << "[TLS-CONNECT] Handshake was aborted (timeout or user cancel), not retrying.";
+                // Close the session to clean up async operations
+                client->GetContext().GetSessionData()->Close();
             }
         }
     } else {
@@ -711,8 +717,7 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         
         ClientContext &context = client->GetContext();
         
-        // Shutdown the SSL stream properly before retry
-        // First, completely close the old session to clean up all async operations
+        // Close the old session completely
         qDebug() << "[TLS-CONNECT] Closing old session before retry...";
         context.GetSessionData()->Close();
         
@@ -736,7 +741,7 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         // Get the first endpoint
         boost::asio::ip::tcp::endpoint endpoint = m_remoteEndpointIterator->endpoint();
         
-        // Reconnect and retry handshake
+        // Reconnect with the NEW session
         context.GetSessionData()->GetSslStream()->lowest_layer().async_connect(
             endpoint,
             boost::bind(&ClientStateStartConnect::HandleConnect,
@@ -785,6 +790,8 @@ ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, b
             RetryHandshake(client);
         } else {
             qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
+            // Close the session to clean up async operations
+            context.GetSessionData()->Close();
             if (context.GetAddrFamily() == AF_INET6)
                 throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_IPV6_FAILED, 0);
             else
@@ -806,7 +813,7 @@ ClientStateStartConnect::TimerTimeout(const boost::system::error_code& ec, boost
 
         if (context.GetSessionData()) {
             try {
-                context.GetSessionData()->CloseSocketHandle();
+                context.GetSessionData()->Close();
             } catch (...) {
             }
         }

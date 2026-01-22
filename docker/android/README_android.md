@@ -13,5 +13,8 @@ The APK will then be available in: `${ROOT}/pokerth/build-android-${ANDROID_ARCH
 ... sign it:
 
 `keytool -genkey -v -keystore my.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias app`
+
+and
+
 `apksigner sign --ks my.keystore --ks-key-alias app ${ROOT}/pokerth/build-android-${ANDROID_ARCH}/android-build/build/outputs/apk/release/android-build-release-unsigned.apk`
 

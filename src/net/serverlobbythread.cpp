@@ -253,7 +253,6 @@ ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigF
 	  m_mode(mode), m_serverConfig(serverConfig), m_curGameId(0), m_curUniquePlayerId(0), m_curSessionId(INVALID_SESSION + 1),
 	  m_statDataChanged(false), m_removeGameTimer(*ioService),
 	  m_saveStatisticsTimer(*ioService), m_loginLockTimer(*ioService),
-	  m_checkInitSessionTimer(*ioService),
 	  m_startTime(boost::posix_time::second_clock::local_time())
 {
 	m_internalServerCallback.reset(new InternalServerCallback(*this));
@@ -900,11 +899,6 @@ ServerLobbyThread::RegisterTimers()
 	m_loginLockTimer.async_wait(
 		boost::bind(
 			&ServerLobbyThread::TimerUpdateClientLoginLock, shared_from_this(), boost::asio::placeholders::error));
-	// Check for stuck Init sessions (e.g., hanging TLS handshake).
-	m_checkInitSessionTimer.expires_after(milliseconds(SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC));
-	m_checkInitSessionTimer.async_wait(
-		boost::bind(
-			&ServerLobbyThread::TimerCheckInitSessions, shared_from_this(), boost::asio::placeholders::error));
 }
 
 void
@@ -913,22 +907,6 @@ ServerLobbyThread::CancelTimers()
 	m_removeGameTimer.cancel();
 	m_saveStatisticsTimer.cancel();
 	m_loginLockTimer.cancel();
-	m_checkInitSessionTimer.cancel();
-}
-
-void
-ServerLobbyThread::TimerCheckInitSessions(const boost::system::error_code &ec)
-{
-	if (!ec) {
-		// Disabled - this was too aggressive and closed legitimate new connections
-		// The actual problem is client-side state not being properly reset
-		
-		// Re-register timer (keep it running for future use)
-		m_checkInitSessionTimer.expires_after(milliseconds(SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC));
-		m_checkInitSessionTimer.async_wait(
-			boost::bind(
-				&ServerLobbyThread::TimerCheckInitSessions, shared_from_this(), boost::asio::placeholders::error));
-	}
 }
 
 void

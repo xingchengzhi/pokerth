@@ -920,31 +920,10 @@ void
 ServerLobbyThread::TimerCheckInitSessions(const boost::system::error_code &ec)
 {
 	if (!ec) {
-		std::vector<boost::shared_ptr<SessionData>> sessionsToClose;
+		// Disabled - this was too aggressive and closed legitimate new connections
+		// The actual problem is client-side state not being properly reset
 		
-		// Check all sessions - close any that are not properly established
-		m_sessionManager.ForEach([&sessionsToClose](boost::shared_ptr<SessionData> session) {
-			if (session) {
-				int state = session->GetState();
-				// Close sessions that are stuck (not Established, not in game, not closed)
-				if (state != SessionData::Established && 
-				    state != SessionData::Game && 
-				    state != SessionData::Spectating && 
-				    state != SessionData::SpectatorWaiting &&
-				    state != SessionData::Closed) {
-					LOG_ERROR("Force-closing stuck session #" << session->GetId() << " in state " << state);
-					sessionsToClose.push_back(session);
-				}
-			}
-		});
-		
-		// Close stuck sessions
-		for (auto& session : sessionsToClose) {
-			session->CloseSocketHandle();
-			SessionError(session, ERR_NET_SESSION_TIMED_OUT);
-		}
-		
-		// Re-register timer
+		// Re-register timer (keep it running for future use)
 		m_checkInitSessionTimer.expires_after(milliseconds(SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC));
 		m_checkInitSessionTimer.async_wait(
 			boost::bind(

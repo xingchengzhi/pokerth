@@ -712,13 +712,9 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         ClientContext &context = client->GetContext();
         
         // Shutdown the SSL stream properly before retry
-        boost::system::error_code shutdownEc;
-        context.GetSessionData()->GetSslStream()->shutdown(shutdownEc);
-        // Ignore shutdown errors as the connection might already be closed
-        
-        // Close and reconnect the TCP socket
-        boost::system::error_code closeEc;
-        context.GetSessionData()->GetSslStream()->lowest_layer().close(closeEc);
+        // First, completely close the old session to clean up all async operations
+        qDebug() << "[TLS-CONNECT] Closing old session before retry...";
+        context.GetSessionData()->Close();
         
         // Recreate the session with a new SSL stream
         qDebug() << "[TLS-CONNECT] Recreating SSL session for retry...";

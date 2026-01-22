@@ -229,7 +229,8 @@ void
 SessionData::TimerInitTimeout(const boost::system::error_code &ec)
 {
 	if (!ec) {
-		if (GetState() == SessionData::Init) {
+		// Close session if still in Init state OR not yet established (covers TLS handshake hanging)
+		if (GetState() == SessionData::Init || GetState() == SessionData::Connecting) {
 			m_callback.SessionError(shared_from_this(), ERR_NET_SESSION_TIMED_OUT);
 		}
 	}

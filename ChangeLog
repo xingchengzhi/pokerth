@@ -1,4 +1,5 @@
 2026-01-22 version 2.0
+- port from qmake to cmake
 - port from Qt5 to Qt6 LTS
 - port to libboost >=1.83
 - removed mysqplpp dependency
@@ -8,12 +9,13 @@
 - removed gsasl dependency
 - removed libSDL dependency
 - implemented TLS for websocket-Server
-- implemented TLS for game-server
-- replaced gsasl auth mechanism with plain text auth - encrypted in combination with TLS
+- implemented TLS for game-server & client
+- replaced gsasl auth mechanism with plain text auth (encrypted in combination with TLS!)
 - macOS: several bugfixes, functional build for macOS Monterey as minimum OS version
-- android: Qt Widget GUI adapted to qt6 - no more fixed Height values in ui files
+- android: Qt Widget GUI adapted to qt6 - no more fixed Width/Height values in ui files
 - removed QtSingleApplication dependency
-- reproducable docker build environments for linux, windows and android builds 
+- reproducable docker build environments for linux, windows and android build
+- reproducable build_macos.sh Script for easy build & deploy on macOS
 
 2017-09-01 version 1.1.2
 - PokerTH is now fully compatible with c++11 compilation mode 

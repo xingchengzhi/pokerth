@@ -668,13 +668,21 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                 } else {
                     qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
                     // Close the session to clean up async operations
-                    client->GetContext().GetSessionData()->Close();
+                    try {
+                        client->GetContext().GetSessionData()->Close();
+                    } catch (...) {
+                        // Ignore errors during close
+                    }
                     throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
                 }
             } else {
                 qDebug() << "[TLS-CONNECT] Handshake was aborted (timeout or user cancel), not retrying.";
                 // Close the session to clean up async operations
-                client->GetContext().GetSessionData()->Close();
+                try {
+                    client->GetContext().GetSessionData()->Close();
+                } catch (...) {
+                    // Ignore errors during close
+                }
             }
         }
     } else {
@@ -719,7 +727,11 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         
         // Close the old session completely
         qDebug() << "[TLS-CONNECT] Closing old session before retry...";
-        context.GetSessionData()->Close();
+        try {
+            context.GetSessionData()->Close();
+        } catch (...) {
+            // Ignore errors during close
+        }
         
         // Recreate the session with a new SSL stream
         qDebug() << "[TLS-CONNECT] Recreating SSL session for retry...";
@@ -791,7 +803,11 @@ ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, b
         } else {
             qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
             // Close the session to clean up async operations
-            context.GetSessionData()->Close();
+            try {
+                context.GetSessionData()->Close();
+            } catch (...) {
+                // Ignore errors during close
+            }
             if (context.GetAddrFamily() == AF_INET6)
                 throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_IPV6_FAILED, 0);
             else
@@ -815,6 +831,7 @@ ClientStateStartConnect::TimerTimeout(const boost::system::error_code& ec, boost
             try {
                 context.GetSessionData()->Close();
             } catch (...) {
+                // Ignore errors during close
             }
         }
 

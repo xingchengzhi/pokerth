@@ -222,6 +222,10 @@ protected:
                     ssl_err = ERR_get_error();
                 }
             }
+            
+            // Close the SSL stream and socket immediately to free resources
+            boost::system::error_code ec;
+            sslStream->lowest_layer().close(ec);
         }
 
         boost::shared_ptr<P_socket> newSocket(new P_socket(*m_ioService));

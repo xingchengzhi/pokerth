@@ -899,6 +899,11 @@ ServerLobbyThread::RegisterTimers()
 	m_loginLockTimer.async_wait(
 		boost::bind(
 			&ServerLobbyThread::TimerUpdateClientLoginLock, shared_from_this(), boost::asio::placeholders::error));
+	// Check for stuck Init sessions (e.g., hanging TLS handshake).
+	m_checkInitSessionTimer.expires_after(milliseconds(SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC));
+	m_checkInitSessionTimer.async_wait(
+		boost::bind(
+			&ServerLobbyThread::TimerCheckInitSessions, shared_from_this(), boost::asio::placeholders::error));
 }
 
 void
@@ -907,6 +912,39 @@ ServerLobbyThread::CancelTimers()
 	m_removeGameTimer.cancel();
 	m_saveStatisticsTimer.cancel();
 	m_loginLockTimer.cancel();
+	m_checkInitSessionTimer.cancel();
+}
+
+void
+ServerLobbyThread::TimerCheckInitSessions(const boost::system::error_code &ec)
+{
+	if (!ec) {
+		std::vector<boost::shared_ptr<SessionData>> sessionsToClose;
+		
+		// Check all sessions
+		{
+			SessionManager::SessionList sessions = m_sessionManager.GetSessionList();
+			for (auto& session : sessions) {
+				if (session && session->GetState() == SessionData::Init) {
+					// Session stuck in Init state - force close
+					LOG_ERROR("Force-closing stuck Init session #" << session->GetId());
+					sessionsToClose.push_back(session);
+				}
+			}
+		}
+		
+		// Close stuck sessions outside of lock
+		for (auto& session : sessionsToClose) {
+			session->CloseSocketHandle();
+			SessionError(session, ERR_NET_SESSION_TIMED_OUT);
+		}
+		
+		// Re-register timer
+		m_checkInitSessionTimer.expires_after(milliseconds(SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC));
+		m_checkInitSessionTimer.async_wait(
+			boost::bind(
+				&ServerLobbyThread::TimerCheckInitSessions, shared_from_this(), boost::asio::placeholders::error));
+	}
 }
 
 void

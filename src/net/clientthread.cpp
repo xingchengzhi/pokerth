@@ -427,7 +427,6 @@ ClientThread::CloseSession(boost::shared_ptr<SessionData> /*session*/)
 void
 ClientThread::HandlePacket(boost::shared_ptr<SessionData> /*session*/, boost::shared_ptr<NetPacket> packet)
 {
-	qDebug() << "[AUTH DEBUG] ClientThread::HandlePacket - Received packet, message type:" << packet->GetMsg()->messagetype();
 	GetState().HandlePacket(shared_from_this(), packet);
 }
 
@@ -1076,15 +1075,10 @@ ClientThread::GetState()
 void
 ClientThread::SetState(ClientState &newState)
 {
-	const char* newStateName = typeid(newState).name();
-	qDebug() << "[AUTH DEBUG] ClientThread::SetState - Changing state to:" << newStateName;
 	if (m_curState) {
-		const char* oldStateName = typeid(*m_curState).name();
-		qDebug() << "[AUTH DEBUG] ClientThread::SetState - Exiting state:" << oldStateName;
 		m_curState->Exit(shared_from_this());
 	}
 	m_curState = &newState;
-	qDebug() << "[AUTH DEBUG] ClientThread::SetState - Entering new state:" << newStateName;
 	m_curState->Enter(shared_from_this());
 }
 

@@ -2208,6 +2208,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
 		curGame->getCurrentHand()->getBoard()->collectPot();
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
+		ResetPlayerSets(*curGame);
 
 		client->GetGui().logDealBoardCardsMsg(GAME_STATE_FLOP, tmpCards[0], tmpCards[1], tmpCards[2], tmpCards[3], tmpCards[4]);
 		client->GetClientLog()->setCurrentRound(GAME_STATE_FLOP);
@@ -2225,6 +2226,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
 		curGame->getCurrentHand()->getBoard()->collectPot();
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
+		ResetPlayerSets(*curGame);
 
 		client->GetGui().logDealBoardCardsMsg(GAME_STATE_TURN, tmpCards[0], tmpCards[1], tmpCards[2], tmpCards[3], tmpCards[4]);
 		client->GetClientLog()->setCurrentRound(GAME_STATE_TURN);
@@ -2242,6 +2244,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
 		curGame->getCurrentHand()->getBoard()->collectPot();
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
+		ResetPlayerSets(*curGame);
 
 		client->GetGui().logDealBoardCardsMsg(GAME_STATE_RIVER, tmpCards[0], tmpCards[1], tmpCards[2], tmpCards[3], tmpCards[4]);
 		client->GetClientLog()->setCurrentRound(GAME_STATE_RIVER);
@@ -2401,7 +2404,7 @@ ClientStateRunHand::ResetPlayerSets(Game &curGame)
     PlayerListIterator i = curGame.getActivePlayerList()->begin();
     PlayerListIterator end = curGame.getActivePlayerList()->end();
     while (i != end) {
-        (*i)->setMySet(0);
+        (*i)->setMySetNull();
         ++i;
     }
 }

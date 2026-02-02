@@ -163,9 +163,12 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	userWidgetsArray[3] = spinBox_betValue;
 	userWidgetsArray[4] = horizontalSlider_bet;
 	userWidgetsArray[5] = pushButton_AllIn;
+	userWidgetsArray[6] = pushButton_Pot33;
+	userWidgetsArray[7] = pushButton_Pot50;
+	userWidgetsArray[8] = pushButton_Pot100;
 
 	//hide userWidgets
-	for(i=0; i<6; i++) {
+	for(i=0; i<UserWidgetCount; i++) {
 		userWidgetsArray[i]->hide();
 	}
 
@@ -609,6 +612,9 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	connect( pushButton_Fold, SIGNAL( clicked(bool) ), this, SLOT( pushButtonFoldClicked(bool) ) );
 	connect( pushButton_CallCheck, SIGNAL( clicked(bool) ), this, SLOT( pushButtonCallCheckClicked(bool) ) );
 	connect( pushButton_AllIn, SIGNAL( clicked(bool) ), this, SLOT(pushButtonAllInClicked(bool) ) );
+	connect( pushButton_Pot33, SIGNAL( clicked() ), this, SLOT( pushButtonPot33Clicked() ) );
+	connect( pushButton_Pot50, SIGNAL( clicked() ), this, SLOT( pushButtonPot50Clicked() ) );
+	connect( pushButton_Pot100, SIGNAL( clicked() ), this, SLOT( pushButtonPot100Clicked() ) );
 	connect( horizontalSlider_bet, SIGNAL( valueChanged(int)), this, SLOT ( changeSpinBoxBetValue(int) ) );
 	connect( spinBox_betValue, SIGNAL( valueChanged(int)), this, SLOT ( spinBoxBetValueChanged(int) ) );
 
@@ -769,6 +775,16 @@ void gameTableImpl::applySettings(settingsDialogImpl* mySettingsDialog)
 	}
 #endif
 
+	// Pot % button visibility (takes effect immediately when user controls are visible)
+	if (pushButton_BetRaise->isVisible()) {
+		for (int j = 6; j <= 8; j++) {
+			if (myConfig->readConfigInt("ShowPotPercentButtons"))
+				userWidgetsArray[j]->show();
+			else
+				userWidgetsArray[j]->hide();
+		}
+	}
+
 	//Add avatar (if set)
 	myStartWindow->getSession()->addOwnAvatar(QString::fromUtf8(myConfig->readConfigString("MyAvatar").c_str()).toLocal8Bit().constData());
 
@@ -904,8 +920,15 @@ void gameTableImpl::initGui(int speed)
 	}
 
 	//show human player buttons
-	for(int i=0; i<6; i++) {
-		userWidgetsArray[i]->show();
+	for(int i=0; i<UserWidgetCount; i++) {
+		if(i >= 6 && i <= 8) {
+			if(myConfig->readConfigInt("ShowPotPercentButtons"))
+				userWidgetsArray[i]->show();
+			else
+				userWidgetsArray[i]->hide();
+		} else {
+			userWidgetsArray[i]->show();
+		}
 	}
 
 	//set speeds for local game and for first network game
@@ -1287,8 +1310,15 @@ void gameTableImpl::refreshGroupbox(int playerID, int status)
 				if((*it_c)->getMyActiveStatus()) {
 					if((*it_c)->getMyID()==0) {
 						//show buttons
-						for(j=0; j<6; j++) {
-							userWidgetsArray[j]->show();
+						for(j=0; j<UserWidgetCount; j++) {
+							if(j >= 6 && j <= 8) {
+								if(myConfig->readConfigInt("ShowPotPercentButtons"))
+									userWidgetsArray[j]->show();
+								else
+									userWidgetsArray[j]->hide();
+							} else {
+								userWidgetsArray[j]->show();
+							}
 						}
 					}
 					myGameTableStyle->setPlayerSeatInactiveStyle(groupBoxArray[(*it_c)->getMyID()]);
@@ -1298,7 +1328,7 @@ void gameTableImpl::refreshGroupbox(int playerID, int status)
 				else {
 					if((*it_c)->getMyID()==0) {
 						//hide buttons
-						for(j=0; j<6; j++) {
+						for(j=0; j<UserWidgetCount; j++) {
 							userWidgetsArray[j]->hide();
 						}
 						//disable anti-peek front after player is out
@@ -1316,7 +1346,7 @@ void gameTableImpl::refreshGroupbox(int playerID, int status)
 		case 0: {
 			if (!playerID) {
 				//hide buttons
-				for(j=0; j<6; j++) {
+				for(j=0; j<UserWidgetCount; j++) {
 					userWidgetsArray[j]->hide();
 				}
 				//disable anti-peek front after player is out
@@ -1330,8 +1360,15 @@ void gameTableImpl::refreshGroupbox(int playerID, int status)
 		case 1: {
 			if (!playerID) {
 				//show buttons
-				for(j=0; j<6; j++) {
-					userWidgetsArray[j]->show();
+				for(j=0; j<UserWidgetCount; j++) {
+					if(j >= 6 && j <= 8) {
+						if(myConfig->readConfigInt("ShowPotPercentButtons"))
+							userWidgetsArray[j]->show();
+						else
+							userWidgetsArray[j]->hide();
+					} else {
+						userWidgetsArray[j]->show();
+					}
 				}
 			}
 			myGameTableStyle->setPlayerSeatInactiveStyle(groupBoxArray[playerID]);
@@ -1740,6 +1777,7 @@ void gameTableImpl::provideMyActions(int mode)
 
 		horizontalSlider_bet->setDisabled(true);
 		spinBox_betValue->setDisabled(true);
+		setPotButtonsEnabled(false);
 
 		myButtonsCheckable(false);
 
@@ -1901,6 +1939,7 @@ void gameTableImpl::provideMyActions(int mode)
 			spinBox_betValue->selectAll();
 		}
 
+		setPotButtonsEnabled(horizontalSlider_bet->isEnabled());
 	}
 }
 
@@ -2023,6 +2062,7 @@ void gameTableImpl::disableMyButtons()
 	//clear userWidgets
 	horizontalSlider_bet->setDisabled(true);
 	spinBox_betValue->setDisabled(true);
+	setPotButtonsEnabled(false);
 	horizontalSlider_bet->setMinimum(0);
 	horizontalSlider_bet->setMaximum(humanPlayer->getMyCash());
 	spinBox_betValue->setMinimum(0);
@@ -2035,6 +2075,35 @@ void gameTableImpl::disableMyButtons()
 #else
 	QString humanPlayerButtonFontSize = "12";
 #endif
+}
+
+void gameTableImpl::applyPotFraction(double fraction)
+{
+	if (!horizontalSlider_bet->isEnabled() || pushButton_BetRaise->text().isEmpty()) {
+		return;
+	}
+
+	boost::shared_ptr<HandInterface> currentHand = myStartWindow->getSession()->getCurrentGame()->getCurrentHand();
+	int totalPot = currentHand->getBoard()->getPot() + currentHand->getBoard()->getSets();
+	int target = static_cast<int>(std::lround(static_cast<double>(totalPot) * fraction));
+	int minimum = horizontalSlider_bet->minimum();
+	int maximum = horizontalSlider_bet->maximum();
+
+	if (target < minimum) {
+		target = minimum;
+	}
+	if (target > maximum) {
+		target = maximum;
+	}
+
+	spinBox_betValue->setValue(target);
+}
+
+void gameTableImpl::setPotButtonsEnabled(bool enabled)
+{
+	pushButton_Pot33->setEnabled(enabled);
+	pushButton_Pot50->setEnabled(enabled);
+	pushButton_Pot100->setEnabled(enabled);
 }
 
 void gameTableImpl::myCallCheck()
@@ -2385,6 +2454,21 @@ void gameTableImpl::pushButtonAllInClicked(bool checked)
 	}
 }
 
+void gameTableImpl::pushButtonPot33Clicked()
+{
+	applyPotFraction(1.0 / 3.0);
+}
+
+void gameTableImpl::pushButtonPot50Clicked()
+{
+	applyPotFraction(0.5);
+}
+
+void gameTableImpl::pushButtonPot100Clicked()
+{
+	applyPotFraction(1.0);
+}
+
 void gameTableImpl::myActionDone()
 {
 
@@ -2569,7 +2653,7 @@ void gameTableImpl::postRiverRunAnimation2()
 
 	if(nonfoldPlayersCounter!=1) {
 
-		label_WinningCombination->setText(CardsValue::determineHandName(currentGame->getCurrentHand()->getCurrentBeRo()->getHighestCardsValue(), activePlayerList).c_str());
+		label_WinningCombination->setPixmap(myGameTableStyle->renderActionStyleText(QString::fromUtf8(CardsValue::determineHandName(currentGame->getCurrentHand()->getCurrentBeRo()->getHighestCardsValue(), activePlayerList).c_str())));
 		if(!flipHolecardsAllInAlreadyDone) {
 
 			for (it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
@@ -3310,7 +3394,7 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 	} else if (event->type() == QEvent::Resize) {
 		refreshSpectatorsDisplay();
 		return true;
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up && 
+	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up &&
 #ifdef GUI_800x480
 	           tabs.lineEdit_ChatInput->hasFocus()
 #else
@@ -3322,7 +3406,7 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		}
 		myChat->showChatHistoryIndex(keyUpDownChatCounter);
 		return true;
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down && 
+	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down &&
 #ifdef GUI_800x480
 	           tabs.lineEdit_ChatInput->hasFocus()
 #else
@@ -4197,7 +4281,6 @@ void gameTableImpl::refreshGameTableStyle()
 	myGameTableStyle->setBigFontBoardStyle(textLabel_handLabel);
 	myGameTableStyle->setBigFontBoardStyle(label_Pot);
 #endif
-	myGameTableStyle->setBigFontBoardStyle(label_WinningCombination);
 	myGameTableStyle->setCardHolderStyle(label_CardHolder0,0);
 	myGameTableStyle->setCardHolderStyle(label_CardHolder1,0);
 	myGameTableStyle->setCardHolderStyle(label_CardHolder2,0);
@@ -4249,6 +4332,37 @@ void gameTableImpl::refreshGameTableStyle()
 	myGameTableStyle->setSliderStyle(horizontalSlider_speed);
 #endif
 
+	// Style pot percentage buttons with green background and rounded corners
+	QString potButtonStyle = "QPushButton { "
+		"background-color: #4CAF50; "
+		"color: white; "
+		"border: none; "
+		"border-radius: 6px; "
+		"font-weight: bold; "
+		"font-size: 11px; ";
+#ifdef _WIN32
+	potButtonStyle += "min-height: 16px; max-height: 18px; padding: 0px 4px; ";
+#endif
+	potButtonStyle += "} "
+		"QPushButton:hover { "
+		"background-color: #45a049; "
+		"} "
+		"QPushButton:pressed { "
+		"background-color: #3d8b40; "
+		"} "
+		"QPushButton:disabled { "
+		"background-color: #5a8f5a; "
+		"color: #b0d0b0; "
+		"}";
+	pushButton_Pot33->setStyleSheet(potButtonStyle);
+	pushButton_Pot50->setStyleSheet(potButtonStyle);
+	pushButton_Pot100->setStyleSheet(potButtonStyle);
+#ifdef _WIN32
+	pushButton_Pot33->setFixedHeight(18);
+	pushButton_Pot50->setFixedHeight(18);
+	pushButton_Pot100->setFixedHeight(18);
+#endif
+
 	// 	away radiobuttons
 #ifdef GUI_800x480
 	myGameTableStyle->setAwayRadioButtonsStyle(tabs.radioButton_manualAction);
@@ -4260,6 +4374,7 @@ void gameTableImpl::refreshGameTableStyle()
 
 	myGameTableStyle->setTabWidgetStyle(tabs.tabWidget_Right, tabs.tabWidget_Right->getMyTabBar());
 	myGameTableStyle->setTabWidgetStyle(tabs.tabWidget_Left, tabs.tabWidget_Left->getMyTabBar());
+	tabs.tabWidget_Right->tabBar()->setElideMode(Qt::ElideNone);
 
 	tabs.label_Handranking->setPixmap(myGameTableStyle->getHandRanking());
 #else
@@ -4272,6 +4387,7 @@ void gameTableImpl::refreshGameTableStyle()
 
 	myGameTableStyle->setTabWidgetStyle(tabWidget_Right, tabWidget_Right->getMyTabBar());
 	myGameTableStyle->setTabWidgetStyle(tabWidget_Left, tabWidget_Left->getMyTabBar());
+	tabWidget_Right->tabBar()->setElideMode(Qt::ElideNone);
 
 	label_Handranking->setPixmap(myGameTableStyle->getHandRanking());
 #endif

@@ -34,6 +34,9 @@
 #include <QDomElement>
 #include <QDebug>
 #include <QFile>
+#include <QPainter>
+#include <QPainterPath>
+#include <QFontMetricsF>
 
 using namespace std;
 
@@ -52,8 +55,8 @@ GameTableStyleReader::GameTableStyleReader(ConfigFile *c, QWidget *w)
 	bigBoardFontSize = "18";
 	humanPlayerButtonFontSize = "14";
 	betValueFontSize = "11";
-	tabBarPaddingTop = "2";
-	tabBarPaddingSide = "10";
+	tabBarPaddingTop = "0";
+	tabBarPaddingSide = "8";
 #elif __APPLE__
 	font1String = "font-family: \"Lucida Grande\";";
 	font2String = "font-family: \"Lucida Grande\";";
@@ -1580,6 +1583,36 @@ QString GameTableStyleReader::getActionPic(int action)
 	return QString("");
 }
 
+QPixmap GameTableStyleReader::renderActionStyleText(const QString &text)
+{
+	if (text.isEmpty())
+		return QPixmap();
+	// Match the "Winner" overlay (action_winner.png) – black text, yellow outline.
+	QFont font("DejaVu Sans");
+	font.setPixelSize(bigBoardFontSize.toInt());
+	font.setBold(true);
+	QFontMetricsF fm(font);
+	const int outlineWidth = 3;
+	const int padding = 6;
+	QRectF textBounds = fm.boundingRect(QRectF(0, 0, 10000, 10000), Qt::AlignLeft | Qt::AlignTop, text);
+	int w = static_cast<int>(textBounds.width()) + 2 * outlineWidth + 2 * padding;
+	int h = static_cast<int>(textBounds.height()) + 2 * outlineWidth + 2 * padding;
+	QPixmap pixmap(w, h);
+	pixmap.fill(Qt::transparent);
+	QPainter painter(&pixmap);
+	painter.setRenderHint(QPainter::Antialiasing);
+	painter.setRenderHint(QPainter::TextAntialiasing);
+	QPainterPath path;
+	path.addText(padding + outlineWidth, padding + outlineWidth + fm.ascent(), font, text);
+	painter.setPen(QPen(Qt::yellow, outlineWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	painter.setBrush(Qt::NoBrush);
+	painter.drawPath(path);
+	painter.setPen(Qt::NoPen);
+	painter.setBrush(Qt::black);
+	painter.drawPath(path);
+	return pixmap;
+}
+
 void GameTableStyleReader::setButtonsStyle(MyActionButton *br, MyActionButton *cc, MyActionButton *f, MyActionButton *a, int state)
 {
 	br->setMyStyle(this);
@@ -1646,9 +1679,10 @@ void GameTableStyleReader::setTabWidgetStyle(QTabWidget *tw, QTabBar *tb)
 	tw->setStyleSheet("QTabWidget::pane { border: 2px solid #"+TabWidgetBorderColor+"; border-radius: 2px; background-color: #"+TabWidgetBgColor+"; }  QTabWidget::tab-bar { left: 5px; } ");
 
 	QString bottomPadding("");
+	QString tabBarHeightConstraint("");
 
 #ifdef _WIN32
-	bottomPadding = " padding-bottom: 3px;";
+	tabBarHeightConstraint = " min-height: 18px; max-height: 22px;";
 #endif
 
 	QString tabTextFontSize;
@@ -1657,7 +1691,7 @@ void GameTableStyleReader::setTabWidgetStyle(QTabWidget *tw, QTabBar *tb)
 #endif
 
 #ifndef MAEMO
-	tb->setStyleSheet("QTabBar::tab{ "+ font1String + tabTextFontSize +" color: #"+TabWidgetTextColor+"; background-color: #"+TabWidgetBgColor+"; border: 2px solid #"+TabWidgetBorderColor+"; border-bottom-color: #"+TabWidgetBorderColor+"; border-top-left-radius: 4px; border-top-right-radius: 4px; padding-top: "+tabBarPaddingTop+"px;"+bottomPadding+" padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected, QTabBar::tab:hover { background-color: #"+TabWidgetBgColor+"; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected { border-color: #"+TabWidgetBorderColor+"; border-bottom-color: #"+TabWidgetBgColor+"; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;}  QTabBar::tab:!selected { margin-top: 2px; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected { margin-left: -4px; margin-right: -4px; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:first:selected { margin-left: 0; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:last:selected { margin-right: 0; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:only-one { margin: 0; } ");
+	tb->setStyleSheet("QTabBar::tab{ "+ font1String + tabTextFontSize + tabBarHeightConstraint + " color: #"+TabWidgetTextColor+"; background-color: #"+TabWidgetBgColor+"; border: 2px solid #"+TabWidgetBorderColor+"; border-bottom-color: #"+TabWidgetBorderColor+"; border-top-left-radius: 4px; border-top-right-radius: 4px; padding-top: "+tabBarPaddingTop+"px;"+bottomPadding+" padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected, QTabBar::tab:hover { background-color: #"+TabWidgetBgColor+"; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected { border-color: #"+TabWidgetBorderColor+"; border-bottom-color: #"+TabWidgetBgColor+"; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;}  QTabBar::tab:!selected { margin-top: 2px; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:selected { margin-left: -4px; margin-right: -4px; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:first:selected { margin-left: 0; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:last:selected { margin-right: 0; padding-top: "+tabBarPaddingTop+"px; padding-left:"+tabBarPaddingSide+"px; padding-right:"+tabBarPaddingSide+"px;} QTabBar::tab:only-one { margin: 0; } ");
 #endif
 
 }

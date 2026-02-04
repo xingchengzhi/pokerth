@@ -48,9 +48,26 @@ AsioReceiveBuffer::AsioReceiveBuffer()
 void
 AsioReceiveBuffer::StartAsyncRead(boost::shared_ptr<SessionData> session)
 {
-    qDebug() << "[ASYNC-READ DEBUG] StartAsyncRead called - SSL:" << session->IsSsl() << "Session ID:" << session->GetId();
+    // Prüfe ob Session bereits geschlossen ist
+    if (session->GetState() == SessionData::Closed) {
+        return;  // Keine async_read auf geschlossenen Sessions
+    }
+    
     if (session->IsSsl()) {
-        session->GetSslStream()->async_read_some(
+        auto sslStream = session->GetSslStream();
+        if (!sslStream) {
+            LOG_ERROR("Session " << session->GetId() << " - SSL stream is null, cannot start async read");
+            return;
+        }
+        
+        // Prüfe ob Socket noch offen ist
+        boost::system::error_code ec;
+        if (!sslStream->lowest_layer().is_open()) {
+            LOG_ERROR("Session " << session->GetId() << " - SSL socket is closed, cannot start async read");
+            return;
+        }
+        
+        sslStream->async_read_some(
             boost::asio::buffer(recvBuf + recvBufUsed, RECV_BUF_SIZE - recvBufUsed),
             boost::bind(
                 &ReceiveBuffer::HandleRead,
@@ -59,7 +76,20 @@ AsioReceiveBuffer::StartAsyncRead(boost::shared_ptr<SessionData> session)
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     } else {
-        session->GetAsioSocket()->async_read_some(
+        auto socket = session->GetAsioSocket();
+        if (!socket) {
+            LOG_ERROR("Session " << session->GetId() << " - Socket is null, cannot start async read");
+            return;
+        }
+        
+        // Prüfe ob Socket noch offen ist
+        boost::system::error_code ec;
+        if (!socket->is_open()) {
+            LOG_ERROR("Session " << session->GetId() << " - Socket is closed, cannot start async read");
+            return;
+        }
+        
+        socket->async_read_some(
             boost::asio::buffer(recvBuf + recvBufUsed, RECV_BUF_SIZE - recvBufUsed),
             boost::bind(
                 &ReceiveBuffer::HandleRead,
@@ -68,38 +98,58 @@ AsioReceiveBuffer::StartAsyncRead(boost::shared_ptr<SessionData> session)
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     }
-    qDebug() << "[ASYNC-READ DEBUG] async_read_some call initiated";
 }
 
 void
 AsioReceiveBuffer::HandleRead(boost::shared_ptr<SessionData> session, const boost::system::error_code &error, size_t bytesRead)
 {
     // unchanged behavior; both TCP and SSL report through error/bytesRead
-    qDebug() << "[ASYNC-READ DEBUG] HandleRead called - error:" << error.value() << "bytesRead:" << bytesRead;
     if (error != boost::asio::error::operation_aborted) {
         try {
+            // Prüfe ob Session noch gültig und nicht geschlossen
+            if (!session || session->GetState() == SessionData::Closed) {
+                LOG_MSG("Session " << (session ? session->GetId() : 0) << " - HandleRead on closed session, ignoring");
+                return;
+            }
+            
             if (!error) {
-                qDebug() << "[ASYNC-READ DEBUG] Successfully read" << bytesRead << "bytes, processing...";
+                // Sanity Check: bytesRead sollte nicht größer sein als der Buffer erlaubt
+                if (bytesRead > RECV_BUF_SIZE - recvBufUsed) {
+                    LOG_ERROR("Session " << session->GetId() << " - Buffer overflow prevented: bytesRead=" 
+                              << bytesRead << " available=" << (RECV_BUF_SIZE - recvBufUsed));
+                    session->Close();
+                    return;
+                }
                 recvBufUsed += bytesRead;
                 ScanPackets(session);
-                ProcessPackets(session);
-                StartAsyncRead(session);
+                // Prüfe nochmal ob Session nach ScanPackets noch offen ist
+                if (session->GetState() != SessionData::Closed) {
+                    ProcessPackets(session);
+                    if (session->GetState() != SessionData::Closed) {
+                        StartAsyncRead(session);
+                    }
+                }
             } else if (error == boost::asio::error::interrupted || error == boost::asio::error::try_again) {
                 LOG_ERROR("Session " << session->GetId() << " - recv interrupted: " << error);
-                qDebug() << "[ASYNC-READ DEBUG] Read interrupted, retrying...";
-                StartAsyncRead(session);
+                if (session->GetState() != SessionData::Closed) {
+                    StartAsyncRead(session);
+                }
             } else {
                 LOG_ERROR("Session " << session->GetId() << " - Connection closed: " << error);
-                qDebug() << "[ASYNC-READ DEBUG] Connection closed with error:" << error.message().c_str();
                 session->Close();
             }
         } catch (const exception &e) {
             LOG_ERROR("Session " << session->GetId() << " - unhandled exception in HandleRead: " << e.what());
-            qDebug() << "[ASYNC-READ DEBUG] Exception in HandleRead:" << e.what();
-            throw;
+            // Bei Exceptions: Session sauber schließen statt Exception weiterzuwerfen
+            try {
+                session->Close();
+            } catch (...) {}
+        } catch (...) {
+            LOG_ERROR("Session " << (session ? session->GetId() : 0) << " - unknown exception in HandleRead");
+            try {
+                if (session) session->Close();
+            } catch (...) {}
         }
-    } else {
-        qDebug() << "[ASYNC-READ DEBUG] HandleRead called but operation was aborted";
     }
 }
 
@@ -123,9 +173,15 @@ AsioReceiveBuffer::ScanPackets(boost::shared_ptr<SessionData> session)
 			uint32_t nativeVal;
 			memcpy(&nativeVal, &recvBuf[0], sizeof(uint32_t));
 			size_t packetSize = ntohl(nativeVal);
-			if (!session->IsSsl() && packetSize > MAX_PACKET_SIZE) {
+			
+			// Server-Härtung: Validiere Paketgröße für ALLE Verbindungen (SSL und non-SSL)
+			// Ungültige Paketgrößen deuten auf fehlerhafte Clients oder Angriffe hin
+			if (packetSize > MAX_PACKET_SIZE || packetSize == 0) {
+				LOG_ERROR(session->GetClientAddr() << "Session " << session->GetId() 
+				          << " - Invalid packet size: " << packetSize << " (max: " << MAX_PACKET_SIZE << ") - closing connection");
 				recvBufUsed = 0;
-				LOG_ERROR(session->GetClientAddr() << "Session " << session->GetId() << " - Invalid packet size: " << packetSize);
+				session->Close();
+				return;  // Beende sofort die Verarbeitung
 			} else if (recvBufUsed >= packetSize + NET_HEADER_SIZE) {
 				try {
 					tmpPacket = NetPacket::Create(&recvBuf[NET_HEADER_SIZE], packetSize);
@@ -137,8 +193,11 @@ AsioReceiveBuffer::ScanPackets(boost::shared_ptr<SessionData> session)
 					}
 				} catch (const exception &e) {
 					// Reset buffer on error.
+					LOG_ERROR(session->GetClientAddr() << "Session " << session->GetId() << " - Packet parse error: " << e.what());
 					recvBufUsed = 0;
-					LOG_ERROR(session->GetClientAddr() << "Session " << session->GetId() << " - " << e.what());
+					// Bei Protokollfehlern: Session schließen um korrupte Zustände zu vermeiden
+					session->Close();
+					return;
 				}
 			}
 		}
@@ -147,6 +206,10 @@ AsioReceiveBuffer::ScanPackets(boost::shared_ptr<SessionData> session)
 				receivedPackets.push_back(tmpPacket);
 			} else {
 				LOG_ERROR(session->GetClientAddr() << "Session " << session->GetId() << " - Invalid packet: " << tmpPacket->GetMsg()->messagetype());
+				// Bei ungültigen Paketen: Session schließen (potentieller Angriff oder kaputte Implementation)
+				recvBufUsed = 0;
+				session->Close();
+				return;
 			}
 		} else {
 			dataAvailable = false;

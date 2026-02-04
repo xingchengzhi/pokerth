@@ -200,9 +200,44 @@ void
 ServerGame::RemoveAllSessions()
 {
 	// Clean up ALL sessions which are left.
-	GetSessionManager().ForEach(&SessionData::Close);
-	GetSessionManager().Clear();
+	// WICHTIG: Erst State auf Final setzen, DANN Sessions schließen
+	// Das verhindert dass während des Schließens neue Operationen gestartet werden
 	SetState(ServerGameStateFinal::Instance());
+	
+	try {
+		// Sammle alle Sessions ZUERST, dann schließe sie AUSSERHALB des Locks
+		// Das vermeidet Deadlocks wenn Close() versucht auf den SessionManager zuzugreifen
+		std::vector<boost::shared_ptr<SessionData>> sessionsToClose;
+		{
+			// Kurzer Lock nur zum Kopieren der Session-Liste
+			sessionsToClose = GetSessionManager().GetAllSessions();
+		}
+		
+		// Jetzt Sessions schließen - ohne Lock auf dem SessionManager
+		for (auto& session : sessionsToClose) {
+			if (session) {
+				try {
+					// Setze State auf Closed ZUERST
+					session->SetState(SessionData::Closed);
+					// Cancel Timer
+					session->CancelTimers();
+					// Schließe Socket direkt (nicht über Close() um Callback-Kette zu vermeiden)
+					session->CloseSocketHandle();
+				} catch (const std::exception& e) {
+					LOG_ERROR("Exception closing session in RemoveAllSessions: " << e.what());
+				} catch (...) {
+					// Ignoriere Fehler beim Schließen einzelner Sessions
+				}
+			}
+		}
+		
+		// Jetzt den SessionManager leeren
+		GetSessionManager().Clear();
+	} catch (const std::exception& e) {
+		LOG_ERROR("Exception in RemoveAllSessions: " << e.what());
+	} catch (...) {
+		LOG_ERROR("Unknown exception in RemoveAllSessions");
+	}
 }
 
 void
@@ -941,6 +976,13 @@ ServerGame::RemovePlayerData(boost::shared_ptr<PlayerData> player, int reason, b
 	switch (reason) {
 	case NTF_NET_REMOVED_ON_REQUEST :
 		netReason = GamePlayerLeftMessage::leftOnRequest;
+		// Player left voluntarily, clear GUID to prevent rejoin.
+		if (m_game && !spectateOnly) {
+			boost::shared_ptr<PlayerInterface> tmpPlayer(m_game->getPlayerByUniqueId(player->GetUniqueId()));
+			if (tmpPlayer) {
+				tmpPlayer->setMyGuid("");
+			}
+		}
 		break;
 	case NTF_NET_REMOVED_KICKED :
 		netReason = GamePlayerLeftMessage::leftKicked;
@@ -1002,7 +1044,7 @@ ServerGame::RemoveDisconnectedPlayers()
 					|| (tmpPlayer->getMyType() == PLAYER_TYPE_COMPUTER && !IsComputerPlayerActive(tmpPlayer->getMyUniqueID()))) {
 				// Setting player cash to 0 will deactivate the player.
 				// The player should only be deactivated if rejoin is not possible.
-				if (tmpPlayer->isKicked() || tmpPlayer->getMyGuid().empty()) {
+				if (tmpPlayer->isKicked() || tmpPlayer->getMyGuid().empty() || tmpPlayer->getMyCash() == 0) {
 					tmpPlayer->setMyCash(0);
 					tmpPlayer->setMyGuid("");
 				}

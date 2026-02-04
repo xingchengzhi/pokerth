@@ -110,7 +110,15 @@ static void SendPlayerAction(ServerGame &server, boost::shared_ptr<PlayerInterfa
 	netActionDone->set_playeraction(static_cast<NetPlayerAction>(player->getMyAction()));
 	netActionDone->set_playerid(player->getMyUniqueID());
 	netActionDone->set_playermoney(player->getMyCash());
-	netActionDone->set_totalplayerbet(player->getMySet());
+	
+	// Server-Härtung: Validiere totalplayerbet (muss >= 0 sein, sonst Client-Crash)
+	int totalBet = player->getMySet();
+	if (totalBet < 0) {
+		LOG_ERROR("CRITICAL: Player " << player->getMyUniqueID() << " has negative totalplayerbet: " << totalBet << " - correcting to 0");
+		totalBet = 0;
+	}
+	netActionDone->set_totalplayerbet(totalBet);
+	
 	server.SendToAllPlayers(packet, SessionData::Game | SessionData::Spectating);
 }
 
@@ -220,9 +228,8 @@ SetPlayerResult(PlayerResult &playerResult, boost::shared_ptr<PlayerInterface> t
 		playerResult.add_besthandposition(bestHandPos[num]);
 	}
 
-	if (roundBeforePostRiver == GAME_STATE_RIVER) {
-		playerResult.set_cardsvalue(tmpPlayer->getMyCardsValueInt());
-	}
+	// Immer cardsvalue senden, auch bei All-In vor River (sonst zeigt Client falsche Winner)
+	playerResult.set_cardsvalue(tmpPlayer->getMyCardsValueInt());
 	playerResult.set_moneywon(tmpPlayer->getLastMoneyWon());
 	playerResult.set_playermoney(tmpPlayer->getMyCash());
 }
@@ -434,7 +441,10 @@ AbstractServerGameStateReceiving::CreateNetPacketHandStart(const ServerGame &ser
 	int playerCounter = 0;
 	while (player_i != player_end && playerCounter < server.GetStartData().numberOfPlayers) {
 		NetPlayerState seatState;
-		if (!(*player_i)->getMyActiveStatus()) {
+		// Check cash first - player with 0 cash should be marked as NoMoney
+		if ((*player_i)->getMyCash() == 0) {
+			seatState = netPlayerStateNoMoney;
+		} else if (!(*player_i)->getMyActiveStatus()) {
 			seatState = netPlayerStateNoMoney;
 		} else if (!(*player_i)->isSessionActive()) {
 			seatState = netPlayerStateSessionInactive;
@@ -1071,6 +1081,18 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 
 			if (nonFoldPlayers.size() == 1) {
 				// End of Hand, but keep cards hidden.
+				
+				// Double-check: Ensure all-in losers are set to 0 cash (defensive programming for race conditions)
+				PlayerListIterator pit = curGame.getSeatsList()->begin();
+				PlayerListIterator pend = curGame.getSeatsList()->end();
+				while (pit != pend) {
+					if ((*pit)->getMyAction() == PLAYER_ACTION_ALLIN && (*pit)->getLastMoneyWon() == 0) {
+						LOG_MSG("[SIDEPOT SRV] Final check (hide): Setting " + (*pit)->getMyName() + " to 0 (was: " + std::to_string((*pit)->getMyCash()) + ")");
+						(*pit)->setMyCash(0);
+					}
+					++pit;
+				}
+				
 				boost::shared_ptr<PlayerInterface> player = nonFoldPlayers.front();
 				boost::shared_ptr<NetPacket> endHand(new NetPacket);
 				endHand->GetMsg()->set_messagetype(PokerTHMessage::Type_EndOfHandHideCardsMessage);
@@ -1083,22 +1105,44 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 			} else {
 				// End of Hand - show cards.
 				const PlayerIdList showList(curGame.getCurrentHand()->getBoard()->getPlayerNeedToShowCards());
+				
+				// Double-check: Ensure all-in losers are set to 0 cash (defensive programming for race conditions)
+				PlayerListIterator pit = curGame.getSeatsList()->begin();
+				PlayerListIterator pend = curGame.getSeatsList()->end();
+				while (pit != pend) {
+					if ((*pit)->getMyAction() == PLAYER_ACTION_ALLIN && (*pit)->getLastMoneyWon() == 0) {
+						LOG_MSG("[SIDEPOT SRV] Final check: Setting " + (*pit)->getMyName() + " to 0 (was: " + std::to_string((*pit)->getMyCash()) + ")");
+						(*pit)->setMyCash(0);
+					}
+					++pit;
+				}
+				
 				boost::shared_ptr<NetPacket> endHand(new NetPacket);
 				endHand->GetMsg()->set_messagetype(PokerTHMessage::Type_EndOfHandShowCardsMessage);
 				EndOfHandShowCardsMessage *netEndHand = endHand->GetMsg()->mutable_endofhandshowcardsmessage();
 				netEndHand->set_gameid(server->GetId());
 
-				PlayerIdList::const_iterator i = showList.begin();
-				PlayerIdList::const_iterator end = showList.end();
-
-				while (i != end) {
-					boost::shared_ptr<PlayerInterface> tmpPlayer(curGame.getPlayerByUniqueId(*i));
+				LOG_MSG("[SHOWCARD SRV] showList size: " + std::to_string(showList.size()));
+				
+				// CRITICAL: Send PlayerResults for ALL active players, not just showList
+				// This ensures clients get correct cash updates for all players including those who folded or went all-in
+				PlayerListIterator allPlayers = curGame.getActivePlayerList()->begin();
+				PlayerListIterator allPlayersEnd = curGame.getActivePlayerList()->end();
+				
+				while (allPlayers != allPlayersEnd) {
+					boost::shared_ptr<PlayerInterface> tmpPlayer = *allPlayers;
 					if (tmpPlayer) {
+						bool inShowList = std::find(showList.begin(), showList.end(), tmpPlayer->getMyUniqueID()) != showList.end();
+						LOG_MSG("[SHOWCARD SRV] Adding player " + tmpPlayer->getMyName() + " (ID:" + std::to_string(tmpPlayer->getMyUniqueID()) 
+							+ ") Action:" + std::to_string(tmpPlayer->getMyAction()) + " Active:" + std::to_string(tmpPlayer->getMyActiveStatus())
+							+ " Cash:" + std::to_string(tmpPlayer->getMyCash()) + " Won:" + std::to_string(tmpPlayer->getLastMoneyWon())
+							+ " InShowList:" + (inShowList ? "YES" : "NO"));
 						PlayerResult *playerResult = netEndHand->add_playerresults();
 						SetPlayerResult(*playerResult, tmpPlayer, GAME_STATE_RIVER);
 					}
-					++i;
+					++allPlayers;
 				}
+				LOG_MSG("[SHOWCARD SRV] Sending EndOfHandShowCardsMessage with " + std::to_string(netEndHand->playerresults_size()) + " players");
 				server->SendToAllPlayers(endHand, SessionData::Game | SessionData::Spectating);
 			}
 
@@ -1571,11 +1615,13 @@ ServerGameStateWaitPlayerAction::InternalProcessPacket(boost::shared_ptr<ServerG
 		}
 
 		if (code == ACTION_CODE_VALID) {
+			LOG_MSG("Player " << tmpPlayer->getMyName() << " action accepted, switching state immediately");
 			tmpPlayer->setIsSessionActive(true);
 			tmpPlayer->markRemoteAction();
 			PerformPlayerAction(*server, tmpPlayer, static_cast<PlayerAction>(netMyAction->myaction()), netMyAction->myrelativebet());
 			server->SetState(ServerGameStateHand::Instance());
 		} else {
+			LOG_ERROR("Player " << tmpPlayer->getMyName() << " action REJECTED with code " << code);
 			// Send reject message.
 			boost::shared_ptr<NetPacket> reject(new NetPacket);
 			reject->GetMsg()->set_messagetype(PokerTHMessage::Type_YourActionRejectedMessage);

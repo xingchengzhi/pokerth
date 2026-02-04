@@ -1461,8 +1461,12 @@ void gameTableImpl::refreshPot()
 {
 	boost::shared_ptr<HandInterface> currentHand = myStartWindow->getSession()->getCurrentGame()->getCurrentHand();
 
-	textLabel_Sets->setText("$"+QString("%L1").arg(currentHand->getBoard()->getSets()));
-	textLabel_Pot->setText("$"+QString("%L1").arg(currentHand->getBoard()->getPot()));
+	int sets = currentHand->getBoard()->getSets();
+	int pot = currentHand->getBoard()->getPot();
+	qDebug() << "[REFRESH POT] Sets:" << sets << "Pot:" << pot << "Total:" << (sets + pot);
+	
+	textLabel_Sets->setText("$"+QString("%L1").arg(sets));
+	textLabel_Pot->setText("$"+QString("%L1").arg(pot));
 }
 
 void gameTableImpl::guiUpdateDone()
@@ -1761,8 +1765,10 @@ void gameTableImpl::provideMyActions(int mode)
 	boost::shared_ptr<PlayerInterface> humanPlayer = currentHand->getSeatsList()->front();
 	PlayerList activePlayerList = currentHand->getActivePlayerList();
 
-	//really disabled buttons if human player is fold/all-in or server-autofold... and not called from dealberocards
-	if(/*pushButton_BetRaise->isCheckable() && */(mode != 0 && (humanPlayer->getMyAction() == PLAYER_ACTION_ALLIN || humanPlayer->getMyAction() == PLAYER_ACTION_FOLD || (humanPlayer->getMySet() == currentHand->getCurrentBeRo()->getHighestSet() && (humanPlayer->getMyAction() != PLAYER_ACTION_NONE)))) || !humanPlayer->isSessionActive() /*server-autofold*/) {
+	//really disabled buttons if human player is fold/all-in (no cash) or server-autofold... and not called from dealberocards
+	if((humanPlayer->getMyAction() == PLAYER_ACTION_ALLIN || humanPlayer->getMyAction() == PLAYER_ACTION_FOLD || humanPlayer->getMyCash() == 0) || 
+	   (mode != 0 && (humanPlayer->getMySet() == currentHand->getCurrentBeRo()->getHighestSet() && (humanPlayer->getMyAction() != PLAYER_ACTION_NONE))) || 
+	   !humanPlayer->isSessionActive() /*server-autofold*/) {
 
 		pushButton_BetRaise->setText("");
 		pushButton_CallCheck->setText("");
@@ -1790,7 +1796,12 @@ void gameTableImpl::provideMyActions(int mode)
 			if (humanPlayer->getMySet()== currentHand->getCurrentBeRo()->getHighestSet() &&  humanPlayer->getMyButton() == 3) {
 				pushButtonCallCheckString = CheckString;
 			} else {
-				pushButtonCallCheckString = CallString+"\n$"+QString("%L1").arg(getMyCallAmount());
+				int callAmount = getMyCallAmount();
+				if (callAmount == 0) {
+					pushButtonCallCheckString = CheckString;
+				} else {
+					pushButtonCallCheckString = CallString+"\n$"+QString("%L1").arg(callAmount);
+				}
 			}
 
 			pushButtonFoldString = FoldString;
@@ -1810,7 +1821,12 @@ void gameTableImpl::provideMyActions(int mode)
 				pushButtonBetRaiseString = BetString+"\n$"+QString("%L1").arg(getMyBetAmount());
 			}
 			if (currentHand->getCurrentBeRo()->getHighestSet() > 0 && currentHand->getCurrentBeRo()->getHighestSet() > humanPlayer->getMySet()) {
-				pushButtonCallCheckString = CallString+"\n$"+QString("%L1").arg(getMyCallAmount());
+				int callAmount = getMyCallAmount();
+				if (callAmount == 0) {
+					pushButtonCallCheckString = CheckString;
+				} else {
+					pushButtonCallCheckString = CallString+"\n$"+QString("%L1").arg(callAmount);
+				}
 				if (humanPlayer->getMyCash()+humanPlayer->getMySet() > currentHand->getCurrentBeRo()->getHighestSet() && !currentHand->getCurrentBeRo()->getFullBetRule()) {
 					pushButtonBetRaiseString = RaiseString+"\n$"+QString("%L1").arg(getMyBetAmount());
 				}
@@ -1821,7 +1837,7 @@ void gameTableImpl::provideMyActions(int mode)
 		}
 
 		if(mode == 0) {
-			if( humanPlayer->getMyAction() != PLAYER_ACTION_FOLD ) {
+			if( humanPlayer->getMyAction() != PLAYER_ACTION_FOLD && humanPlayer->getMyAction() != PLAYER_ACTION_ALLIN ) {
 				pushButtonBetRaiseString = BetString+"\n$"+QString("%L1").arg(getMyBetAmount());
 				pushButtonCallCheckString = CheckString;
 				if( (activePlayerList->size() > 2 && humanPlayer->getMyButton() == BUTTON_SMALL_BLIND ) || ( activePlayerList->size() <= 2 && humanPlayer->getMyButton() == BUTTON_BIG_BLIND)) {
@@ -2613,6 +2629,7 @@ void gameTableImpl::postRiverRunAnimation1()
 
 void gameTableImpl::postRiverRunAnimation2()
 {
+	std::cout << "[GUI DEBUG] postRiverRunAnimation2() called" << std::endl;
 
 	uncheckMyButtons();
 	myButtonsCheckable(false);
@@ -2641,8 +2658,12 @@ void gameTableImpl::postRiverRunAnimation2()
 
 			for (it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && (*it_c)->checkIfINeedToShowCards()) {
-
+					std::cout << "[GUI DEBUG] Showing cards for player ID " << (*it_c)->getMyUniqueID() 
+						<< " Action:" << (*it_c)->getMyAction() << std::endl;
 					showHoleCards((*it_c)->getMyUniqueID());
+				} else {
+					std::cout << "[GUI DEBUG] NOT showing cards for player ID " << (*it_c)->getMyUniqueID() 
+						<< " Action:" << (*it_c)->getMyAction() << " NeedShow:" << (*it_c)->checkIfINeedToShowCards() << std::endl;
 				}
 
 				//if human player dont need to show cards he gets the button "show cards" in internet or network game
@@ -3898,11 +3919,23 @@ void gameTableImpl::closeGameTable()
 
 		if(close) {
 			//now really close the table
-			myStartWindow->getSession()->terminateNetworkClient();
-			stopTimer();
-			saveGameTableGeometry();
-			myStartWindow->show();
-			this->hide();
+			// In network games, go back to lobby instead of terminating
+			if(myStartWindow->getSession()->isNetworkClientRunning() && 
+			   (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || 
+			    myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_NETWORK)) {
+				// Same behavior as lobby button - just leave the game
+				myStartWindow->getSession()->sendLeaveCurrentGame();
+				stopTimer();
+				saveGameTableGeometry();
+				this->hide();
+			} else {
+				// For local games, terminate client and show start window
+				myStartWindow->getSession()->terminateNetworkClient();
+				stopTimer();
+				saveGameTableGeometry();
+				myStartWindow->show();
+				this->hide();
+			}
 		}
 	}
 }

@@ -544,6 +544,20 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
 {
     if (&client->GetState() == this) {
         if (!ec) {
+            // Set TCP_NODELAY to disable Nagle's algorithm for reduced latency
+            boost::asio::ip::tcp::no_delay option(true);
+            boost::system::error_code nodelay_ec;
+            if (client->GetContext().GetSessionData()->IsSsl()) {
+                client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().set_option(option, nodelay_ec);
+            } else {
+                client->GetContext().GetSessionData()->GetAsioSocket()->set_option(option, nodelay_ec);
+            }
+            if (nodelay_ec) {
+                qDebug() << "[TCP-NODELAY] Failed to set TCP_NODELAY:" << nodelay_ec.message().c_str();
+            } else {
+                qDebug() << "[TCP-NODELAY] TCP_NODELAY enabled successfully";
+            }
+
             if (client->GetContext().GetSessionData()->IsSsl()) {
                 // Start handshake with a timeout
                 qDebug() << "[TLS-CONNECT] TCP connected, starting TLS handshake with 10s timeout...";
@@ -1311,7 +1325,6 @@ ClientStateWaitEnterLogin::~ClientStateWaitEnterLogin()
 void
 ClientStateWaitEnterLogin::Enter(boost::shared_ptr<ClientThread> client)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitEnterLogin::Enter - Entering login state";
 	client->GetStateTimer().expires_after(milliseconds(CLIENT_WAIT_TIMEOUT_MSEC));
 	client->GetStateTimer().async_wait(
 		boost::bind(
@@ -1321,18 +1334,15 @@ ClientStateWaitEnterLogin::Enter(boost::shared_ptr<ClientThread> client)
 void
 ClientStateWaitEnterLogin::Exit(boost::shared_ptr<ClientThread> client)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitEnterLogin::Exit - Exiting login state";
 	client->GetStateTimer().cancel();
 }
 
 void
 ClientStateWaitEnterLogin::HandlePacket(boost::shared_ptr<ClientThread> /*client*/, boost::shared_ptr<NetPacket> tmpPacket)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitEnterLogin::HandlePacket - Message type:" << tmpPacket->GetMsg()->messagetype();
 	if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_ErrorMessage) {
 		// Server reported an error.
 		const ErrorMessage &netError = tmpPacket->GetMsg()->errormessage();
-		qDebug() << "[AUTH DEBUG] ClientStateWaitEnterLogin::HandlePacket - ERROR from server, reason:" << netError.errorreason();
 		// Show the error.
 		throw ClientException(__FILE__, __LINE__, NetPacket::NetErrorToGameError(netError.errorreason()), 0);
 	}
@@ -1344,7 +1354,6 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
     if (!ec && &client->GetState() == this) {
         ClientThread::LoginData loginData;
         if (client->GetLoginData(loginData)) {
-            qDebug() << "[AUTH DEBUG] TimerLoop - Got login data, preparing InitMessage";
             ClientContext &context = client->GetContext();
             boost::shared_ptr<NetPacket> init(new NetPacket);
             init->GetMsg()->set_messagetype(PokerTHMessage::Type_InitMessage);
@@ -1355,11 +1364,9 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             
             // Include session GUID and server password BEFORE setting login type
             if (!context.GetSessionGuid().empty()) {
-                qDebug() << "[AUTH DEBUG] TimerLoop - Using previous session GUID:" << QString::fromStdString(context.GetSessionGuid());
                 netInit->set_mylastsessionid(context.GetSessionGuid());
             }
             if (!context.GetServerPassword().empty()) {
-                qDebug() << "[AUTH DEBUG] TimerLoop - Server password is set";
                 netInit->set_authserverpassword(context.GetServerPassword());
             }
 
@@ -1367,28 +1374,23 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
 
             // Handle guest login first.
             if (loginData.isGuest) {
-                qDebug() << "[AUTH DEBUG] TimerLoop - Guest login for:" << QString::fromStdString(loginData.userName);
                 context.SetPassword("");
                 context.SetPlayerRights(PLAYER_RIGHTS_GUEST);
                 netInit->set_login(InitMessage::guestLogin);
                 netInit->set_nickname(context.GetPlayerName());
 
-                qDebug() << "[AUTH DEBUG] TimerLoop - Sending guest InitMessage, switching to WaitSession";
                 client->GetSender().Send(context.GetSessionData(), init);
                 client->SetState(ClientStateWaitSession::Instance());
             }
             // If the player is not a guest, authenticate.
             else {
-                qDebug() << "[AUTH DEBUG] TimerLoop - Authenticated login for:" << QString::fromStdString(loginData.userName);
                 context.SetPassword(loginData.password);
                 netInit->set_login(InitMessage::authenticatedLogin);
                 netInit->set_nickname(context.GetPlayerName());
                 if (!context.GetPassword().empty()) {
-                    qDebug() << "[AUTH DEBUG] TimerLoop - Password is set (plain text auth)";
                     netInit->set_clientuserdata(context.GetPassword());
                 }
 
-                qDebug() << "[AUTH DEBUG] TimerLoop - Sending authenticated InitMessage, switching to WaitSession";
                 client->GetSender().Send(context.GetSessionData(), init);
                 client->SetState(ClientStateWaitSession::Instance());
             }
@@ -1510,42 +1512,32 @@ ClientStateWaitSession::~ClientStateWaitSession()
 void
 ClientStateWaitSession::Enter(boost::shared_ptr<ClientThread> /*client*/)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitSession::Enter - Waiting for server session response (InitAck or AvatarRequest)";
 }
 
 void
 ClientStateWaitSession::Exit(boost::shared_ptr<ClientThread> /*client*/)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitSession::Exit - Exiting session wait state";
 }
 
 void
 ClientStateWaitSession::InternalHandlePacket(boost::shared_ptr<ClientThread> client, boost::shared_ptr<NetPacket> tmpPacket)
 {
-	qDebug() << "[AUTH DEBUG] ClientStateWaitSession::InternalHandlePacket - Received message type:" << tmpPacket->GetMsg()->messagetype();
 	if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InitAckMessage) {
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Received InitAckMessage (session established!)";
 		// Everything is fine - we are in the lobby.
 		const InitAckMessage &netInitAck = tmpPacket->GetMsg()->initackmessage();
 		client->SetGuiPlayerId(netInitAck.yourplayerid());
 
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Player ID:" << netInitAck.yourplayerid() 
-		         << "Session GUID:" << QString::fromStdString(netInitAck.yoursessionid());
 		client->GetContext().SetSessionGuid(netInitAck.yoursessionid());
 		client->SetSessionEstablished(true);
 		client->GetCallback().SignalNetClientConnect(MSG_SOCK_SESSION_DONE);
 		if (netInitAck.has_rejoingameid()) {
-			qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Rejoin game ID:" << netInitAck.rejoingameid();
 			client->GetCallback().SignalNetClientRejoinPossible(netInitAck.rejoingameid());
 		}
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Switching to WaitJoin state";
 		client->SetState(ClientStateWaitJoin::Instance());
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_AvatarRequestMessage) {
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Received AvatarRequestMessage";
 		// Before letting us join the lobby, the server requests our avatar.
 		const AvatarRequestMessage &netAvatarRequest = tmpPacket->GetMsg()->avatarrequestmessage();
 
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Avatar request ID:" << netAvatarRequest.requestid();
 		// TODO compare SHA1.
 		NetPacketList tmpList;
 		int avatarError = client->GetAvatarManager().AvatarFileToNetPackets(
@@ -1554,14 +1546,11 @@ ClientStateWaitSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cli
 							  tmpList);
 
 		if (!avatarError) {
-			qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Sending avatar data";
 			client->GetSender().Send(client->GetContext().GetSessionData(), tmpList);
 		} else {
-			qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Avatar error:" << avatarError;
 			throw ClientException(__FILE__, __LINE__, avatarError, 0);
 		}
 	} else {
-		qDebug() << "[AUTH DEBUG] ClientStateWaitSession - Unexpected message type:" << tmpPacket->GetMsg()->messagetype();
 	}
 }
 
@@ -1972,12 +1961,28 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 				break;
 			case netPlayerStateNoMoney :
 				tmpPlayer->setMyCash(0);
+				tmpPlayer->setMySetNull(); // Also clear set display for players with no money
+				tmpPlayer->setMyActiveStatus(false);
 				break;
 			}
 		}
 
+		// Reset all player cards before starting new hand to avoid showing old cards from previous hand
+		PlayerListIterator it = client->GetGame()->getSeatsList()->begin();
+		PlayerListIterator end = client->GetGame()->getSeatsList()->end();
+		int emptyCards[2] = {-1, -1};
+		while (it != end) {
+			(*it)->setMyCards(emptyCards);
+			(*it)->setMyCardsValueInt(0);
+			// Also clear sets for all players at hand start to remove stale bet displays
+			(*it)->setMySetNull();
+			++it;
+		}
+
 		// Basic synchronisation before a new hand is started.
 		client->GetGui().waitForGuiUpdateDone();
+		// CRITICAL: Refresh Set display BEFORE starting hand to clear stale bets from eliminated players
+		client->GetGui().refreshSet();
 		// Start new hand.
 		client->GetGame()->getSeatsList()->front()->setMyCards(myCards);
 		client->GetGame()->initHand();
@@ -1987,6 +1992,7 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		client->GetGui().dealHoleCards();
 		client->GetGui().refreshGameLabels(GAME_STATE_PREFLOP);
 		client->GetGui().refreshPot();
+		client->GetGui().refreshCash(); // CRITICAL: Update cash display after hand start (fixes Qt6 timing issue)
 		client->GetGui().waitForGuiUpdateDone();
 
 		client->GetCallback().SignalNetClientGameInfo(MSG_NET_GAME_CLIENT_HAND_START);
@@ -2103,15 +2109,16 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			isBigBlind = true;
 		} else { // no blind -> log
 			if (netActionDone.playeraction()) {
-				assert((int)netActionDone.totalplayerbet() >= tmpPlayer->getMySet());
+				// Defensive: Clamp totalplayerbet to prevent negative values
+				int betAmount = std::max(0, (int)netActionDone.totalplayerbet() - tmpPlayer->getMySet());
 				client->GetGui().logPlayerActionMsg(
 					tmpPlayer->getMyName(),
 					netActionDone.playeraction(),
-					netActionDone.totalplayerbet() - tmpPlayer->getMySet());
+					betAmount);
 				client->GetClientLog()->logPlayerAction(
 					tmpPlayer->getMyName(),
 					client->GetClientLog()->transformPlayerActionLog(PlayerAction(netActionDone.playeraction())),
-					netActionDone.totalplayerbet() - tmpPlayer->getMySet()
+					betAmount
 				);
 				if (tmpPlayer->getMyID() == 0) {
 					client->EndPing();
@@ -2122,10 +2129,71 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		}
 
 		tmpPlayer->setMyAction(PlayerAction(netActionDone.playeraction()));
-		tmpPlayer->setMySetAbsolute(netActionDone.totalplayerbet());
-		tmpPlayer->setMyCash(netActionDone.playermoney());
+		// CRITICAL: Only update set if we're still in the same game state
+		// After Flop/Turn/River, collectPot() has already been called and sets were cleared
+		// Don't restore sets from stale PlayersActionDoneMessage that arrive after card dealing
+		GameState currentRound = curGame->getCurrentHand()->getCurrentRound();
+		bool shouldUpdateSet = false;
+		
+		switch (netActionDone.gamestate()) {
+			case netStatePreflopSmallBlind:
+			case netStatePreflopBigBlind:
+			case netStatePreflop:
+				shouldUpdateSet = (currentRound == GAME_STATE_PREFLOP);
+				break;
+			case netStateFlop:
+				shouldUpdateSet = (currentRound == GAME_STATE_FLOP);
+				break;
+			case netStateTurn:
+				shouldUpdateSet = (currentRound == GAME_STATE_TURN);
+				break;
+			case netStateRiver:
+				shouldUpdateSet = (currentRound == GAME_STATE_RIVER);
+				break;
+			default:
+				shouldUpdateSet = true;
+				break;
+		}
+		
+		// CRITICAL: If message is from a different game state, ignore it completely
+		// (e.g., Preflop All-In action arriving during Flop/Turn/River)
+		// This prevents stale values from being processed and displayed
+		if (!shouldUpdateSet) {
+			// Explicitly clear set to prevent any stale display
+			tmpPlayer->setMySetNull();
+			// Force immediate GUI update to ensure the cleared set is displayed
+			client->GetGui().refreshSet();
+			client->GetGui().waitForGuiUpdateDone();
+			// Skip all further processing for this stale message
+			return;
+		}
+		
+		if (shouldUpdateSet) {
+			// CRITICAL: totalplayerbet is cumulative over the entire hand, not just current round
+			// After collectPot() (when switching to Flop/Turn/River), all sets are reset to 0
+			// But PlayersActionDoneMessage still contains the total from previous rounds
+			// Only use totalplayerbet if player made a new bet/raise in current round
+			// For all-in players (myCash=0) or CHECK actions, keep set at 0
+			if (netActionDone.playermoney() > 0 && netActionDone.totalplayerbet() > 0) {
+				// Player has cash and made a bet → use totalplayerbet
+				tmpPlayer->setMySetAbsolute(netActionDone.totalplayerbet());
+			} else if (netActionDone.playermoney() == 0 && currentRound == GAME_STATE_PREFLOP) {
+				// All-in during Preflop → use totalplayerbet
+				tmpPlayer->setMySetAbsolute(netActionDone.totalplayerbet());
+			}
+			// else: All-in player in post-Flop rounds → keep set at 0 (already set by collectPot)
+		}
+		// CRITICAL: Only update cash if it would not increase from 0
+		// Players with 0 cash (all-in losers) get their final value from EndOfHandShowCardsMessage
+		// Never restore cash from PlayersActionDoneMessage - it may contain stale pre-pot-distribution values
+		if (tmpPlayer->getMyCash() > 0 || netActionDone.playermoney() == 0) {
+			tmpPlayer->setMyCash(netActionDone.playermoney());
+		}
+		
 		curGame->getCurrentHand()->getCurrentBeRo()->setHighestSet(netActionDone.highestset());
 		curGame->getCurrentHand()->getCurrentBeRo()->setMinimumRaise(netActionDone.minimumraise());
+		
+		// collectSets() and switchRounds() are always called when shouldUpdateSet is true
 		curGame->getCurrentHand()->getBoard()->collectSets();
 		curGame->getCurrentHand()->switchRounds();
 
@@ -2195,8 +2263,12 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		// Start displaying the timeout for the player.
 		client->GetGui().startTimeoutAnimation(tmpPlayer->getMyID(), client->GetGameData().playerActionTimeoutSec);
 
-		if (tmpPlayer->getMyID() == 0) // Is this the GUI player?
-			client->GetGui().meInAction();
+		if (tmpPlayer->getMyID() == 0) { // Is this the GUI player?
+			// Only allow action if player has cash and is not already All-In
+			if (tmpPlayer->getMyCash() > 0 || tmpPlayer->getMyAction() != PLAYER_ACTION_ALLIN) {
+				client->GetGui().meInAction();
+			}
+		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_DealFlopCardsMessage) {
 		const DealFlopCardsMessage &netDealFlop = tmpPacket->GetMsg()->dealflopcardsmessage();
 
@@ -2206,7 +2278,14 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		tmpCards[2] = static_cast<int>(netDealFlop.flopcard3());
 		tmpCards[3] = tmpCards[4] = 0;
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
+		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
+		// CRITICAL: Immediately refresh and sync GUI BEFORE any other operations
+		// to prevent race condition with stale PlayersActionDoneMessages
+		client->GetGui().refreshSet();
+		client->GetGui().refreshPot();
+		client->GetGui().waitForGuiUpdateDone();
+		
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
 		ResetPlayerSets(*curGame);
 
@@ -2214,8 +2293,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetClientLog()->setCurrentRound(GAME_STATE_FLOP);
 		client->GetClientLog()->logBoardCards(tmpCards);
 		client->GetGui().refreshGameLabels(GAME_STATE_FLOP);
-		client->GetGui().refreshPot();
-		client->GetGui().refreshSet();
+		client->GetGui().refreshCash();
 		client->GetGui().dealBeRoCards(1);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_DealTurnCardMessage) {
 		const DealTurnCardMessage &netDealTurn = tmpPacket->GetMsg()->dealturncardmessage();
@@ -2224,7 +2302,14 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->getMyCards(tmpCards);
 		tmpCards[3] = static_cast<int>(netDealTurn.turncard());
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
+		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
+		// CRITICAL: Immediately refresh and sync GUI BEFORE any other operations
+		// to prevent race condition with stale PlayersActionDoneMessages
+		client->GetGui().refreshSet();
+		client->GetGui().refreshPot();
+		client->GetGui().waitForGuiUpdateDone();
+		
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
 		ResetPlayerSets(*curGame);
 
@@ -2232,8 +2317,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetClientLog()->setCurrentRound(GAME_STATE_TURN);
 		client->GetClientLog()->logBoardCards(tmpCards);
 		client->GetGui().refreshGameLabels(GAME_STATE_TURN);
-		client->GetGui().refreshPot();
-		client->GetGui().refreshSet();
+		client->GetGui().refreshCash();
 		client->GetGui().dealBeRoCards(2);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_DealRiverCardMessage) {
 		const DealRiverCardMessage &netDealRiver = tmpPacket->GetMsg()->dealrivercardmessage();
@@ -2242,7 +2326,14 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->getMyCards(tmpCards);
 		tmpCards[4] = static_cast<int>(netDealRiver.rivercard());
 		curGame->getCurrentHand()->getBoard()->setMyCards(tmpCards);
+		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
+		// CRITICAL: Immediately refresh and sync GUI BEFORE any other operations
+		// to prevent race condition with stale PlayersActionDoneMessages
+		client->GetGui().refreshSet();
+		client->GetGui().refreshPot();
+		client->GetGui().waitForGuiUpdateDone();
+		
 		curGame->getCurrentHand()->setPreviousPlayerID(-1);
 		ResetPlayerSets(*curGame);
 
@@ -2250,8 +2341,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetClientLog()->setCurrentRound(GAME_STATE_RIVER);
 		client->GetClientLog()->logBoardCards(tmpCards);
 		client->GetGui().refreshGameLabels(GAME_STATE_RIVER);
-		client->GetGui().refreshPot();
-		client->GetGui().refreshSet();
+		client->GetGui().refreshCash();
 		client->GetGui().dealBeRoCards(3);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_AllInShowCardsMessage) {
 		const AllInShowCardsMessage &netAllInShow = tmpPacket->GetMsg()->allinshowcardsmessage();
@@ -2281,6 +2371,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_EndOfHandHideCardsMessage) {
 		const EndOfHandHideCardsMessage &hideCards = tmpPacket->GetMsg()->endofhandhidecardsmessage();
+		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
 		// Reset player sets
 		ResetPlayerSets(*curGame);
@@ -2318,6 +2409,9 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_EndOfHandShowCardsMessage) {
 		const EndOfHandShowCardsMessage &showCards = tmpPacket->GetMsg()->endofhandshowcardsmessage();
 
+		qDebug() << "[SHOWCARD CLI] Received EndOfHandShowCardsMessage with" << showCards.playerresults_size() << "players";
+
+		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
 		// Reset player sets
 		ResetPlayerSets(*curGame);
@@ -2339,10 +2433,14 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			if (!tmpPlayer)
 				throw ClientException(__FILE__, __LINE__, ERR_NET_UNKNOWN_PLAYER_ID, 0);
 
+			qDebug() << "[SHOWCARD CLI] Processing player" << tmpPlayer->getMyName().c_str() << "(ID:" << r.playerid()
+				<< ") Action:" << tmpPlayer->getMyAction() << "Active:" << tmpPlayer->getMyActiveStatus();
+
 			int tmpCards[2];
 			int bestHandPos[5];
 			tmpCards[0] = static_cast<int>(r.resultcard1());
 			tmpCards[1] = static_cast<int>(r.resultcard2());
+			qDebug() << "[SHOWCARD CLI] Setting cards for" << tmpPlayer->getMyName().c_str() << ":" << tmpCards[0] << "," << tmpCards[1];
 			tmpPlayer->setMyCards(tmpCards);
 			for (int num = 0; num < 5; num++) {
 				bestHandPos[num] = r.besthandposition(num);
@@ -2355,10 +2453,19 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 				highestValueOfCards = tmpPlayer->getMyCardsValueInt();
 			tmpPlayer->setMyCash(r.playermoney());
 			tmpPlayer->setLastMoneyWon(r.moneywon());
+			
+			qDebug() << "[WINNER DEBUG]" << tmpPlayer->getMyName().c_str() << "- Cash:" << r.playermoney() 
+				<< "MoneyWon:" << r.moneywon() << "CardsValue:" << (r.has_cardsvalue() ? r.cardsvalue() : 0);
+			
 			if (r.moneywon())
 				winnerList.push_back(r.playerid());
+			qDebug() << "[SHOWCARD CLI] Adding player ID" << r.playerid() << "to showList";
 			showList.push_back(r.playerid());
 		}
+		qDebug() << "[SHOWCARD CLI] Final showList size:" << showList.size();
+
+		// Reset all player actions after showdown to avoid displaying wrong cards in next hand
+		ResetPlayerActions(*curGame);
 
 		curGame->getCurrentHand()->setCurrentRound(GAME_STATE_POST_RIVER);
 		client->GetClientLog()->setCurrentRound(GAME_STATE_POST_RIVER);
@@ -2366,6 +2473,12 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setPot(0);
 		curGame->getCurrentHand()->getBoard()->setWinners(winnerList);
 		curGame->getCurrentHand()->getBoard()->setPlayerNeedToShowCards(showList);
+
+		// CRITICAL: Force immediate GUI cash update to prevent race condition with next hand's HandStartMessage
+		// This ensures the GUI shows correct cash values before any animation or next hand processing
+		client->GetGui().refreshCash();
+		client->GetGui().refreshSet(); // Also refresh sets to clear any stale bet displays
+		client->GetGui().waitForGuiUpdateDone();
 
 		// logging
 		client->GetClientLog()->logHoleCardsHandName(curGame->getActivePlayerList());
@@ -2401,8 +2514,10 @@ ClientStateRunHand::ResetPlayerActions(Game &curGame)
 void
 ClientStateRunHand::ResetPlayerSets(Game &curGame)
 {
-    PlayerListIterator i = curGame.getActivePlayerList()->begin();
-    PlayerListIterator end = curGame.getActivePlayerList()->end();
+    // CRITICAL: Iterate over ALL players in seats, not just active players
+    // Eliminated players (with $0) are not in active list but still need their sets cleared
+    PlayerListIterator i = curGame.getSeatsList()->begin();
+    PlayerListIterator end = curGame.getSeatsList()->end();
     while (i != end) {
         (*i)->setMySetNull();
         ++i;

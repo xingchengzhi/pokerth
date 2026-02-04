@@ -58,6 +58,7 @@
 #include "internetgamelogindialogimpl.h"
 #include "logfiledialog.h"
 #include "guilog.h"
+#include "darkmodehelper.h"
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
@@ -703,6 +704,10 @@ void startWindowImpl::callSettingsDialog(bool ingame)
 
 	if (mySettingsDialog->result() == QDialog::Accepted && mySettingsDialog->getSettingsCorrect()) {
 		myGuiInterface->getMyW()->applySettings(mySettingsDialog);
+		// Apply dark mode palette based on updated config
+		DarkModeHelper::applyPalette(myConfig);
+		// Update lobby dialog dark mode styling if visible
+		myGameLobbyDialog->updateGameListStyleSheet();
 	}
 }
 

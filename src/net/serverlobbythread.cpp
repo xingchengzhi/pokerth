@@ -101,6 +101,19 @@ using namespace std::chrono;
 using namespace boost::chrono;
 #endif
 
+// Hilfsfunktion: Prüft, ob ein Username zu den Test-/Dev-Accounts gehört
+static bool IsTestOrDevAccount(const std::string &username) {
+	// test* Bots (test1, test2, ..., test100)
+	if (username.length() >= 4 && username.substr(0, 4) == "test") {
+		return true;
+	}
+	// Entwickler-Accounts für Tests
+	if (username == "sp0ck" || username == "q4z1" || username == "boehmi") {
+		return true;
+	}
+	return false;
+}
+
 class InternalServerCallback : public SessionDataCallback, public ChatCleanerCallback, public ServerDBCallback
 {
 public:
@@ -415,46 +428,83 @@ void
 ServerLobbyThread::CloseSession(boost::shared_ptr<SessionData> session)
 {
 	if (session && session->GetState() != SessionData::Closed) { // Make this call reentrant.
-		LOG_VERBOSE("Closing session #" << session->GetId() << ".");
+		try {
+			LOG_VERBOSE("Closing session #" << session->GetId() << ".");
 
-		boost::shared_ptr<ServerGame> tmpGame = session->GetGame();
-		if (tmpGame) {
-			tmpGame->RemoveSession(session, NTF_NET_INTERNAL);
-		}
-		session->SetGame(boost::shared_ptr<ServerGame>());
-		
-		// Save the session state before marking as closed
-		SessionData::State oldState = session->GetState();
-		session->SetState(SessionData::Closed);
+			// Save the session state FIRST before any other operation
+			SessionData::State oldState = session->GetState();
+			session->SetState(SessionData::Closed);
+			
+			// Cancel all timers FIRST to prevent timer callbacks from accessing closing session
+			try {
+				session->CancelTimers();
+			} catch (const std::exception& e) {
+				LOG_ERROR("Exception cancelling timers for session #" << session->GetId() << ": " << e.what());
+			}
 
-		m_sessionManager.RemoveSession(session->GetId());
-		m_gameSessionManager.RemoveSession(session->GetId());
+			try {
+				boost::shared_ptr<ServerGame> tmpGame = session->GetGame();
+				if (tmpGame) {
+					tmpGame->RemoveSession(session, NTF_NET_INTERNAL);
+				}
+				session->SetGame(boost::shared_ptr<ServerGame>());
+			} catch (const std::exception& e) {
+				LOG_ERROR("Exception removing session #" << session->GetId() << " from game: " << e.what());
+			}
 
-		if (session->GetPlayerData()) {
-			NotifyPlayerLeftLobby(session->GetPlayerData()->GetUniqueId());
-		}
-		// Update stats (if needed).
-		UpdateStatisticsNumberOfPlayers();
+			try {
+				m_sessionManager.RemoveSession(session->GetId());
+				m_gameSessionManager.RemoveSession(session->GetId());
+			} catch (const std::exception& e) {
+				LOG_ERROR("Exception removing session #" << session->GetId() << " from managers: " << e.what());
+			}
 
-		// Ignore error when shutting down the socket.
-		boost::shared_ptr<boost::asio::ip::tcp::socket> sock = session->GetAsioSocket();
-		if (sock) {
-			boost::system::error_code ec;
-			session->GetAsioSocket()->shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
+			try {
+				if (session->GetPlayerData()) {
+					NotifyPlayerLeftLobby(session->GetPlayerData()->GetUniqueId());
+				}
+			} catch (const std::exception& e) {
+				LOG_ERROR("Exception notifying player left for session #" << session->GetId() << ": " << e.what());
+			}
+			
+			// Update stats (if needed).
+			try {
+				UpdateStatisticsNumberOfPlayers();
+			} catch (...) {}
+
+			// Close sockets - wrap in try-catch to prevent exceptions from propagating
+			try {
+				// Shutdown and close sockets
+				if (session->IsSsl()) {
+					auto sslStream = session->GetSslStream();
+					if (sslStream) {
+						boost::system::error_code ec;
+						sslStream->lowest_layer().cancel(ec);  // Cancel pending async ops
+						sslStream->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+						sslStream->lowest_layer().close(ec);
+					}
+				} else {
+					boost::shared_ptr<boost::asio::ip::tcp::socket> sock = session->GetAsioSocket();
+					if (sock) {
+						boost::system::error_code ec;
+						sock->cancel(ec);  // Cancel pending async ops
+						sock->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+						sock->close(ec);
+					}
+				}
+			} catch (const std::exception& e) {
+				LOG_ERROR("Exception closing socket for session #" << session->GetId() << ": " << e.what());
+			} catch (...) {
+				LOG_ERROR("Unknown exception closing socket for session #" << session->GetId());
+			}
+			
+			// Note: We no longer use CloseSocketHandle() recursively or SetCloseAfterSend 
+			// since we already closed the socket above
+		} catch (const std::exception& e) {
+			LOG_ERROR("Exception in CloseSession for session #" << session->GetId() << ": " << e.what());
+		} catch (...) {
+			LOG_ERROR("Unknown exception in CloseSession");
 		}
-		
-		// For Init state sessions (e.g., TLS handshake failures), close immediately
-		// For established sessions, close after sending pending messages
-		if (oldState == SessionData::Init) {
-			qDebug() << "[SERVER] Init state session - closing socket immediately";
-			session->Close();
-		} else {
-			// Close this session after send for established sessions
-			GetSender().SetCloseAfterSend(session);
-		}
-		
-		// Cancel all timers of the session.
-		session->CancelTimers();
 	}
 }
 
@@ -872,11 +922,32 @@ ServerLobbyThread::Main()
 		// Register all timers.
 		RegisterTimers();
 
-		m_ioService->run(); // Will only be aborted asynchronously.
+		// Use poll() instead of run() to prevent blocking on long-running handlers
+		// This ensures accept operations are processed promptly
+		auto work = boost::asio::make_work_guard(*m_ioService);
+		while (!m_ioService->stopped()) {
+			try {
+				size_t handlers = m_ioService->poll();  // Non-blocking: process ready handlers
+				if (handlers == 0) {
+					Thread::Msleep(1);  // Only sleep if no handlers were processed
+				}
+			} catch (const std::exception& e) {
+				LOG_ERROR("[SERVER-MAIN] Exception in poll loop: " << e.what());
+				// Continue running - don't let one bad handler crash the server
+			} catch (...) {
+				LOG_ERROR("[SERVER-MAIN] Unknown exception in poll loop");
+				// Continue running
+			}
+		}
+		LOG_MSG("[SERVER-MAIN] io_service stopped - exiting main loop");
 
 	} catch (const PokerTHException &e) {
 		GetCallback().SignalNetServerError(e.GetErrorId(), e.GetOsErrorCode());
 		LOG_ERROR("Lobby exception: " << e.what());
+	} catch (const std::exception& e) {
+		LOG_ERROR("[SERVER-MAIN] Fatal exception in Main(): " << e.what());
+	} catch (...) {
+		LOG_ERROR("[SERVER-MAIN] Unknown fatal exception in Main()");
 	}
 	// Clear all sessions and games.
 	m_sessionManager.Clear();
@@ -1096,12 +1167,8 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
         noAuth = true;
     } else if (initMessage.login() == InitMessage::authenticatedLogin) {
         playerName = initMessage.nickname();
-        LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - authenticatedLogin for player: " << playerName 
-                << " has_clientuserdata: " << initMessage.has_clientuserdata()
-                << " has_mylastsessionid: " << initMessage.has_mylastsessionid());
         if (initMessage.has_clientuserdata()) {
             session->AuthSetPassword(initMessage.clientuserdata());
-            LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - Password set, length: " << initMessage.clientuserdata().length());
         }
         noAuth = false;
     } else {
@@ -1143,10 +1210,6 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 	// Set player data for session.
 	m_sessionManager.SetSessionPlayerData(session->GetId(), tmpPlayerData);
 	session->SetPlayerData(tmpPlayerData);
-
-	LOG_MSG("[AUTH DEBUG] HandleNetPacketInit - noAuth: " << noAuth 
-	        << " player: " << playerName 
-	        << " has OldGuid: " << !tmpPlayerData->GetOldGuid().empty());
 
 	if (noAuth)
 		InitAfterLogin(session);
@@ -1352,7 +1415,9 @@ ServerLobbyThread::HandleNetPacketCreateGame(boost::shared_ptr<SessionData> sess
 	} else if (!ServerGame::CheckSettings(tmpData, password, GetServerMode())) {
 		SendJoinGameFailed(session, gameId, NTF_NET_JOIN_INVALID_SETTINGS);
 	} else if (!session->GetPlayerData()->IsPlayerAllowedToJoinCreateLimitRank(m_serverConfig.readConfigString("ServerLimitRankNum"), m_serverConfig.readConfigString("ServerLimitRankPeriod"))
-			&& tmpData.gameType == GAME_TYPE_RANKING ) {
+			&& tmpData.gameType == GAME_TYPE_RANKING
+			// Ausnahme: Test-/Dev-Accounts dürfen Ranking Games erstellen (für Test-Infrastruktur)
+			&& !IsTestOrDevAccount(session->GetPlayerData()->GetName())) {
 		LOG_ERROR("not allowed due to ranklimit");
 		SendJoinGameFailed(session, gameId, NTF_NET_JOIN_IP_BLOCKED);
 	} else {
@@ -1412,6 +1477,8 @@ ServerLobbyThread::HandleNetPacketJoinGame(boost::shared_ptr<SessionData> sessio
 				   && session->GetClientAddr() != SERVER_ADDRESS_LOCALHOST_STR
 				   && session->GetClientAddr() != SERVER_ADDRESS_LOCALHOST_STR_V4V6
 				   && session->GetClientAddr() != SERVER_ADDRESS_LOCALHOST_STR_V4
+				   // Ausnahme: Test-/Dev-Accounts dürfen mehrere von gleicher IP (für Test-Infrastruktur)
+				   && !IsTestOrDevAccount(session->GetPlayerData()->GetName())
 				   && game->IsClientAddressConnected(session->GetClientAddr())) {
 				SendJoinGameFailed(session, joinGame.gameid(), NTF_NET_JOIN_IP_BLOCKED);
 			} else {
@@ -1699,23 +1766,15 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	if (!session->GetPlayerData())
 		throw ServerException(__FILE__, __LINE__, ERR_NET_INVALID_SESSION, 0);
 
-	LOG_MSG("[AUTH DEBUG] EstablishSession - START for player: " << session->GetPlayerData()->GetName() 
-	        << " ID: " << session->GetPlayerData()->GetUniqueId()
-	        << " Has OldGuid: " << !session->GetPlayerData()->GetOldGuid().empty());
-
 	unsigned rejoinPlayerId = 0;
 	u_int32_t rejoinGameId = GetRejoinGameIdForPlayer(session->GetPlayerData()->GetName(), session->GetPlayerData()->GetOldGuid(), rejoinPlayerId);
-	LOG_MSG("[AUTH DEBUG] EstablishSession - GetRejoinGameIdForPlayer returned: " << rejoinGameId 
-	        << " rejoinPlayerId: " << rejoinPlayerId);
 	
 	if (rejoinGameId != 0) {
-		LOG_MSG("[AUTH DEBUG] EstablishSession - Offering rejoin for game: " << rejoinGameId);
 		// Offer rejoin, and disconnect current player with the same name.
 		InternalRemovePlayer(rejoinPlayerId, ERR_NET_PLAYER_NAME_IN_USE);
 	} else {
 		// Check whether this player is already connected.
 		unsigned previousPlayerId = GetPlayerId(session->GetPlayerData()->GetName());
-		LOG_MSG("[AUTH DEBUG] EstablishSession - GetPlayerId returned: " << previousPlayerId);
 		if (previousPlayerId != 0 && previousPlayerId != session->GetPlayerData()->GetUniqueId()) {
 #ifdef POKERTH_OFFICIAL_SERVER
 			// If this is a login server with a websocket connection, decline connection.
@@ -1749,7 +1808,6 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	boost::uuids::uuid sessionGuid(m_sessionIdGenerator());
 	session->GetPlayerData()->SetGuid(string((char *)&sessionGuid, boost::uuids::uuid::static_size()));
 
-	LOG_MSG("[AUTH DEBUG] EstablishSession - Sending InitAckMessage to player ID: " << session->GetPlayerData()->GetUniqueId());
 
 	// Send ACK to client.
 	boost::shared_ptr<NetPacket> ack(new NetPacket);
@@ -1762,7 +1820,6 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 		netInitAck->set_rejoingameid(rejoinGameId);
 	}
 	GetSender().Send(session, ack);
-	LOG_MSG("[AUTH DEBUG] EstablishSession - InitAckMessage sent successfully");
 
 	// Send the connected players list to the client.
 	SendPlayerList(session);
@@ -1782,16 +1839,12 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 
 	UpdateStatisticsNumberOfPlayers();
 	
-	LOG_MSG("[AUTH DEBUG] EstablishSession - COMPLETED for player ID: " << session->GetPlayerData()->GetUniqueId());
 }
 
 void
 ServerLobbyThread::AuthenticatePlayer(boost::shared_ptr<SessionData> session)
 {
 	if(session->GetPlayerData()) {
-		LOG_MSG("[AUTH DEBUG] AuthenticatePlayer - Player ID: " << session->GetPlayerData()->GetUniqueId() 
-		        << " Name: " << session->GetPlayerData()->GetName() 
-		        << " Has OldGuid: " << !session->GetPlayerData()->GetOldGuid().empty());
 		m_database->AsyncPlayerLogin(session->GetPlayerData()->GetUniqueId(), session->GetPlayerData()->GetName());
 	}
 }
@@ -1802,17 +1855,11 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
     boost::shared_ptr<SessionData> tmpSession = m_sessionManager.GetSessionByUniquePlayerId(playerId, true);
 
     if (!tmpSession) {
-        LOG_MSG("[AUTH DEBUG] UserValid - Session not found for player ID: " << playerId);
         return;
     }
 
     std::string providedPassword = tmpSession->AuthGetPassword();
-    LOG_MSG("[AUTH DEBUG] UserValid - Player ID: " << playerId 
-            << " Provided password length: " << providedPassword.length()
-            << " DB secret length: " << dbPlayerData.secret.length()
-            << " Match: " << (providedPassword == dbPlayerData.secret));
     if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
-        LOG_MSG("[AUTH DEBUG] UserValid - Password match, establishing session");
         EstablishSession(tmpSession);
     } else {
         LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");
@@ -1823,12 +1870,9 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
 void
 ServerLobbyThread::UserInvalid(unsigned playerId)
 {
-	LOG_MSG("[AUTH DEBUG] UserInvalid - Player ID: " << playerId << " - sending ERR_NET_INVALID_PASSWORD");
 	boost::shared_ptr<SessionData> tmpSession = m_sessionManager.GetSessionByUniquePlayerId(playerId, true);
 	if (tmpSession) {
-		LOG_MSG("[AUTH DEBUG] UserInvalid - Found session, calling SessionError");
 	} else {
-		LOG_MSG("[AUTH DEBUG] UserInvalid - Session NOT found!");
 	}
 	SessionError(tmpSession, ERR_NET_INVALID_PASSWORD);
 }
@@ -2110,9 +2154,7 @@ ServerLobbyThread::SessionTimeoutWarning(boost::shared_ptr<SessionData> session,
 void
 ServerLobbyThread::SessionError(boost::shared_ptr<SessionData> session, int errorCode)
 {
-	LOG_MSG("[AUTH DEBUG] SessionError - Error code: " << errorCode << " Session: " << (session ? "valid" : "NULL"));
 	if (session) {
-		LOG_MSG("[AUTH DEBUG] SessionError - Session ID: " << session->GetId() << " ClientAddr: " << session->GetClientAddr());
 		if (errorCode == ERR_NET_PLAYER_KICKED || errorCode == ERR_NET_SESSION_TIMED_OUT) {
 			if (session->GetGame() && session->GetPlayerData()) {
 				session->GetGame()->MarkPlayerAsKicked(session->GetPlayerData()->GetUniqueId());
@@ -2120,9 +2162,7 @@ ServerLobbyThread::SessionError(boost::shared_ptr<SessionData> session, int erro
 		}
 
 		SendError(session, errorCode);
-		LOG_MSG("[AUTH DEBUG] SessionError - SendError called, now closing session");
 		CloseSession(session);
-		LOG_MSG("[AUTH DEBUG] SessionError - Session closed");
 	}
 }
 
@@ -2130,14 +2170,11 @@ void
 ServerLobbyThread::SendError(boost::shared_ptr<SessionData> s, int errorCode)
 {
 	LOG_VERBOSE("Sending error code " << errorCode << " to session #" << s->GetId() << ".");
-	LOG_MSG("[AUTH DEBUG] SendError - Creating ErrorMessage packet, error code: " << errorCode);
 	boost::shared_ptr<NetPacket> packet(new NetPacket);
 	packet->GetMsg()->set_messagetype(PokerTHMessage::Type_ErrorMessage);
 	ErrorMessage *netError = packet->GetMsg()->mutable_errormessage();
 	netError->set_errorreason(NetPacket::GameErrorToNetError(errorCode));
-	LOG_MSG("[AUTH DEBUG] SendError - Calling GetSender().Send()");
 	GetSender().Send(s, packet);
-	LOG_MSG("[AUTH DEBUG] SendError - Send() completed");
 }
 
 void

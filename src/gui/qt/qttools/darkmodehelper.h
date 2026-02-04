@@ -28,70 +28,75 @@
  * shall include the source code for the parts of OpenSSL used as well       *
  * as that of the covered work.                                              *
  *****************************************************************************/
-/* Thread safe server session manager. */
+#ifndef DARKMODEHELPER_H
+#define DARKMODEHELPER_H
 
-#ifndef _SESSIONMANAGER_H_
-#define _SESSIONMANAGER_H_
+#include <QApplication>
+#include <QPalette>
+#include <QColor>
 
-#include <boost/function.hpp>
-#include <map>
-#include <vector>
+class ConfigFile;
 
-#include <net/sessiondata.h>
-#include <playerdata.h>
-#include <gamedata.h>
-#include <core/thread.h>
-
-class NetPacket;
-class SenderHelper;
-
-class SessionManager
+/**
+ * @brief Helper class for dark mode detection and configuration
+ * 
+ * DarkMode config values:
+ *   0 = Light (force light mode)
+ *   1 = Dark (force dark mode)
+ *   2 = Auto (follow system theme)
+ */
+class DarkModeHelper
 {
 public:
-	SessionManager();
-	virtual ~SessionManager();
-
-	void AddSession(boost::shared_ptr<SessionData> sessionData);
-	void SetSessionPlayerData(SessionId session, boost::shared_ptr<PlayerData> playerData);
-	bool RemoveSession(SessionId session);
-
-	boost::shared_ptr<SessionData> GetSessionById(SessionId id) const;
-	boost::shared_ptr<SessionData> GetSessionByPlayerName(const std::string &playerName) const;
-	boost::shared_ptr<SessionData> GetSessionByUniquePlayerId(unsigned uniqueId, bool initSessions = false) const;
-	std::vector<boost::shared_ptr<SessionData>> GetAllSessions() const;
-
-	PlayerDataList GetPlayerDataList() const;
-	PlayerDataList GetSpectatorDataList() const;
-	PlayerIdList GetPlayerIdList(int state) const;
-	bool IsPlayerConnected(const std::string &playerName) const;
-	bool IsPlayerConnected(unsigned uniqueId) const;
-	bool IsClientAddressConnected(const std::string &clientAddress) const;
-	bool IsGuestAllowedToConnect(const std::string &clientAddress) const;
-	bool IsPlayerAllowedToJoinCreateLimitRank(const std::string &playerName) const;
-	bool IsPlayerAllowedToJoinCreateLimitRank(unsigned uniqueId) const;
-
-	void ForEach(boost::function<void (boost::shared_ptr<SessionData>)> func);
-
-	unsigned CountReadySessions() const;
-	void ResetAllReadyFlags();
-
-	void Clear();
-	unsigned GetRawSessionCount() const;
-	unsigned GetSessionCountWithState(int state) const;
-	bool HasSessionWithState(int state) const;
-
-	void SendToAllSessions(SenderHelper &sender, boost::shared_ptr<NetPacket> packet, int state);
-	void SendLobbyMsgToAllSessions(SenderHelper &sender, boost::shared_ptr<NetPacket> packet, int state);
-	void SendToAllButOneSessions(SenderHelper &sender, boost::shared_ptr<NetPacket> packet, SessionId except, int state);
-
-protected:
-
-	typedef std::map<SessionId, boost::shared_ptr<SessionData> > SessionMap;
-
-private:
-
-	SessionMap m_sessionMap;
-	mutable boost::recursive_mutex m_sessionMapMutex;
+    /**
+     * @brief Store the original system palette (call once at startup before any modifications)
+     */
+    static void storeSystemPalette();
+    
+    /**
+     * @brief Determines if dark mode should be used based on config and system theme
+     * @param config Pointer to ConfigFile (can be nullptr for system-only detection)
+     * @return true if dark mode should be used, false otherwise
+     */
+    static bool isDarkMode(ConfigFile *config);
+    
+    /**
+     * @brief Detects if the system is using a dark theme
+     * @return true if system uses dark theme, false otherwise
+     */
+    static bool isSystemDarkMode();
+    
+    /**
+     * @brief Gets the appropriate background color for dark/light mode
+     * @param config Pointer to ConfigFile
+     * @return Background color string (hex format)
+     */
+    static QString getBackgroundColor(ConfigFile *config);
+    
+    /**
+     * @brief Gets the appropriate text color for dark/light mode
+     * @param config Pointer to ConfigFile
+     * @return Text color string (hex or rgb format)
+     */
+    static QString getTextColor(ConfigFile *config);
+    
+    /**
+     * @brief Applies the appropriate palette to the application based on config
+     * @param config Pointer to ConfigFile
+     */
+    static void applyPalette(ConfigFile *config);
+    
+    /**
+     * @brief Creates a dark mode palette
+     * @return QPalette configured for dark mode
+     */
+    static QPalette createDarkPalette();
+    
+    /**
+     * @brief Creates a light mode palette
+     * @return QPalette configured for light mode
+     */
+    static QPalette createLightPalette();
 };
 
-#endif
+#endif // DARKMODEHELPER_H

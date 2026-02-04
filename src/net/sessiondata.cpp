@@ -36,8 +36,8 @@
 #include <net/websendbuffer.h>
 #include <net/socket_msg.h>
 #include <net/websocketdata.h>
+#include <core/loghelper.h>
 #include <boost/asio/ssl.hpp>
-#include <QDebug>
 
 using namespace std;
 using boost::asio::ip::tcp;
@@ -157,31 +157,24 @@ SessionData::CreateServerAuthSession(Gsasl *context)
 bool
 SessionData::CreateClientAuthSession(Gsasl *context, const string &userName, const string &password)
 {
-	qDebug() << "[AUTH DEBUG] SessionData::CreateClientAuthSession - User:" << QString::fromStdString(userName) 
-	         << "Password length:" << password.length();
 	boost::mutex::scoped_lock lock(m_dataMutex);
 	InternalClearAuthSession();
 	m_password = password;
 	m_authSession = NULL;
 	m_curAuthStep = 0;
 	(void)context; (void)userName;
-	qDebug() << "[AUTH DEBUG] SessionData::CreateClientAuthSession - Auth session created (plain text mode)";
 	return true;
 }
 
 bool
 SessionData::AuthStep(int stepNum, const std::string &inData)
 {
-	qDebug() << "[AUTH DEBUG] SessionData::AuthStep - Requested step:" << stepNum 
-	         << "Current step:" << m_curAuthStep << "InData length:" << inData.length();
 	boost::mutex::scoped_lock lock(m_dataMutex);
 	if (stepNum == m_curAuthStep + 1) {
-		qDebug() << "[AUTH DEBUG] SessionData::AuthStep - Step accepted, advancing to step" << stepNum;
 		m_curAuthStep = stepNum;
 		m_nextGsaslMsg.clear();
 		return true;
 	}
-	qDebug() << "[AUTH DEBUG] SessionData::AuthStep - Step REJECTED (invalid sequence)";
 	return false;
 }
 
@@ -232,6 +225,7 @@ SessionData::TimerInitTimeout(const boost::system::error_code &ec)
 		// Close session ONLY if still in Init state (hanging TLS handshake or stuck login)
 		// Do NOT close sessions that are Established, Game, Spectating, etc.
 		if (GetState() == SessionData::Init) {
+			LOG_MSG("[SESSION-TIMEOUT] Init timeout for session " << GetId() << " - forcing close");
 			// Force-close the socket to abort any pending async operations (e.g., hanging TLS handshake)
 			CloseSocketHandle();
 			m_callback.SessionError(shared_from_this(), ERR_NET_SESSION_TIMED_OUT);
@@ -321,10 +315,15 @@ SessionData::CloseSocketHandle()
 {
     if (m_socket) {
         boost::system::error_code ec;
+        // Cancel all pending async operations first
+        m_socket->cancel(ec);
+        // Then close the socket
         m_socket->close(ec);
     } else if (m_sslStream) {
         boost::system::error_code ec;
-        // close underlying socket
+        // Cancel all pending async operations first
+        m_sslStream->lowest_layer().cancel(ec);
+        // Then close underlying socket
         m_sslStream->lowest_layer().close(ec);
     }
 }

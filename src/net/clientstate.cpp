@@ -479,7 +479,7 @@ ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
     
     // Initialize handshake timer if using SSL
     if (client->GetContext().GetSessionData()->IsSsl() && !m_handshakeTimer) {
-        qDebug() << "[TLS-CONNECT] Initializing handshake timer in Enter()";
+        // qDebug() << "[TLS-CONNECT] Initializing handshake timer in Enter()";
         m_handshakeTimer.reset(new boost::asio::steady_timer(client->GetStateTimer().get_executor()));
     }
     
@@ -512,23 +512,23 @@ ClientStateStartConnect::Enter(boost::shared_ptr<ClientThread> client)
 void
 ClientStateStartConnect::Exit(boost::shared_ptr<ClientThread> client)
 {
-	qDebug() << "[TLS-CONNECT] Exit called - cleaning up timers";
+	// qDebug() << "[TLS-CONNECT] Exit called - cleaning up timers";
 	
 	// Cancel and reset all timers
 	client->GetStateTimer().cancel();
 	if (m_retryTimer) {
-		qDebug() << "[TLS-CONNECT] Cancelling and resetting retry timer";
+		// qDebug() << "[TLS-CONNECT] Cancelling and resetting retry timer";
 		m_retryTimer->cancel();
 		m_retryTimer.reset();  // Komplett zurücksetzen
 	}
 	if (m_handshakeTimer) {
-		qDebug() << "[TLS-CONNECT] Cancelling and resetting handshake timer";
+		// qDebug() << "[TLS-CONNECT] Cancelling and resetting handshake timer";
 		m_handshakeTimer->cancel();
 		m_handshakeTimer.reset();  // Komplett zurücksetzen
 	}
 	// Retry-Counter auch zurücksetzen für den nächsten Verbindungsversuch
 	m_handshakeRetryCount = 0;
-	qDebug() << "[TLS-CONNECT] Exit complete - all timers reset";
+	// qDebug() << "[TLS-CONNECT] Exit complete - all timers reset";
 }
 
 void
@@ -553,31 +553,31 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                 client->GetContext().GetSessionData()->GetAsioSocket()->set_option(option, nodelay_ec);
             }
             if (nodelay_ec) {
-                qDebug() << "[TCP-NODELAY] Failed to set TCP_NODELAY:" << nodelay_ec.message().c_str();
+                // qDebug() << "[TCP-NODELAY] Failed to set TCP_NODELAY:" << nodelay_ec.message().c_str();
             } else {
-                qDebug() << "[TCP-NODELAY] TCP_NODELAY enabled successfully";
+                // qDebug() << "[TCP-NODELAY] TCP_NODELAY enabled successfully";
             }
 
             if (client->GetContext().GetSessionData()->IsSsl()) {
                 // Start handshake with a timeout
-                qDebug() << "[TLS-CONNECT] TCP connected, starting TLS handshake with 10s timeout...";
+                // qDebug() << "[TLS-CONNECT] TCP connected, starting TLS handshake with 10s timeout...";
                 
                 // Create handshake timeout timer
                 if (!m_handshakeTimer) {
-                    qDebug() << "[TLS-CONNECT] Creating new handshake timer";
+                    // qDebug() << "[TLS-CONNECT] Creating new handshake timer";
                     m_handshakeTimer.reset(new boost::asio::steady_timer(client->GetStateTimer().get_executor()));
                 } else {
-                    qDebug() << "[TLS-CONNECT] Reusing existing handshake timer";
+                    // qDebug() << "[TLS-CONNECT] Reusing existing handshake timer";
                 }
-                qDebug() << "[TLS-CONNECT] Setting handshake timer to expire in 4 seconds...";
+                // qDebug() << "[TLS-CONNECT] Setting handshake timer to expire in 4 seconds...";
                 m_handshakeTimer->expires_after(boost::asio::chrono::seconds(4));
-                qDebug() << "[TLS-CONNECT] Scheduling async_wait for handshake timeout...";
+                // qDebug() << "[TLS-CONNECT] Scheduling async_wait for handshake timeout...";
                 m_handshakeTimer->async_wait(
                     boost::bind(&ClientStateStartConnect::HandshakeTimeout,
                                 this,
                                 boost::asio::placeholders::error,
                                 client));
-                qDebug() << "[TLS-CONNECT] Handshake timer scheduled successfully";
+                // qDebug() << "[TLS-CONNECT] Handshake timer scheduled successfully";
                 
                 client->GetContext().GetSessionData()->GetSslStream()->async_handshake(
                     boost::asio::ssl::stream_base::client,
@@ -629,7 +629,7 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
 void
 ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client)
 {
-    qDebug() << "[TLS-CONNECT] HandleSslHandshake called - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
+    // qDebug() << "[TLS-CONNECT] HandleSslHandshake called - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
     
     if (&client->GetState() == this) {
         // Cancel the handshake timeout timer
@@ -638,7 +638,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
         }
         
         if (!ec) {
-            qDebug() << "[TLS-CONNECT] SSL Handshake completed successfully!";
+            // qDebug() << "[TLS-CONNECT] SSL Handshake completed successfully!";
             m_handshakeRetryCount = 0; // Reset counter on success
             if (m_retryTimer) {
                 m_retryTimer->cancel(); // Cancel any pending retry timer
@@ -646,10 +646,10 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
             client->GetCallback().SignalNetClientConnect(MSG_SOCK_CONNECT_DONE);
             client->SetState(ClientStateStartSession::Instance());
         } else {
-            qDebug() << "[TLS-CONNECT] SSL Handshake ERROR - operation_aborted:" << (ec == boost::asio::error::operation_aborted);
+            // qDebug() << "[TLS-CONNECT] SSL Handshake ERROR - operation_aborted:" << (ec == boost::asio::error::operation_aborted);
             if (ec != boost::asio::error::operation_aborted) {
-                qDebug() << "[TLS-CONNECT] SSL Handshake FAILED:" << ec.message().c_str() 
-                         << "(code:" << ec.value() << "category:" << ec.category().name() << ")";
+                // qDebug() << "[TLS-CONNECT] SSL Handshake FAILED:" << ec.message().c_str() 
+                //          << "(code:" << ec.value() << "category:" << ec.category().name() << ")";
                 
                 // Try to get more detailed SSL error information
                 SSL* ssl = client->GetContext().GetSessionData()->GetSslStream()->native_handle();
@@ -658,7 +658,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     if (ssl_err != 0) {
                         char err_buf[256];
                         ERR_error_string_n(ssl_err, err_buf, sizeof(err_buf));
-                        qDebug() << "[TLS-CONNECT] OpenSSL error:" << err_buf;
+                        // qDebug() << "[TLS-CONNECT] OpenSSL error:" << err_buf;
                     }
                 }
                 
@@ -667,7 +667,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     m_handshakeRetryCount++;
                     // Delay: 2s
                     int delayMs = 2000;
-                    qDebug() << "[TLS-CONNECT] Retrying TLS handshake (attempt" << m_handshakeRetryCount << "of 1) after" << delayMs << "ms...";
+                    // qDebug() << "[TLS-CONNECT] Retrying TLS handshake (attempt" << m_handshakeRetryCount << "of 1) after" << delayMs << "ms...";
                     
                     // Reset timeout timer to give all retries enough time
                     client->GetStateTimer().cancel();
@@ -680,7 +680,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     
                     RetryHandshake(client);
                 } else {
-                    qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
+                    // qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
                     // Close the session to clean up async operations
                     try {
                         client->GetContext().GetSessionData()->Close();
@@ -690,7 +690,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
                     throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, ec.value());
                 }
             } else {
-                qDebug() << "[TLS-CONNECT] Handshake was aborted (timeout or user cancel), not retrying.";
+                // qDebug() << "[TLS-CONNECT] Handshake was aborted (timeout or user cancel), not retrying.";
                 // Close the session to clean up async operations
                 try {
                     client->GetContext().GetSessionData()->Close();
@@ -700,7 +700,7 @@ ClientStateStartConnect::HandleSslHandshake(const boost::system::error_code& ec,
             }
         }
     } else {
-        qDebug() << "[TLS-CONNECT] HandleSslHandshake ignored - state mismatch (connection probably timed out)";
+        // qDebug() << "[TLS-CONNECT] HandleSslHandshake ignored - state mismatch (connection probably timed out)";
     }
 }
 
@@ -710,7 +710,7 @@ ClientStateStartConnect::RetryHandshake(boost::shared_ptr<ClientThread> client)
     // Use exponential backoff: 500ms, 1s, 2s, 4s, 8s
     int delayMs = 250 * (1 << m_handshakeRetryCount);
     
-    qDebug() << "[TLS-CONNECT] Scheduling handshake retry in" << delayMs << "ms...";
+    // qDebug() << "[TLS-CONNECT] Scheduling handshake retry in" << delayMs << "ms...";
     
     // Cancel any existing retry timer
     if (m_retryTimer) {
@@ -735,12 +735,12 @@ void
 ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client)
 {
     if (!ec && &client->GetState() == this) {
-        qDebug() << "[TLS-CONNECT] Retry timer fired, attempting handshake again...";
+        // qDebug() << "[TLS-CONNECT] Retry timer fired, attempting handshake again...";
         
         ClientContext &context = client->GetContext();
         
         // Close the old session completely
-        qDebug() << "[TLS-CONNECT] Closing old session before retry...";
+        // qDebug() << "[TLS-CONNECT] Closing old session before retry...";
         try {
             context.GetSessionData()->Close();
         } catch (...) {
@@ -748,7 +748,7 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         }
         
         // Recreate the session with a new SSL stream
-        qDebug() << "[TLS-CONNECT] Recreating SSL session for retry...";
+        // qDebug() << "[TLS-CONNECT] Recreating SSL session for retry...";
         client->CreateContextSession();
         
         // Reset the connection timeout timer to give this retry enough time
@@ -762,7 +762,7 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
         
         // Reset iterator to first endpoint for retry
         m_remoteEndpointIterator = m_remoteEndpoint.begin();
-        qDebug() << "[TLS-CONNECT] Reset endpoint iterator to first endpoint";
+        // qDebug() << "[TLS-CONNECT] Reset endpoint iterator to first endpoint";
         
         // Get the first endpoint
         boost::asio::ip::tcp::endpoint endpoint = m_remoteEndpointIterator->endpoint();
@@ -776,17 +776,17 @@ ClientStateStartConnect::RetryHandshakeTimer(const boost::system::error_code& ec
                         ++m_remoteEndpointIterator,
                         client));
     } else if (ec == boost::asio::error::operation_aborted) {
-        qDebug() << "[TLS-CONNECT] Retry timer cancelled";
+        // qDebug() << "[TLS-CONNECT] Retry timer cancelled";
     }
 }
 
 void
 ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client)
 {
-    qDebug() << "[TLS-CONNECT] *** HandshakeTimeout FIRED *** - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
+    // qDebug() << "[TLS-CONNECT] *** HandshakeTimeout FIRED *** - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
     
     if (!ec && &client->GetState() == this) {
-        qDebug() << "[TLS-CONNECT] *** Handshake TIMEOUT after 10s - triggering retry! ***";
+        // qDebug() << "[TLS-CONNECT] *** Handshake TIMEOUT after 10s - triggering retry! ***";
         
         // Close the hanging SSL connection
         ClientContext &context = client->GetContext();
@@ -802,7 +802,7 @@ ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, b
             m_handshakeRetryCount++;
             // Wartezeit: 2s (insgesamt ~10s: 4s + 2s + 4s)
             int delayMs = 2000;
-            qDebug() << "[TLS-CONNECT] Retrying TLS handshake (attempt" << m_handshakeRetryCount << "of 1) after" << delayMs << "ms...";
+            // qDebug() << "[TLS-CONNECT] Retrying TLS handshake (attempt" << m_handshakeRetryCount << "of 1) after" << delayMs << "ms...";
             
             // Reset connection timeout timer
             client->GetStateTimer().cancel();
@@ -815,7 +815,7 @@ ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, b
             
             RetryHandshake(client);
         } else {
-            qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
+            // qDebug() << "[TLS-CONNECT] TLS handshake failed after 1 retry, giving up.";
             // Close the session to clean up async operations
             try {
                 context.GetSessionData()->Close();
@@ -828,17 +828,17 @@ ClientStateStartConnect::HandshakeTimeout(const boost::system::error_code& ec, b
                 throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, 0);
         }
     } else if (ec == boost::asio::error::operation_aborted) {
-        qDebug() << "[TLS-CONNECT] Handshake timer was cancelled";
+        // qDebug() << "[TLS-CONNECT] Handshake timer was cancelled";
     }
 }
 
 void
 ClientStateStartConnect::TimerTimeout(const boost::system::error_code& ec, boost::shared_ptr<ClientThread> client)
 {
-    qDebug() << "[TLS-CONNECT] TimerTimeout called - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
+    // qDebug() << "[TLS-CONNECT] TimerTimeout called - ec:" << ec.value() << "State match:" << (&client->GetState() == this);
     
     if (!ec && &client->GetState() == this) {
-        qDebug() << "[TLS-CONNECT] Connection TIMEOUT! Closing socket and throwing exception.";
+        // qDebug() << "[TLS-CONNECT] Connection TIMEOUT! Closing socket and throwing exception.";
         ClientContext &context = client->GetContext();
 
         if (context.GetSessionData()) {
@@ -855,9 +855,9 @@ ClientStateStartConnect::TimerTimeout(const boost::system::error_code& ec, boost
             throw ClientException(__FILE__, __LINE__, ERR_SOCK_CONNECT_FAILED, 0);
     } else {
         if (ec) {
-            qDebug() << "[TLS-CONNECT] Timer was cancelled (ec:" << ec.message().c_str() << ")";
+            // qDebug() << "[TLS-CONNECT] Timer was cancelled (ec:" << ec.message().c_str() << ")";
         } else {
-            qDebug() << "[TLS-CONNECT] Timer fired but state mismatch - ignoring";
+            // qDebug() << "[TLS-CONNECT] Timer fired but state mismatch - ignoring";
         }
     }
 }
@@ -1241,23 +1241,23 @@ void
 ClientStateStartSession::Enter(boost::shared_ptr<ClientThread> client)
 {
 	// Now we finally start receiving data.
-	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Starting async read after TLS handshake";
+	// qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Starting async read after TLS handshake";
 	client->StartAsyncRead();
-	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Async read started, waiting for AnnounceMessage";
+	// qDebug() << "[SESSION DEBUG] ClientStateStartSession::Enter - Async read started, waiting for AnnounceMessage";
 }
 
 void
 ClientStateStartSession::Exit(boost::shared_ptr<ClientThread> /*client*/)
 {
-	qDebug() << "[SESSION DEBUG] ClientStateStartSession::Exit - Leaving session start state";
+	// qDebug() << "[SESSION DEBUG] ClientStateStartSession::Exit - Leaving session start state";
 }
 
 void
 ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> client, boost::shared_ptr<NetPacket> tmpPacket)
 {
-	qDebug() << "[SESSION DEBUG] ClientStateStartSession::InternalHandlePacket - Received message type:" << tmpPacket->GetMsg()->messagetype();
+	// qDebug() << "[SESSION DEBUG] ClientStateStartSession::InternalHandlePacket - Received message type:" << tmpPacket->GetMsg()->messagetype();
 	if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_AnnounceMessage) {
-		qDebug() << "[SESSION DEBUG] ClientStateStartSession - Received AnnounceMessage from server";
+		// qDebug() << "[SESSION DEBUG] ClientStateStartSession - Received AnnounceMessage from server";
 		// Server has send announcement - check data.
 		const AnnounceMessage &netAnnounce = tmpPacket->GetMsg()->announcemessage();
 		// Check current game version.
@@ -2422,7 +2422,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_EndOfHandShowCardsMessage) {
 		const EndOfHandShowCardsMessage &showCards = tmpPacket->GetMsg()->endofhandshowcardsmessage();
 
-		qDebug() << "[SHOWCARD CLI] Received EndOfHandShowCardsMessage with" << showCards.playerresults_size() << "players";
+		// qDebug() << "[SHOWCARD CLI] Received EndOfHandShowCardsMessage with" << showCards.playerresults_size() << "players";
 
 		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
@@ -2445,14 +2445,14 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			if (!tmpPlayer)
 				throw ClientException(__FILE__, __LINE__, ERR_NET_UNKNOWN_PLAYER_ID, 0);
 
-			qDebug() << "[SHOWCARD CLI] Processing player" << tmpPlayer->getMyName().c_str() << "(ID:" << r.playerid()
-				<< ") Action:" << tmpPlayer->getMyAction() << "Active:" << tmpPlayer->getMyActiveStatus();
+			// qDebug() << "[SHOWCARD CLI] Processing player" << tmpPlayer->getMyName().c_str() << "(ID:" << r.playerid()
+			//	<< ") Action:" << tmpPlayer->getMyAction() << "Active:" << tmpPlayer->getMyActiveStatus();
 
 			int tmpCards[2];
 			int bestHandPos[5];
 			tmpCards[0] = static_cast<int>(r.resultcard1());
 			tmpCards[1] = static_cast<int>(r.resultcard2());
-			qDebug() << "[SHOWCARD CLI] Setting cards for" << tmpPlayer->getMyName().c_str() << ":" << tmpCards[0] << "," << tmpCards[1];
+			// qDebug() << "[SHOWCARD CLI] Setting cards for" << tmpPlayer->getMyName().c_str() << ":" << tmpCards[0] << "," << tmpCards[1];
 			tmpPlayer->setMyCards(tmpCards);
 			for (int num = 0; num < 5; num++) {
 				bestHandPos[num] = r.besthandposition(num);
@@ -2466,8 +2466,8 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			tmpPlayer->setMyCash(r.playermoney());
 			tmpPlayer->setLastMoneyWon(r.moneywon());
 			
-			qDebug() << "[WINNER DEBUG]" << tmpPlayer->getMyName().c_str() << "- Cash:" << r.playermoney() 
-				<< "MoneyWon:" << r.moneywon() << "CardsValue:" << (r.has_cardsvalue() ? r.cardsvalue() : 0);
+			// qDebug() << "[WINNER DEBUG]" << tmpPlayer->getMyName().c_str() << "- Cash:" << r.playermoney() 
+			//	<< "MoneyWon:" << r.moneywon() << "CardsValue:" << (r.has_cardsvalue() ? r.cardsvalue() : 0);
 			
 			if (r.moneywon())
 				winnerList.push_back(r.playerid());
@@ -2477,7 +2477,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		// (instead of showing all players from playerresults)
 		curGame->getCurrentHand()->getBoard()->determinePlayerNeedToShowCards();
 		std::list<unsigned> showList = curGame->getCurrentHand()->getBoard()->getPlayerNeedToShowCards();
-		qDebug() << "[SHOWCARD CLI] determinePlayerNeedToShowCards returned showList size:" << showList.size();
+		// qDebug() << "[SHOWCARD CLI] determinePlayerNeedToShowCards returned showList size:" << showList.size();
 
 		// NOTE: Do NOT call ResetPlayerActions here!
 		// The GUI needs the FOLD actions intact to decide which cards to show in postRiverRunAnimation2().

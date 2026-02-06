@@ -387,7 +387,7 @@ ConfigFile::ConfigFile(char *argv0, bool readonly) : noWriteAccess(readonly)
 					QFile file(QString::fromStdString(configFileName));
 					if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
 					{
-						qDebug("Failed to open file for writing.");
+						// qDebug("Failed to open file for writing.");
 					}
 					else
 					{
@@ -546,7 +546,7 @@ void ConfigFile::writeBuffer() const
 		QFile file(QString::fromStdString(configFileName));
 		if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
 		{
-			qDebug("Failed to open file for writing.");
+			// qDebug("Failed to open file for writing.");
 		}
 		else
 		{

@@ -441,7 +441,7 @@ void settingsDialogImpl::prepareDialog()
 			} else item->setIcon(0, QIcon());
 		}
 		if(!currentGameTableFound) {
-			qDebug() << "Config ERROR: current game table style file not found in List. Try to mark default as selected.";
+			// qDebug() << "Config ERROR: current game table style file not found in List. Try to mark default as selected.";
 			QTreeWidgetItem *item = treeWidget_gameTableStyles->topLevelItem(0);
 			if(item) {
 				item->setIcon(0, QIcon(QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str())+"/gfx/gui/misc/rating.png"));

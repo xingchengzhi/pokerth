@@ -1464,7 +1464,7 @@ void gameTableImpl::refreshPot()
 
 	int sets = currentHand->getBoard()->getSets();
 	int pot = currentHand->getBoard()->getPot();
-	qDebug() << "[REFRESH POT] Sets:" << sets << "Pot:" << pot << "Total:" << (sets + pot);
+	// qDebug() << "[REFRESH POT] Sets:" << sets << "Pot:" << pot << "Total:" << (sets + pot);
 	
 	textLabel_Sets->setText("$"+QString("%L1").arg(sets));
 	textLabel_Pot->setText("$"+QString("%L1").arg(pot));
@@ -2630,7 +2630,7 @@ void gameTableImpl::postRiverRunAnimation1()
 
 void gameTableImpl::postRiverRunAnimation2()
 {
-	std::cout << "[GUI DEBUG] postRiverRunAnimation2() called" << std::endl;
+	// std::cout << "[GUI DEBUG] postRiverRunAnimation2() called" << std::endl;
 
 	uncheckMyButtons();
 	myButtonsCheckable(false);
@@ -2659,12 +2659,12 @@ void gameTableImpl::postRiverRunAnimation2()
 
 			for (it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && (*it_c)->checkIfINeedToShowCards()) {
-					std::cout << "[GUI DEBUG] Showing cards for player ID " << (*it_c)->getMyUniqueID() 
-						<< " Action:" << (*it_c)->getMyAction() << std::endl;
+					// std::cout << "[GUI DEBUG] Showing cards for player ID " << (*it_c)->getMyUniqueID() 
+					// 	<< " Action:" << (*it_c)->getMyAction() << std::endl;
 					showHoleCards((*it_c)->getMyUniqueID());
 				} else {
-					std::cout << "[GUI DEBUG] NOT showing cards for player ID " << (*it_c)->getMyUniqueID() 
-						<< " Action:" << (*it_c)->getMyAction() << " NeedShow:" << (*it_c)->checkIfINeedToShowCards() << std::endl;
+					// std::cout << "[GUI DEBUG] NOT showing cards for player ID " << (*it_c)->getMyUniqueID() 
+					// 	<< " Action:" << (*it_c)->getMyAction() << " NeedShow:" << (*it_c)->checkIfINeedToShowCards() << std::endl;
 				}
 
 				//if human player dont need to show cards he gets the button "show cards" in internet or network game

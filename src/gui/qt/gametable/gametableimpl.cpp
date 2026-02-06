@@ -2715,6 +2715,15 @@ void gameTableImpl::postRiverRunAnimation3()
 
 	list<unsigned> winners = currentHand->getBoard()->getWinners();
 
+	// Determine the maximum money won among all winners for side pot detection
+	int maxMoneyWon = 0;
+	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
+		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
+		if(isW && (*it_c)->getLastMoneyWon() > maxMoneyWon) {
+			maxMoneyWon = (*it_c)->getLastMoneyWon();
+		}
+	}
+
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		// Nur echte Winner anzeigen (die in der winners-Liste sind), nicht nur höchster Kartenwert
 		bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
@@ -2804,8 +2813,9 @@ void gameTableImpl::postRiverRunAnimation3()
 			//Wenn River dann auch das Blatt loggen!
 			// 			if (textLabel_handLabel->text() == "River") {
 
-			//set Player value (logging) - alle Gewinner als Hauptgewinn loggen
-			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(),true);
+			//set Player value (logging) - main pot vs side pot detection
+			bool isMainPot = ((*it_c)->getLastMoneyWon() >= maxMoneyWon);
+			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(),isMainPot);
 
 			// 			}
 			// 			else {
@@ -2823,8 +2833,7 @@ void gameTableImpl::postRiverRunAnimation3()
 		}
 	}
 
-	// Side pot logging entfernt - Server entscheidet wer gewinnt und sendet korrekte MoneyWon Werte
-	// Alle Gewinner wurden bereits oben als "main" geloggt
+	// Side pot detection: winner with highest amount = main pot, others = side pot
 
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		if((*it_c)->getMyCash() == 0) {

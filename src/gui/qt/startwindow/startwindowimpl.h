@@ -33,6 +33,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <assert.h>
+#include <QDateTime>
 
 #ifdef GUI_800x480
 #include "ui_startwindow_800x480.h"
@@ -170,6 +171,12 @@ public slots:
 	void showTimeoutDialog(int msgID, unsigned duration);
 	void hideTimeoutDialog();
 
+	// Connection monitoring (heartbeat)
+	void handleStatsUpdate(ServerStats stats);
+	void updateServerActivity();
+	void connectionHeartbeatCheck();
+	void showConnectionLostDialog();
+
 	void networkError(int, int);
 	void networkNotification(int);
 	void networkMessage(QString);
@@ -207,6 +214,11 @@ private:
 
 	MyMessageBox msgBoxOutdatedVersion;
 	bool msgBoxOutdatedVersionActive;
+
+	// Connection monitoring (heartbeat detection for silent disconnects)
+	QTimer *connectionHeartbeatTimer;
+	QDateTime lastServerActivity;
+	bool connectionMonitoringActive;
 
 	friend class GuiWrapper;
 };

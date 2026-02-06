@@ -19,6 +19,8 @@ docker/android/build/
 /chatcleaner
 docker/linux/pokerth-linux-binary/
 *workspace
+botfiles/
+
 
 # Test infrastructure - sensitive data
 *_with_key.sh

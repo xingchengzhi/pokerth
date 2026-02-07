@@ -174,6 +174,7 @@ public slots:
 	// Connection monitoring (heartbeat)
 	void handleStatsUpdate(ServerStats stats);
 	void updateServerActivity();
+	void stopConnectionMonitoring();
 	void connectionHeartbeatCheck();
 	void showConnectionLostDialog();
 

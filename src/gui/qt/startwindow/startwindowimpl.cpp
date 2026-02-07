@@ -314,6 +314,7 @@ void startWindowImpl::startNewLocalGame(newGameDialogImpl *v)
 	myGuiInterface->getMyW()->show();
 
 	// Start new local game - terminate existing network game.
+	stopConnectionMonitoring();
 	mySession->terminateNetworkClient();
 	if (myServerGuiInterface.get())
 		myServerGuiInterface->getSession()->terminateNetworkServer();
@@ -434,6 +435,7 @@ void startWindowImpl::joinGameLobby()
 	// Stop local game.
 	myGuiInterface->getMyW()->stopTimer();
 
+	stopConnectionMonitoring();
 	mySession->terminateNetworkClient();
 	if (myServerGuiInterface)
 		myServerGuiInterface->getSession()->terminateNetworkServer();
@@ -668,6 +670,7 @@ void startWindowImpl::showLobbyDialog()
 			myGuiInterface->getMyW()->networkGameModification();
 		} else {
 			myGameLobbyDialog->clearDialog();
+			stopConnectionMonitoring();
 			mySession->terminateNetworkClient();
 		}
 	}, Qt::UniqueConnection);
@@ -683,6 +686,7 @@ void startWindowImpl::showLobbyDialog()
 		myGuiInterface->getMyW()->networkGameModification();
 	} else {
 		myGameLobbyDialog->clearDialog();
+		stopConnectionMonitoring();
 		mySession->terminateNetworkClient();
 	}
 #endif
@@ -770,6 +774,12 @@ void startWindowImpl::updateServerActivity()
 	}
 }
 
+void startWindowImpl::stopConnectionMonitoring()
+{
+	connectionMonitoringActive = false;
+	connectionHeartbeatTimer->stop();
+}
+
 void startWindowImpl::connectionHeartbeatCheck()
 {
 	if (!connectionMonitoringActive) {
@@ -788,8 +798,7 @@ void startWindowImpl::connectionHeartbeatCheck()
 void startWindowImpl::showConnectionLostDialog()
 {
 	// Stop monitoring
-	connectionMonitoringActive = false;
-	connectionHeartbeatTimer->stop();
+	stopConnectionMonitoring();
 	
 	// Show warning to user
 	MyMessageBox::warning(this, tr("Connection Lost"),
@@ -803,8 +812,7 @@ void startWindowImpl::showConnectionLostDialog()
 void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 {
 	// Stop connection monitoring
-	connectionMonitoringActive = false;
-	connectionHeartbeatTimer->stop();
+	stopConnectionMonitoring();
 
 	hideTimeoutDialog();
 	switch (errorID) {

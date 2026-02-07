@@ -78,7 +78,7 @@
 #define SERVER_INIT_SESSION_TIMEOUT_SEC				60
 #define SERVER_TIMEOUT_WARNING_REMAINING_SEC		60
 #define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1800	// 30 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
-#define SERVER_SESSION_FORCED_TIMEOUT_SEC			86400	// 1 day, should be quite large.
+#define SERVER_SESSION_FORCED_TIMEOUT_SEC			604800	// 7 days - reset on every client activity
 
 #define SERVER_ADDRESS_LOCALHOST_STR_V4				"127.0.0.1"
 #define SERVER_ADDRESS_LOCALHOST_STR_V4V6			"::ffff:127.0.0.1"
@@ -1043,8 +1043,10 @@ void
 ServerLobbyThread::HandlePacket(boost::shared_ptr<SessionData> session, boost::shared_ptr<NetPacket> packet)
 {
 	if (session && packet) {
-		if (packet->IsClientActivity())
+		if (packet->IsClientActivity()) {
 			session->ResetActivityTimer();
+			session->ResetGlobalTimeout();
+		}
 
 		if (session->GetState() == SessionData::Init) {
 			if (packet->GetMsg()->messagetype() == PokerTHMessage::Type_InitMessage) {
@@ -2135,6 +2137,10 @@ ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 		// Set state (back) to established.
 		session->SetState(SessionData::Established);
 		session->SetGame(boost::shared_ptr<ServerGame>());
+		// Reset timers when returning to lobby - prevents stale timeouts from
+		// the original connection time killing long-lived sessions.
+		session->ResetActivityTimer();
+		session->ResetGlobalTimeout();
 		// Add session to lobby list.
 		m_sessionManager.AddSession(session);
 	} else {

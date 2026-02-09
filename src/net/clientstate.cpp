@@ -387,6 +387,7 @@ ClientStateReadingServerList::Enter(boost::shared_ptr<ClientThread> client)
 
 		if (serverCount == 1) {
 			client->UseServer(lastServerInfoId);
+			client->CreateContextSession();  // Recreate session with TLS setting from serverlist
 			client->GetCallback().SignalNetClientConnect(MSG_SOCK_SERVER_LIST_DONE);
 			client->SetState(ClientStateStartResolve::Instance());
 		} else if (serverCount > 1) {
@@ -443,6 +444,7 @@ ClientStateWaitChooseServer::TimerLoop(const boost::system::error_code& ec, boos
 		unsigned serverId;
 		if (client->GetSelectedServer(serverId)) {
 			client->UseServer(serverId);
+			client->CreateContextSession();  // Recreate session with TLS setting from serverlist
 			client->GetCallback().SignalNetClientConnect(MSG_SOCK_SERVER_LIST_DONE);
 			client->SetState(ClientStateStartResolve::Instance());
 		} else {

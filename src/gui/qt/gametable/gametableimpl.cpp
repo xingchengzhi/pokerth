@@ -2725,9 +2725,11 @@ void gameTableImpl::postRiverRunAnimation3()
 	}
 
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
-		// Nur echte Winner anzeigen (die in der winners-Liste sind), nicht nur höchster Kartenwert
+		// Nur echte Winner anzeigen: in der winners-Liste UND tatsächlich profitiert
+		// (Spieler die nur ihren Überschuss zurückbekommen sind keine echten Gewinner)
 		bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-		if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && isWinner) {
+		bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+		if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon) {
 
 			//Show "Winner" label
 			actionLabelArray[(*it_c)->getMyID()]->setPixmap(QPixmap::fromImage(QImage(myGameTableStyle->getActionPic(7))));
@@ -2862,6 +2864,8 @@ void gameTableImpl::postRiverRunAnimation5()
 
 	if (distributePotAnimCounter<10) {
 
+		list<unsigned> winners = currentHand->getBoard()->getWinners();
+
 		if (distributePotAnimCounter==0 || distributePotAnimCounter==2 || distributePotAnimCounter==4 || distributePotAnimCounter==6 || distributePotAnimCounter==8) {
 
 #ifndef GUI_800x480
@@ -2869,8 +2873,9 @@ void gameTableImpl::postRiverRunAnimation5()
 #endif
 
 			for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
-
-				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && (*it_c)->getMyCardsValueInt() == currentHand->getCurrentBeRo()->getHighestCardsValue() ) {
+				bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
+				bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon ) {
 
 					playerNameLabelArray[(*it_c)->getMyID()]->hide();
 				}
@@ -2881,8 +2886,9 @@ void gameTableImpl::postRiverRunAnimation5()
 #endif
 
 			for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
-
-				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && (*it_c)->getMyCardsValueInt() == currentHand->getCurrentBeRo()->getHighestCardsValue() ) {
+				bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
+				bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon ) {
 
 					playerNameLabelArray[(*it_c)->getMyID()]->show();
 				}

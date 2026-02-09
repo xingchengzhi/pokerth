@@ -573,6 +573,13 @@ ClientThread::Main()
 		m_ioService->run(); // Will only be aborted asynchronously.
 
 	} catch (const PokerTHException &e) {
+		// Flush any pending log data before handling the error
+		// This ensures the current hand's data is written to SQLite
+		// even during unexpected disconnects
+		if (m_clientLog) {
+			m_clientLog->flushLog();
+		}
+
 		// Close the session completely before handling the error
 		// qDebug() << "[CLIENT] Exception caught - closing session";
 		if (GetContext().GetSessionData()) {

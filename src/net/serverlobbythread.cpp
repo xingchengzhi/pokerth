@@ -1869,6 +1869,8 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
 
     std::string providedPassword = tmpSession->AuthGetPassword();
     if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
+        tmpSession->GetPlayerData()->SetDBId(dbPlayerData.id);
+        tmpSession->GetPlayerData()->SetCountry(dbPlayerData.country);
         EstablishSession(tmpSession);
     } else {
         LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");

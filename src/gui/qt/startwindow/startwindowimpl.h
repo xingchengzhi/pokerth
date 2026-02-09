@@ -220,6 +220,8 @@ private:
 	QTimer *connectionHeartbeatTimer;
 	QDateTime lastServerActivity;
 	bool connectionMonitoringActive;
+	bool connectionLostHandlingActive;
+	int missedHeartbeats;
 
 	friend class GuiWrapper;
 };

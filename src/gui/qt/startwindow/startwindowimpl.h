@@ -33,7 +33,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <assert.h>
-#include <QDateTime>
+#include <QElapsedTimer>
 
 #ifdef GUI_800x480
 #include "ui_startwindow_800x480.h"
@@ -218,7 +218,7 @@ private:
 
 	// Connection monitoring (heartbeat detection for silent disconnects)
 	QTimer *connectionHeartbeatTimer;
-	QDateTime lastServerActivity;
+	QElapsedTimer lastServerActivityTimer; // monotonic clock – immune to NTP/DST/sleep clock jumps
 	bool connectionMonitoringActive;
 	bool connectionLostHandlingActive;
 	int missedHeartbeats;

@@ -486,11 +486,18 @@ void gameLobbyDialogImpl::refresh(int actionID)
 		this->accept();
 		myW->show();
 	} else if(actionID == MSG_NET_GAME_CLIENT_END) {
-		// Game ended naturally - reset lobby state so the player can
-		// browse games and see connected players again.
-		inGame = false;
+		// Game ended naturally.  The player is still in the game session
+		// on the server (only auto-leave players are removed automatically).
+		// Keep inGame = true and show the Leave button so the player can
+		// manually leave.  Previously this called leftGameDialogUpdate()
+		// which hid the Leave button, leaving non-auto-leave players stuck.
 		isGameAdministrator = false;
-		leftGameDialogUpdate();
+		pushButton_StartGame->hide();
+		pushButton_Kick->hide();
+		pushButton_Kick->setEnabled(false);
+		checkBox_fillUpWithComputerOpponents->hide();
+		pushButton_Leave->show();
+		pushButton_Leave->setEnabled(true);
 	} else if(actionID == MSG_NET_GAME_CLIENT_SYNCSTART) {
 		waitStartGameMsgBoxTimer->start(2000);
 	} else if(actionID == MSG_NET_GAME_CLIENT_SYNCREJOIN) {

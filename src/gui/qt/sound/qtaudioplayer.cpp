@@ -10,9 +10,156 @@ static const char* SOUND_FILES[] = {
     "lobbychatnotify", "onlinegameready", "playerconnected", "raise", "yourturn"
 };
 
+// --- WavMixer implementation ---
+
+WavMixer::WavMixer(QObject* parent)
+    : QIODevice(parent), volume(1.0f)
+{
+    open(QIODevice::ReadOnly);
+}
+
+bool WavMixer::loadWav(const QString& key, const QString& filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    if (fileData.size() < 44)
+        return false;
+    if (fileData.mid(0, 4) != "RIFF" || fileData.mid(8, 4) != "WAVE")
+        return false;
+
+    // Parse chunks: validate fmt, extract data
+    int pos = 12;
+    bool fmtValid = false;
+
+    while (pos + 8 <= fileData.size()) {
+        QByteArray chunkId = fileData.mid(pos, 4);
+        quint32 chunkSize = qFromLittleEndian<quint32>(
+            reinterpret_cast<const uchar*>(fileData.constData() + pos + 4));
+
+        if (chunkId == "fmt " && chunkSize >= 16) {
+            const uchar* fmt = reinterpret_cast<const uchar*>(fileData.constData() + pos + 8);
+            quint16 audioFormat = qFromLittleEndian<quint16>(fmt);
+            quint16 channels    = qFromLittleEndian<quint16>(fmt + 2);
+            quint32 sampleRate  = qFromLittleEndian<quint32>(fmt + 4);
+            quint16 bitsPerSample = qFromLittleEndian<quint16>(fmt + 14);
+
+            if (audioFormat == 1 && channels == 2 && sampleRate == 44100 && bitsPerSample == 16) {
+                fmtValid = true;
+            } else {
+                qWarning() << "[Audio] Unsupported WAV format in" << key
+                           << "- need PCM 16-bit stereo 44100Hz";
+                return false;
+            }
+        }
+
+        if (chunkId == "data" && fmtValid) {
+            qint64 avail = fileData.size() - pos - 8;
+            if (static_cast<qint64>(chunkSize) > avail)
+                chunkSize = static_cast<quint32>(avail);
+
+            WavSample sample;
+            sample.pcmData = fileData.mid(pos + 8, chunkSize);
+            samples.insert(key, sample);
+            return true;
+        }
+
+        pos += 8 + chunkSize;
+        if (chunkSize & 1) pos++; // Pad to even boundary
+    }
+    return false;
+}
+
+void WavMixer::play(const QString& key)
+{
+    QMutexLocker lock(&mutex);
+    auto it = samples.constFind(key);
+    if (it == samples.constEnd())
+        return;
+
+    ActiveVoice voice;
+    voice.pcmData = &it->pcmData;
+    voice.position = 0;
+    voices.append(voice);
+}
+
+void WavMixer::setVolume(float vol)
+{
+    QMutexLocker lock(&mutex);
+    volume = qBound(0.0f, vol, 1.0f);
+}
+
+void WavMixer::stopAll()
+{
+    QMutexLocker lock(&mutex);
+    voices.clear();
+}
+
+qint64 WavMixer::readData(char* data, qint64 maxSize)
+{
+    QMutexLocker lock(&mutex);
+
+    // Align to frame boundary (4 bytes = 2 channels x 16-bit)
+    maxSize &= ~3LL;
+    if (maxSize <= 0)
+        return 0;
+
+    memset(data, 0, static_cast<size_t>(maxSize));
+
+    if (voices.isEmpty())
+        return maxSize; // Output silence
+
+    const qint64 numSamples = maxSize / 2; // 16-bit samples
+    qint16* out = reinterpret_cast<qint16*>(data);
+
+    for (int v = voices.size() - 1; v >= 0; --v) {
+        ActiveVoice& voice = voices[v];
+        const qint16* src = reinterpret_cast<const qint16*>(
+            voice.pcmData->constData() + voice.position);
+        qint64 remaining = (voice.pcmData->size() - voice.position) / 2;
+        qint64 toMix = qMin(numSamples, remaining);
+
+        for (qint64 i = 0; i < toMix; ++i) {
+            qint32 mixed = static_cast<qint32>(out[i])
+                         + static_cast<qint32>(src[i] * volume);
+            out[i] = static_cast<qint16>(qBound(-32768, mixed, 32767));
+        }
+
+        voice.position += toMix * 2; // Back to bytes
+        if (voice.position >= voice.pcmData->size()) {
+            voices.removeAt(v);
+        }
+    }
+
+    return maxSize;
+}
+
+qint64 WavMixer::writeData(const char*, qint64)
+{
+    return -1;
+}
+
+bool WavMixer::isSequential() const
+{
+    return true;
+}
+
+qint64 WavMixer::bytesAvailable() const
+{
+    // Infinite stream: always report data available so QAudioSink keeps pulling
+    return 1024 * 1024;
+}
+
+// --- QtAudioPlayer ---
+
 QtAudioPlayer::QtAudioPlayer(ConfigFile *config)
     : myConfig(config), audioEnabled(false), backend(AudioBackend::QSoundEffectBackend),
-      mediaDevices(nullptr), deviceChangeDebounceTimer(nullptr)
+      mediaDevices(nullptr), deviceChangeDebounceTimer(nullptr),
+      mixer(nullptr), mixerSink(nullptr)
 {
     myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
     
@@ -67,54 +214,48 @@ void QtAudioPlayer::initAudio()
     
     // Determine which backend to use
     if (forcedBackend.toLower() == "paplay") {
-        // qDebug() << "[Audio] Forced paplay backend via environment variable";
         backend = AudioBackend::PaPlayBackend;
     } else if (forcedBackend.toLower() == "qsoundeffect") {
-        // qDebug() << "[Audio] Forced QSoundEffect backend via environment variable";
         backend = AudioBackend::QSoundEffectBackend;
+    } else if (forcedBackend.toLower() == "mixer") {
+        backend = AudioBackend::SoftwareMixerBackend;
     } else {
         // Auto-detect best backend
 #ifdef Q_OS_LINUX
-        // On Linux, QSoundEffect/QAudioSink can silently fail on PipeWire setups
-        // even though probing reports success. 
-        // Prefer paplay/pw-play which reliably creates PulseAudio streams.
+        // On Linux prefer paplay for PipeWire/PulseAudio compatibility
         if (detectPaPlay()) {
-            // qDebug() << "[Audio] Auto-select: using paplay backend (most reliable on Linux)";
             backend = AudioBackend::PaPlayBackend;
         } else {
-            // qDebug() << "[Audio] Auto-select: paplay not available, using QSoundEffect";
-            backend = AudioBackend::QSoundEffectBackend;
+            backend = AudioBackend::SoftwareMixerBackend;
         }
 #else
-        backend = AudioBackend::QSoundEffectBackend;
+        // Windows/macOS: software mixer for low-latency, glitch-free playback
+        backend = AudioBackend::SoftwareMixerBackend;
 #endif
     }
     
     // Initialize selected backend
     float vol = myConfig->readConfigInt("SoundVolume") / 10.0f;
-    // qDebug() << "[Audio] Volume:" << vol;
     
-    if (backend == AudioBackend::PaPlayBackend) {
+    QAudioDevice deviceToUse = selectedDevice.isNull() 
+        ? QMediaDevices::defaultAudioOutput() 
+        : selectedDevice;
+    
+    if (backend == AudioBackend::SoftwareMixerBackend) {
+        initSoftwareMixerBackend(deviceToUse, vol);
+    } else if (backend == AudioBackend::PaPlayBackend) {
         if (detectPaPlay()) {
             initPaPlayBackend();
         } else {
-            qWarning() << "[Audio] paplay not found - falling back to QSoundEffect";
-            backend = AudioBackend::QSoundEffectBackend;
-            QAudioDevice deviceToUse = selectedDevice.isNull() 
-                ? QMediaDevices::defaultAudioOutput() 
-                : selectedDevice;
-            initQSoundEffectBackend(deviceToUse, vol);
+            qWarning() << "[Audio] paplay not found - falling back to software mixer";
+            backend = AudioBackend::SoftwareMixerBackend;
+            initSoftwareMixerBackend(deviceToUse, vol);
         }
     } else {
-        QAudioDevice deviceToUse = selectedDevice.isNull() 
-            ? QMediaDevices::defaultAudioOutput() 
-            : selectedDevice;
         initQSoundEffectBackend(deviceToUse, vol);
     }
     
     audioEnabled = true;
-    // qDebug() << "[Audio] Initialization complete, backend:" 
-    //          << (backend == AudioBackend::PaPlayBackend ? "paplay" : "QSoundEffect");
 }
 
 void QtAudioPlayer::initQSoundEffectBackend(const QAudioDevice& device, float volume)
@@ -196,7 +337,9 @@ void QtAudioPlayer::playSound(std::string audioName, int /*playerID*/)
 
     const QString key = QString::fromStdString(audioName);
     
-    if (backend == AudioBackend::PaPlayBackend) {
+    if (backend == AudioBackend::SoftwareMixerBackend) {
+        playSoundSoftwareMixer(key);
+    } else if (backend == AudioBackend::PaPlayBackend) {
         playSoundPaPlay(key);
     } else {
         playSoundQSoundEffect(key);
@@ -264,9 +407,62 @@ void QtAudioPlayer::playSoundPaPlay(const QString& key)
     }
 }
 
+void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float vol)
+{
+    mixer = new WavMixer(this);
+    mixer->setVolume(vol);
+
+    for (const char* soundName : SOUND_FILES) {
+        QString key = QString::fromLatin1(soundName);
+        QString filePath = myAppDataPath + "sounds/default/" + key + ".wav";
+
+        if (!QFileInfo::exists(filePath)) {
+            qWarning() << "[Audio] Sound file not found:" << filePath;
+            continue;
+        }
+        if (!mixer->loadWav(key, filePath)) {
+            qWarning() << "[Audio] Failed to parse WAV:" << filePath;
+        }
+    }
+
+    // Single persistent audio output - eliminates per-sound WASAPI session latency
+    QAudioFormat format;
+    format.setSampleRate(44100);
+    format.setChannelCount(2);
+    format.setSampleFormat(QAudioFormat::Int16);
+
+    QAudioDevice sinkDevice = device.isNull() ? QMediaDevices::defaultAudioOutput() : device;
+    mixerSink = new QAudioSink(sinkDevice, format, this);
+    mixerSink->setBufferSize(44100 * 4 / 10); // ~100ms buffer for low latency
+    mixerSink->start(mixer);
+
+    if (mixerSink->error() != QAudio::NoError) {
+        qWarning() << "[Audio] Failed to start mixer sink:" << mixerSink->error();
+        delete mixerSink;
+        mixerSink = nullptr;
+    }
+}
+
+void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
+{
+    if (mixer) {
+        mixer->play(key);
+    }
+}
+
 void QtAudioPlayer::closeAudio()
 {
-    // qDebug() << "[Audio] Closing audio";
+    if (mixerSink) {
+        mixerSink->stop();
+        delete mixerSink;
+        mixerSink = nullptr;
+    }
+    if (mixer) {
+        mixer->stopAll();
+        mixer->close();
+        delete mixer;
+        mixer = nullptr;
+    }
     for (auto& e : effects) {
         if (e) {
             e->stop();
@@ -330,8 +526,23 @@ void QtAudioPlayer::applyDeviceToEffects()
         return;
     }
     
-    // qDebug() << "[Audio] Applying device:" << deviceToUse.description() 
-    //          << "to" << effects.size() << "effects";
+    if (backend == AudioBackend::SoftwareMixerBackend) {
+        // Recreate the audio sink with the new device
+        if (mixerSink) {
+            mixerSink->stop();
+            delete mixerSink;
+        }
+        QAudioFormat format;
+        format.setSampleRate(44100);
+        format.setChannelCount(2);
+        format.setSampleFormat(QAudioFormat::Int16);
+        mixerSink = new QAudioSink(deviceToUse, format, this);
+        mixerSink->setBufferSize(44100 * 4 / 10);
+        if (mixer) {
+            mixerSink->start(mixer);
+        }
+        return;
+    }
     
     for (auto& effect : effects) {
         if (effect) {

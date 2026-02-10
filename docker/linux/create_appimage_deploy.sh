@@ -99,12 +99,12 @@ collect_all_dependencies() {
             local libname
             libname="$(basename "$lib")"
 
-            # PulseAudio/ALSA Client-Libs überspringen (müssen zum Host-Audio passen)
-            case "$libname" in
-                libpulse.so.* | libpulse-simple.so.* | libpulsecommon-*.so | \
-                libasound.so.*)
-                    continue ;;
-            esac
+            # Audio-Libs (libpulse, libasound) werden MIT-gebündelt.
+            # libpulse ist eine reine Client-Lib die per Socket mit dem
+            # Host-Audio-Server (PulseAudio/PipeWire) kommuniziert.
+            # Ohne Bundling fehlt libpulse.so.0 auf Systemen die nur
+            # PipeWire ohne pulseaudio-Kompatibilitätspaket installiert haben
+            # (z.B. Fedora-Minimalinstallationen).
 
             grep -qxF "$lib" "$processed" 2>/dev/null && continue
             echo "$lib" >> "$processed"

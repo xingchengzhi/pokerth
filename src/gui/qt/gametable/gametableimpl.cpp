@@ -1212,8 +1212,8 @@ void gameTableImpl::refreshAction(int playerID, int playerAction)
 		PlayerList seatsList = currentGame->getSeatsList();
 		for (it_c=seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
 
-			//if no action --> clear Pixmap
-			if( (*it_c)->getMyAction() == 0) {
+			//if no action or player inactive --> clear Pixmap
+			if( (*it_c)->getMyAction() == 0 || !(*it_c)->getMyActiveStatus()) {
 				actionLabelArray[(*it_c)->getMyID()]->setPixmap(onePix);
 			} else {
 				//paint action pixmap
@@ -1229,8 +1229,20 @@ void gameTableImpl::refreshAction(int playerID, int playerAction)
 			}
 		}
 	} else {
-		//if no action --> clear Pixmap
-		if(playerAction == 0) {
+		// Check if this is an inactive/eliminated player - clear their action label
+		boost::shared_ptr<PlayerInterface> targetPlayer;
+		PlayerListConstIterator it_c;
+		PlayerList seatsList = currentGame->getSeatsList();
+		for (it_c=seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
+			if((*it_c)->getMyID() == playerID) {
+				targetPlayer = *it_c;
+				break;
+			}
+		}
+		bool playerInactive = (targetPlayer && !targetPlayer->getMyActiveStatus());
+
+		//if no action or player inactive --> clear Pixmap
+		if(playerAction == 0 || playerInactive) {
 			actionLabelArray[playerID]->setPixmap(onePix);
 		} else {
 
@@ -3070,6 +3082,16 @@ void gameTableImpl::nextRoundCleanGui()
 {
 
 	int i,j;
+
+	// Stop any still-running post-river animation timers from the previous hand
+	// to prevent them from overwriting action labels after refreshAll()
+	postRiverAnimation1Timer->stop();
+	postRiverRunAnimation1Timer->stop();
+	postRiverRunAnimation2Timer->stop();
+	postRiverRunAnimation3Timer->stop();
+	postRiverRunAnimation5Timer->stop();
+	postRiverRunAnimation6Timer->stop();
+	potDistributeTimer->stop();
 
 	// GUI bereinigen - Bilder löschen, Animationen unterbrechen
 	QPixmap onePix = QPixmap::fromImage(QImage(myAppDataPath +"gfx/gui/misc/1px.png"));

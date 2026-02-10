@@ -485,6 +485,12 @@ void gameLobbyDialogImpl::refresh(int actionID)
 		closeAllChildDialogs();
 		this->accept();
 		myW->show();
+	} else if(actionID == MSG_NET_GAME_CLIENT_END) {
+		// Game ended naturally - reset lobby state so the player can
+		// browse games and see connected players again.
+		inGame = false;
+		isGameAdministrator = false;
+		leftGameDialogUpdate();
 	} else if(actionID == MSG_NET_GAME_CLIENT_SYNCSTART) {
 		waitStartGameMsgBoxTimer->start(2000);
 	} else if(actionID == MSG_NET_GAME_CLIENT_SYNCREJOIN) {

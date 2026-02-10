@@ -433,7 +433,28 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
 
     QAudioDevice sinkDevice = device.isNull() ? QMediaDevices::defaultAudioOutput() : device;
     mixerSink = new QAudioSink(sinkDevice, format, this);
-    mixerSink->setBufferSize(44100 * 4 / 10); // ~100ms buffer for low latency
+    // WASAPI on Windows needs a larger buffer than PulseAudio/CoreAudio.
+    // 100ms causes underruns that make WASAPI transition to IdleState,
+    // cutting off sounds mid-playback (e.g. blinds_raises WAVs).
+#ifdef Q_OS_WIN
+    mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+#else
+    mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms for PulseAudio/CoreAudio
+#endif
+
+    // CRITICAL (Windows): When WASAPI encounters a brief underrun it
+    // transitions the sink to IdleState and stops pulling data.  Without
+    // this handler the sound is cut off and never resumes.  Restarting
+    // the sink from the IdleState handler recovers playback seamlessly.
+    connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
+        if (newState == QAudio::IdleState && mixerSink && mixer) {
+            // Sink ran out of data or WASAPI flagged an underrun.
+            // Restart immediately so the next play() is audible.
+            mixerSink->stop();
+            mixerSink->start(mixer);
+        }
+    });
+
     mixerSink->start(mixer);
 
     if (mixerSink->error() != QAudio::NoError) {
@@ -537,7 +558,18 @@ void QtAudioPlayer::applyDeviceToEffects()
         format.setChannelCount(2);
         format.setSampleFormat(QAudioFormat::Int16);
         mixerSink = new QAudioSink(deviceToUse, format, this);
-        mixerSink->setBufferSize(44100 * 4 / 10);
+#ifdef Q_OS_WIN
+        mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+#else
+        mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms
+#endif
+        // Recover from WASAPI IdleState (see initSoftwareMixerBackend)
+        connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
+            if (newState == QAudio::IdleState && mixerSink && mixer) {
+                mixerSink->stop();
+                mixerSink->start(mixer);
+            }
+        });
         if (mixer) {
             mixerSink->start(mixer);
         }

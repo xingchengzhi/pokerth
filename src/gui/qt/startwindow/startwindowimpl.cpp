@@ -1147,6 +1147,11 @@ void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 							  QMessageBox::Close);
 	}
 	}
+	// Stop all game table animation timers BEFORE closing dialogs.
+	// Rejecting the lobby dialog while exec() is running causes
+	// terminateNetworkClient() -> currentGame.reset(). Any animation
+	// timer callback that fires afterwards would dereference null.
+	myGuiInterface->getMyW()->stopTimer();
 	// close dialogs
 	myGameLobbyDialog->reject();
 	myConnectToServerDialog->reject();

@@ -1982,7 +1982,13 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		}
 
 		// Basic synchronisation before a new hand is started.
-		client->GetGui().waitForGuiUpdateDone();
+		// CRITICAL: Signal the GUI thread to stop all running animation
+		// timers BEFORE we modify the shared game state (activePlayerList)
+		// in initHand().  The post-river animation chain may still be
+		// iterating over activePlayerList in the GUI thread; erasing
+		// elements from the network thread would invalidate those
+		// iterators and crash – especially on Windows.
+		client->GetGui().prepareForNewHand();
 		// CRITICAL: Refresh Set display BEFORE starting hand to clear stale bets from eliminated players
 		client->GetGui().refreshSet();
 		// Start new hand.
@@ -2010,6 +2016,13 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 			client->GetGui().logPlayerWinGame(tmpPlayer->getMyName(), curGame->getMyGameID());
 			// Flush log to ensure all data is written before leaving game
 			client->GetClientLog()->flushLog();
+			// CRITICAL: Stop all GUI animation timers before transitioning
+			// to the lobby.  The lobby dialog runs a nested Qt event loop
+			// (exec()), during which pending timer events would still fire.
+			// If the user then closes the lobby dialog, terminateNetworkClient()
+			// resets the game object and those timer callbacks would
+			// dereference a null pointer -> crash.
+			client->GetGui().prepareForNewHand();
 			// Resubscribe Lobby messages.
 			client->ResubscribeLobbyMsg();
 			// Show Lobby dialog.

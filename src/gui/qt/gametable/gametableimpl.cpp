@@ -698,6 +698,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	connect(this, SIGNAL(signalPostRiverShowCards(unsigned)), this, SLOT(showHoleCards(unsigned)));
 	connect(this, SIGNAL(signalFlipHolecardsAllIn()), this, SLOT(flipHolecardsAllIn()));
 	connect(this, SIGNAL(signalNextRoundCleanGui()), this, SLOT(nextRoundCleanGui()));
+	connect(this, SIGNAL(signalPrepareForNewHand()), this, SLOT(prepareForNewHand()));
 	connect(this, SIGNAL(signalStartVoteOnKick(unsigned, unsigned, int, int)), this, SLOT(startVoteOnKick(unsigned, unsigned, int, int)));
 	connect(this, SIGNAL(signalChangeVoteOnKickButtonsState(bool)), this, SLOT(changeVoteOnKickButtonsState(bool)));
 	connect(this, SIGNAL(signalEndVoteOnKick()), this, SLOT(endVoteOnKick()));
@@ -3076,6 +3077,21 @@ void gameTableImpl::startNewHand()
 void gameTableImpl::handSwitchRounds()
 {
 	myStartWindow->getSession()->getCurrentGame()->getCurrentHand()->switchRounds();
+}
+
+void gameTableImpl::prepareForNewHand()
+{
+	// CRITICAL: Stop all animation timers in the GUI thread BEFORE the
+	// network thread modifies the game state (activePlayerList etc.) in
+	// initHand().  Without this, a running post-river animation callback
+	// may iterate over the same std::list that initHand() is modifying
+	// (erasing eliminated players), invalidating the GUI-thread's iterator
+	// and causing a crash – particularly reproducible on Windows.
+	stopTimer();
+
+	// Release the synchronisation semaphore so that the network thread
+	// (blocked in waitForGuiUpdateDone) can proceed with initHand().
+	guiUpdateSemaphore.release();
 }
 
 void gameTableImpl::nextRoundCleanGui()

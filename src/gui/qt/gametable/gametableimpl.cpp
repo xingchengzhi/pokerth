@@ -997,7 +997,9 @@ void gameTableImpl::refreshSet()
 	PlayerListConstIterator it_c;
 	PlayerList seatsList = currentGame->getSeatsList();
 	for (it_c=seatsList->begin(); it_c!=seatsList->end(); ++it_c) {
-		if( (*it_c)->getMySet() == 0 )
+		// Only show set chips for active players - inactive/eliminated players
+		// should never display chips on the table (prevents "ghost player" effect)
+		if( !(*it_c)->getMyActiveStatus() || (*it_c)->getMySet() == 0 )
 			setLabelArray[(*it_c)->getMyID()]->setText("");
 		else
 			setLabelArray[(*it_c)->getMyID()]->setText("$"+QString("%L1").arg((*it_c)->getMySet()));

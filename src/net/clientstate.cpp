@@ -2163,36 +2163,24 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		// (e.g., Preflop All-In action arriving during Flop/Turn/River)
 		// This prevents stale values from being processed and displayed
 		if (!shouldUpdateSet) {
-			// Explicitly clear set to prevent any stale display
-			tmpPlayer->setMySetNull();
-			// Force immediate GUI update to ensure the cleared set is displayed
-			client->GetGui().refreshSet();
-			client->GetGui().waitForGuiUpdateDone();
-			// Skip all further processing for this stale message
+			// Don't modify any game state for stale messages - just ignore them.
+			// Previously this cleared the player's set, which could lose valid bet data
+			// if collectPot() hadn't been called yet.
 			return;
 		}
 		
 		if (shouldUpdateSet) {
-			// CRITICAL: totalplayerbet is cumulative over the entire hand, not just current round
-			// After collectPot() (when switching to Flop/Turn/River), all sets are reset to 0
-			// But PlayersActionDoneMessage still contains the total from previous rounds
-			// Only use totalplayerbet if player made a new bet/raise in current round
-			// For all-in players (myCash=0) or CHECK actions, keep set at 0
-			if (netActionDone.playermoney() > 0 && netActionDone.totalplayerbet() > 0) {
-				// Player has cash and made a bet → use totalplayerbet
-				tmpPlayer->setMySetAbsolute(netActionDone.totalplayerbet());
-			} else if (netActionDone.playermoney() == 0 && currentRound == GAME_STATE_PREFLOP) {
-				// All-in during Preflop → use totalplayerbet
+			// totalplayerbet is the player's cumulative bet in the current phase.
+			// Always use it when available, regardless of remaining cash.
+			// This fixes the bug where all-in bets in post-Preflop rounds (Flop/Turn/River)
+			// were silently dropped from the pot because playermoney==0 was used as a filter.
+			if (netActionDone.totalplayerbet() > 0) {
 				tmpPlayer->setMySetAbsolute(netActionDone.totalplayerbet());
 			}
-			// else: All-in player in post-Flop rounds → keep set at 0 (already set by collectPot)
 		}
-		// CRITICAL: Only update cash if it would not increase from 0
-		// Players with 0 cash (all-in losers) get their final value from EndOfHandShowCardsMessage
-		// Never restore cash from PlayersActionDoneMessage - it may contain stale pre-pot-distribution values
-		if (tmpPlayer->getMyCash() > 0 || netActionDone.playermoney() == 0) {
-			tmpPlayer->setMyCash(netActionDone.playermoney());
-		}
+		// Cash from valid (non-stale) messages is always authoritative.
+		// Stale messages are already filtered by the shouldUpdateSet check above.
+		tmpPlayer->setMyCash(netActionDone.playermoney());
 		
 		curGame->getCurrentHand()->getCurrentBeRo()->setHighestSet(netActionDone.highestset());
 		curGame->getCurrentHand()->getCurrentBeRo()->setMinimumRaise(netActionDone.minimumraise());
@@ -2463,7 +2451,9 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 				tmpPlayer->setMyCardsValueInt(r.cardsvalue());
 			}
 			tmpPlayer->setMyBestHandPosition(bestHandPos);
-			if (tmpPlayer->getMyCardsValueInt() > highestValueOfCards)
+			// Only consider non-folded players for highest hand value display
+			// (folded players may have higher card values but shouldn't affect the shown hand name)
+			if (tmpPlayer->getMyAction() != PLAYER_ACTION_FOLD && tmpPlayer->getMyCardsValueInt() > highestValueOfCards)
 				highestValueOfCards = tmpPlayer->getMyCardsValueInt();
 			tmpPlayer->setMyCash(r.playermoney());
 			tmpPlayer->setLastMoneyWon(r.moneywon());

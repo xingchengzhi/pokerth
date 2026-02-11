@@ -34,6 +34,7 @@
 #include "startwindowimpl.h"
 #include "chattools.h"
 #include "darkmodehelper.h"
+#include "core/appimage_utils.h"
 #include <QScreen>
 #include "changecompleteblindsdialogimpl.h"
 #include "session.h"
@@ -1960,7 +1961,7 @@ void gameLobbyDialogImpl::openPlayerStats1()
 		unsigned playerId = myNickListSelectionModel->currentIndex().data(Qt::UserRole).toUInt();
 		if(!mySession->getClientPlayerInfo(playerId).isGuest) {
 			QUrl url("https://www.pokerth.net/redirect_user_profile.php?nick="+QUrl::toPercentEncoding(myNickListSelectionModel->currentIndex().data(Qt::DisplayRole).toString()));
-			QDesktopServices::openUrl(url);
+			AppImageUtils::openUrlSafe(url);
 		}
 	}
 }
@@ -1972,7 +1973,7 @@ void gameLobbyDialogImpl::openPlayerStats2()
 		unsigned playerId = treeWidget_connectedPlayers->currentItem()->data(0, Qt::UserRole).toUInt();
 		if(!mySession->getClientPlayerInfo(playerId).isGuest) {
 			QUrl url("https://www.pokerth.net/redirect_user_profile.php?nick="+QUrl::toPercentEncoding(treeWidget_connectedPlayers->currentItem()->data(0, Qt::DisplayRole).toString()));
-			QDesktopServices::openUrl(url);
+			AppImageUtils::openUrlSafe(url);
 		}
 	}
 }

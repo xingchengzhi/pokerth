@@ -1,4 +1,5 @@
 #include "qtaudioplayer.h"
+#include "core/appimage_utils.h"
 #include <QDebug>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -401,7 +402,7 @@ void QtAudioPlayer::playSoundPaPlay(const QString& key)
 
     // qDebug() << "[Audio] paplay:" << key << "vol:" << vol;
     
-    bool ok = QProcess::startDetached(paplayBinary, args);
+    bool ok = AppImageUtils::startDetachedSafe(paplayBinary, args);
     if (!ok) {
         qWarning() << "[Audio] *** Failed to start" << paplayBinary << args;
     }

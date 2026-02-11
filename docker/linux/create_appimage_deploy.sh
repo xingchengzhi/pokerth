@@ -261,6 +261,14 @@ cat > "$APPDIR/AppRun" << RUNEOF
 
 HERE="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 
+# PokerTH AppImage Marker — wird im C++ Code via AppImageUtils geprüft
+export POKERTH_APPIMAGE=1
+
+# Originale LD_LIBRARY_PATH sichern BEVOR wir sie modifizieren.
+# AppImageUtils::cleanProcessEnvironment() stellt diesen Wert wieder her,
+# damit externe Prozesse (xdg-open, paplay, etc.) die System-Libs nutzen.
+export POKERTH_ORIG_LD_LIBRARY_PATH="\${LD_LIBRARY_PATH:-}"
+
 # Bibliotheks- und Plugin-Pfade
 export LD_LIBRARY_PATH="\${HERE}/usr/lib:\${LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="\${HERE}/usr/plugins"

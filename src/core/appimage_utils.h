@@ -130,14 +130,11 @@ inline bool openUrlSafe(const QUrl& url)
     if (isAppImage()) {
         QProcess process;
         process.setProcessEnvironment(cleanProcessEnvironment());
-
-        // Use xdg-open which is the standard on Linux desktops
-        QString program = QStringLiteral("xdg-open");
-        QStringList args;
-        args << url.toString();
+        process.setProgram(QStringLiteral("xdg-open"));
+        process.setArguments({url.toString()});
 
         qDebug() << "[AppImage] openUrlSafe: launching xdg-open with clean env for" << url.toString();
-        return process.startDetached(program, args);
+        return process.startDetached();
     }
 #endif
     return QDesktopServices::openUrl(url);
@@ -156,8 +153,10 @@ inline bool startDetachedSafe(const QString& program, const QStringList& args)
     if (isAppImage()) {
         QProcess process;
         process.setProcessEnvironment(cleanProcessEnvironment());
+        process.setProgram(program);
+        process.setArguments(args);
         qDebug() << "[AppImage] startDetachedSafe:" << program << args;
-        return process.startDetached(program, args);
+        return process.startDetached();
     }
 #endif
     return QProcess::startDetached(program, args);

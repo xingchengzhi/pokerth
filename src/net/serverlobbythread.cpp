@@ -1169,6 +1169,9 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
         noAuth = true;
     } else if (initMessage.login() == InitMessage::authenticatedLogin) {
         playerName = initMessage.nickname();
+        if (initMessage.has_avatarhash()) {
+            memcpy(avatarMD5.GetData(), initMessage.avatarhash().data(), MD5_DATA_SIZE);
+        }
         if (initMessage.has_clientuserdata()) {
             session->AuthSetPassword(initMessage.clientuserdata());
         }
@@ -1871,7 +1874,7 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
     if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
         tmpSession->GetPlayerData()->SetDBId(dbPlayerData.id);
         tmpSession->GetPlayerData()->SetCountry(dbPlayerData.country);
-        EstablishSession(tmpSession);
+        InitAfterLogin(tmpSession);
     } else {
         LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");
         SessionError(tmpSession, ERR_NET_INVALID_PASSWORD);

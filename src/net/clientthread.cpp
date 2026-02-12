@@ -768,9 +768,17 @@ ClientThread::SetPlayerInfo(unsigned id, const PlayerInfo &info)
 	}
 	if (GetGame()) {
 		boost::shared_ptr<PlayerInterface> clientPlayer(GetGame()->getPlayerByUniqueId(id));
-		if (clientPlayer)
+		if (clientPlayer) {
 			clientPlayer->setMyName(info.playerName);
-		// Skip avatar here, the game is already running.
+			if (info.hasAvatar) {
+				string avatarFile;
+				if (GetAvatarManager().GetAvatarFileName(info.avatar, avatarFile)) {
+					string utf8File = GetQtToolsInterface().stringToUtf8(avatarFile);
+					clientPlayer->setMyAvatar(utf8File);
+					GetGui().setPlayerAvatar(id, utf8File);
+				}
+			}
+		}
 	}
 
 	if (find(m_avatarShouldRequestList.begin(), m_avatarShouldRequestList.end(), id) != m_avatarShouldRequestList.end()) {

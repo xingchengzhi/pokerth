@@ -1947,26 +1947,28 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		}
 		// Retrieve state for each seat (not based on player id).
 		unsigned numPlayers = netHandStart.seatstates_size();
-		// Request player info for players if needed.
+
+		// IMPORTANT: Save seat states but do NOT apply them yet.
+		// We must first stop the GUI animation timers (prepareForNewHand)
+		// before modifying any shared player state. Otherwise, a running
+		// post-river animation (e.g., All-In showdown) may call refresh
+		// functions that read the NEW hand's session states while still
+		// displaying the OLD hand, causing players to appear "offline"
+		// even though they were active in the previous hand.
+		struct SeatStateEntry {
+			boost::shared_ptr<PlayerInterface> player;
+			NetPlayerState state;
+		};
+		std::vector<SeatStateEntry> pendingSeatStates;
+		pendingSeatStates.reserve(numPlayers);
+
 		for (int i = 0; i < (int)numPlayers; i++) {
 			NetPlayerState seatState = netHandStart.seatstates(i);
 			int numberDiff = client->GetStartData().numberOfPlayers - client->GetOrigGuiPlayerNum();
 			boost::shared_ptr<PlayerInterface> tmpPlayer = client->GetGame()->getPlayerByNumber((i + numberDiff) % client->GetStartData().numberOfPlayers);
 			if (!tmpPlayer)
 				throw ClientException(__FILE__, __LINE__, ERR_NET_UNKNOWN_PLAYER_ID, 0);
-			switch (seatState) {
-			case netPlayerStateNormal :
-				tmpPlayer->setIsSessionActive(true);
-				break;
-			case netPlayerStateSessionInactive :
-				tmpPlayer->setIsSessionActive(false);
-				break;
-			case netPlayerStateNoMoney :
-				tmpPlayer->setMyCash(0);
-				tmpPlayer->setMySetNull(); // Also clear set display for players with no money
-				tmpPlayer->setMyActiveStatus(false);
-				break;
-			}
+			pendingSeatStates.push_back({tmpPlayer, seatState});
 		}
 
 		// Reset all player cards before starting new hand to avoid showing old cards from previous hand
@@ -1989,6 +1991,26 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		// elements from the network thread would invalidate those
 		// iterators and crash – especially on Windows.
 		client->GetGui().prepareForNewHand();
+
+		// NOW apply seat states after GUI timers have been stopped.
+		// This ensures no running animation can observe the new session states
+		// while still rendering the previous hand.
+		for (size_t s = 0; s < pendingSeatStates.size(); s++) {
+			const SeatStateEntry &entry = pendingSeatStates[s];
+			switch (entry.state) {
+			case netPlayerStateNormal :
+				entry.player->setIsSessionActive(true);
+				break;
+			case netPlayerStateSessionInactive :
+				entry.player->setIsSessionActive(false);
+				break;
+			case netPlayerStateNoMoney :
+				entry.player->setMyCash(0);
+				entry.player->setMySetNull();
+				entry.player->setMyActiveStatus(false);
+				break;
+			}
+		}
 		// CRITICAL: Refresh Set display BEFORE starting hand to clear stale bets from eliminated players
 		client->GetGui().refreshSet();
 		// Start new hand.

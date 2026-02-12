@@ -1401,17 +1401,18 @@ ServerGameStateHand::CheckPlayerTimeouts(boost::shared_ptr<ServerGame> server)
 			boost::shared_ptr<PlayerInterface> tmpPlayer = *i;
 			if (tmpPlayer->getMyType() == PLAYER_TYPE_HUMAN
 					&& (int)tmpPlayer->getTimeSecSinceLastRemoteAction() >= actionTimeout * SERVER_GAME_AUTOFOLD_TIMEOUT_FACTOR) {
+				// Skip timeout for All-In players: they cannot act during the
+				// hand but are legitimately participating.  Without this
+				// exception, long All-In showdowns cause the server to mark
+				// them as session-inactive, which makes them appear "offline"
+				// to other clients.
+				if (tmpPlayer->getMyAction() == PLAYER_ACTION_ALLIN) {
+					tmpPlayer->markRemoteAction();
+					++i;
+					continue;
+				}
 				if (tmpPlayer->isSessionActive()) {
 					tmpPlayer->setIsSessionActive(false);
-					boost::shared_ptr<SessionData> session = server->GetSessionManager().GetSessionByUniquePlayerId(tmpPlayer->getMyUniqueID());
-					if (session) {
-						boost::shared_ptr<NetPacket> packet(new NetPacket);
-						packet->GetMsg()->set_messagetype(PokerTHMessage::Type_TimeoutWarningMessage);
-						TimeoutWarningMessage *netWarning = packet->GetMsg()->mutable_timeoutwarningmessage();
-						netWarning->set_timeoutreason(TimeoutWarningMessage::timeoutKickAfterAutofold);
-						netWarning->set_remainingseconds(actionTimeout * SERVER_GAME_FORCED_TIMEOUT_FACTOR - tmpPlayer->getTimeSecSinceLastRemoteAction());
-						server->GetLobbyThread().GetSender().Send(session, packet);
-					}
 				}
 				if ((int)tmpPlayer->getTimeSecSinceLastRemoteAction() >= actionTimeout * SERVER_GAME_FORCED_TIMEOUT_FACTOR) {
 					server->KickPlayer(tmpPlayer->getMyUniqueID());

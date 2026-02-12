@@ -4652,6 +4652,14 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		if(player->isSessionActive()) {
 			return SEAT_ACTIVE;
 		} else {
+			// If the player has already taken an active action in this hand
+			// (e.g., All-In from blind posting, or any non-fold action),
+			// show them as active even if their session is inactive.
+			// This prevents players from appearing "offline" during All-In showdowns.
+			PlayerAction action = (PlayerAction)player->getMyAction();
+			if(action != PLAYER_ACTION_NONE && action != PLAYER_ACTION_FOLD) {
+				return SEAT_ACTIVE;
+			}
 			return SEAT_AUTOFOLD;
 		}
 	} else {
@@ -4780,3 +4788,4 @@ int gameTableImpl::getAndroidApiVersion()
 #endif
     return api;
 }
+

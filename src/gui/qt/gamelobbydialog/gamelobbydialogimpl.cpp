@@ -1176,13 +1176,17 @@ void gameLobbyDialogImpl::removeSpectator(unsigned spectatorId, QString)
 
 void gameLobbyDialogImpl::playerLeftLobby(unsigned playerId)
 {
+	// Remove ALL entries for this player – don't stop after the first
+	// match.  Duplicate entries may exist if in-flight playerListNew
+	// messages overlapped with a resubscription of the full player list.
 	int it1 = 0;
 	while (myNickListModel->item(it1)) {
-		if (myNickListModel->item(it1, 0)->data(Qt::UserRole) == playerId) {
-			myNickListModel->removeRow(it1);;
-			break;
+		if (myNickListModel->item(it1, 0)->data(Qt::UserRole).toUInt() == playerId) {
+			myNickListModel->removeRow(it1);
+			// Don't increment – the next item shifted into this position.
+		} else {
+			++it1;
 		}
-		++it1;
 	}
 
 	refreshPlayerStats();
@@ -1190,21 +1194,49 @@ void gameLobbyDialogImpl::playerLeftLobby(unsigned playerId)
 
 void gameLobbyDialogImpl::playerJoinedLobby(unsigned playerId, QString /*playerName TODO remove*/)
 {
+	// Check for duplicate: if the player is already in the nick list, update
+	// the existing entry instead of appending a new one.  Duplicates can
+	// occur when in-flight playerListNew messages arrive after the nick list
+	// was cleared (game start) but before the server processed our
+	// unsubscribe – the subsequent resubscription then adds the same
+	// players again.
+	int existingRow = -1;
+	for (int i = 0; myNickListModel->item(i); ++i) {
+		if (myNickListModel->item(i, 0)->data(Qt::UserRole).toUInt() == playerId) {
+			existingRow = i;
+			break;
+		}
+	}
+
 	PlayerInfo playerInfo(mySession->getClientPlayerInfo(playerId));
 	QString countryString = QString::fromUtf8(playerInfo.countryCode.c_str()).toLower();
 
-	QStandardItem *item = new QStandardItem;
-	item->setText(QString::fromUtf8(playerInfo.playerName.c_str()));
-	item->setData(playerId, Qt::UserRole);
-	item->setData(countryString, 33);
-	if(playerInfo.isGuest || countryString.isEmpty()) {
-		item->setIcon(QIcon(":/cflags/cflags/undefined.png"));
+	if (existingRow >= 0) {
+		// Player already present – refresh its data in place.
+		QStandardItem *item = myNickListModel->item(existingRow, 0);
+		item->setText(QString::fromUtf8(playerInfo.playerName.c_str()));
+		item->setData(countryString, 33);
+		if(playerInfo.isGuest || countryString.isEmpty()) {
+			item->setIcon(QIcon(":/cflags/cflags/undefined.png"));
+			item->setToolTip("");
+		} else {
+			item->setIcon(QIcon(QString(":/cflags/cflags/%1.png").arg(countryString)));
+			item->setToolTip(getFullCountryString(countryString.toUpper()));
+		}
 	} else {
-		item->setIcon(QIcon(QString(":/cflags/cflags/%1.png").arg(countryString)));
-		item->setToolTip(getFullCountryString(countryString.toUpper()));
+		QStandardItem *item = new QStandardItem;
+		item->setText(QString::fromUtf8(playerInfo.playerName.c_str()));
+		item->setData(playerId, Qt::UserRole);
+		item->setData(countryString, 33);
+		if(playerInfo.isGuest || countryString.isEmpty()) {
+			item->setIcon(QIcon(":/cflags/cflags/undefined.png"));
+		} else {
+			item->setIcon(QIcon(QString(":/cflags/cflags/%1.png").arg(countryString)));
+			item->setToolTip(getFullCountryString(countryString.toUpper()));
+		}
+		item->setData("idle", 34);
+		myNickListModel->appendRow(item);
 	}
-	item->setData("idle", 34);
-	myNickListModel->appendRow(item);
 
 	refreshPlayerStats();
 }

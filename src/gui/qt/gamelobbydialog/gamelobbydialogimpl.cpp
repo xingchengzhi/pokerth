@@ -61,6 +61,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 //	setWindowFlags(Qt::Dialog | Qt::WindowMinimizeButtonHint);
 #endif
 	setupUi(this);
+	AppImageUtils::patchExternalLinks(this);
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
 #ifdef ANDROID
 	this->setWindowState(Qt::WindowFullScreen);

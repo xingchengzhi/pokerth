@@ -29,6 +29,7 @@
  * as that of the covered work.                                              *
  *****************************************************************************/
 #include "settingsdialogimpl.h"
+#include "core/appimage_utils.h"
 #include "myavatarlistitem.h"
 #include "mystylelistitem.h"
 #include "gametablestylereader.h"
@@ -52,6 +53,7 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	setWindowFlags(Qt::WindowSystemMenuHint | Qt::CustomizeWindowHint | Qt::Dialog);
 #endif
 	setupUi(this);
+	AppImageUtils::patchExternalLinks(this);
 
 #ifdef ANDROID
     int styleSPageIndex = -1;

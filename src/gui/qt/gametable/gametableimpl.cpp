@@ -72,6 +72,8 @@
 #define FORMATLEFT(X) "<p align='center'>(X)"
 #define FORMATRIGHT(X) "(X)</p>"
 
+#include "core/appimage_utils.h"
+
 #ifdef ANDROID
 #ifndef ANDROID_TEST
 // Qt6: Verwende QJniEnvironment statt direktem JNI-Zugriff
@@ -98,6 +100,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
 
 	setupUi(this);
+	AppImageUtils::patchExternalLinks(this);
 
 	//Sound
 	mySoundEventHandler = new SoundEvents(myConfig);

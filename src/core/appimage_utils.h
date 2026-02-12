@@ -38,6 +38,8 @@
 #include <QDesktopServices>
 #include <QString>
 #include <QStringList>
+#include <QLabel>
+#include <QWidget>
 #include <cstdlib>
 
 #ifdef Q_OS_LINUX
@@ -160,6 +162,42 @@ inline bool startDetachedSafe(const QString& program, const QStringList& args)
     }
 #endif
     return QProcess::startDetached(program, args);
+}
+
+/**
+ * Patches all QLabels with openExternalLinks=true inside the given widget tree.
+ *
+ * When running inside an AppImage, openExternalLinks causes Qt to call
+ * QDesktopServices::openUrl() internally, which inherits the bundled
+ * LD_LIBRARY_PATH and crashes child processes (xdg-open, /bin/sh, etc.).
+ *
+ * This function:
+ *  1. Finds all QLabel children with openExternalLinks == true
+ *  2. Disables openExternalLinks on each label
+ *  3. Connects the linkActivated signal to our safe openUrlSafe() handler
+ *
+ * Call this once after setupUi() in each dialog constructor.
+ * On non-AppImage builds this is a no-op.
+ */
+inline void patchExternalLinks(QWidget* root)
+{
+#ifdef Q_OS_LINUX
+    if (!isAppImage() || !root) {
+        return;
+    }
+
+    const auto labels = root->findChildren<QLabel*>();
+    for (QLabel* label : labels) {
+        if (label->openExternalLinks()) {
+            label->setOpenExternalLinks(false);
+            QObject::connect(label, &QLabel::linkActivated, [](const QString& urlString) {
+                openUrlSafe(QUrl(urlString));
+            });
+        }
+    }
+#else
+    Q_UNUSED(root);
+#endif
 }
 
 } // namespace AppImageUtils

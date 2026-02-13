@@ -67,6 +67,7 @@
 #include <net/socket_msg.h>
 
 #include <cmath>
+#include <climits>
 #include <algorithm>
 
 #define FORMATLEFT(X) "<p align='center'>(X)"
@@ -2732,12 +2733,19 @@ void gameTableImpl::postRiverRunAnimation3()
 
 	list<unsigned> winners = currentHand->getBoard()->getWinners();
 
-	// Determine the maximum money won among all winners for side pot detection
-	int maxMoneyWon = 0;
+	// Determine if any winning player was all-in (for main pot / side pot labeling).
+	// In sidepot situations, the all-in player's win IS the main pot (the pot
+	// everyone contributed to). Other winners' pots are side pots.
+	// The all-in player with the smallest win amount wins the base (main) pot.
+	bool hasAllInWinner = false;
+	int minAllInWinnerMoney = INT_MAX;
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-		if(isW && (*it_c)->getLastMoneyWon() > maxMoneyWon) {
-			maxMoneyWon = (*it_c)->getLastMoneyWon();
+		if(isW && (*it_c)->getLastMoneyWon() > 0 && (*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
+			hasAllInWinner = true;
+			if((*it_c)->getLastMoneyWon() < minAllInWinnerMoney) {
+				minAllInWinnerMoney = (*it_c)->getLastMoneyWon();
+			}
 		}
 	}
 
@@ -2832,14 +2840,21 @@ void gameTableImpl::postRiverRunAnimation3()
 			//Wenn River dann auch das Blatt loggen!
 			// 			if (textLabel_handLabel->text() == "River") {
 
-			//set Player value (logging) - main pot vs side pot detection
-			bool isMainPot = ((*it_c)->getLastMoneyWon() >= maxMoneyWon);
+			// Main pot / side pot labeling:
+			// In sidepot scenarios, the all-in player wins the "main pot" (the pot
+			// all non-folded players contributed to). Other winners get "(side pot)".
+			// When no winner was all-in, there's no sidepot situation -> always main pot.
+			bool isMainPot;
+			if (!hasAllInWinner) {
+				isMainPot = true; // No sidepot situation
+			} else if ((*it_c)->getMyAction() == PLAYER_ACTION_ALLIN
+					   && (*it_c)->getLastMoneyWon() <= minAllInWinnerMoney) {
+				isMainPot = true; // All-in player with smallest win = main pot
+			} else {
+				isMainPot = false; // Side pot
+			}
 			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(),isMainPot);
 
-			// 			}
-			// 			else {
-			// 				myLog->logPlayerWinsMsg(i, pot);
-			// 			}
 		} else {
 
 			if( activePlayerList->size() != 1 && (*it_c)->getMyAction() != PLAYER_ACTION_FOLD && myConfig->readConfigInt("ShowFadeOutCardsAnimation")
@@ -2851,8 +2866,6 @@ void gameTableImpl::postRiverRunAnimation3()
 			}
 		}
 	}
-
-	// Side pot detection: winner with highest amount = main pot, others = side pot
 
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		if((*it_c)->getMyCash() == 0) {

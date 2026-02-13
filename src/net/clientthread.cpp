@@ -755,6 +755,7 @@ ClientThread::SetPlayerInfo(unsigned id, const PlayerInfo &info)
 	}
 
 	// Update player data for current game.
+	qDebug() << "[AVATAR-DEBUG] SetPlayerInfo for player" << id << "name:" << info.playerName.c_str() << "hasAvatar:" << info.hasAvatar << "avatarIsZero:" << info.avatar.IsZero();
 	boost::shared_ptr<PlayerData> playerData(GetPlayerDataByUniqueId(id));
 	if (playerData) {
 		playerData->SetName(info.playerName);
@@ -762,9 +763,15 @@ ClientThread::SetPlayerInfo(unsigned id, const PlayerInfo &info)
 		if (info.hasAvatar) {
 			string avatarFile;
 			if (GetAvatarManager().GetAvatarFileName(info.avatar, avatarFile)) {
-				playerData->SetAvatarFile(GetQtToolsInterface().stringToUtf8(avatarFile));
+				string utf8 = GetQtToolsInterface().stringToUtf8(avatarFile);
+				qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: PlayerData avatar set to:" << utf8.c_str();
+				playerData->SetAvatarFile(utf8);
+			} else {
+				qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: Avatar NOT found in cache for player" << id;
 			}
 		}
+	} else {
+		qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: No PlayerData found for player" << id;
 	}
 	if (GetGame()) {
 		boost::shared_ptr<PlayerInterface> clientPlayer(GetGame()->getPlayerByUniqueId(id));
@@ -774,11 +781,16 @@ ClientThread::SetPlayerInfo(unsigned id, const PlayerInfo &info)
 				string avatarFile;
 				if (GetAvatarManager().GetAvatarFileName(info.avatar, avatarFile)) {
 					string utf8File = GetQtToolsInterface().stringToUtf8(avatarFile);
+					qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: Game running, setting avatar on PlayerInterface:" << utf8File.c_str();
 					clientPlayer->setMyAvatar(utf8File);
 					GetGui().setPlayerAvatar(id, utf8File);
+				} else {
+					qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: Game running, avatar NOT in cache for player" << id;
 				}
 			}
 		}
+	} else {
+		qDebug() << "[AVATAR-DEBUG] SetPlayerInfo: No game running yet for player" << id;
 	}
 
 	if (find(m_avatarShouldRequestList.begin(), m_avatarShouldRequestList.end(), id) != m_avatarShouldRequestList.end()) {

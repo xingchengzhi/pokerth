@@ -1374,6 +1374,17 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
 
             context.SetPlayerName(loginData.userName);
 
+            // Send avatar hash for all login types (guest and authenticated).
+            {
+                string avatarFile = client->GetQtToolsInterface().stringFromUtf8(context.GetAvatarFile());
+                if (!avatarFile.empty()) {
+                    MD5Buf tmpMD5;
+                    if (client->GetAvatarManager().GetHashForAvatar(avatarFile, tmpMD5)) {
+                        netInit->set_avatarhash(tmpMD5.GetData(), MD5_DATA_SIZE);
+                    }
+                }
+            }
+
             // Handle guest login first.
             if (loginData.isGuest) {
                 context.SetPassword("");

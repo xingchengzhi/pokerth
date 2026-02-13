@@ -597,13 +597,33 @@ void LocalHand::switchRounds()
 		// 2) all players but one all in and he has highest set
 		if(allInPlayersCounter+1 == nonFoldPlayerCounter) {
 
-			for(it_c=runningPlayerList->begin(); it_c!=runningPlayerList->end(); ++it_c) {
-
-				if((*it_c)->getMySet() >= myBeRo[currentRound]->getHighestSet()) {
-					allInCondition = true;
-					myBoard->setAllInCondition(true);
+			// During the first preflop round, players who only posted blinds
+			// (action == PLAYER_ACTION_NONE) have NOT yet had a chance to act.
+			// Do NOT set allInCondition if the remaining running player still
+			// needs their "big blind option" (check/raise/fold).
+			// Only skip when ALL all-in players got their status purely from
+			// blind posting (i.e., no voluntary all-in raise happened yet).
+			bool firstPreflopRound = (currentRound == GAME_STATE_PREFLOP && myBeRo[currentRound]->getFirstRound());
+			bool hasRunningPlayerWithPendingOption = false;
+			if(firstPreflopRound) {
+				for(it_c=runningPlayerList->begin(); it_c!=runningPlayerList->end(); ++it_c) {
+					// A player with PLAYER_ACTION_NONE has only posted a blind
+					// and has not explicitly acted yet - they need their option
+					if((*it_c)->getMyAction() == PLAYER_ACTION_NONE) {
+						hasRunningPlayerWithPendingOption = true;
+						break;
+					}
 				}
+			}
 
+			if(!hasRunningPlayerWithPendingOption) {
+				for(it_c=runningPlayerList->begin(); it_c!=runningPlayerList->end(); ++it_c) {
+
+					if((*it_c)->getMySet() >= myBeRo[currentRound]->getHighestSet()) {
+						allInCondition = true;
+						myBoard->setAllInCondition(true);
+					}
+				}
 			}
 
 			// exception

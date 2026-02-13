@@ -2006,8 +2006,16 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		// NOW apply seat states after GUI timers have been stopped.
 		// This ensures no running animation can observe the new session states
 		// while still rendering the previous hand.
+		qDebug() << "[HANDSTART CLI] Processing" << pendingSeatStates.size() << "seat states for new hand";
 		for (size_t s = 0; s < pendingSeatStates.size(); s++) {
 			const SeatStateEntry &entry = pendingSeatStates[s];
+			const char* stateStr = (entry.state == netPlayerStateNormal) ? "Normal" :
+				(entry.state == netPlayerStateSessionInactive) ? "SessionInactive" :
+				(entry.state == netPlayerStateNoMoney) ? "NoMoney" : "Unknown";
+			qDebug() << "[HANDSTART CLI] Seat" << s << entry.player->getMyName().c_str() 
+				<< "(ID:" << entry.player->getMyUniqueID() << ") State:" << stateStr
+				<< "Cash:" << entry.player->getMyCash() << "Active:" << entry.player->getMyActiveStatus()
+				<< "Session:" << entry.player->isSessionActive();
 			switch (entry.state) {
 			case netPlayerStateNormal :
 				entry.player->setIsSessionActive(true);
@@ -2252,6 +2260,11 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		// Stale messages are already filtered by the shouldUpdateSet check above.
 		tmpPlayer->setMyCash(netActionDone.playermoney());
 		
+		qDebug() << "[ACTION CLI]" << tmpPlayer->getMyName().c_str() 
+			<< "(ID:" << tmpPlayer->getMyUniqueID() << ") Action:" << netActionDone.playeraction()
+			<< "Cash:" << netActionDone.playermoney() << "TotalBet:" << netActionDone.totalplayerbet()
+			<< "HighestSet:" << netActionDone.highestset() << "GameState:" << netActionDone.gamestate();
+		
 		curGame->getCurrentHand()->getCurrentBeRo()->setHighestSet(netActionDone.highestset());
 		curGame->getCurrentHand()->getCurrentBeRo()->setMinimumRaise(netActionDone.minimumraise());
 		
@@ -2482,7 +2495,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_EndOfHandShowCardsMessage) {
 		const EndOfHandShowCardsMessage &showCards = tmpPacket->GetMsg()->endofhandshowcardsmessage();
 
-		// qDebug() << "[SHOWCARD CLI] Received EndOfHandShowCardsMessage with" << showCards.playerresults_size() << "players";
+		qDebug() << "[SHOWCARD CLI] Received EndOfHandShowCardsMessage with" << showCards.playerresults_size() << "players";
 
 		// collectPot() summiert jetzt selbst die Spieler-Sets und setzt sie zurück
 		curGame->getCurrentHand()->getBoard()->collectPot();
@@ -2505,8 +2518,9 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			if (!tmpPlayer)
 				throw ClientException(__FILE__, __LINE__, ERR_NET_UNKNOWN_PLAYER_ID, 0);
 
-			// qDebug() << "[SHOWCARD CLI] Processing player" << tmpPlayer->getMyName().c_str() << "(ID:" << r.playerid()
-			//	<< ") Action:" << tmpPlayer->getMyAction() << "Active:" << tmpPlayer->getMyActiveStatus();
+			qDebug() << "[SHOWCARD CLI] Processing player" << tmpPlayer->getMyName().c_str() << "(ID:" << r.playerid()
+				<< ") Action:" << tmpPlayer->getMyAction() << "Active:" << tmpPlayer->getMyActiveStatus()
+				<< "Cash:" << r.playermoney() << "Won:" << r.moneywon();
 
 			int tmpCards[2];
 			int bestHandPos[5];
@@ -2528,8 +2542,8 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			tmpPlayer->setMyCash(r.playermoney());
 			tmpPlayer->setLastMoneyWon(r.moneywon());
 			
-			// qDebug() << "[WINNER DEBUG]" << tmpPlayer->getMyName().c_str() << "- Cash:" << r.playermoney() 
-			//	<< "MoneyWon:" << r.moneywon() << "CardsValue:" << (r.has_cardsvalue() ? r.cardsvalue() : 0);
+			qDebug() << "[WINNER DEBUG]" << tmpPlayer->getMyName().c_str() << "- Cash:" << r.playermoney() 
+				<< "MoneyWon:" << r.moneywon() << "CardsValue:" << (r.has_cardsvalue() ? r.cardsvalue() : 0);
 			
 			if (r.moneywon())
 				winnerList.push_back(r.playerid());
@@ -2539,7 +2553,7 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		// (instead of showing all players from playerresults)
 		curGame->getCurrentHand()->getBoard()->determinePlayerNeedToShowCards();
 		std::list<unsigned> showList = curGame->getCurrentHand()->getBoard()->getPlayerNeedToShowCards();
-		// qDebug() << "[SHOWCARD CLI] determinePlayerNeedToShowCards returned showList size:" << showList.size();
+		qDebug() << "[SHOWCARD CLI] determinePlayerNeedToShowCards returned showList size:" << showList.size();
 
 		// NOTE: Do NOT call ResetPlayerActions here!
 		// The GUI needs the FOLD actions intact to decide which cards to show in postRiverRunAnimation2().

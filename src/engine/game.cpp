@@ -37,6 +37,7 @@
 
 #include "localexception.h"
 #include "engine_msg.h"
+#include <core/loghelper.h>
 
 #include <iostream>
 
@@ -169,6 +170,7 @@ void Game::initHand()
 	while( it!=activePlayerList->end() ) {
 
 		if((*it)->getMyCash() == 0) {
+			LOG_MSG("[INITHAND] Removing player " << (*it)->getMyName() << " (ID:" << (*it)->getMyUniqueID() << ") from activePlayerList - cash=0");
 			(*it)->setMyActiveStatus(false);
 			it = activePlayerList->erase(it);
 		} else {

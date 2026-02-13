@@ -1144,7 +1144,6 @@ void gameTableImpl::refreshPlayerAvatar()
 			//get AvatarPic
 			QFile myAvatarFile(QString::fromUtf8((*it_c)->getMyAvatar().c_str()));
 			QPixmap avatarPic;
-			qDebug() << "[AVATAR-DEBUG] refreshPlayerAvatar seat" << seatPlace << "uniqueID" << (*it_c)->getMyUniqueID() << "avatar:" << (*it_c)->getMyAvatar().c_str() << "exists:" << myAvatarFile.exists();
 			if((*it_c)->getMyAvatar() == "" || !myAvatarFile.exists()) {
 				avatarPic = QPixmap::fromImage(QImage(myGameTableStyle->getDefaultAvatar()));
 			} else {
@@ -1182,15 +1181,12 @@ void gameTableImpl::refreshPlayerAvatar()
 
 void gameTableImpl::setPlayerAvatar(int myID, QString myAvatar)
 {
-	qDebug() << "[AVATAR-DEBUG] setPlayerAvatar called for uniqueID" << myID << "path:" << myAvatar;
-
 	if(myStartWindow->getSession()->getCurrentGame()) {
 
 		boost::shared_ptr<PlayerInterface> tmpPlayer = myStartWindow->getSession()->getCurrentGame()->getPlayerByUniqueId(myID);
 		if (tmpPlayer.get()) {
 
 			QFile myAvatarFile(myAvatar);
-			qDebug() << "[AVATAR-DEBUG] setPlayerAvatar: file exists:" << myAvatarFile.exists() << "seatID:" << tmpPlayer->getMyID();
 			if(myAvatarFile.exists()) {
 				playerAvatarLabelArray[tmpPlayer->getMyID()]->setPixmap(myAvatar);
 				tmpPlayer->setMyAvatar(myAvatar.toUtf8().constData());
@@ -1198,11 +1194,7 @@ void gameTableImpl::setPlayerAvatar(int myID, QString myAvatar)
 				playerAvatarLabelArray[tmpPlayer->getMyID()]->setPixmap(QPixmap::fromImage(QImage(myGameTableStyle->getDefaultAvatar())));
 				tmpPlayer->setMyAvatar("");
 			}
-		} else {
-			qDebug() << "[AVATAR-DEBUG] setPlayerAvatar: player NOT found in game for uniqueID" << myID;
 		}
-	} else {
-		qDebug() << "[AVATAR-DEBUG] setPlayerAvatar: no current game!";
 	}
 }
 
@@ -4694,6 +4686,11 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		if(player->getMyStayOnTableStatus() && (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_NETWORK)) {
 			return SEAT_STAYONTABLE;
 		} else {
+			qDebug() << "[SEAT_CLEAR]" << player->getMyName().c_str()
+				<< "(ID:" << player->getMyUniqueID() << ") Cash:" << player->getMyCash()
+				<< "Active:" << player->getMyActiveStatus() << "Session:" << player->isSessionActive()
+				<< "StayOnTable:" << player->getMyStayOnTableStatus()
+				<< "Action:" << player->getMyAction();
 			return SEAT_CLEAR;
 		}
 	}

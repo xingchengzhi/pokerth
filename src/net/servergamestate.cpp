@@ -1090,6 +1090,23 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 			// Engine will find out who won.
 			curGame.getCurrentHand()->getCurrentBeRo()->postRiverRun();
 
+			// DEBUG: Log cash values after postRiverRun for ghost-player debugging
+			{
+				PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
+				PlayerListIterator dbg_end = curGame.getSeatsList()->end();
+				int dbg_seat = 0;
+				LOG_MSG("[POST-RIVER SRV] Cash values after postRiverRun():");
+				while (dbg_i != dbg_end) {
+					LOG_MSG("[POST-RIVER SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
+						+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
+						+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
+						+ " Action:" + std::to_string((*dbg_i)->getMyAction())
+						+ " Won:" + std::to_string((*dbg_i)->getLastMoneyWon()));
+					++dbg_i;
+					++dbg_seat;
+				}
+			}
+
 			// Retrieve non-fold players. If only one player is left, no cards are shown.
 			list<boost::shared_ptr<PlayerInterface> > nonFoldPlayers = *curGame.getActivePlayerList();
 			nonFoldPlayers.remove_if(boost::bind(&PlayerInterface::getMyAction, boost::placeholders::_1) == PLAYER_ACTION_FOLD);
@@ -1163,6 +1180,24 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 
 			// Remove disconnected players. This is the one and only place to do this.
 			server->RemoveDisconnectedPlayers();
+
+			// DEBUG: Log cash after RemoveDisconnectedPlayers
+			{
+				PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
+				PlayerListIterator dbg_end = curGame.getSeatsList()->end();
+				int dbg_seat = 0;
+				LOG_MSG("[POST-REMOVE SRV] Cash values after RemoveDisconnectedPlayers():");
+				while (dbg_i != dbg_end) {
+					if ((*dbg_i)->getMyActiveStatus() || (*dbg_i)->getMyCash() > 0) {
+						LOG_MSG("[POST-REMOVE SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
+							+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
+							+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
+							+ " Session:" + std::to_string((*dbg_i)->isSessionActive()));
+					}
+					++dbg_i;
+					++dbg_seat;
+				}
+			}
 
 			// Update rankings of all remaining players
 			server->UpdateRankingMap();
@@ -1292,6 +1327,22 @@ ServerGameStateHand::StartNewHand(boost::shared_ptr<ServerGame> server)
 
 	// Kick inactive players.
 	CheckPlayerTimeouts(server);
+
+	// DEBUG: Log all seat states BEFORE initHand to trace ghost-player bug
+	{
+		PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
+		PlayerListIterator dbg_end = curGame.getSeatsList()->end();
+		int dbg_seat = 0;
+		LOG_MSG("[PRE-INITHAND SRV] Cash values before initHand():");
+		while (dbg_i != dbg_end) {
+			LOG_MSG("[PRE-INITHAND SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
+				+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
+				+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
+				+ " Session:" + std::to_string((*dbg_i)->isSessionActive()));
+			++dbg_i;
+			++dbg_seat;
+		}
+	}
 
 	// Initialize hand.
 	curGame.initHand();

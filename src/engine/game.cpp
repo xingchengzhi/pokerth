@@ -165,6 +165,14 @@ void Game::initHand()
 		(*it)->setMyAction(PLAYER_ACTION_NONE);
 	}
 
+	// Log ALL seat states BEFORE removing cash=0 players (critical for ghost-player debugging)
+	LOG_MSG("[INITHAND-BEFORE] Hand " << currentHandID << " - activePlayerList has " << activePlayerList->size() << " players:");
+	for(it=activePlayerList->begin(); it!=activePlayerList->end(); ++it) {
+		LOG_MSG("[INITHAND-BEFORE]   " << (*it)->getMyName() << " (ID:" << (*it)->getMyUniqueID()
+			<< ") Cash:" << (*it)->getMyCash() << " Active:" << (*it)->getMyActiveStatus()
+			<< " Session:" << (*it)->isSessionActive() << " Action:" << (*it)->getMyAction());
+	}
+
 	// set player with empty cash inactive
 	it = activePlayerList->begin();
 	while( it!=activePlayerList->end() ) {
@@ -177,6 +185,8 @@ void Game::initHand()
 			++it;
 		}
 	}
+
+	LOG_MSG("[INITHAND-AFTER] activePlayerList now has " << activePlayerList->size() << " players remaining");
 
 	runningPlayerList->clear();
 	(*runningPlayerList) = (*activePlayerList);

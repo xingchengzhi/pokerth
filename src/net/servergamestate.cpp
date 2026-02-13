@@ -441,16 +441,31 @@ AbstractServerGameStateReceiving::CreateNetPacketHandStart(const ServerGame &ser
 	int playerCounter = 0;
 	while (player_i != player_end && playerCounter < server.GetStartData().numberOfPlayers) {
 		NetPlayerState seatState;
-		// Check cash first - player with 0 cash should be marked as NoMoney
-		if ((*player_i)->getMyCash() == 0) {
-			seatState = netPlayerStateNoMoney;
-		} else if (!(*player_i)->getMyActiveStatus()) {
+		// CRITICAL: Use myActiveStatus (set by initHand BEFORE blind posting)
+		// as the authoritative indicator of player elimination.
+		// DO NOT check getMyCash() == 0 here! By the time this function is
+		// called, setBlinds() has already run inside the Hand constructor
+		// (called from initHand). A player whose cash exactly equals the
+		// blind will have cash=0 after posting, but is still actively
+		// participating in the hand (as all-in). Checking cash here would
+		// incorrectly mark them as "NoMoney" (eliminated), causing the
+		// client to remove them from activePlayerList -- the ghost bug.
+		if (!(*player_i)->getMyActiveStatus()) {
 			seatState = netPlayerStateNoMoney;
 		} else if (!(*player_i)->isSessionActive()) {
 			seatState = netPlayerStateSessionInactive;
 		} else {
 			seatState = netPlayerStateNormal;
 		}
+		const char* stateStr = (seatState == netPlayerStateNormal) ? "Normal" :
+			(seatState == netPlayerStateSessionInactive) ? "SessionInactive" :
+			(seatState == netPlayerStateNoMoney) ? "NoMoney" : "Unknown";
+		LOG_MSG("[HANDSTART SRV] Seat " + std::to_string(playerCounter) + " " + (*player_i)->getMyName()
+			+ " (ID:" + std::to_string((*player_i)->getMyUniqueID()) + ") State:" + stateStr
+			+ " Cash:" + std::to_string((*player_i)->getMyCash())
+			+ " Active:" + std::to_string((*player_i)->getMyActiveStatus())
+			+ " Session:" + std::to_string((*player_i)->isSessionActive())
+			+ " Action:" + std::to_string((*player_i)->getMyAction()));
 		netHandStart->add_seatstates(seatState);
 		++player_i;
 		++playerCounter;

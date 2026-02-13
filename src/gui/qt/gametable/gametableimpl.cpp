@@ -4670,6 +4670,27 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 			return SEAT_AUTOFOLD;
 		}
 	} else {
+		// SAFETY NET: Detect state desync – a player with cash > 0 should NEVER
+		// have myActiveStatus == false.  If this happens ("ghost player" bug),
+		// treat them as active so they remain visible on the table instead of
+		// silently disappearing while the server keeps playing them.
+		if(player->getMyCash() > 0 && player->getMyUniqueID() != 0) {
+			qDebug() << "[GHOST-SAFETY] Player" << player->getMyName().c_str()
+				<< "(ID:" << player->getMyUniqueID() << ") has cash"
+				<< player->getMyCash() << "but myActiveStatus=false!"
+				<< "Treating as SEAT_ACTIVE to prevent ghost player.";
+			// Auto-repair: restore active status
+			player->setMyActiveStatus(true);
+			if(player->isSessionActive()) {
+				return SEAT_ACTIVE;
+			} else {
+				PlayerAction action = (PlayerAction)player->getMyAction();
+				if(action != PLAYER_ACTION_NONE && action != PLAYER_ACTION_FOLD) {
+					return SEAT_ACTIVE;
+				}
+				return SEAT_AUTOFOLD;
+			}
+		}
 		if(player->getMyStayOnTableStatus() && (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_NETWORK)) {
 			return SEAT_STAYONTABLE;
 		} else {

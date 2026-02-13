@@ -2011,6 +2011,30 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 			switch (entry.state) {
 			case netPlayerStateNormal :
 				entry.player->setIsSessionActive(true);
+				// CRITICAL FIX: Restore myActiveStatus when server says player is Normal.
+				// Without this, a player whose myActiveStatus was set to false (e.g., due
+				// to a transient cash=0 state or desync) would remain invisible forever
+				// because no other code path restores it -- the "ghost player" bug.
+				if (!entry.player->getMyActiveStatus()) {
+					qDebug() << "[GHOST-FIX] Restoring activeStatus for player"
+						<< entry.player->getMyName().c_str()
+						<< "(ID:" << entry.player->getMyUniqueID()
+						<< ") cash:" << entry.player->getMyCash();
+					entry.player->setMyActiveStatus(true);
+					// Re-add to activePlayerList if not already present
+					bool found = false;
+					PlayerList apl = client->GetGame()->getActivePlayerList();
+					for (PlayerListConstIterator aIt = apl->begin(); aIt != apl->end(); ++aIt) {
+						if ((*aIt)->getMyUniqueID() == entry.player->getMyUniqueID()) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						apl->push_back(entry.player);
+						qDebug() << "[GHOST-FIX] Re-added player to activePlayerList";
+					}
+				}
 				break;
 			case netPlayerStateSessionInactive :
 				entry.player->setIsSessionActive(false);

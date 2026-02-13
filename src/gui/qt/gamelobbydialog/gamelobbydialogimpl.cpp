@@ -1946,8 +1946,8 @@ void gameLobbyDialogImpl::removePlayerFromIgnoreList()
 
 void gameLobbyDialogImpl::searchForPlayerRegExpChanged()
 {
-	QRegularExpression regExp(lineEdit_searchForPlayers->text());
-	myNickListSortFilterProxyModel->setFilterRole(regExp.captureCount());
+	QRegularExpression regExp(QRegularExpression::escape(lineEdit_searchForPlayers->text()), QRegularExpression::CaseInsensitiveOption);
+	myNickListSortFilterProxyModel->setFilterRegularExpression(regExp);
 }
 
 void gameLobbyDialogImpl::showAutoStartTimer()

@@ -2734,18 +2734,22 @@ void gameTableImpl::postRiverRunAnimation3()
 	list<unsigned> winners = currentHand->getBoard()->getWinners();
 
 	// Determine if any winning player was all-in (for main pot / side pot labeling).
-	// In sidepot situations, the all-in player's win IS the main pot (the pot
-	// everyone contributed to). Other winners' pots are side pots.
-	// The all-in player with the smallest win amount wins the base (main) pot.
+	// In sidepot situations, the all-in player with the smallest bet (= RoundStartCash
+	// for all-in players) wins the main pot (the pot everyone contributed to).
+	// Other winners' pots are side pots.
+	// Note: We compare bet amounts (RoundStartCash), NOT win amounts (MoneyWon),
+	// because the main pot typically has MORE contributors and thus a LARGER
+	// win amount than side pots.
 	bool hasAllInWinner = false;
-	int minAllInWinnerMoney = INT_MAX;
+	int minAllInWinnerBet = INT_MAX;
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
 		bool actuallyWon = isW && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
 		if(actuallyWon && (*it_c)->getLastMoneyWon() > 0 && (*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
 			hasAllInWinner = true;
-			if((*it_c)->getLastMoneyWon() < minAllInWinnerMoney) {
-				minAllInWinnerMoney = (*it_c)->getLastMoneyWon();
+			int betAmount = (*it_c)->getMyRoundStartCash();
+			if(betAmount < minAllInWinnerBet) {
+				minAllInWinnerBet = betAmount;
 			}
 		}
 	}
@@ -2842,15 +2846,16 @@ void gameTableImpl::postRiverRunAnimation3()
 			// 			if (textLabel_handLabel->text() == "River") {
 
 			// Main pot / side pot labeling:
-			// In sidepot scenarios, the all-in player wins the "main pot" (the pot
-			// all non-folded players contributed to). Other winners get "(side pot)".
+			// In sidepot scenarios, the all-in player with the smallest bet wins
+			// the "main pot" (the pot all non-folded players contributed to).
+			// Other winners get "(side pot)".
 			// When no winner was all-in, there's no sidepot situation -> always main pot.
 			bool isMainPot;
 			if (!hasAllInWinner) {
 				isMainPot = true; // No sidepot situation
 			} else if ((*it_c)->getMyAction() == PLAYER_ACTION_ALLIN
-					   && (*it_c)->getLastMoneyWon() <= minAllInWinnerMoney) {
-				isMainPot = true; // All-in player with smallest win = main pot
+					   && (*it_c)->getMyRoundStartCash() <= minAllInWinnerBet) {
+				isMainPot = true; // All-in player with smallest bet = main pot
 			} else {
 				isMainPot = false; // Side pot
 			}

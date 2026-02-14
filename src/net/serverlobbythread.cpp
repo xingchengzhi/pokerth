@@ -2164,9 +2164,13 @@ ServerLobbyThread::SessionTimeoutWarning(boost::shared_ptr<SessionData> session,
 	netWarning->set_remainingseconds(remainingSec);
 	GetSender().Send(session, packet);
 
-	if (session->GetGame() && session->GetPlayerData()) {
-		session->GetGame()->MarkPlayerAsInactive(session->GetPlayerData()->GetUniqueId());
-	}
+	// Do NOT mark the player as inactive here. This is just a WARNING -
+	// the player still has remainingSec seconds to respond. Marking them
+	// inactive immediately causes the "ghost player" bug where a player
+	// who is still connected but idle (e.g., waiting between hands) gets
+	// treated as disconnected. The actual deactivation happens in
+	// SessionError/TimerSessionTimeout if the player truly times out,
+	// and RemoveDisconnectedPlayers() handles cleanup between hands.
 }
 
 void

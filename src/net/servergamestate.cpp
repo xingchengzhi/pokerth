@@ -1479,6 +1479,21 @@ ServerGameStateHand::CheckPlayerTimeouts(boost::shared_ptr<ServerGame> server)
 				}
 				if (tmpPlayer->isSessionActive()) {
 					tmpPlayer->setIsSessionActive(false);
+					// Send AFK warning to the client so it shows the timeout popup.
+					// The player has until FORCED_TIMEOUT_FACTOR to respond (click OK
+					// or perform any action) before being kicked from the game.
+					unsigned forcedTimeoutSec = static_cast<unsigned>(actionTimeout * SERVER_GAME_FORCED_TIMEOUT_FACTOR);
+					unsigned elapsedSec = tmpPlayer->getTimeSecSinceLastRemoteAction();
+					unsigned remainingSec = (forcedTimeoutSec > elapsedSec) ? (forcedTimeoutSec - elapsedSec) : 0;
+					boost::shared_ptr<SessionData> session = server->GetSessionManager().GetSessionByUniquePlayerId(tmpPlayer->getMyUniqueID());
+					if (session) {
+						boost::shared_ptr<NetPacket> packet(new NetPacket);
+						packet->GetMsg()->set_messagetype(PokerTHMessage::Type_TimeoutWarningMessage);
+						TimeoutWarningMessage *netWarning = packet->GetMsg()->mutable_timeoutwarningmessage();
+						netWarning->set_timeoutreason(TimeoutWarningMessage::timeoutKickAfterAutofold);
+						netWarning->set_remainingseconds(remainingSec);
+						server->GetLobbyThread().GetSender().Send(session, packet);
+					}
 				}
 				if ((int)tmpPlayer->getTimeSecSinceLastRemoteAction() >= actionTimeout * SERVER_GAME_FORCED_TIMEOUT_FACTOR) {
 					server->KickPlayer(tmpPlayer->getMyUniqueID());

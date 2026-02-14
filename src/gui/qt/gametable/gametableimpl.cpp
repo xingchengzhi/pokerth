@@ -2741,7 +2741,8 @@ void gameTableImpl::postRiverRunAnimation3()
 	int minAllInWinnerMoney = INT_MAX;
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-		if(isW && (*it_c)->getLastMoneyWon() > 0 && (*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
+		bool actuallyWon = isW && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+		if(actuallyWon && (*it_c)->getLastMoneyWon() > 0 && (*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
 			hasAllInWinner = true;
 			if((*it_c)->getLastMoneyWon() < minAllInWinnerMoney) {
 				minAllInWinnerMoney = (*it_c)->getLastMoneyWon();

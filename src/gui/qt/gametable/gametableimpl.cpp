@@ -86,7 +86,7 @@
 using namespace std;
 
 gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
-	: QMainWindow(parent), myChat(NULL), myConfig(c), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0)
+	: QMainWindow(parent), myChat(NULL), myConfig(c), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
 {
 	int i;
 
@@ -3973,6 +3973,13 @@ void gameTableImpl::closeGameTable()
 			myStartWindow->getSession()->terminateNetworkClient();
 			stopTimer();
 			if (myStartWindow->getMyServerGuiInterface()) myStartWindow->getMyServerGuiInterface()->getSession()->terminateNetworkServer();
+			//Reset playing mode to manual for next game
+			playingMode = 0;
+#ifdef GUI_800x480
+			tabs.radioButton_manualAction->setChecked(true);
+#else
+			radioButton_manualAction->setChecked(true);
+#endif
 			saveGameTableGeometry();
 			myStartWindow->show();
 			this->hide();
@@ -3989,6 +3996,13 @@ void gameTableImpl::closeGameTable()
 
 		if(close) {
 			//now really close the table
+			//Reset playing mode to manual for next game
+			playingMode = 0;
+#ifdef GUI_800x480
+			tabs.radioButton_manualAction->setChecked(true);
+#else
+			radioButton_manualAction->setChecked(true);
+#endif
 			// In network games, go back to lobby instead of terminating
 			if(myStartWindow->getSession()->isNetworkClientRunning() && 
 			   (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || 
@@ -4075,10 +4089,24 @@ void gameTableImpl::leaveCurrentNetworkGame()
 		if(!myUniversalMessageDialog->checkIfMesssageWillBeDisplayed(BACKTO_LOBBY_QUESTION)) {
 
 			assert(myStartWindow->getSession());
+			//Reset playing mode to manual for next game
+			playingMode = 0;
+#ifdef GUI_800x480
+			tabs.radioButton_manualAction->setChecked(true);
+#else
+			radioButton_manualAction->setChecked(true);
+#endif
 			myStartWindow->getSession()->sendLeaveCurrentGame();
 		} else {
 			if (myUniversalMessageDialog->exec(BACKTO_LOBBY_QUESTION, tr("Attention! Do you really want to leave the current game\nand go back to the lobby?"), tr("PokerTH - Internet Game Message"), QPixmap(":/gfx/logoChip3D.png"), QDialogButtonBox::Yes|QDialogButtonBox::No, true) == QDialog::Accepted) {
 				assert(myStartWindow->getSession());
+				//Reset playing mode to manual for next game
+				playingMode = 0;
+#ifdef GUI_800x480
+				tabs.radioButton_manualAction->setChecked(true);
+#else
+				radioButton_manualAction->setChecked(true);
+#endif
 				myStartWindow->getSession()->sendLeaveCurrentGame();
 			}
 		}

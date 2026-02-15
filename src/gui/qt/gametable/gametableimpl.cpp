@@ -3778,16 +3778,18 @@ void gameTableImpl::networkGameModification()
 	if(tabs.tabWidget_Left->widget(1) != tabs.tab_Chat)
 		tabs.tabWidget_Left->insertTab(1, tabs.tab_Chat, QString(tr("Chat"))); /*TODO text abgeschnitten --> stylesheets*/
 
-	tabs.tabWidget_Left->removeTab(2);
-	tabs.tabWidget_Left->removeTab(2);
+	// Remove all tabs beyond Hands and Chat (Kick, Player info, etc.)
+	while(tabs.tabWidget_Left->count() > 2)
+		tabs.tabWidget_Left->removeTab(2);
 
 	tabs.tabWidget_Left->setCurrentIndex(1);
 #else
 	if(tabWidget_Left->widget(1) != tab_Chat)
 		tabWidget_Left->insertTab(1, tab_Chat, QString(tr("Chat"))); /*TODO text abgeschnitten --> stylesheets*/
 
-	tabWidget_Left->removeTab(2);
-	tabWidget_Left->removeTab(2);
+	// Remove all tabs beyond Hands and Chat (Kick, Player info, etc.)
+	while(tabWidget_Left->count() > 2)
+		tabWidget_Left->removeTab(2);
 
 	tabWidget_Left->setCurrentIndex(1);
 #endif

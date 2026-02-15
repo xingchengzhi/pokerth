@@ -262,6 +262,7 @@ bool startNetworkGameDialogImpl::eventFilter(QObject *obj, QEvent *event)
 
 void startNetworkGameDialogImpl::accept()
 {
+	myW->networkGameModification();
 	myW->show();
 	QDialog::accept();
 }

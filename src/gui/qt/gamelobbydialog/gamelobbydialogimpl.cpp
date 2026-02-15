@@ -485,6 +485,7 @@ void gameLobbyDialogImpl::refresh(int actionID)
 		//stop waitStartGameMsgBoxes
 		waitStartGameMsgBoxTimer->stop();
 		closeAllChildDialogs();
+		myW->networkGameModification();
 		this->accept();
 		myW->show();
 	} else if(actionID == MSG_NET_GAME_CLIENT_END) {

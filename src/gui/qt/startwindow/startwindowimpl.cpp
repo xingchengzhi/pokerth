@@ -744,7 +744,6 @@ void startWindowImpl::callLogFileDialog()
 
 void startWindowImpl::showTimeoutDialog(int msgID, unsigned duration)
 {
-	qDebug() << "[AFK-CLIENT] showTimeoutDialog called: msgID=" << msgID << "duration=" << duration << "isHidden=" << myTimeoutDialog->isHidden();
 	if(myTimeoutDialog->isHidden()) {
 		myTimeoutDialog->setMySession(mySession);
 		myTimeoutDialog->setMsgID((NetTimeoutReason)msgID);

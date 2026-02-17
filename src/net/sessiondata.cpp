@@ -444,6 +444,16 @@ SessionData::GetRemoteIPAddressFromSocket() const
         } catch (...) {
         }
     }
+
+    if (m_webData && m_webData->webSocketServer) {
+        try {
+            auto con = m_webData->webSocketServer->get_con_from_hdl(m_webData->webHandle);
+            auto ep = con->get_raw_socket().remote_endpoint(ec);
+            if (!ec) return ep.address().to_string();
+        } catch (...) {
+        }
+    }
+
     return std::string();
 }
 

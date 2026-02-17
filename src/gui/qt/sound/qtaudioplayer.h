@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QBuffer>
 #include <QProcess>
+#include <atomic>
 #include "configfile.h"
 
 #ifdef Q_OS_WIN
@@ -57,7 +58,7 @@ public:
         QSoundEffectBackend,    // Qt6 native
         PaPlayBackend,          // PulseAudio paplay command (Linux)
         SoftwareMixerBackend,   // Pre-loaded WAVs + single QAudioSink (low-latency)
-        WinMMBackend            // Win32 PlaySound() API (Windows, zero CPU idle)
+        WinMMBackend            // Win32 waveOut API (Windows, threaded, concurrent)
     };
 
     QtAudioPlayer(ConfigFile* config);
@@ -102,14 +103,23 @@ private:
     // QSoundEffect backend
     QHash<QString, QSharedPointer<QSoundEffect>> effects;
     
-    // paplay / WinMM backend (both use file paths)
+    // paplay backend
     QHash<QString, QString> soundFilePaths;  // key -> file path
     QString paplayBinary;                     // path to paplay
     
 #ifdef Q_OS_WIN
-    // WinMM backend volume (0..0xFFFF per channel, packed DWORD)
-    quint32 winmmVolume;
-    void applyWinMMVolume();
+    // WinMM waveOut backend — pre-loaded WAV data, threaded playback
+    struct WinMMSound {
+        QByteArray pcmData;       // Raw PCM samples
+        quint16 channels;
+        quint32 sampleRate;
+        quint16 bitsPerSample;
+    };
+    QHash<QString, WinMMSound> winmmSounds;   // pre-loaded sounds
+    float winmmVolume;                         // 0.0 .. 1.0
+    QMutex winmmMutex;                         // protects winmmActiveHandles
+    QVector<HWAVEOUT> winmmActiveHandles;      // currently playing handles
+    std::atomic<bool> winmmShuttingDown{false}; // stop signal for threads
 #endif
     
     // Software mixer backend

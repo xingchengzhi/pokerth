@@ -76,6 +76,16 @@ public:
     
     AudioBackend activeBackend() const { return backend; }
 
+#ifdef Q_OS_WIN
+    // WinMM waveOut backend — pre-loaded WAV data, threaded playback
+    struct WinMMSound {
+        QByteArray pcmData;       // Raw PCM samples
+        quint16 channels;
+        quint32 sampleRate;
+        quint16 bitsPerSample;
+    };
+#endif
+
 private slots:
     void onAudioOutputsChanged();
     void onDefaultOutputChanged();
@@ -108,13 +118,6 @@ private:
     QString paplayBinary;                     // path to paplay
     
 #ifdef Q_OS_WIN
-    // WinMM waveOut backend — pre-loaded WAV data, threaded playback
-    struct WinMMSound {
-        QByteArray pcmData;       // Raw PCM samples
-        quint16 channels;
-        quint32 sampleRate;
-        quint16 bitsPerSample;
-    };
     QHash<QString, WinMMSound> winmmSounds;   // pre-loaded sounds
     float winmmVolume;                         // 0.0 .. 1.0
     QMutex winmmMutex;                         // protects winmmActiveHandles

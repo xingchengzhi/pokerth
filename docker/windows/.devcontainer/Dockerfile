@@ -73,8 +73,7 @@ RUN userdel ubuntu && \
     mkdir -p /etc/sudoers.d && \
     echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME && \
-    usermod -aG docker $USERNAME && \
-    usermod -aG systemd-journal $USERNAME
+    usermod -aG docker $USERNAME 
 
 # entry-point
 # COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint

@@ -123,7 +123,7 @@ RUN vcpkg install --triplet=x64-mingw-static \
     openssl
 RUN vcpkg install protobuf:x64-linux
 
-RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
+RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout testing
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

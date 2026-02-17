@@ -4,6 +4,10 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 
+#ifdef Q_OS_WIN
+#pragma comment(lib, "winmm.lib")
+#endif
+
 // All sound files to preload
 static const char* SOUND_FILES[] = {
     "allin", "bet", "blinds_raises_level1", "blinds_raises_level2", 
@@ -220,6 +224,12 @@ void QtAudioPlayer::initAudio()
         backend = AudioBackend::QSoundEffectBackend;
     } else if (forcedBackend.toLower() == "mixer") {
         backend = AudioBackend::SoftwareMixerBackend;
+    } else if (forcedBackend.toLower() == "winmm") {
+#ifdef Q_OS_WIN
+        backend = AudioBackend::WinMMBackend;
+#else
+        qWarning() << "[Audio] WinMM backend only available on Windows, falling back";
+#endif
     } else {
         // Auto-detect best backend
 #ifdef Q_OS_LINUX
@@ -229,8 +239,11 @@ void QtAudioPlayer::initAudio()
         } else {
             backend = AudioBackend::SoftwareMixerBackend;
         }
+#elif defined(Q_OS_WIN)
+        // Windows: Win32 PlaySound() — zero CPU when idle, no Qt Multimedia needed
+        backend = AudioBackend::WinMMBackend;
 #else
-        // Windows/macOS: software mixer for low-latency, glitch-free playback
+        // macOS: software mixer for low-latency playback
         backend = AudioBackend::SoftwareMixerBackend;
 #endif
     }
@@ -252,6 +265,10 @@ void QtAudioPlayer::initAudio()
             backend = AudioBackend::SoftwareMixerBackend;
             initSoftwareMixerBackend(deviceToUse, vol);
         }
+#ifdef Q_OS_WIN
+    } else if (backend == AudioBackend::WinMMBackend) {
+        initWinMMBackend(vol);
+#endif
     } else {
         initQSoundEffectBackend(deviceToUse, vol);
     }
@@ -342,6 +359,10 @@ void QtAudioPlayer::playSound(std::string audioName, int /*playerID*/)
         playSoundSoftwareMixer(key);
     } else if (backend == AudioBackend::PaPlayBackend) {
         playSoundPaPlay(key);
+#ifdef Q_OS_WIN
+    } else if (backend == AudioBackend::WinMMBackend) {
+        playSoundWinMM(key);
+#endif
     } else {
         playSoundQSoundEffect(key);
     }
@@ -494,8 +515,82 @@ void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
     }
 }
 
+// --- Win32 PlaySound() backend ---
+// Uses the Windows Multimedia API (winmm.dll) to play WAV files.
+// Zero CPU when idle, no permanent audio session, no Qt Multimedia dependency.
+// Only one sound at a time — new call stops the previous one (fine for poker).
+
+#ifdef Q_OS_WIN
+
+void QtAudioPlayer::initWinMMBackend(float vol)
+{
+    qDebug() << "[Audio] Initializing Win32 PlaySound (WinMM) backend";
+
+    for (const char* soundName : SOUND_FILES) {
+        QString key  = QString::fromLatin1(soundName);
+        QString path = myAppDataPath + "sounds/default/" + key + ".wav";
+
+        QFileInfo fi(path);
+        if (!fi.exists()) {
+            qWarning() << "[Audio] Sound file not found:" << path;
+            continue;
+        }
+        soundFilePaths.insert(key, QDir::toNativeSeparators(fi.absoluteFilePath()));
+    }
+
+    // Set initial waveOut volume (left + right packed into DWORD)
+    winmmVolume = 0;
+    applyWinMMVolume();          // sets winmmVolume from config
+    winmmVolume = static_cast<quint32>(qBound(0, qRound(vol * 0xFFFF), 0xFFFF));
+    WORD wVol = static_cast<WORD>(winmmVolume);
+    waveOutSetVolume(NULL, MAKELONG(wVol, wVol));
+
+    qDebug() << "[Audio] WinMM:" << soundFilePaths.size() << "sounds registered, volume"
+             << qRound(vol * 100) << "%";
+}
+
+void QtAudioPlayer::playSoundWinMM(const QString& key)
+{
+    auto it = soundFilePaths.constFind(key);
+    if (it == soundFilePaths.constEnd()) {
+        qWarning() << "[Audio] Unknown sound:" << key;
+        return;
+    }
+
+    // Re-apply volume in case user changed it in settings
+    float vol = myConfig->readConfigInt("SoundVolume") / 10.0f;
+    quint32 desiredVol = static_cast<quint32>(qBound(0, qRound(vol * 0xFFFF), 0xFFFF));
+    if (desiredVol != winmmVolume) {
+        winmmVolume = desiredVol;
+        WORD wVol = static_cast<WORD>(winmmVolume);
+        waveOutSetVolume(NULL, MAKELONG(wVol, wVol));
+    }
+
+    // SND_FILENAME  — play from file path
+    // SND_ASYNC     — return immediately (non-blocking)
+    // SND_NODEFAULT — don't play the system default sound on error
+    PlaySoundW(it.value().toStdWString().c_str(), NULL,
+               SND_FILENAME | SND_ASYNC | SND_NODEFAULT);
+}
+
+void QtAudioPlayer::applyWinMMVolume()
+{
+    float vol = myConfig->readConfigInt("SoundVolume") / 10.0f;
+    winmmVolume = static_cast<quint32>(qBound(0, qRound(vol * 0xFFFF), 0xFFFF));
+    WORD wVol = static_cast<WORD>(winmmVolume);
+    waveOutSetVolume(NULL, MAKELONG(wVol, wVol));
+}
+
+#endif // Q_OS_WIN
+
 void QtAudioPlayer::closeAudio()
 {
+#ifdef Q_OS_WIN
+    if (backend == AudioBackend::WinMMBackend) {
+        // Stop any currently playing sound
+        PlaySoundW(NULL, NULL, 0);
+    }
+#endif
     if (mixerSink) {
         mixerSink->stop();
         delete mixerSink;

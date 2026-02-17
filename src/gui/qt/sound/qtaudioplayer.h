@@ -11,6 +11,11 @@
 #include <QProcess>
 #include "configfile.h"
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <mmsystem.h>
+#endif
+
 // Software mixer: pre-loads WAV PCM data into memory,
 // mixes active voices into a single continuous audio stream for QAudioSink.
 // Eliminates per-sound WASAPI session startup latency on Windows.
@@ -51,7 +56,8 @@ public:
     enum class AudioBackend {
         QSoundEffectBackend,    // Qt6 native
         PaPlayBackend,          // PulseAudio paplay command (Linux)
-        SoftwareMixerBackend    // Pre-loaded WAVs + single QAudioSink (low-latency)
+        SoftwareMixerBackend,   // Pre-loaded WAVs + single QAudioSink (low-latency)
+        WinMMBackend            // Win32 PlaySound() API (Windows, zero CPU idle)
     };
 
     QtAudioPlayer(ConfigFile* config);
@@ -81,6 +87,8 @@ private:
     void playSoundPaPlay(const QString& key);
     void initSoftwareMixerBackend(const QAudioDevice& device, float volume);
     void playSoundSoftwareMixer(const QString& key);
+    void initWinMMBackend(float volume);
+    void playSoundWinMM(const QString& key);
     bool detectPaPlay();
     void applyDeviceToEffects();
     void scheduleDeviceCheck();
@@ -94,9 +102,15 @@ private:
     // QSoundEffect backend
     QHash<QString, QSharedPointer<QSoundEffect>> effects;
     
-    // paplay backend
+    // paplay / WinMM backend (both use file paths)
     QHash<QString, QString> soundFilePaths;  // key -> file path
     QString paplayBinary;                     // path to paplay
+    
+#ifdef Q_OS_WIN
+    // WinMM backend volume (0..0xFFFF per channel, packed DWORD)
+    quint32 winmmVolume;
+    void applyWinMMVolume();
+#endif
     
     // Software mixer backend
     WavMixer* mixer;

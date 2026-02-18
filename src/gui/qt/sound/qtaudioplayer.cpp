@@ -233,10 +233,17 @@ void QtAudioPlayer::initAudio()
     } else {
         // Auto-detect best backend
 #ifdef Q_OS_LINUX
-        // On Linux prefer paplay for PipeWire/PulseAudio compatibility
-        if (detectPaPlay()) {
+        // AppImage: QAudioSink may not work because the bundled glibc/libs
+        // conflict with the host audio stack.  Use paplay via
+        // startDetachedSafe() which restores the original LD_LIBRARY_PATH.
+        if (AppImageUtils::isAppImage() && detectPaPlay()) {
             backend = AudioBackend::PaPlayBackend;
         } else {
+            // Native builds: use the software mixer — a single persistent
+            // QAudioSink stream that mixes all sounds in-process.  This
+            // avoids spawning a new paplay/pw-play process per sound effect,
+            // which floods PulseAudio/PipeWire with concurrent streams and
+            // causes stuttering in other audio consumers (e.g. video players).
             backend = AudioBackend::SoftwareMixerBackend;
         }
 #elif defined(Q_OS_WIN)

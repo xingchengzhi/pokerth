@@ -1053,7 +1053,7 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 		client->ModifyGameInfoRemoveSpectatorDuringGame(netSpectatorLeft.playerid(), removeReason);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_TimeoutWarningMessage) {
 		const TimeoutWarningMessage &tmpTimeout = tmpPacket->GetMsg()->timeoutwarningmessage();
-		qDebug() << "[AFK-CLIENT] Received TimeoutWarningMessage reason=" << tmpTimeout.timeoutreason() << "remaining=" << tmpTimeout.remainingseconds() << "s";
+		qWarning() << "[AFK-CLIENT] Received TimeoutWarningMessage reason=" << tmpTimeout.timeoutreason() << "remaining=" << tmpTimeout.remainingseconds() << "s";
 		client->GetCallback().SignalNetClientShowTimeoutDialog((NetTimeoutReason)tmpTimeout.timeoutreason(), tmpTimeout.remainingseconds());
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_ChatMessage) {
 		// Chat message - display it in the GUI.

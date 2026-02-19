@@ -166,8 +166,10 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
   openssl:arm64-android \
   protobuf:x64-linux
 
-# arm-android
-RUN ${ROOT}/vcpkg/vcpkg install \
+# arm-android – detect_compiler-Cache löschen, damit die Compiler-Erkennung
+# für die neue Triplet-Architektur sauber durchläuft
+RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
+  ${ROOT}/vcpkg/vcpkg install \
   boost-system:arm-android \
   boost-filesystem:arm-android \
   boost-thread:arm-android boost-regex:arm-android \

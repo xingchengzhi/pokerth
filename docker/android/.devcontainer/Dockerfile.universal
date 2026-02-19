@@ -175,9 +175,9 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
   protobuf:x64-linux
 
 # arm-android – NDK r27 verwenden (r28 unterstützt kein armeabi-v7a mehr)
-# detect_compiler-Cache löschen, damit vcpkg den r27-Compiler korrekt erkennt
+# ENV statt inline-Variable, damit alle cmake-Subprozesse von vcpkg den Pfad sehen
+ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT_ARMV7}
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
-  ANDROID_NDK_HOME=${ANDROID_NDK_HOME_ARMV7} \
   ${ROOT}/vcpkg/vcpkg install \
   boost-system:arm-android \
   boost-filesystem:arm-android \
@@ -192,6 +192,8 @@ RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
   boost-foreach:arm-android \
   boost-uuid:arm-android \
   openssl:arm-android
+# NDK zurück auf r28 (arm64) setzen
+ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT}
 
 ### ###
 
@@ -215,16 +217,18 @@ RUN ${ROOT}/vcpkg/vcpkg install protobuf:arm64-android \
     --no-binarycaching
 
 # Protobuf für arm-android (NDK r27)
+ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT_ARMV7}
 RUN ${ROOT}/vcpkg/vcpkg remove protobuf:arm-android --recurse 2>/dev/null || true
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/protobuf
 RUN rm -rf ${ROOT}/vcpkg/packages/protobuf_arm-android
 RUN rm -rf /tmp/vcpkg-buildtrees/protobuf
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
-    ANDROID_NDK_HOME=${ANDROID_NDK_HOME_ARMV7} \
     ${ROOT}/vcpkg/vcpkg install protobuf:arm-android \
     --overlay-ports=${ROOT}/vcpkg-overlays/protobuf \
     --x-buildtrees-root=/tmp/vcpkg-buildtrees \
     --no-binarycaching
+# NDK zurück auf r28 (arm64) setzen
+ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT}
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "timeoutmsgboximpl.h"
 #include "session.h"
+#include <QDebug>
 
 timeoutMsgBoxImpl::timeoutMsgBoxImpl(QMainWindow *parent)
 	: QMessageBox(parent), msgID(NETWORK_TIMEOUT_GENERIC)
@@ -57,6 +58,7 @@ timeoutMsgBoxImpl::~timeoutMsgBoxImpl()
 
 void timeoutMsgBoxImpl::startTimeout()
 {
+	qDebug() << "[AFK-CLIENT] timeoutMsgBox::startTimeout - msgID=" << msgID << "duration=" << timeoutDuration << "s";
 	//start the real timer
 	realTimer.reset();
 	realTimer.start();
@@ -86,6 +88,6 @@ void timeoutMsgBoxImpl::timerRefresh()
 
 void timeoutMsgBoxImpl::stopTimeout()
 {
-
+	qDebug() << "[AFK-CLIENT] timeoutMsgBox::stopTimeout - user clicked OK, sending ResetTimeoutMessage";
 	mySession->resetNetworkTimeout();
 }

@@ -59,6 +59,7 @@
 #include "logfiledialog.h"
 #include "guilog.h"
 #include "darkmodehelper.h"
+#include <QDebug>
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
@@ -744,7 +745,10 @@ void startWindowImpl::callLogFileDialog()
 
 void startWindowImpl::showTimeoutDialog(int msgID, unsigned duration)
 {
+	qDebug() << "[AFK-CLIENT] showTimeoutDialog called: msgID=" << msgID << "duration=" << duration << "isHidden=" << myTimeoutDialog->isHidden()
+			 << "connectionLostHandlingActive=" << connectionLostHandlingActive;
 	if(myTimeoutDialog->isHidden()) {
+		qDebug() << "[AFK-CLIENT] >>> SHOWING timeout dialog now!";
 		myTimeoutDialog->setMySession(mySession);
 		myTimeoutDialog->setMsgID((NetTimeoutReason)msgID);
 		myTimeoutDialog->setTimeoutDuration(duration);
@@ -752,11 +756,18 @@ void startWindowImpl::showTimeoutDialog(int msgID, unsigned duration)
 		myTimeoutDialog->raise();
 		myTimeoutDialog->activateWindow();
 		myTimeoutDialog->startTimeout();
+	} else {
+		qDebug() << "[AFK-CLIENT] Timeout dialog already visible, not showing again.";
 	}
 }
 
 void startWindowImpl::hideTimeoutDialog()
 {
+	if (!myTimeoutDialog->isHidden()) {
+		qDebug() << "[AFK-CLIENT] hideTimeoutDialog called - dialog WAS visible, hiding now.";
+	} else {
+		qDebug() << "[AFK-CLIENT] hideTimeoutDialog called - dialog was already hidden (no-op).";
+	}
 	myTimeoutDialog->hide();
 }
 
@@ -847,14 +858,18 @@ void startWindowImpl::showConnectionLostDialog()
 
 void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 {
+	qDebug() << "[AFK-CLIENT] networkError called: errorID=" << errorID
+			 << "connectionLostHandlingActive=" << connectionLostHandlingActive;
 	// Suppress errors arriving while heartbeat connection-lost dialog is active
 	if (connectionLostHandlingActive) {
+		qDebug() << "[AFK-CLIENT] networkError SUPPRESSED (connectionLostHandlingActive)";
 		return;
 	}
 
 	// Stop connection monitoring
 	stopConnectionMonitoring();
 
+	qDebug() << "[AFK-CLIENT] networkError -> calling hideTimeoutDialog()";
 	hideTimeoutDialog();
 	switch (errorID) {
 	case ERR_SOCK_SERVERADDR_NOT_SET: {
@@ -1164,11 +1179,15 @@ void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 
 void startWindowImpl::networkNotification(int notificationId)
 {
+	qDebug() << "[AFK-CLIENT] networkNotification called: notificationId=" << notificationId
+			 << "connectionLostHandlingActive=" << connectionLostHandlingActive;
 	// Suppress notifications arriving while heartbeat connection-lost dialog is active
 	if (connectionLostHandlingActive) {
+		qDebug() << "[AFK-CLIENT] networkNotification SUPPRESSED (connectionLostHandlingActive)";
 		return;
 	}
 
+	qDebug() << "[AFK-CLIENT] networkNotification -> calling hideTimeoutDialog()";
 	hideTimeoutDialog();
 	switch (notificationId) {
 	case NTF_NET_JOIN_IP_BLOCKED: {

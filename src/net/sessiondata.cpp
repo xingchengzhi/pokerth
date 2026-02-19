@@ -237,7 +237,10 @@ void
 SessionData::TimerSessionTimeout(const boost::system::error_code &ec)
 {
 	if (!ec) {
+		LOG_MSG("[AFK-TIMER] Session #" << m_id << " FINAL TIMEOUT reached! Disconnecting session.");
 		m_callback.SessionError(shared_from_this(), ERR_NET_SESSION_TIMED_OUT);
+	} else {
+		LOG_MSG("[AFK-TIMER] Session #" << m_id << " final timeout timer cancelled (ec=" << ec.message() << ")");
 	}
 }
 
@@ -245,12 +248,15 @@ void
 SessionData::TimerActivityWarning(const boost::system::error_code &ec)
 {
 	if (!ec) {
+		LOG_MSG("[AFK-TIMER] Session #" << m_id << " activity timeout WARNING fired! Sending warning with " << m_activityWarningRemainingSec << "s remaining. Starting final countdown timer.");
 		m_callback.SessionTimeoutWarning(shared_from_this(), m_activityWarningRemainingSec);
 
 		m_activityTimeoutTimer.expires_after(seconds(m_activityWarningRemainingSec));
 		m_activityTimeoutTimer.async_wait(
 			boost::bind(
 				&SessionData::TimerSessionTimeout, shared_from_this(), boost::asio::placeholders::error));
+	} else {
+		LOG_MSG("[AFK-TIMER] Session #" << m_id << " activity warning timer CANCELLED (ec=" << ec.message() << ")");
 	}
 }
 
@@ -346,7 +352,9 @@ void
 SessionData::ResetActivityTimer()
 {
 	boost::mutex::scoped_lock lock(m_dataMutex);
-	m_activityTimeoutTimer.expires_after(seconds(m_activityTimeoutSec - m_activityWarningRemainingSec));
+	unsigned delaySec = m_activityTimeoutSec - m_activityWarningRemainingSec;
+	LOG_MSG("[AFK-TIMER] Session #" << m_id << " ResetActivityTimer -> " << delaySec << "s until warning (total=" << m_activityTimeoutSec << "s, warn=" << m_activityWarningRemainingSec << "s)");
+	m_activityTimeoutTimer.expires_after(seconds(delaySec));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));
@@ -392,7 +400,9 @@ SessionData::StartTimerActivityTimeout(unsigned timeoutSec, unsigned warningRema
 	m_activityTimeoutSec = timeoutSec;
 	m_activityWarningRemainingSec = warningRemainingSec;
 
-	m_activityTimeoutTimer.expires_after(seconds(timeoutSec - warningRemainingSec));
+	unsigned delaySec = timeoutSec - warningRemainingSec;
+	LOG_MSG("[AFK-TIMER] Session #" << m_id << " StartTimerActivityTimeout -> total=" << timeoutSec << "s, warn=" << warningRemainingSec << "s, delay=" << delaySec << "s");
+	m_activityTimeoutTimer.expires_after(seconds(delaySec));
 	m_activityTimeoutTimer.async_wait(
 		boost::bind(
 			&SessionData::TimerActivityWarning, shared_from_this(), boost::asio::placeholders::error));

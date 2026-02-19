@@ -250,6 +250,7 @@ void
 AbstractServerGameStateReceiving::ProcessPacket(boost::shared_ptr<ServerGame> server, boost::shared_ptr<SessionData> session, boost::shared_ptr<NetPacket> packet)
 {
 	if (packet->IsClientActivity()) {
+		LOG_MSG("[AFK-GAME] Session #" << session->GetId() << " client activity in-game: msgtype=" << packet->GetMsg()->messagetype() << " -> resetting session activity timer");
 		session->ResetActivityTimer();
 	}
 	if (packet->GetMsg()->messagetype() == PokerTHMessage::Type_PlayerInfoRequestMessage) {
@@ -651,6 +652,9 @@ ServerGameStateInit::TimerAdminWarning(const boost::system::error_code &ec, boos
 		// Find game admin.
 		boost::shared_ptr<SessionData> session = server->GetSessionManager().GetSessionByUniquePlayerId(server->GetAdminPlayerId());
 		if (session) {
+			LOG_MSG("[AFK-GAME] TimerAdminWarning fired for game " << server->GetId()
+				<< " admin session #" << session->GetId() << " - sending timeoutInactiveGame warning with "
+				<< SERVER_GAME_ADMIN_WARNING_REMAINING_SEC << "s remaining");
 			// Send him a warning.
 			boost::shared_ptr<NetPacket> packet(new NetPacket);
 			packet->GetMsg()->set_messagetype(PokerTHMessage::Type_TimeoutWarningMessage);
@@ -931,6 +935,8 @@ AbstractServerGameStateRunning::InternalProcessPacket(boost::shared_ptr<ServerGa
 {
 	if (packet->GetMsg()->messagetype() == PokerTHMessage::Type_ResetTimeoutMessage) {
 		// Reactivate session.
+		LOG_MSG("[AFK-GAME] ResetTimeoutMessage from session #" << session->GetId()
+			<< " (player " << session->GetPlayerData()->GetName() << ") -> adding to reactivate list");
 		server->AddReactivatePlayer(session->GetPlayerData()->GetUniqueId());
 	}
 }
@@ -1522,11 +1528,15 @@ void
 ServerGameStateHand::ReactivatePlayers(boost::shared_ptr<ServerGame> server)
 {
 	PlayerIdList reactivateIdList(server->GetAndResetReactivatePlayers());
+	if (!reactivateIdList.empty()) {
+		LOG_MSG("[AFK-GAME] ReactivatePlayers: " << reactivateIdList.size() << " player(s) to reactivate");
+	}
 	PlayerIdList::iterator i = reactivateIdList.begin();
 	PlayerIdList::iterator end = reactivateIdList.end();
 	while (i != end) {
 		boost::shared_ptr<PlayerInterface> tmpPlayer(server->GetGame().getPlayerByUniqueId(*i));
 		if (tmpPlayer) {
+			LOG_MSG("[AFK-GAME] Reactivating player " << tmpPlayer->getMyName() << " (was sessionActive=" << tmpPlayer->isSessionActive() << ")");
 			tmpPlayer->markRemoteAction();
 			tmpPlayer->setIsSessionActive(true);
 		}

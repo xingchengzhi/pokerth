@@ -77,7 +77,7 @@
 
 #define SERVER_INIT_SESSION_TIMEOUT_SEC				60
 #define SERVER_TIMEOUT_WARNING_REMAINING_SEC		60
-#define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1800	// 30 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
+#define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			300	// 5 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
 #define SERVER_SESSION_FORCED_TIMEOUT_SEC			604800	// 7 days - reset on every client activity
 
 #define SERVER_ADDRESS_LOCALHOST_STR_V4				"127.0.0.1"
@@ -1044,6 +1044,7 @@ ServerLobbyThread::HandlePacket(boost::shared_ptr<SessionData> session, boost::s
 {
 	if (session && packet) {
 		if (packet->IsClientActivity()) {
+			LOG_MSG("[AFK-LOBBY] Session #" << session->GetId() << " client activity: msgtype=" << packet->GetMsg()->messagetype() << " -> resetting activity timer");
 			session->ResetActivityTimer();
 			session->ResetGlobalTimeout();
 		}
@@ -2135,6 +2136,7 @@ ServerLobbyThread::InternalResubscribeMsg(boost::shared_ptr<SessionData> session
 void
 ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 {
+	LOG_MSG("[AFK-LOBBY] HandleReAddedSession for session #" << session->GetId() << " - returning to lobby, resetting activity timer");
 	// Remove session from game session list.
 	m_gameSessionManager.RemoveSession(session->GetId());
 
@@ -2157,6 +2159,7 @@ ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 void
 ServerLobbyThread::SessionTimeoutWarning(boost::shared_ptr<SessionData> session, unsigned remainingSec)
 {
+	LOG_MSG("[AFK-LOBBY] >>> SessionTimeoutWarning for session #" << session->GetId() << " - sending TimeoutWarningMessage with " << remainingSec << "s remaining");
 	boost::shared_ptr<NetPacket> packet(new NetPacket);
 	packet->GetMsg()->set_messagetype(PokerTHMessage::Type_TimeoutWarningMessage);
 	TimeoutWarningMessage *netWarning = packet->GetMsg()->mutable_timeoutwarningmessage();

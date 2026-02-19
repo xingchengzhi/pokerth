@@ -255,19 +255,16 @@ MANIFEST
 echo "AndroidManifest.xml erstellt mit lib_name=$TARGET"
 
 
-# ─── androiddeployqt pro ABI in separate Temp-Verzeichnisse ────────────────
+# ─── androiddeployqt mit Multi-ABI deployment-settings.json ────────────────
 #
-# androiddeployqt erzeugt Qt-Runtime-Libs und libs.xml für EINE ABI.
-# Strategie:
-#   1. Für JEDE ABI: App-.so vorbereiten, androiddeployqt --no-build in eigenes Temp-Dir
-#   2. Primäre ABI (arm64-v8a) als Basis → Gradle-Projekt
-#   3. Qt-Libs der sekundären ABI aus deren Temp-Dir ins Gradle-Projekt kopieren
-#   4. libs.xml aus beiden Temp-Dirs zusammenführen
-#   5. App-.so + OpenSSL für beide ABIs ins Gradle-Projekt kopieren
-#   6. gradle.properties: qtTargetAbiList auf beide ABIs setzen
-
-PRIMARY_ABI="${ABIS[0]}"
-SECONDARY_ABI="${ABIS[1]}"
+# Qt 6 unterstützt Multi-ABI nativ in deployment-settings.json: die per-ABI-
+# Felder (qt, architectures, qtLibsDirectory, etc.) sind als Objekte mit
+# ABI-Keys gespeichert. Ein EINZIGER androiddeployqt-Aufruf mit merged JSON
+# erzeugt das komplette Gradle-Projekt inkl. libs.xml für ALLE ABIs.
+#
+# NDK: Wir verwenden NDK r27 (ANDROID_NDK_ROOT_ARMV7) für androiddeployqt,
+# da es beide ABIs unterstützt. NDK r28 hat 32-bit (armeabi-v7a) entfernt
+# und hat kein libc++_shared.so für arm-linux-androideabi.
 
 ANDROIDDEPLOYQT="${QT_HOST_PATH}/bin/androiddeployqt"
 if [[ ! -x "$ANDROIDDEPLOYQT" ]]; then
@@ -275,202 +272,101 @@ if [[ ! -x "$ANDROIDDEPLOYQT" ]]; then
   exit 7
 fi
 
-# ─── Schritt 1: androiddeployqt pro ABI in eigene Temp-Verzeichnisse ───────
-
-for ABI in "${ABIS[@]}"; do
-  echo ""
-  echo "--- androiddeployqt für $ABI ---"
-
-  ABI_BUILD_DIR="build-android-${ABI}"
-  ABI_DEPLOYQT_DIR="$UNIVERSAL_DIR/deployqt-${ABI}"
-
-  # Frisch anlegen
-  rm -rf "$ABI_DEPLOYQT_DIR"
-  mkdir -p "$ABI_DEPLOYQT_DIR/libs/$ABI"
-
-  # App .so VOR androiddeployqt ins Output kopieren (wird von androiddeployqt erwartet)
-  APP_SO=$(find "$ABI_BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)
-  if [[ -z "$APP_SO" ]]; then
-    echo "ERROR: lib${TARGET}*.so nicht gefunden in $ABI_BUILD_DIR"
-    exit 6
-  fi
-  cp -v "$APP_SO" "$ABI_DEPLOYQT_DIR/libs/$ABI/lib${TARGET}_${ABI}.so"
-  ln -sf "lib${TARGET}_${ABI}.so" "$ABI_DEPLOYQT_DIR/libs/$ABI/lib${TARGET}.so"
-
-  # AndroidManifest + Ressourcen ins Temp-Dir kopieren
-  if [[ -d "$ANDROID_BUILD_DIR" ]]; then
-    # Kopiere Manifest, res/ etc. — aber NICHT libs/ (das macht androiddeployqt)
-    for ITEM in AndroidManifest.xml res src build.gradle settings.gradle gradle gradle.properties; do
-      if [[ -e "$ANDROID_BUILD_DIR/$ITEM" ]]; then
-        cp -r "$ANDROID_BUILD_DIR/$ITEM" "$ABI_DEPLOYQT_DIR/" 2>/dev/null || true
-      fi
-    done
-  fi
-
-  # Icon sicherstellen (AAPT braucht es falls androiddeployqt Gradle antriggert)
-  mkdir -p "$ABI_DEPLOYQT_DIR/res/drawable"
-  cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
-     "$ABI_DEPLOYQT_DIR/res/drawable/ic_launcher.png" 2>/dev/null || true
-
-  # deployment-settings.json finden und für diese ABI patchen
-  DEPLOY_JSON=$(find "$ABI_BUILD_DIR/$BUILD_SUBDIR" -type f -name "*deployment-settings.json" 2>/dev/null | head -n1 || true)
-  if [[ -z "$DEPLOY_JSON" ]]; then
-    DEPLOY_JSON=$(find "$ABI_BUILD_DIR" -type f -name "*deployment-settings.json" 2>/dev/null | head -n1 || true)
-  fi
-  if [[ -z "$DEPLOY_JSON" ]]; then
-    echo "ERROR: Keine deployment-settings.json gefunden für $ABI"
-    exit 10
-  fi
-
-  ABI_DEPLOY_JSON="$UNIVERSAL_DIR/deployment-settings-${ABI}.json"
-  cp "$DEPLOY_JSON" "$ABI_DEPLOY_JSON"
-
-  if command -v jq >/dev/null 2>&1; then
-    TMP_JSON=$(mktemp)
-    jq --arg bt "$BUILD_TOOLS_VERSION" \
-       --arg al "$API_LEVEL" \
-       --arg target "$TARGET" \
-       --arg android_src "$ANDROID_SOURCE_DIR" \
-       --arg arch "$ABI" \
-      '.["android-build-tools-revision"] = $bt |
-       .["android-sdk-build-tools-revision"] = $bt |
-       .["android-target-sdk-version"] = $al |
-       .["android-min-sdk-version"] = "28" |
-       .["target-architecture"] = $arch |
-       .["application-binary"] = $target |
-       .["android-package-source-directory"] = $android_src' \
-      "$ABI_DEPLOY_JSON" > "$TMP_JSON"
-    mv "$TMP_JSON" "$ABI_DEPLOY_JSON"
-  fi
-
-  echo ""
-  echo "  deployment-settings.json für $ABI:"
-  cat "$ABI_DEPLOY_JSON"
-  echo ""
-
-  set +e
-  "$ANDROIDDEPLOYQT" \
-    --input "$ABI_DEPLOY_JSON" \
-    --output "$ABI_DEPLOYQT_DIR" \
-    --android-platform "android-${API_LEVEL}" \
-    --jdk "$JAVA_HOME" \
-    --no-build \
-    --verbose
-  DEPLOYQT_EXIT=$?
-  set -e
-  echo "androiddeployqt Exit-Code für $ABI: $DEPLOYQT_EXIT"
-
-  ABI_LIB_COUNT=$(ls -1 "$ABI_DEPLOYQT_DIR/libs/$ABI/"*.so 2>/dev/null | wc -l)
-  echo "  libs/$ABI: $ABI_LIB_COUNT .so-Dateien nach androiddeployqt"
-
-  # Ausgabe der kopierten Libs zur Diagnose
-  echo "  Libs in $ABI_DEPLOYQT_DIR/libs/$ABI/:"
-  ls -la "$ABI_DEPLOYQT_DIR/libs/$ABI/" 2>/dev/null | head -60
-done
-
-# ─── Schritt 2: Gradle-Projekt aus primärer ABI übernehmen + Libs zusammenführen ─
+# ─── Schritt 1: Deployment-Settings-JSONs finden und zusammenführen ─────────
 
 echo ""
-echo "--- Gradle-Projekt zusammenstellen ---"
+echo "--- Erstelle merged Multi-ABI deployment-settings.json ---"
 
-# Primäre ABI's deployqt-Output enthält das komplette Gradle-Projekt
-PRIMARY_DEPLOYQT_DIR="$UNIVERSAL_DIR/deployqt-${PRIMARY_ABI}"
-SECONDARY_DEPLOYQT_DIR="$UNIVERSAL_DIR/deployqt-${SECONDARY_ABI}"
-
-# Gradle-Dateien aus dem primaryn deployqt-Output ins ANDROID_BUILD_DIR kopieren
-# (androiddeployqt erzeugt build.gradle, gradlew, settings.gradle, etc.)
-for ITEM in build.gradle settings.gradle gradle gradlew gradlew.bat gradle.properties; do
-  if [[ -e "$PRIMARY_DEPLOYQT_DIR/$ITEM" ]]; then
-    cp -r "$PRIMARY_DEPLOYQT_DIR/$ITEM" "$ANDROID_BUILD_DIR/" 2>/dev/null || true
-  fi
-done
-
-# src/ Verzeichnis (Java/Kotlin-Quellen von androiddeployqt)
-if [[ -d "$PRIMARY_DEPLOYQT_DIR/src" ]]; then
-  cp -r "$PRIMARY_DEPLOYQT_DIR/src" "$ANDROID_BUILD_DIR/" 2>/dev/null || true
-fi
-
-# Qt-Libs für BEIDE ABIs ins ANDROID_BUILD_DIR kopieren
+# Finde die von CMake generierten deployment-settings.json für jede ABI
+declare -A DEPLOY_JSONS
 for ABI in "${ABIS[@]}"; do
-  ABI_DEPLOYQT_DIR="$UNIVERSAL_DIR/deployqt-${ABI}"
-  mkdir -p "$ANDROID_BUILD_DIR/libs/$ABI"
-
-  if [[ -d "$ABI_DEPLOYQT_DIR/libs/$ABI" ]]; then
-    cp -v "$ABI_DEPLOYQT_DIR/libs/$ABI/"*.so "$ANDROID_BUILD_DIR/libs/$ABI/" 2>/dev/null || true
-    echo "  libs/$ABI: $(ls -1 "$ANDROID_BUILD_DIR/libs/$ABI/"*.so 2>/dev/null | wc -l) .so-Dateien übernommen"
-  else
-    echo "  WARNING: $ABI_DEPLOYQT_DIR/libs/$ABI existiert nicht"
+  ABI_BUILD_DIR="build-android-${ABI}"
+  DJ=$(find "$ABI_BUILD_DIR/$BUILD_SUBDIR" -type f -name "*deployment-settings.json" 2>/dev/null | head -n1 || true)
+  if [[ -z "$DJ" ]]; then
+    DJ=$(find "$ABI_BUILD_DIR" -type f -name "*deployment-settings.json" 2>/dev/null | head -n1 || true)
   fi
+  if [[ -z "$DJ" ]]; then
+    echo "ERROR: Keine deployment-settings.json gefunden für $ABI in $ABI_BUILD_DIR"
+    exit 10
+  fi
+  DEPLOY_JSONS[$ABI]="$DJ"
+  echo "  $ABI: $DJ"
 done
 
-# ─── Schritt 3: libs.xml zusammenführen ─────────────────────────────────────
-#
-# WICHTIG: Jedes Android-Resource-Array darf nur EINMAL vorkommen!
-# Statt die sekundären <array>-Blöcke komplett anzuhängen (→ doppelte Namen → Gradle-Fehler),
-# wird libs.xml programmatisch NEU erzeugt: EIN Array pro Name mit Items BEIDER ABIs.
+PRIMARY_ABI="${ABIS[0]}"
+SECONDARY_ABI="${ABIS[1]}"
+MERGED_JSON="$UNIVERSAL_DIR/deployment-settings-universal.json"
 
-PRIMARY_LIBS_XML="$PRIMARY_DEPLOYQT_DIR/res/values/libs.xml"
-SECONDARY_LIBS_XML="$SECONDARY_DEPLOYQT_DIR/res/values/libs.xml"
-MERGED_LIBS_XML="$ANDROID_BUILD_DIR/res/values/libs.xml"
-
-mkdir -p "$(dirname "$MERGED_LIBS_XML")"
-
-if [[ -f "$PRIMARY_LIBS_XML" && -f "$SECONDARY_LIBS_XML" ]]; then
-  echo ""
-  echo "Führe libs.xml zusammen ..."
-  echo ""
-  echo "--- Primäre libs.xml ($PRIMARY_ABI) ---"
-  cat "$PRIMARY_LIBS_XML"
-  echo ""
-  echo "--- Sekundäre libs.xml ($SECONDARY_ABI) ---"
-  cat "$SECONDARY_LIBS_XML"
-
-  # Generiere merged libs.xml programmatisch
-  {
-    echo "<?xml version='1.0' encoding='utf-8'?>"
-    echo '<resources>'
-    echo '    <!-- AUTO-GENERATED by build_android_universal.sh -->'
-    echo ''
-
-    for ARRAY_NAME in bundled_libs qt_libs load_local_libs; do
-      echo "    <array name=\"${ARRAY_NAME}\">"
-      # Items aus primärer libs.xml
-      sed -n "/<array name=\"${ARRAY_NAME}\">/,/<\/array>/{ /<item>/p }" "$PRIMARY_LIBS_XML" 2>/dev/null || true
-      # Items aus sekundärer libs.xml
-      sed -n "/<array name=\"${ARRAY_NAME}\">/,/<\/array>/{ /<item>/p }" "$SECONDARY_LIBS_XML" 2>/dev/null || true
-      echo '    </array>'
-      echo ''
-    done
-
-    echo '    <string name="use_local_qt_libs">1</string>'
-    echo '    <string name="bundle_local_qt_libs">1</string>'
-    echo '    <string name="system_libs_prefix"></string>'
-    echo '</resources>'
-  } > "$MERGED_LIBS_XML"
-
-  echo ""
-  echo "=== Merged libs.xml ==="
-  cat "$MERGED_LIBS_XML"
-  echo "=== Ende libs.xml ==="
-elif [[ -f "$PRIMARY_LIBS_XML" ]]; then
-  cp "$PRIMARY_LIBS_XML" "$MERGED_LIBS_XML"
-  echo "WARNING: Keine libs.xml für $SECONDARY_ABI gefunden — nur $PRIMARY_ABI"
-else
-  echo "WARNING: Keine libs.xml gefunden (weder primär noch sekundär)"
+# Merged JSON erzeugen: per-ABI-Objekte zusammenführen, NDK r27 verwenden
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq wird für Multi-ABI-Merge benötigt"
+  exit 11
 fi
 
-# ─── Schritt 4: App-Libraries + OpenSSL für BEIDE ABIs kopieren ─────────────
+jq -n \
+  --slurpfile primary "${DEPLOY_JSONS[$PRIMARY_ABI]}" \
+  --slurpfile secondary "${DEPLOY_JSONS[$SECONDARY_ABI]}" \
+  --arg ndk_r27 "$ANDROID_NDK_ROOT_ARMV7" \
+  --arg bt "$BUILD_TOOLS_VERSION" \
+  --arg al "$API_LEVEL" \
+  --arg android_src "$ANDROID_SOURCE_DIR" \
+  --arg target "$TARGET" \
+'
+  ($primary[0]) as $a | ($secondary[0]) as $b |
+  $a |
+
+  # Per-ABI-Objekte zusammenführen
+  .qt = ($a.qt + $b.qt) |
+  .qtDataDirectory = ($a.qtDataDirectory + $b.qtDataDirectory) |
+  .qtLibExecsDirectory = ($a.qtLibExecsDirectory + $b.qtLibExecsDirectory) |
+  .qtLibsDirectory = ($a.qtLibsDirectory + $b.qtLibsDirectory) |
+  .qtPluginsDirectory = ($a.qtPluginsDirectory + $b.qtPluginsDirectory) |
+  .qtQmlDirectory = ($a.qtQmlDirectory + $b.qtQmlDirectory) |
+  .architectures = ($a.architectures + $b.architectures) |
+
+  # Deploy-Plugins beider ABIs zusammenführen (semikolon-getrennt)
+  .["android-deploy-plugins"] = (
+    [$a["android-deploy-plugins"], $b["android-deploy-plugins"]]
+    | map(select(. != null and . != ""))
+    | join(";")
+  ) |
+
+  # Extra-Prefix-Dirs zusammenführen
+  .extraPrefixDirs = (
+    (($a.extraPrefixDirs // []) + ($b.extraPrefixDirs // [])) | unique
+  ) |
+
+  # NDK r27 verwenden (unterstützt beide ABIs für readelf + libc++_shared)
+  .ndk = $ndk_r27 |
+  .["stdcpp-path"] = ($ndk_r27 + "/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/") |
+
+  # Build-Metadaten
+  .["android-build-tools-revision"] = $bt |
+  .["android-sdk-build-tools-revision"] = $bt |
+  .["android-target-sdk-version"] = $al |
+  .["android-min-sdk-version"] = "28" |
+  .["application-binary"] = $target |
+  .["android-package-source-directory"] = $android_src
+' > "$MERGED_JSON"
+
+echo ""
+echo "=== Merged deployment-settings.json ==="
+cat "$MERGED_JSON"
+echo ""
+echo "=== Ende deployment-settings.json ==="
+
+# ─── Schritt 2: App-.so + OpenSSL für beide ABIs kopieren ──────────────────
 
 OPENSSL_BASE_URL="https://github.com/KDAB/android_openssl/raw/master/ssl_3"
 
 for ABI in "${ABIS[@]}"; do
   echo ""
-  echo "--- Finale App-Library + OpenSSL für $ABI ---"
+  echo "--- Kopiere App-Library + OpenSSL für $ABI ---"
 
   SRC_BUILD_DIR="build-android-${ABI}"
   mkdir -p "$ANDROID_BUILD_DIR/libs/$ABI"
 
-  # App-Library (überschreibt die von androiddeployqt kopierte Version)
+  # App-Library
   SO_FILE=$(find "$SRC_BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)
   if [[ -z "$SO_FILE" ]]; then
     echo "ERROR: lib${TARGET}*.so nicht gefunden in $SRC_BUILD_DIR"
@@ -481,36 +377,73 @@ for ABI in "${ABIS[@]}"; do
   cp -v "$SO_FILE" "$ANDROID_BUILD_DIR/libs/$ABI/$EXPECTED_SO_NAME"
   ln -sf "$EXPECTED_SO_NAME" "$ANDROID_BUILD_DIR/libs/$ABI/lib${TARGET}.so"
 
-  # OpenSSL-Libraries herunterladen
+  # OpenSSL
   wget -q -O "$ANDROID_BUILD_DIR/libs/$ABI/libssl_3.so" "$OPENSSL_BASE_URL/$ABI/libssl_3.so" \
     || echo "WARNING: libssl_3.so Download fehlgeschlagen für $ABI"
   wget -q -O "$ANDROID_BUILD_DIR/libs/$ABI/libcrypto_3.so" "$OPENSSL_BASE_URL/$ABI/libcrypto_3.so" \
     || echo "WARNING: libcrypto_3.so Download fehlgeschlagen für $ABI"
 
-  echo "  libs/$ABI enthält $(ls -1 "$ANDROID_BUILD_DIR/libs/$ABI/"*.so 2>/dev/null | wc -l) .so-Dateien"
+  echo "  libs/$ABI: $(ls -1 "$ANDROID_BUILD_DIR/libs/$ABI/"*.so 2>/dev/null | wc -l) .so-Dateien (vor androiddeployqt)"
 done
+
+# Icon VOR androiddeployqt kopieren
+mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
+cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
+   "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png" 2>/dev/null || true
+
+# ─── Schritt 3: androiddeployqt mit merged JSON aufrufen ───────────────────
+#
+# KEIN --no-build Flag! Das Original-Skript nutzt auch keines.
+# androiddeployqt ohne Flags: generiert Gradle-Projekt, kopiert Metadaten,
+# ruft Gradle NICHT auf (das machen wir manuell nach dem Patchen).
+
+echo ""
+echo "--- androiddeployqt mit Multi-ABI deployment-settings.json ---"
+echo ""
+
+set +e
+"$ANDROIDDEPLOYQT" \
+  --input "$MERGED_JSON" \
+  --output "$ANDROID_BUILD_DIR" \
+  --android-platform "android-${API_LEVEL}" \
+  --jdk "$JAVA_HOME" \
+  --verbose
+DEPLOYQT_EXIT=$?
+set -e
+echo ""
+echo "androiddeployqt Exit-Code: $DEPLOYQT_EXIT"
 
 # Icon erneut sicherstellen (androiddeployqt kann res/ überschreiben)
 mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
 cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
    "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png" 2>/dev/null || true
 
-# ─── Schritt 5: Validierung der ABI-Verzeichnisse ──────────────────────────
+# ─── Schritt 4: Validierung ────────────────────────────────────────────────
 
 echo ""
-echo "=== Validierung der ABI-Verzeichnisse ==="
-ALL_ABIS_OK=true
+echo "=== Dateien nach androiddeployqt ==="
 for ABI in "${ABIS[@]}"; do
   COUNT=$(ls -1 "$ANDROID_BUILD_DIR/libs/$ABI/"*.so 2>/dev/null | wc -l)
   echo "  libs/$ABI: $COUNT .so-Dateien"
-  if [[ "$COUNT" -lt 5 ]]; then
-    echo "  WARNING: libs/$ABI hat verdächtig wenige Libraries ($COUNT < 5)!"
-    ALL_ABIS_OK=false
-  fi
 done
-if [[ "$ALL_ABIS_OK" == false ]]; then
-  echo "WARNING: Nicht alle ABIs haben genügend Libraries."
+
+LIBS_XML=$(find "$ANDROID_BUILD_DIR" -name "libs.xml" 2>/dev/null | head -n1)
+if [[ -n "$LIBS_XML" ]]; then
+  echo "  libs.xml: $LIBS_XML"
+  echo ""
+  echo "=== libs.xml ==="
+  cat "$LIBS_XML"
+  echo ""
+  echo "=== Ende libs.xml ==="
+else
+  echo "  libs.xml: NICHT GEFUNDEN"
+  echo "  Suche nach allen XML-Dateien:"
+  find "$ANDROID_BUILD_DIR" -name "*.xml" -path "*/values/*" 2>/dev/null || echo "  (keine gefunden)"
 fi
+
+echo "  gradle.properties: $([[ -f "$ANDROID_BUILD_DIR/gradle.properties" ]] && echo 'VORHANDEN' || echo 'NICHT GEFUNDEN')"
+echo "  build.gradle: $([[ -f "$ANDROID_BUILD_DIR/build.gradle" ]] && echo 'VORHANDEN' || echo 'NICHT GEFUNDEN')"
+echo "  gradlew: $([[ -f "$ANDROID_BUILD_DIR/gradlew" ]] && echo 'VORHANDEN' || echo 'NICHT GEFUNDEN')"
 
 # ─── Gradle Build ───────────────────────────────────────────────────────────
 

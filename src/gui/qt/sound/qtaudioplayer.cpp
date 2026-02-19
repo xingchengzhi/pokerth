@@ -471,40 +471,7 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
     mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms for PulseAudio/CoreAudio
 #endif
 
-    // CRITICAL (Windows): When WASAPI encounters a brief underrun it
-    // transitions the sink to IdleState and stops pulling data.  Without
-    // this handler the sound is cut off and never resumes.  Restarting
-    // the sink from the IdleState handler recovers playback seamlessly.
-    //
-    // Additionally, when Windows resumes from sleep/hibernate, WASAPI
-    // invalidates the audio session entirely.  The sink transitions to
-    // StoppedState (often with FatalError) or SuspendedState.  We must
-    // detect these and fully recreate the QAudioSink to restore audio.
-    connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
-        if (!mixerSink || !mixer)
-            return;
-        if (newState == QAudio::IdleState) {
-            // Sink ran out of data or WASAPI flagged an underrun.
-            // Restart immediately so the next play() is audible.
-            mixerSink->stop();
-            mixerSink->start(mixer);
-        } else if (newState == QAudio::StoppedState) {
-            // Fatal error or device lost (e.g. after sleep/hibernate).
-            // The existing sink is unusable — recreate it.
-            qWarning() << "[Audio] Mixer sink stopped (error:"
-                       << mixerSink->error() << ") — recreating sink";
-            QMetaObject::invokeMethod(this, [this]() {
-                if (!mixer) return;
-                applyDeviceToEffects();   // recreates the sink
-            }, Qt::QueuedConnection);
-        } else if (newState == QAudio::SuspendedState) {
-            // System suspended audio (e.g. entering sleep).  Try to
-            // resume; if that fails the StoppedState handler above
-            // will take over.
-            qWarning() << "[Audio] Mixer sink suspended — attempting resume";
-            mixerSink->resume();
-        }
-    });
+    connectMixerSinkSignals();
 
     mixerSink->start(mixer);
 
@@ -520,6 +487,52 @@ void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
     if (mixer) {
         mixer->play(key);
     }
+}
+
+void QtAudioPlayer::connectMixerSinkSignals()
+{
+    if (!mixerSink)
+        return;
+
+    // CRITICAL (Windows & macOS/Linux): Handle QAudioSink state changes.
+    //
+    // IdleState  — buffer underrun; restart the stream so the next
+    //              play() is immediately audible.  We set a guard flag
+    //              before stop() so the StoppedState handler knows this
+    //              is an intentional (internal) stop, not a device-lost
+    //              event.
+    //
+    // StoppedState — if the error is NoError the stop was intentional
+    //                (either our IdleState handler or closeAudio()).
+    //                Only recreate the sink for real errors (FatalError,
+    //                device lost after sleep/hibernate, etc.).
+    //
+    // SuspendedState — system suspended audio; try to resume.
+    connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
+        if (!mixerSink || !mixer)
+            return;
+        if (newState == QAudio::IdleState) {
+            m_stoppingMixerIntentionally = true;
+            mixerSink->stop();
+            mixerSink->start(mixer);
+            m_stoppingMixerIntentionally = false;
+        } else if (newState == QAudio::StoppedState) {
+            if (m_stoppingMixerIntentionally)
+                return;   // Intentional stop (IdleState recovery / closeAudio)
+            auto err = mixerSink->error();
+            if (err == QAudio::NoError)
+                return;   // Clean stop — nothing to recover from
+            qWarning() << "[Audio] Mixer sink stopped (error:" << err
+                       << ") — recreating sink";
+            QMetaObject::invokeMethod(this, [this]() {
+                if (!mixer) return;
+                applyDeviceToEffects();   // recreates the sink
+            }, Qt::QueuedConnection);
+        } else if (newState == QAudio::SuspendedState) {
+            qWarning() << "[Audio] Mixer sink suspended — attempting resume";
+            mixerSink->resume();
+        }
+    });
 }
 
 // --- Win32 waveOut backend ---
@@ -739,7 +752,13 @@ void QtAudioPlayer::closeAudio()
     }
 #endif
     if (mixerSink) {
+        // Disconnect stateChanged BEFORE stopping so the handler cannot
+        // queue a spurious applyDeviceToEffects() call that would fire
+        // after initAudio() has already created a fresh sink.
+        mixerSink->disconnect(this);
+        m_stoppingMixerIntentionally = true;
         mixerSink->stop();
+        m_stoppingMixerIntentionally = false;
         delete mixerSink;
         mixerSink = nullptr;
     }
@@ -762,6 +781,38 @@ void QtAudioPlayer::closeAudio()
 
 void QtAudioPlayer::reInit()
 {
+    // Fast-path: if only the volume changed we can update the existing
+    // mixer/effects in-place instead of tearing down the whole audio
+    // subsystem (which on some platforms causes audible glitches and,
+    // before the fix, triggered an infinite sink-recreation loop).
+    if (audioEnabled) {
+        float vol = myConfig->readConfigInt("SoundVolume") / 10.0f;
+
+        if (backend == AudioBackend::SoftwareMixerBackend && mixer) {
+            mixer->setVolume(vol);
+            return;
+        }
+
+        if (backend == AudioBackend::QSoundEffectBackend && !effects.isEmpty()) {
+            for (auto& e : effects) {
+                if (e) e->setVolume(vol);
+            }
+            return;
+        }
+
+#ifdef Q_OS_WIN
+        if (backend == AudioBackend::WinMMBackend) {
+            winmmVolume = qBound(0.0f, vol, 1.0f);
+            return;
+        }
+#endif
+        // PaPlayBackend reads volume from config at play-time — nothing to do.
+        if (backend == AudioBackend::PaPlayBackend) {
+            return;
+        }
+    }
+
+    // Full reinit for backend changes or first-time init.
     // qDebug() << "[Audio] Reinitializing";
     closeAudio();
     initAudio();
@@ -815,7 +866,10 @@ void QtAudioPlayer::applyDeviceToEffects()
     if (backend == AudioBackend::SoftwareMixerBackend) {
         // Recreate the audio sink with the new device
         if (mixerSink) {
+            mixerSink->disconnect(this);
+            m_stoppingMixerIntentionally = true;
             mixerSink->stop();
+            m_stoppingMixerIntentionally = false;
             delete mixerSink;
         }
         QAudioFormat format;
@@ -828,26 +882,7 @@ void QtAudioPlayer::applyDeviceToEffects()
 #else
         mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms
 #endif
-        // Recovery handler: IdleState (underrun), StoppedState (device
-        // lost after sleep/hibernate), SuspendedState (system suspend).
-        connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
-            if (!mixerSink || !mixer)
-                return;
-            if (newState == QAudio::IdleState) {
-                mixerSink->stop();
-                mixerSink->start(mixer);
-            } else if (newState == QAudio::StoppedState) {
-                qWarning() << "[Audio] Mixer sink stopped (error:"
-                           << mixerSink->error() << ") — recreating sink";
-                QMetaObject::invokeMethod(this, [this]() {
-                    if (!mixer) return;
-                    applyDeviceToEffects();
-                }, Qt::QueuedConnection);
-            } else if (newState == QAudio::SuspendedState) {
-                qWarning() << "[Audio] Mixer sink suspended — attempting resume";
-                mixerSink->resume();
-            }
-        });
+        connectMixerSinkSignals();
         if (mixer) {
             mixerSink->start(mixer);
         }

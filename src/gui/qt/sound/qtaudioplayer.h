@@ -98,6 +98,7 @@ private:
     void playSoundPaPlay(const QString& key);
     void initSoftwareMixerBackend(const QAudioDevice& device, float volume);
     void playSoundSoftwareMixer(const QString& key);
+    void connectMixerSinkSignals();
     void initWinMMBackend(float volume);
     void playSoundWinMM(const QString& key);
     bool detectPaPlay();
@@ -128,6 +129,7 @@ private:
     // Software mixer backend
     WavMixer* mixer;
     QAudioSink* mixerSink;
+    bool m_stoppingMixerIntentionally = false;
     
     // Device monitoring
     QMediaDevices* mediaDevices;

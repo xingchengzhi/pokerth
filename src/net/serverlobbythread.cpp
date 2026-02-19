@@ -78,6 +78,7 @@
 #define SERVER_INIT_SESSION_TIMEOUT_SEC				60
 #define SERVER_TIMEOUT_WARNING_REMAINING_SEC		60
 #define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1800	// 30 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
+#define SERVER_INGAME_ACTIVITY_TIMEOUT_SEC			960		// 16 min (warning at 15 min) - only real UI activity resets
 #define SERVER_SESSION_FORCED_TIMEOUT_SEC			604800	// 7 days - reset on every client activity
 
 #define SERVER_ADDRESS_LOCALHOST_STR_V4				"127.0.0.1"
@@ -417,6 +418,11 @@ ServerLobbyThread::MoveSessionToGame(boost::shared_ptr<ServerGame> game, boost::
 	m_gameSessionManager.AddSession(session);
 	// Set the game id of the session.
 	session->SetGame(game);
+	// Switch to a shorter activity timeout for in-game AFK detection.
+	// Only real user activity (chat, votes, ResetTimeout) resets this timer;
+	// auto-check/fold/call do NOT (MyActionRequestMessage excluded from
+	// IsClientActivity).
+	session->StartTimerActivityTimeout(SERVER_INGAME_ACTIVITY_TIMEOUT_SEC, SERVER_TIMEOUT_WARNING_REMAINING_SEC);
 	// Add session to the game.
 	game->AddSession(session, spectateOnly);
 	// Optionally enable auto leave after game finish.
@@ -2144,7 +2150,9 @@ ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 		session->SetGame(boost::shared_ptr<ServerGame>());
 		// Reset timers when returning to lobby - prevents stale timeouts from
 		// the original connection time killing long-lived sessions.
-		session->ResetActivityTimer();
+		// Explicitly set the lobby timeout (30 min) because the session may
+		// still carry the shorter in-game timeout (15 min).
+		session->StartTimerActivityTimeout(SERVER_SESSION_ACTIVITY_TIMEOUT_SEC, SERVER_TIMEOUT_WARNING_REMAINING_SEC);
 		session->ResetGlobalTimeout();
 		// Add session to lobby list.
 		m_sessionManager.AddSession(session);

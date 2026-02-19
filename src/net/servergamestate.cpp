@@ -1455,53 +1455,15 @@ ServerGameStateHand::StartNewHand(boost::shared_ptr<ServerGame> server)
 void
 ServerGameStateHand::CheckPlayerTimeouts(boost::shared_ptr<ServerGame> server)
 {
-	// Check timeout.
-	// Use fixed time constants for AFK detection, independent of per-turn action timeout.
-	// Only check if the game has timeouts enabled (playerActionTimeoutSec > 0).
-	if (server->GetGameData().playerActionTimeoutSec) {
-		// Consider all active players.
-		PlayerListIterator i = server->GetGame().getActivePlayerList()->begin();
-		PlayerListIterator end = server->GetGame().getActivePlayerList()->end();
-
-		// Check timeouts of players.
-		while (i != end) {
-			boost::shared_ptr<PlayerInterface> tmpPlayer = *i;
-			unsigned idleSec = tmpPlayer->getTimeSecSinceLastRemoteAction();
-			if (tmpPlayer->getMyType() == PLAYER_TYPE_HUMAN
-					&& idleSec >= SERVER_GAME_AFK_WARNING_SEC) {
-				// Skip timeout for All-In players: they cannot act during the
-				// hand but are legitimately participating.  Without this
-				// exception, long All-In showdowns cause the server to mark
-				// them as session-inactive, which makes them appear "offline"
-				// to other clients.
-				if (tmpPlayer->getMyAction() == PLAYER_ACTION_ALLIN) {
-					tmpPlayer->markRemoteAction();
-					++i;
-					continue;
-				}
-				if (tmpPlayer->isSessionActive()) {
-					tmpPlayer->setIsSessionActive(false);
-					// Send AFK warning to the client so it shows the timeout popup.
-					// The player has until SERVER_GAME_AFK_KICK_SEC to respond
-					// (click OK or perform any action) before being kicked.
-					unsigned remainingSec = (SERVER_GAME_AFK_KICK_SEC > idleSec) ? (SERVER_GAME_AFK_KICK_SEC - idleSec) : 0;
-					boost::shared_ptr<SessionData> session = server->GetSessionManager().GetSessionByUniquePlayerId(tmpPlayer->getMyUniqueID());
-					if (session) {
-						boost::shared_ptr<NetPacket> packet(new NetPacket);
-						packet->GetMsg()->set_messagetype(PokerTHMessage::Type_TimeoutWarningMessage);
-						TimeoutWarningMessage *netWarning = packet->GetMsg()->mutable_timeoutwarningmessage();
-						netWarning->set_timeoutreason(TimeoutWarningMessage::timeoutKickAfterAutofold);
-						netWarning->set_remainingseconds(remainingSec);
-						server->GetLobbyThread().GetSender().Send(session, packet);
-					}
-				}
-				if (idleSec >= SERVER_GAME_AFK_KICK_SEC) {
-					server->KickPlayer(tmpPlayer->getMyUniqueID());
-				}
-			}
-			++i;
-		}
-	}
+	// In-game AFK detection is now handled entirely by the session activity
+	// timer (set to 15 min when the player enters a game).  Only real user
+	// activity (chat, votes, ResetTimeout) resets that timer – auto-check,
+	// auto-fold and auto-call do NOT reset it because MyActionRequestMessage
+	// is excluded from IsClientActivity().
+	//
+	// Disconnected-player handling is done separately by
+	// RemoveDisconnectedPlayers() / MarkPlayerAsInactive().
+	(void)server;
 }
 
 void

@@ -49,10 +49,17 @@ echo ""
 : "${QT_ANDROID_DIR_ARMV7:?Bitte QT_ANDROID_DIR_ARMV7 setzen}"
 : "${QT_HOST_PATH:?Bitte QT_HOST_PATH setzen}"
 
+# NDK r28 hat 32-bit-Support (armeabi-v7a) entfernt → NDK r27 für armv7 nötig
+# ANDROID_NDK_ROOT_ARMV7 muss gesetzt sein (wird im Dockerfile.universal definiert)
+if [[ -z "${ANDROID_NDK_ROOT_ARMV7:-}" ]]; then
+  echo "WARNING: ANDROID_NDK_ROOT_ARMV7 nicht gesetzt – verwende ANDROID_NDK_ROOT für alle ABIs"
+  echo "         armeabi-v7a wird fehlschlagen wenn NDK >= r28 verwendet wird!"
+  ANDROID_NDK_ROOT_ARMV7="$ANDROID_NDK_ROOT"
+fi
+
 command -v cmake >/dev/null || { echo "cmake nicht gefunden"; exit 2; }
 
-TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
-[[ -f "$TOOLCHAIN_FILE" ]] || { echo "Android toolchain nicht gefunden: $TOOLCHAIN_FILE"; exit 3; }
+# Toolchain-Validierung wird pro ABI in der Build-Schleife gemacht
 
 # Build-Tools-Version ermitteln
 if [[ -d "${ANDROID_SDK_ROOT}/build-tools" ]]; then
@@ -98,6 +105,14 @@ vcpkg_triplet_for_abi() {
   esac
 }
 
+# Liefert den NDK-Root-Pfad für eine gegebene ABI
+ndk_root_for_abi() {
+  case "$1" in
+    arm64-v8a)  echo "$ANDROID_NDK_ROOT";;
+    armeabi-v7a) echo "$ANDROID_NDK_ROOT_ARMV7";;
+  esac
+}
+
 # ─── Phase 1: Beide Architekturen bauen ─────────────────────────────────────
 
 for ABI in "${ABIS[@]}"; do
@@ -109,7 +124,12 @@ for ABI in "${ABIS[@]}"; do
 
   QT_ANDROID_DIR=$(qt_dir_for_abi "$ABI")
   VCPKG_TRIPLET=$(vcpkg_triplet_for_abi "$ABI")
+  NDK_ROOT=$(ndk_root_for_abi "$ABI")
+  TOOLCHAIN_FILE="$NDK_ROOT/build/cmake/android.toolchain.cmake"
   BUILD_DIR="build-android-${ABI}"
+
+  [[ -f "$TOOLCHAIN_FILE" ]] || { echo "Android toolchain nicht gefunden: $TOOLCHAIN_FILE"; exit 3; }
+  echo "NDK: $NDK_ROOT"
 
   mkdir -p "$BUILD_DIR"
 

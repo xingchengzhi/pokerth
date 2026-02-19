@@ -34,6 +34,7 @@
 #include "settingsdialogimpl.h"
 #include "startwindowimpl.h"
 #include <QScreen>
+#include <QWindow>
 
 #include "startsplash.h"
 #include "mycardspixmaplabel.h"
@@ -535,6 +536,19 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 #endif
 
 	this->installEventFilter(this);
+
+	// React to screen changes (hibernate/resume, DPI changes, monitor switch)
+	if (windowHandle()) {
+		connect(windowHandle(), &QWindow::screenChanged,
+			this, &gameTableImpl::onScreenChanged);
+	}
+	QScreen *primaryScreen = QGuiApplication::primaryScreen();
+	if (primaryScreen) {
+		connect(primaryScreen, &QScreen::geometryChanged,
+			this, &gameTableImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(primaryScreen, &QScreen::logicalDotsPerInchChanged,
+			this, &gameTableImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
 
 	// create universal messageDialgo
 	myUniversalMessageDialog = new myMessageDialogImpl(myConfig, this);
@@ -3461,6 +3475,11 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		return true;
 	} else if (event->type() == QEvent::Resize) {
 		refreshSpectatorsDisplay();
+		// Force relayout after resize (e.g. hibernate/resume changes geometry)
+		if (layout()) {
+			layout()->invalidate();
+			layout()->activate();
+		}
 		return true;
 	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up &&
 #ifdef GUI_800x480
@@ -3494,6 +3513,77 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		// pass the event on to the parent class
 		return QMainWindow::eventFilter(obj, event);
 	}
+}
+
+void gameTableImpl::changeEvent(QEvent *event)
+{
+	if (event->type() == QEvent::WindowStateChange
+		|| event->type() == QEvent::ScreenChangeInternal) {
+		// After hibernate/resume or monitor switch the window geometry may
+		// be stale.  Force a full relayout and – if in fullscreen – reapply
+		// the screen geometry so the table background and widgets match.
+		if (layout()) {
+			layout()->invalidate();
+			layout()->activate();
+		}
+#ifndef GUI_800x480
+		if (this->isFullScreen()) {
+			QScreen *screen = QGuiApplication::primaryScreen();
+			if (screen) {
+				QRect screenGeometry = screen->availableGeometry();
+				this->setGeometry(screenGeometry);
+			}
+		}
+#endif
+		refreshSpectatorsDisplay();
+		update();
+	}
+	QMainWindow::changeEvent(event);
+}
+
+void gameTableImpl::onScreenChanged(QScreen *screen)
+{
+	if (screen) {
+		connect(screen, &QScreen::geometryChanged,
+			this, &gameTableImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(screen, &QScreen::logicalDotsPerInchChanged,
+			this, &gameTableImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
+	// Force relayout after screen change (e.g. hibernate/resume, DPI change)
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	refreshSpectatorsDisplay();
+	update();
+}
+
+void gameTableImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+#ifndef GUI_800x480
+	if (this->isFullScreen()) {
+		QScreen *screen = QGuiApplication::primaryScreen();
+		if (screen) {
+			this->setGeometry(screen->availableGeometry());
+		}
+	}
+#endif
+	refreshSpectatorsDisplay();
+	update();
+}
+
+void gameTableImpl::onScreenDpiChanged(qreal /*dpi*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	refreshSpectatorsDisplay();
+	update();
 }
 
 void gameTableImpl::switchChatWindow()

@@ -63,6 +63,16 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	setupUi(this);
 	AppImageUtils::patchExternalLinks(this);
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
+
+	// React to screen changes (hibernate/resume, DPI changes, monitor switch)
+	QScreen *primaryScreen = QGuiApplication::primaryScreen();
+	if (primaryScreen) {
+		connect(primaryScreen, &QScreen::geometryChanged,
+			this, &gameLobbyDialogImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(primaryScreen, &QScreen::logicalDotsPerInchChanged,
+			this, &gameLobbyDialogImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
+
 #ifdef ANDROID
 	this->setWindowState(Qt::WindowFullScreen);
 	QScreen *screen = QGuiApplication::primaryScreen();
@@ -2361,8 +2371,52 @@ void gameLobbyDialogImpl::changeEvent(QEvent *event)
     if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange) {
         updateGameListStyleSheet();
     }
+
+    if (event->type() == QEvent::WindowStateChange
+        || event->type() == QEvent::ScreenChangeInternal) {
+        // After hibernate/resume the window may have a mismatched geometry.
+        // Force a full re-layout so every child widget adapts.
+        if (layout()) {
+            layout()->invalidate();
+            layout()->activate();
+        }
+        update();
+    }
     
     QDialog::changeEvent(event);
+}
+
+void gameLobbyDialogImpl::onScreenChanged(QScreen *screen)
+{
+    if (screen) {
+        connect(screen, &QScreen::geometryChanged,
+            this, &gameLobbyDialogImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+        connect(screen, &QScreen::logicalDotsPerInchChanged,
+            this, &gameLobbyDialogImpl::onScreenDpiChanged, Qt::UniqueConnection);
+    }
+    if (layout()) {
+        layout()->invalidate();
+        layout()->activate();
+    }
+    update();
+}
+
+void gameLobbyDialogImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
+{
+    if (layout()) {
+        layout()->invalidate();
+        layout()->activate();
+    }
+    update();
+}
+
+void gameLobbyDialogImpl::onScreenDpiChanged(qreal /*dpi*/)
+{
+    if (layout()) {
+        layout()->invalidate();
+        layout()->activate();
+    }
+    update();
 }
 
 void gameLobbyDialogImpl::updateGameListStyleSheet()

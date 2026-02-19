@@ -60,6 +60,9 @@
 #include "guilog.h"
 #include "darkmodehelper.h"
 #include <QDebug>
+#include <QScreen>
+#include <QWindow>
+#include <QGuiApplication>
 
 #ifdef ANDROID
 #ifndef ANDROID_TEST
@@ -90,6 +93,19 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	setupUi(this);
 	this->setWindowTitle(QString(tr("PokerTH %1").arg(POKERTH_BETA_RELEASE_STRING)));
 	this->installEventFilter(this);
+
+	// React to screen changes (hibernate/resume, DPI changes, monitor switch)
+	if (windowHandle()) {
+		connect(windowHandle(), &QWindow::screenChanged,
+			this, &startWindowImpl::onScreenChanged);
+	}
+	QScreen *primaryScreen = QGuiApplication::primaryScreen();
+	if (primaryScreen) {
+		connect(primaryScreen, &QScreen::geometryChanged,
+			this, &startWindowImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(primaryScreen, &QScreen::logicalDotsPerInchChanged,
+			this, &startWindowImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
 
 	//Widgets Grafiken per Stylesheets setzen
 	QString myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
@@ -1407,4 +1423,53 @@ bool startWindowImpl::eventFilter(QObject *obj, QEvent *event)
 		// pass the event on to the parent class
 		return QMainWindow::eventFilter(obj, event);
 	}
+}
+
+void startWindowImpl::changeEvent(QEvent *event)
+{
+	if (event->type() == QEvent::WindowStateChange
+		|| event->type() == QEvent::ScreenChangeInternal) {
+		// After hibernate/resume the window manager may report a different
+		// geometry or DPI.  Force a re-layout so the UI matches the window.
+		if (layout()) {
+			layout()->invalidate();
+			layout()->activate();
+		}
+		update();
+	}
+	QMainWindow::changeEvent(event);
+}
+
+void startWindowImpl::onScreenChanged(QScreen *screen)
+{
+	if (screen) {
+		connect(screen, &QScreen::geometryChanged,
+			this, &startWindowImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(screen, &QScreen::logicalDotsPerInchChanged,
+			this, &startWindowImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
+	// Force re-layout after screen change (e.g. hibernate/resume)
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	update();
+}
+
+void startWindowImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	update();
+}
+
+void startWindowImpl::onScreenDpiChanged(qreal /*dpi*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	update();
 }

@@ -307,6 +307,7 @@ jq -n \
   --slurpfile primary "${DEPLOY_JSONS[$PRIMARY_ABI]}" \
   --slurpfile secondary "${DEPLOY_JSONS[$SECONDARY_ABI]}" \
   --arg ndk_r27 "$ANDROID_NDK_ROOT_ARMV7" \
+  --arg sdk "$ANDROID_SDK_ROOT" \
   --arg bt "$BUILD_TOOLS_VERSION" \
   --arg al "$API_LEVEL" \
   --arg android_src "$ANDROID_SOURCE_DIR" \
@@ -340,7 +341,9 @@ jq -n \
   .ndk = $ndk_r27 |
   .["stdcpp-path"] = ($ndk_r27 + "/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/") |
 
-  # Build-Metadaten
+  # SDK + Build-Metadaten
+  .sdk = $sdk |
+  .sdkBuildToolsRevision = $bt |
   .["android-build-tools-revision"] = $bt |
   .["android-sdk-build-tools-revision"] = $bt |
   .["android-target-sdk-version"] = $al |
@@ -393,9 +396,12 @@ cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
 
 # ─── Schritt 3: androiddeployqt mit merged JSON aufrufen ───────────────────
 #
-# --no-build: Generiert nur das Gradle-Projekt (libs.xml, build.gradle, etc.)
-# und kopiert Qt-Dependencies. Gradle wird danach manuell aufgerufen, damit
-# wir gradle.properties vorher patchen können (androidBuildToolsVersion etc.).
+# KEIN --no-build! In Qt 6.9 generiert androiddeployqt die Gradle-Projektdateien
+# (libs.xml, build.gradle, gradlew, gradle.properties) nur als Teil des
+# vollständigen Laufs. --no-build überspringt die Projekt-Generierung komplett.
+# Da sdk + sdkBuildToolsRevision jetzt korrekt im JSON stehen, läuft der
+# interne Gradle-Build durch (erzeugt ein debug-APK, das wir ignorieren).
+# Danach bauen wir nochmal manuell als assembleRelease.
 
 echo ""
 echo "--- androiddeployqt mit Multi-ABI deployment-settings.json ---"
@@ -407,7 +413,6 @@ set +e
   --output "$ANDROID_BUILD_DIR" \
   --android-platform "android-${API_LEVEL}" \
   --jdk "$JAVA_HOME" \
-  --no-build \
   --verbose
 DEPLOYQT_EXIT=$?
 set -e

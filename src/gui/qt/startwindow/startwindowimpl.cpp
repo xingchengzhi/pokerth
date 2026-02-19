@@ -796,16 +796,17 @@ void startWindowImpl::connectionHeartbeatCheck()
 	
 	// Server sends stats heartbeat every 60 seconds. In-game signals
 	// (hand start/end, player actions) also update the activity timestamp.
-	// Use a 180s window (3x the server heartbeat interval) to tolerate
-	// occasional network jitter or server load spikes.
+	// Use a 300s window (5x the server heartbeat interval) to tolerate
+	// network jitter, server load spikes, and brief WiFi suspensions
+	// that are common on Windows laptops.
 	// QElapsedTimer uses a monotonic clock, immune to NTP/DST/sleep clock jumps
 	// that caused false disconnects on Windows.
 	qint64 elapsedMs = lastServerActivityTimer.elapsed(); // milliseconds
-	if (elapsedMs > 180000) {
-		// Require two consecutive missed checks before declaring connection lost.
-		// This avoids false positives from a single delayed packet.
+	if (elapsedMs > 300000) {
+		// Require three consecutive missed checks before declaring connection lost.
+		// This avoids false positives from transient network issues.
 		missedHeartbeats++;
-		if (missedHeartbeats >= 2) {
+		if (missedHeartbeats >= 3) {
 			showConnectionLostDialog();
 		}
 	} else {

@@ -61,6 +61,15 @@
 #include <fstream>
 #include <sstream>
 
+// TCP keepalive configuration (cross-platform)
+#ifdef _WIN32
+#include <winsock2.h>
+#include <mstcpip.h>   // SIO_KEEPALIVE_VALS
+#else
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#endif
+
 using namespace std;
 using namespace boost::filesystem;
 
@@ -558,6 +567,51 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                 // qDebug() << "[TCP-NODELAY] Failed to set TCP_NODELAY:" << nodelay_ec.message().c_str();
             } else {
                 // qDebug() << "[TCP-NODELAY] TCP_NODELAY enabled successfully";
+            }
+
+            // Enable TCP keepalive to detect dead connections and prevent
+            // NAT/firewall idle-connection drops.  This is critical on Windows
+            // where WiFi power management and home routers frequently cause
+            // silent connection deaths.
+            {
+                boost::asio::socket_base::keep_alive ka_option(true);
+                boost::system::error_code ka_ec;
+                if (client->GetContext().GetSessionData()->IsSsl()) {
+                    client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().set_option(ka_option, ka_ec);
+                } else {
+                    client->GetContext().GetSessionData()->GetAsioSocket()->set_option(ka_option, ka_ec);
+                }
+
+                if (!ka_ec) {
+                    // Configure aggressive keepalive parameters:
+                    //   First probe after 60s idle, then every 15s, fail after 5 missed probes.
+                    //   Total detection time: 60 + 5*15 = 135s.
+                    int fd = -1;
+                    if (client->GetContext().GetSessionData()->IsSsl()) {
+                        fd = static_cast<int>(client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().native_handle());
+                    } else {
+                        fd = static_cast<int>(client->GetContext().GetSessionData()->GetAsioSocket()->native_handle());
+                    }
+#ifdef _WIN32
+                    // Windows: use SIO_KEEPALIVE_VALS via WSAIoctl
+                    struct tcp_keepalive keepaliveVals;
+                    keepaliveVals.onoff = 1;
+                    keepaliveVals.keepalivetime = 60000;      // 60s until first probe (ms)
+                    keepaliveVals.keepaliveinterval = 15000;  // 15s between probes (ms)
+                    DWORD bytesReturned = 0;
+                    WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
+                             &keepaliveVals, sizeof(keepaliveVals),
+                             NULL, 0, &bytesReturned, NULL, NULL);
+#else
+                    // Linux / macOS: per-socket keepalive tuning
+                    int keepidle  = 60;   // seconds until first keepalive probe
+                    int keepintvl = 15;   // seconds between subsequent probes
+                    int keepcnt   = 5;    // failed probes before disconnect
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &keepidle,  sizeof(keepidle));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
+#endif
+                }
             }
 
             if (client->GetContext().GetSessionData()->IsSsl()) {

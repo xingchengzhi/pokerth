@@ -38,6 +38,15 @@
 #include <string>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+
+// TCP keepalive configuration (cross-platform)
+#ifdef _WIN32
+#include <winsock2.h>
+#include <mstcpip.h>   // SIO_KEEPALIVE_VALS
+#else
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#endif
 #include <sstream>
 #include <sys/socket.h>  // für setsockopt
 #include <netinet/tcp.h>  // für TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
@@ -208,13 +217,28 @@ protected:
                 // Configure TCP keepalive parameters to detect broken connections
                 // and prevent NAT/firewall idle-connection drops.
                 // Send first keepalive probe after 60s idle, then every 15s, fail after 5 missed probes.
-                int fd = acceptedSocket->native_handle();
-                int keepidle = 60;    // seconds until first keepalive probe
-                int keepintvl = 15;   // seconds between subsequent probes
-                int keepcnt = 5;      // number of failed probes before disconnect
-                setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
-                setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
-                setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
+                {
+                    int fd = acceptedSocket->native_handle();
+#ifdef _WIN32
+                    // Windows: use SIO_KEEPALIVE_VALS via WSAIoctl
+                    struct tcp_keepalive keepaliveVals;
+                    keepaliveVals.onoff = 1;
+                    keepaliveVals.keepalivetime = 60000;      // 60s until first probe (ms)
+                    keepaliveVals.keepaliveinterval = 15000;  // 15s between probes (ms)
+                    DWORD bytesReturned = 0;
+                    WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
+                             &keepaliveVals, sizeof(keepaliveVals),
+                             NULL, 0, &bytesReturned, NULL, NULL);
+#else
+                    // Linux / macOS: per-socket keepalive tuning
+                    int keepidle  = 60;   // seconds until first keepalive probe
+                    int keepintvl = 15;   // seconds between subsequent probes
+                    int keepcnt   = 5;    // number of failed probes before disconnect
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &keepidle,  sizeof(keepidle));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
+#endif
+                }
             } catch (const std::exception& e) {
                 LOG_ERROR("[TLS-SERVER] Failed to set socket options: " << e.what());
                 startNextAccept();

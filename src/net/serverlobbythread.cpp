@@ -2180,6 +2180,18 @@ void
 ServerLobbyThread::SessionError(boost::shared_ptr<SessionData> session, int errorCode)
 {
 	if (session) {
+		// For in-game session timeouts, move the player back to the lobby
+		// instead of fully disconnecting them.
+		if (errorCode == ERR_NET_SESSION_TIMED_OUT) {
+			boost::shared_ptr<ServerGame> game = session->GetGame();
+			if (game) {
+				LOG_MSG("[AFK-LOBBY] In-game session timeout for session #" << session->GetId()
+						 << " - moving to lobby instead of full disconnect");
+				game->MoveSessionToLobby(session, NTF_NET_REMOVED_KICKED);
+				return;
+			}
+		}
+
 		if (errorCode == ERR_NET_PLAYER_KICKED || errorCode == ERR_NET_SESSION_TIMED_OUT) {
 			if (session->GetGame() && session->GetPlayerData()) {
 				session->GetGame()->MarkPlayerAsKicked(session->GetPlayerData()->GetUniqueId());

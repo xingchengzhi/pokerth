@@ -1024,6 +1024,8 @@ ServerGame::SessionError(boost::shared_ptr<SessionData> session, int errorCode)
 void
 ServerGame::MoveSessionToLobby(boost::shared_ptr<SessionData> session, int reason)
 {
+	LOG_MSG("[AFK-GAME] MoveSessionToLobby: session #" << session->GetId()
+			<< " reason=" << reason << " -> removing from game and re-adding to lobby");
 	RemoveSession(session, reason);
 	// Reset ready flag - just in case it is set, player may leave at any time.
 	session->ResetReadyFlag();

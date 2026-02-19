@@ -156,6 +156,17 @@ RUN cd ${ROOT}/Qt && aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 --m
 # ─── vcpkg: Abhängigkeiten für BEIDE Architekturen ─────────────────────────
 RUN git clone https://github.com/microsoft/vcpkg.git ${ROOT}/vcpkg
 
+# Custom Overlay-Triplet für arm-android: zeigt direkt auf NDK r27-Toolchain
+# (vcpkg's eigene android.cmake wird damit umgangen – die löst ANDROID_NDK_HOME
+# nicht zuverlässig in cmake-Subprozessen auf)
+RUN mkdir -p ${ROOT}/vcpkg-triplets && \
+    echo 'set(VCPKG_TARGET_ARCHITECTURE arm)' > ${ROOT}/vcpkg-triplets/arm-android.cmake && \
+    echo 'set(VCPKG_CRT_LINKAGE dynamic)' >> ${ROOT}/vcpkg-triplets/arm-android.cmake && \
+    echo 'set(VCPKG_LIBRARY_LINKAGE static)' >> ${ROOT}/vcpkg-triplets/arm-android.cmake && \
+    echo 'set(VCPKG_CMAKE_SYSTEM_NAME Android)' >> ${ROOT}/vcpkg-triplets/arm-android.cmake && \
+    echo 'set(VCPKG_CMAKE_SYSTEM_VERSION 28)' >> ${ROOT}/vcpkg-triplets/arm-android.cmake && \
+    echo 'set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_ROOT_ARMV7}/build/cmake/android.toolchain.cmake")' >> ${ROOT}/vcpkg-triplets/arm-android.cmake
+
 # arm64-android
 RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
   ${ROOT}/vcpkg/vcpkg install \
@@ -174,11 +185,10 @@ RUN ${ROOT}/vcpkg/bootstrap-vcpkg.sh && \
   openssl:arm64-android \
   protobuf:x64-linux
 
-# arm-android – NDK r27 verwenden (r28 unterstützt kein armeabi-v7a mehr)
-# ENV statt inline-Variable, damit alle cmake-Subprozesse von vcpkg den Pfad sehen
-ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT_ARMV7}
+# arm-android – Custom Triplet nutzt NDK r27 direkt (r28 hat armeabi-v7a entfernt)
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
   ${ROOT}/vcpkg/vcpkg install \
+  --overlay-triplets=${ROOT}/vcpkg-triplets \
   boost-system:arm-android \
   boost-filesystem:arm-android \
   boost-thread:arm-android boost-regex:arm-android \
@@ -192,8 +202,6 @@ RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
   boost-foreach:arm-android \
   boost-uuid:arm-android \
   openssl:arm-android
-# NDK zurück auf r28 (arm64) setzen
-ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT}
 
 ### ###
 
@@ -216,19 +224,17 @@ RUN ${ROOT}/vcpkg/vcpkg install protobuf:arm64-android \
     --x-buildtrees-root=/tmp/vcpkg-buildtrees \
     --no-binarycaching
 
-# Protobuf für arm-android (NDK r27)
-ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT_ARMV7}
+# Protobuf für arm-android (NDK r27 via Overlay-Triplet)
 RUN ${ROOT}/vcpkg/vcpkg remove protobuf:arm-android --recurse 2>/dev/null || true
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/protobuf
 RUN rm -rf ${ROOT}/vcpkg/packages/protobuf_arm-android
 RUN rm -rf /tmp/vcpkg-buildtrees/protobuf
 RUN rm -rf ${ROOT}/vcpkg/buildtrees/detect_compiler && \
     ${ROOT}/vcpkg/vcpkg install protobuf:arm-android \
+    --overlay-triplets=${ROOT}/vcpkg-triplets \
     --overlay-ports=${ROOT}/vcpkg-overlays/protobuf \
     --x-buildtrees-root=/tmp/vcpkg-buildtrees \
     --no-binarycaching
-# NDK zurück auf r28 (arm64) setzen
-ENV ANDROID_NDK_HOME=${ANDROID_NDK_ROOT}
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

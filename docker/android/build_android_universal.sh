@@ -393,9 +393,9 @@ cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
 
 # ─── Schritt 3: androiddeployqt mit merged JSON aufrufen ───────────────────
 #
-# KEIN --no-build Flag! Das Original-Skript nutzt auch keines.
-# androiddeployqt ohne Flags: generiert Gradle-Projekt, kopiert Metadaten,
-# ruft Gradle NICHT auf (das machen wir manuell nach dem Patchen).
+# --no-build: Generiert nur das Gradle-Projekt (libs.xml, build.gradle, etc.)
+# und kopiert Qt-Dependencies. Gradle wird danach manuell aufgerufen, damit
+# wir gradle.properties vorher patchen können (androidBuildToolsVersion etc.).
 
 echo ""
 echo "--- androiddeployqt mit Multi-ABI deployment-settings.json ---"
@@ -407,6 +407,7 @@ set +e
   --output "$ANDROID_BUILD_DIR" \
   --android-platform "android-${API_LEVEL}" \
   --jdk "$JAVA_HOME" \
+  --no-build \
   --verbose
 DEPLOYQT_EXIT=$?
 set -e
@@ -417,6 +418,51 @@ echo "androiddeployqt Exit-Code: $DEPLOYQT_EXIT"
 mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
 cp "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" \
    "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png" 2>/dev/null || true
+
+# ─── Schritt 3b: Cross-Arch-Cleanup ────────────────────────────────────────
+#
+# androiddeployqt hat einen Bug im Multi-ABI-Modus: beim Scannen der
+# armeabi-v7a-Dependencies werden auch arm64-v8a-Plugins erkannt und
+# fälschlicherweise nach libs/armeabi-v7a/ kopiert. Außerdem werden
+# unsuffixed Libs (libavcodec.so etc.) aus dem falschen Qt-Verzeichnis geholt.
+# → Beide Probleme hier bereinigen.
+
+echo ""
+echo "--- Cross-Arch-Cleanup ---"
+
+for ABI in "${ABIS[@]}"; do
+  ABI_DIR="$ANDROID_BUILD_DIR/libs/$ABI"
+  [[ -d "$ABI_DIR" ]] || continue
+
+  # Entferne suffixed .so-Dateien die zur FALSCHEN Architektur gehören
+  REMOVED=0
+  for OTHER_ABI in "${ABIS[@]}"; do
+    [[ "$OTHER_ABI" == "$ABI" ]] && continue
+    # Lösche z.B. *_arm64-v8a.so aus libs/armeabi-v7a/
+    for f in "$ABI_DIR"/*_"${OTHER_ABI}".so; do
+      [[ -e "$f" ]] || continue
+      rm -v "$f"
+      ((REMOVED++)) || true
+    done
+  done
+  echo "  $ABI: $REMOVED fremd-ABI .so-Dateien entfernt"
+
+  # Ersetze unsuffixed Libs (av*, sw*) mit der richtigen Architektur-Version.
+  # androiddeployqt kopiert diese evtl. aus dem falschen Qt-ABI-Verzeichnis.
+  QT_ABI_DIR=$(qt_dir_for_abi "$ABI")
+  REPLACED=0
+  for UNSUFFIXED in libavcodec.so libavformat.so libavutil.so libswresample.so libswscale.so; do
+    TARGET_FILE="$ABI_DIR/$UNSUFFIXED"
+    SOURCE_FILE="$QT_ABI_DIR/lib/$UNSUFFIXED"
+    if [[ -f "$TARGET_FILE" && -f "$SOURCE_FILE" ]]; then
+      cp -v "$SOURCE_FILE" "$TARGET_FILE"
+      ((REPLACED++)) || true
+    fi
+  done
+  echo "  $ABI: $REPLACED unsuffixed Libs durch korrekte Arch-Version ersetzt"
+done
+
+echo ""
 
 # ─── Schritt 4: Validierung ────────────────────────────────────────────────
 

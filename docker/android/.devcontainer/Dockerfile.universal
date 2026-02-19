@@ -36,7 +36,10 @@ ENV ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 ENV ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}
 
 ENV VCPKG_ROOT=${ROOT}/vcpkg
-ENV VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake
+# VCPKG_CHAINLOAD_TOOLCHAIN_FILE wird NICHT global gesetzt – vcpkg's Community-
+# Triplets (arm-android, arm64-android) konfigurieren die NDK-Toolchain selbst
+# via ANDROID_NDK_HOME. Ein globales ENV würde ANDROID_ABI auf den NDK-Default
+# festnageln (arm64-v8a) und damit den arm-android-Build brechen.
 
 # Qt-Pfade für beide Architekturen
 ENV QT_ANDROID_DIR_ARM64=${ROOT}/Qt/${QT_VERSION}/android_arm64_v8a

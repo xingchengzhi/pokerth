@@ -607,9 +607,15 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     int keepidle  = 60;   // seconds until first keepalive probe
                     int keepintvl = 15;   // seconds between subsequent probes
                     int keepcnt   = 5;    // failed probes before disconnect
+#if defined(__APPLE__)
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &keepidle,  sizeof(keepidle));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+                    setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
+#else
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &keepidle,  sizeof(keepidle));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
+#endif
 #endif
                 }
             }

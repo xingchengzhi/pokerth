@@ -58,7 +58,6 @@ timeoutMsgBoxImpl::~timeoutMsgBoxImpl()
 
 void timeoutMsgBoxImpl::startTimeout()
 {
-	qWarning() << "[AFK-CLIENT] timeoutMsgBox::startTimeout - msgID=" << msgID << "duration=" << timeoutDuration << "s";
 	//start the real timer
 	okButton->setEnabled(true);
 	expired = false;
@@ -81,8 +80,6 @@ void timeoutMsgBoxImpl::timerRefresh()
 		expired = true;
 		timeOutTimer->stop();
 		okButton->setEnabled(false);
-		qWarning() << "[AFK-CLIENT] timeoutMsgBox::timerRefresh - countdown expired! msgID=" << msgID;
-
 		if (msgID == NETWORK_TIMEOUT_KICK_AFTER_AUTOFOLD) {
 			// In-game timeout: proactively leave game to return to lobby
 			this->setText(tr("Timeout expired. You are being moved back to the lobby."));
@@ -112,6 +109,5 @@ void timeoutMsgBoxImpl::timerRefresh()
 
 void timeoutMsgBoxImpl::stopTimeout()
 {
-	qWarning() << "[AFK-CLIENT] timeoutMsgBox::stopTimeout - user clicked OK, sending ResetTimeoutMessage";
 	mySession->resetNetworkTimeout();
 }

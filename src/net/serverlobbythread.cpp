@@ -945,7 +945,6 @@ ServerLobbyThread::Main()
 				// Continue running
 			}
 		}
-		LOG_MSG("[SERVER-MAIN] io_service stopped - exiting main loop");
 
 	} catch (const PokerTHException &e) {
 		GetCallback().SignalNetServerError(e.GetErrorId(), e.GetOsErrorCode());

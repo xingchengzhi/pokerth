@@ -1496,7 +1496,6 @@ void gameTableImpl::refreshPot()
 
 	int sets = currentHand->getBoard()->getSets();
 	int pot = currentHand->getBoard()->getPot();
-	// qDebug() << "[REFRESH POT] Sets:" << sets << "Pot:" << pot << "Total:" << (sets + pot);
 	
 	textLabel_Sets->setText("$"+QString("%L1").arg(sets));
 	textLabel_Pot->setText("$"+QString("%L1").arg(pot));
@@ -4809,10 +4808,6 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		// treat them as active so they remain visible on the table instead of
 		// silently disappearing while the server keeps playing them.
 		if(player->getMyCash() > 0 && player->getMyUniqueID() != 0) {
-			qDebug() << "[GHOST-SAFETY] Player" << player->getMyName().c_str()
-				<< "(ID:" << player->getMyUniqueID() << ") has cash"
-				<< player->getMyCash() << "but myActiveStatus=false!"
-				<< "Treating as SEAT_ACTIVE to prevent ghost player.";
 			// Auto-repair: restore active status
 			player->setMyActiveStatus(true);
 			if(player->isSessionActive()) {
@@ -4828,11 +4823,6 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		if(player->getMyStayOnTableStatus() && (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_NETWORK)) {
 			return SEAT_STAYONTABLE;
 		} else {
-			qDebug() << "[SEAT_CLEAR]" << player->getMyName().c_str()
-				<< "(ID:" << player->getMyUniqueID() << ") Cash:" << player->getMyCash()
-				<< "Active:" << player->getMyActiveStatus() << "Session:" << player->isSessionActive()
-				<< "StayOnTable:" << player->getMyStayOnTableStatus()
-				<< "Action:" << player->getMyAction();
 			return SEAT_CLEAR;
 		}
 	}

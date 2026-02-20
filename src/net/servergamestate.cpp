@@ -460,12 +460,6 @@ AbstractServerGameStateReceiving::CreateNetPacketHandStart(const ServerGame &ser
 		const char* stateStr = (seatState == netPlayerStateNormal) ? "Normal" :
 			(seatState == netPlayerStateSessionInactive) ? "SessionInactive" :
 			(seatState == netPlayerStateNoMoney) ? "NoMoney" : "Unknown";
-		LOG_MSG("[HANDSTART SRV] Seat " + std::to_string(playerCounter) + " " + (*player_i)->getMyName()
-			+ " (ID:" + std::to_string((*player_i)->getMyUniqueID()) + ") State:" + stateStr
-			+ " Cash:" + std::to_string((*player_i)->getMyCash())
-			+ " Active:" + std::to_string((*player_i)->getMyActiveStatus())
-			+ " Session:" + std::to_string((*player_i)->isSessionActive())
-			+ " Action:" + std::to_string((*player_i)->getMyAction()));
 		netHandStart->add_seatstates(seatState);
 		++player_i;
 		++playerCounter;
@@ -1095,13 +1089,7 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 				PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
 				PlayerListIterator dbg_end = curGame.getSeatsList()->end();
 				int dbg_seat = 0;
-				LOG_MSG("[POST-RIVER SRV] Cash values after postRiverRun():");
 				while (dbg_i != dbg_end) {
-					LOG_MSG("[POST-RIVER SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
-						+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
-						+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
-						+ " Action:" + std::to_string((*dbg_i)->getMyAction())
-						+ " Won:" + std::to_string((*dbg_i)->getLastMoneyWon()));
 					++dbg_i;
 					++dbg_seat;
 				}
@@ -1119,7 +1107,6 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 				PlayerListIterator pend = curGame.getSeatsList()->end();
 				while (pit != pend) {
 					if ((*pit)->getMyAction() == PLAYER_ACTION_ALLIN && (*pit)->getLastMoneyWon() == 0) {
-						LOG_MSG("[SIDEPOT SRV] Final check (hide): Setting " + (*pit)->getMyName() + " to 0 (was: " + std::to_string((*pit)->getMyCash()) + ")");
 						(*pit)->setMyCash(0);
 					}
 					++pit;
@@ -1143,7 +1130,6 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 				PlayerListIterator pend = curGame.getSeatsList()->end();
 				while (pit != pend) {
 					if ((*pit)->getMyAction() == PLAYER_ACTION_ALLIN && (*pit)->getLastMoneyWon() == 0) {
-						LOG_MSG("[SIDEPOT SRV] Final check: Setting " + (*pit)->getMyName() + " to 0 (was: " + std::to_string((*pit)->getMyCash()) + ")");
 						(*pit)->setMyCash(0);
 					}
 					++pit;
@@ -1154,7 +1140,6 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 				EndOfHandShowCardsMessage *netEndHand = endHand->GetMsg()->mutable_endofhandshowcardsmessage();
 				netEndHand->set_gameid(server->GetId());
 
-				LOG_MSG("[SHOWCARD SRV] showList size: " + std::to_string(showList.size()));
 				
 				// CRITICAL: Send PlayerResults for ALL active players, not just showList
 				// This ensures clients get correct cash updates for all players including those who folded or went all-in
@@ -1165,16 +1150,11 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 					boost::shared_ptr<PlayerInterface> tmpPlayer = *allPlayers;
 					if (tmpPlayer) {
 						bool inShowList = std::find(showList.begin(), showList.end(), tmpPlayer->getMyUniqueID()) != showList.end();
-						LOG_MSG("[SHOWCARD SRV] Adding player " + tmpPlayer->getMyName() + " (ID:" + std::to_string(tmpPlayer->getMyUniqueID()) 
-							+ ") Action:" + std::to_string(tmpPlayer->getMyAction()) + " Active:" + std::to_string(tmpPlayer->getMyActiveStatus())
-							+ " Cash:" + std::to_string(tmpPlayer->getMyCash()) + " Won:" + std::to_string(tmpPlayer->getLastMoneyWon())
-							+ " InShowList:" + (inShowList ? "YES" : "NO"));
 						PlayerResult *playerResult = netEndHand->add_playerresults();
 						SetPlayerResult(*playerResult, tmpPlayer, GAME_STATE_RIVER);
 					}
 					++allPlayers;
 				}
-				LOG_MSG("[SHOWCARD SRV] Sending EndOfHandShowCardsMessage with " + std::to_string(netEndHand->playerresults_size()) + " players");
 				server->SendToAllPlayers(endHand, SessionData::Game | SessionData::Spectating);
 			}
 
@@ -1186,13 +1166,8 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 				PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
 				PlayerListIterator dbg_end = curGame.getSeatsList()->end();
 				int dbg_seat = 0;
-				LOG_MSG("[POST-REMOVE SRV] Cash values after RemoveDisconnectedPlayers():");
 				while (dbg_i != dbg_end) {
 					if ((*dbg_i)->getMyActiveStatus() || (*dbg_i)->getMyCash() > 0) {
-						LOG_MSG("[POST-REMOVE SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
-							+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
-							+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
-							+ " Session:" + std::to_string((*dbg_i)->isSessionActive()));
 					}
 					++dbg_i;
 					++dbg_seat;
@@ -1333,12 +1308,7 @@ ServerGameStateHand::StartNewHand(boost::shared_ptr<ServerGame> server)
 		PlayerListIterator dbg_i = curGame.getSeatsList()->begin();
 		PlayerListIterator dbg_end = curGame.getSeatsList()->end();
 		int dbg_seat = 0;
-		LOG_MSG("[PRE-INITHAND SRV] Cash values before initHand():");
 		while (dbg_i != dbg_end) {
-			LOG_MSG("[PRE-INITHAND SRV] Seat " + std::to_string(dbg_seat) + " " + (*dbg_i)->getMyName()
-				+ " (ID:" + std::to_string((*dbg_i)->getMyUniqueID()) + ") Cash:" + std::to_string((*dbg_i)->getMyCash())
-				+ " Active:" + std::to_string((*dbg_i)->getMyActiveStatus())
-				+ " Session:" + std::to_string((*dbg_i)->isSessionActive()));
 			++dbg_i;
 			++dbg_seat;
 		}

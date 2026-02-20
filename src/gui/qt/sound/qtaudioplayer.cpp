@@ -198,22 +198,16 @@ void QtAudioPlayer::initAudio()
     if (!myConfig->readConfigInt("PlaySoundEffects"))
         return;
 
-    // qDebug() << "[Audio] Initializing Qt audio with path:" << myAppDataPath;
     
     // Check for forced backend via environment variable
     QString forcedBackend = qEnvironmentVariable("POKERTH_AUDIO_BACKEND");
     if (!forcedBackend.isEmpty()) {
-        // qDebug() << "[Audio] POKERTH_AUDIO_BACKEND=" << forcedBackend;
     }
     
     // === Audio subsystem diagnostics ===
     {
         auto outputs = QMediaDevices::audioOutputs();
-        // qDebug() << "[Audio] Available output devices:" << outputs.size();
         for (const auto& dev : outputs) {
-            // qDebug() << "[Audio]   -" << dev.description() 
-            //          << "id:" << dev.id()
-            //          << (dev.isDefault() ? "(DEFAULT)" : "");
         }
     }
     
@@ -285,7 +279,6 @@ void QtAudioPlayer::initAudio()
 
 void QtAudioPlayer::initQSoundEffectBackend(const QAudioDevice& device, float volume)
 {
-    // qDebug() << "[Audio] Initializing QSoundEffect backend";
     
     for (const char* soundName : SOUND_FILES) {
         QString key = QString::fromLatin1(soundName);
@@ -314,12 +307,10 @@ void QtAudioPlayer::initQSoundEffectBackend(const QAudioDevice& device, float vo
         
         effects.insert(key, effect);
     }
-    // qDebug() << "[Audio] QSoundEffect:" << effects.size() << "sounds loaded";
 }
 
 void QtAudioPlayer::initPaPlayBackend()
 {
-    // qDebug() << "[Audio] Initializing paplay backend, binary:" << paplayBinary;
     
     for (const char* soundName : SOUND_FILES) {
         QString key = QString::fromLatin1(soundName);
@@ -333,7 +324,6 @@ void QtAudioPlayer::initPaPlayBackend()
         
         soundFilePaths.insert(key, fileInfo.absoluteFilePath());
     }
-    // qDebug() << "[Audio] paplay:" << soundFilePaths.size() << "sounds registered";
 }
 
 bool QtAudioPlayer::detectPaPlay()
@@ -341,13 +331,11 @@ bool QtAudioPlayer::detectPaPlay()
     // Check for paplay (PulseAudio) or pw-play (PipeWire native)
     paplayBinary = QStandardPaths::findExecutable("paplay");
     if (!paplayBinary.isEmpty()) {
-        // qDebug() << "[Audio] Found paplay:" << paplayBinary;
         return true;
     }
     
     paplayBinary = QStandardPaths::findExecutable("pw-play");
     if (!paplayBinary.isEmpty()) {
-        // qDebug() << "[Audio] Found pw-play:" << paplayBinary;
         return true;
     }
     
@@ -428,7 +416,6 @@ void QtAudioPlayer::playSoundPaPlay(const QString& key)
         args << "--volume" << QString::number(vol, 'f', 2) << filePath;
     }
 
-    // qDebug() << "[Audio] paplay:" << key << "vol:" << vol;
     
     bool ok = AppImageUtils::startDetachedSafe(paplayBinary, args);
     if (!ok) {
@@ -600,7 +587,6 @@ static bool parseWavFile(const QString& filePath, QtAudioPlayer::WinMMSound& out
 
 void QtAudioPlayer::initWinMMBackend(float vol)
 {
-    qDebug() << "[Audio] Initializing Win32 waveOut backend (threaded, concurrent)";
 
     winmmVolume = qBound(0.0f, vol, 1.0f);
     winmmShuttingDown.store(false);
@@ -624,8 +610,6 @@ void QtAudioPlayer::initWinMMBackend(float vol)
         }
     }
 
-    qDebug() << "[Audio] WinMM waveOut:" << loaded << "sounds loaded, volume"
-             << qRound(winmmVolume * 100) << "%";
 }
 
 void QtAudioPlayer::playSoundWinMM(const QString& key)
@@ -813,7 +797,6 @@ void QtAudioPlayer::reInit()
     }
 
     // Full reinit for backend changes or first-time init.
-    // qDebug() << "[Audio] Reinitializing";
     closeAudio();
     initAudio();
 }
@@ -839,8 +822,6 @@ void QtAudioPlayer::setAudioDevice(const QAudioDevice& device)
         return;
     }
     
-    // qDebug() << "[Audio] Setting audio device to:" 
-    //          << (device.isNull() ? "System Default" : device.description());
     
     selectedDevice = device;
     
@@ -898,7 +879,6 @@ void QtAudioPlayer::applyDeviceToEffects()
 
 void QtAudioPlayer::onAudioOutputsChanged()
 {
-    // qDebug() << "[Audio] Audio outputs changed - scheduling debounced check";
     
     // Restart debounce timer - this handles rapid connect/disconnect events
     // (e.g., Bluetooth momentarily losing connection)
@@ -913,7 +893,6 @@ void QtAudioPlayer::scheduleDeviceCheck()
 
 void QtAudioPlayer::onDeviceChangeDebounceTimeout()
 {
-    // qDebug() << "[Audio] Debounce timeout - processing device change. Available devices:";
     for (const auto& dev : QMediaDevices::audioOutputs()) {
         // qDebug() << "  -" << dev.description() << (dev.isDefault() ? "(default)" : "");
     }
@@ -936,7 +915,6 @@ void QtAudioPlayer::onDeviceChangeDebounceTimeout()
         }
         
         if (!deviceStillExists) {
-            // qDebug() << "[Audio] Selected device disconnected, falling back to default";
             selectedDevice = QAudioDevice(); // Clear selection, use default
             applyDeviceToEffects();
         }
@@ -946,19 +924,15 @@ void QtAudioPlayer::onDeviceChangeDebounceTimeout()
 void QtAudioPlayer::onDefaultOutputChanged()
 {
     QAudioDevice newDefault = QMediaDevices::defaultAudioOutput();
-    // qDebug() << "[Audio] Default audio output changed to:" 
-    //          << (newDefault.isNull() ? "None" : newDefault.description());
     
     // Only auto-switch if user hasn't selected a specific device
     if (selectedDevice.isNull()) {
-        // qDebug() << "[Audio] Following default device change...";
         applyDeviceToEffects();
     }
 }
 
 bool QtAudioPlayer::probeAudioOutput(const QAudioDevice& device)
 {
-    // qDebug() << "[Audio] Probing audio output on:" << device.description();
     
     // Create a format matching our WAV files: 16-bit signed LE, stereo, 44100Hz
     QAudioFormat format;
@@ -968,14 +942,9 @@ bool QtAudioPlayer::probeAudioOutput(const QAudioDevice& device)
     
     if (!device.isFormatSupported(format)) {
         qWarning() << "[Audio] Probe: device does NOT support 44100/16bit/stereo!";
-        // qDebug() << "[Audio] Probe: preferred format:" 
-        //          << device.preferredFormat().sampleRate()
-        //          << device.preferredFormat().channelCount()
-        //          << device.preferredFormat().sampleFormat();
         // Try with the device's preferred format
         format = device.preferredFormat();
     } else {
-        // qDebug() << "[Audio] Probe: format 44100/16bit/stereo is supported";
     }
     
     // Try creating a QAudioSink
@@ -994,7 +963,6 @@ bool QtAudioPlayer::probeAudioOutput(const QAudioDevice& device)
     auto state = sink.state();
     auto error = sink.error();
     
-    // qDebug() << "[Audio] Probe: QAudioSink state:" << state << "error:" << error;
     
     sink.stop();
     buffer.close();
@@ -1005,7 +973,6 @@ bool QtAudioPlayer::probeAudioOutput(const QAudioDevice& device)
     }
     
     if (state == QAudio::ActiveState || state == QAudio::IdleState) {
-        // qDebug() << "[Audio] Probe: SUCCESS - audio output is functional";
         return true;
     }
     

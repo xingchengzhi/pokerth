@@ -99,6 +99,10 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	}
 	////////////////////////////
 
+	// Initialize AFK reset rate-limiter as already expired so the first
+	// user input will immediately send a ResetTimeoutMessage.
+	lastAfkResetSentTimer.start();
+
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
 
 	setupUi(this);
@@ -3463,6 +3467,27 @@ void gameTableImpl::changePlayingMode()
 bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 {
 	QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+
+	// --- Rate-limited AFK timeout reset ---
+	// Detect real GUI-level user activity (mouse click/move, key press)
+	// and periodically send ResetTimeoutMessage to the server.  This
+	// prevents the server-side in-game AFK timer (15 min) from firing
+	// while the player is genuinely interacting with the game table.
+	// Auto-check/auto-fold are triggered programmatically and do NOT
+	// generate these low-level input events, so they won't reset the
+	// timer – preserving the intended AFK detection for truly idle players.
+	if (event->type() == QEvent::MouseButtonPress
+		|| event->type() == QEvent::MouseMove
+		|| event->type() == QEvent::KeyPress
+		|| event->type() == QEvent::Wheel) {
+		if (lastAfkResetSentTimer.elapsed() >= AFK_RESET_INTERVAL_MS) {
+			if (myStartWindow && myStartWindow->getSession()
+				&& myStartWindow->getSession()->isNetworkClientRunning()) {
+				myStartWindow->getSession()->resetNetworkTimeout();
+				lastAfkResetSentTimer.restart();
+			}
+		}
+	}
 
 	if (/*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Tab) {
 		myChat->nickAutoCompletition();

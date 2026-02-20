@@ -4,6 +4,7 @@
 - minor sidepot issue fixed
 - TCP keep-alive added
 - universal apk build for arm64-v8a and armeabi-v7a
+- AFK timeout re-enabled
 
 2026-02-09 version 2.0
 - port from qmake to cmake

@@ -34,6 +34,7 @@
 #include <boost/shared_ptr.hpp>
 #include <assert.h>
 #include <QElapsedTimer>
+#include <QScreen>
 
 #ifdef GUI_800x480
 #include "ui_startwindow_800x480.h"
@@ -102,6 +103,12 @@ public:
 
 	//	void keyPressEvent( QKeyEvent *);
 	bool eventFilter(QObject *obj, QEvent *event);
+	void changeEvent(QEvent *event) override;
+
+private slots:
+	void onScreenChanged(QScreen *screen);
+	void onScreenGeometryChanged(const QRect &geometry);
+	void onScreenDpiChanged(qreal dpi);
 
 signals:
 	void signalShowClientDialog();

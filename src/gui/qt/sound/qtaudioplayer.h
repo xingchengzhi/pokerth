@@ -9,7 +9,13 @@
 #include <QTimer>
 #include <QBuffer>
 #include <QProcess>
+#include <atomic>
 #include "configfile.h"
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <mmsystem.h>
+#endif
 
 // Software mixer: pre-loads WAV PCM data into memory,
 // mixes active voices into a single continuous audio stream for QAudioSink.
@@ -51,7 +57,8 @@ public:
     enum class AudioBackend {
         QSoundEffectBackend,    // Qt6 native
         PaPlayBackend,          // PulseAudio paplay command (Linux)
-        SoftwareMixerBackend    // Pre-loaded WAVs + single QAudioSink (low-latency)
+        SoftwareMixerBackend,   // Pre-loaded WAVs + single QAudioSink (low-latency)
+        WinMMBackend            // Win32 waveOut API (Windows, threaded, concurrent)
     };
 
     QtAudioPlayer(ConfigFile* config);
@@ -69,6 +76,16 @@ public:
     
     AudioBackend activeBackend() const { return backend; }
 
+#ifdef Q_OS_WIN
+    // WinMM waveOut backend — pre-loaded WAV data, threaded playback
+    struct WinMMSound {
+        QByteArray pcmData;       // Raw PCM samples
+        quint16 channels;
+        quint32 sampleRate;
+        quint16 bitsPerSample;
+    };
+#endif
+
 private slots:
     void onAudioOutputsChanged();
     void onDefaultOutputChanged();
@@ -81,6 +98,9 @@ private:
     void playSoundPaPlay(const QString& key);
     void initSoftwareMixerBackend(const QAudioDevice& device, float volume);
     void playSoundSoftwareMixer(const QString& key);
+    void connectMixerSinkSignals();
+    void initWinMMBackend(float volume);
+    void playSoundWinMM(const QString& key);
     bool detectPaPlay();
     void applyDeviceToEffects();
     void scheduleDeviceCheck();
@@ -98,9 +118,18 @@ private:
     QHash<QString, QString> soundFilePaths;  // key -> file path
     QString paplayBinary;                     // path to paplay
     
+#ifdef Q_OS_WIN
+    QHash<QString, WinMMSound> winmmSounds;   // pre-loaded sounds
+    float winmmVolume;                         // 0.0 .. 1.0
+    QMutex winmmMutex;                         // protects winmmActiveHandles
+    QVector<HWAVEOUT> winmmActiveHandles;      // currently playing handles
+    std::atomic<bool> winmmShuttingDown{false}; // stop signal for threads
+#endif
+    
     // Software mixer backend
     WavMixer* mixer;
     QAudioSink* mixerSink;
+    bool m_stoppingMixerIntentionally = false;
     
     // Device monitoring
     QMediaDevices* mediaDevices;

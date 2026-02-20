@@ -237,6 +237,11 @@ private:
 protected:
     bool eventFilter(QObject *obj, QEvent *event);
     void changeEvent(QEvent *event);
+
+private slots:
+    void onScreenChanged(QScreen *screen);
+    void onScreenGeometryChanged(const QRect &geometry);
+    void onScreenDpiChanged(qreal dpi);
 };
 
 #endif

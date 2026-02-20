@@ -34,6 +34,7 @@
 #include "settingsdialogimpl.h"
 #include "startwindowimpl.h"
 #include <QScreen>
+#include <QWindow>
 
 #include "startsplash.h"
 #include "mycardspixmaplabel.h"
@@ -535,6 +536,19 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 #endif
 
 	this->installEventFilter(this);
+
+	// React to screen changes (hibernate/resume, DPI changes, monitor switch)
+	if (windowHandle()) {
+		connect(windowHandle(), &QWindow::screenChanged,
+			this, &gameTableImpl::onScreenChanged);
+	}
+	QScreen *primaryScreen = QGuiApplication::primaryScreen();
+	if (primaryScreen) {
+		connect(primaryScreen, &QScreen::geometryChanged,
+			this, &gameTableImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(primaryScreen, &QScreen::logicalDotsPerInchChanged,
+			this, &gameTableImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
 
 	// create universal messageDialgo
 	myUniversalMessageDialog = new myMessageDialogImpl(myConfig, this);
@@ -1482,7 +1496,6 @@ void gameTableImpl::refreshPot()
 
 	int sets = currentHand->getBoard()->getSets();
 	int pot = currentHand->getBoard()->getPot();
-	// qDebug() << "[REFRESH POT] Sets:" << sets << "Pot:" << pot << "Total:" << (sets + pot);
 	
 	textLabel_Sets->setText("$"+QString("%L1").arg(sets));
 	textLabel_Pot->setText("$"+QString("%L1").arg(pot));
@@ -2733,24 +2746,27 @@ void gameTableImpl::postRiverRunAnimation3()
 
 	list<unsigned> winners = currentHand->getBoard()->getWinners();
 
-	// Determine if any winning player was all-in (for main pot / side pot labeling).
-	// In sidepot situations, the all-in player with the smallest bet (= RoundStartCash
-	// for all-in players) wins the main pot (the pot everyone contributed to).
-	// Other winners' pots are side pots.
-	// Note: We compare bet amounts (RoundStartCash), NOT win amounts (MoneyWon),
-	// because the main pot typically has MORE contributors and thus a LARGER
-	// win amount than side pots.
-	bool hasAllInWinner = false;
-	int minAllInWinnerBet = INT_MAX;
+	// Determine if there was any all-in player and the smallest bet among winners.
+	// Side pot labeling: if there is an all-in AND multiple winners, then the winner(s)
+	// with the smallest bet amount are main pot; others are side pots.
+	bool hasAllInPlayer = false;
+	int minWinnerBet = INT_MAX;
+	int winnersWithMoney = 0;
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
+		if((*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
+			hasAllInPlayer = true;
+		}
 		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-		bool actuallyWon = isW && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
-		if(actuallyWon && (*it_c)->getLastMoneyWon() > 0 && (*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
-			hasAllInWinner = true;
-			int betAmount = (*it_c)->getMyRoundStartCash();
-			if(betAmount < minAllInWinnerBet) {
-				minAllInWinnerBet = betAmount;
+		bool actuallyWon = isW && (*it_c)->getLastMoneyWon() > 0;
+		if(actuallyWon) {
+			int betAmount = (*it_c)->getMyRoundStartCash() - (*it_c)->getMyCash() + (*it_c)->getLastMoneyWon();
+			if(betAmount < 0) {
+				betAmount = 0;
 			}
+			if(betAmount < minWinnerBet) {
+				minWinnerBet = betAmount;
+			}
+			winnersWithMoney++;
 		}
 	}
 
@@ -2758,7 +2774,7 @@ void gameTableImpl::postRiverRunAnimation3()
 		// Nur echte Winner anzeigen: in der winners-Liste UND tatsächlich profitiert
 		// (Spieler die nur ihren Überschuss zurückbekommen sind keine echten Gewinner)
 		bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-		bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+		bool hasActuallyWon = isWinner && (*it_c)->getLastMoneyWon() > 0;
 		if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon) {
 
 			//Show "Winner" label
@@ -2846,18 +2862,18 @@ void gameTableImpl::postRiverRunAnimation3()
 			// 			if (textLabel_handLabel->text() == "River") {
 
 			// Main pot / side pot labeling:
-			// In sidepot scenarios, the all-in player with the smallest bet wins
-			// the "main pot" (the pot all non-folded players contributed to).
-			// Other winners get "(side pot)".
-			// When no winner was all-in, there's no sidepot situation -> always main pot.
-			bool isMainPot;
-			if (!hasAllInWinner) {
-				isMainPot = true; // No sidepot situation
-			} else if ((*it_c)->getMyAction() == PLAYER_ACTION_ALLIN
-					   && (*it_c)->getMyRoundStartCash() <= minAllInWinnerBet) {
-				isMainPot = true; // All-in player with smallest bet = main pot
-			} else {
-				isMainPot = false; // Side pot
+			// If there was an all-in and multiple winners, the winner(s) with the smallest
+			// bet amount are main pot; other winners are side pots.
+			// Otherwise, always main pot.
+			bool isMainPot = true;
+			if (hasAllInPlayer && winnersWithMoney > 1) {
+				int betAmount = (*it_c)->getMyRoundStartCash() - (*it_c)->getMyCash() + (*it_c)->getLastMoneyWon();
+				if(betAmount < 0) {
+					betAmount = 0;
+				}
+				if(betAmount > minWinnerBet) {
+					isMainPot = false;
+				}
 			}
 			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(),isMainPot);
 
@@ -2910,7 +2926,7 @@ void gameTableImpl::postRiverRunAnimation5()
 
 			for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 				bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-				bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+				bool hasActuallyWon = isWinner && (*it_c)->getLastMoneyWon() > 0;
 				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon ) {
 
 					playerNameLabelArray[(*it_c)->getMyID()]->hide();
@@ -2923,7 +2939,7 @@ void gameTableImpl::postRiverRunAnimation5()
 
 			for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
 				bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
-				bool hasActuallyWon = isWinner && (*it_c)->getMyCash() >= (*it_c)->getMyRoundStartCash();
+				bool hasActuallyWon = isWinner && (*it_c)->getLastMoneyWon() > 0;
 				if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon ) {
 
 					playerNameLabelArray[(*it_c)->getMyID()]->show();
@@ -3461,6 +3477,11 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		return true;
 	} else if (event->type() == QEvent::Resize) {
 		refreshSpectatorsDisplay();
+		// Force relayout after resize (e.g. hibernate/resume changes geometry)
+		if (layout()) {
+			layout()->invalidate();
+			layout()->activate();
+		}
 		return true;
 	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up &&
 #ifdef GUI_800x480
@@ -3494,6 +3515,77 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		// pass the event on to the parent class
 		return QMainWindow::eventFilter(obj, event);
 	}
+}
+
+void gameTableImpl::changeEvent(QEvent *event)
+{
+	if (event->type() == QEvent::WindowStateChange
+		|| event->type() == QEvent::ScreenChangeInternal) {
+		// After hibernate/resume or monitor switch the window geometry may
+		// be stale.  Force a full relayout and – if in fullscreen – reapply
+		// the screen geometry so the table background and widgets match.
+		if (layout()) {
+			layout()->invalidate();
+			layout()->activate();
+		}
+#ifndef GUI_800x480
+		if (this->isFullScreen()) {
+			QScreen *screen = QGuiApplication::primaryScreen();
+			if (screen) {
+				QRect screenGeometry = screen->availableGeometry();
+				this->setGeometry(screenGeometry);
+			}
+		}
+#endif
+		refreshSpectatorsDisplay();
+		update();
+	}
+	QMainWindow::changeEvent(event);
+}
+
+void gameTableImpl::onScreenChanged(QScreen *screen)
+{
+	if (screen) {
+		connect(screen, &QScreen::geometryChanged,
+			this, &gameTableImpl::onScreenGeometryChanged, Qt::UniqueConnection);
+		connect(screen, &QScreen::logicalDotsPerInchChanged,
+			this, &gameTableImpl::onScreenDpiChanged, Qt::UniqueConnection);
+	}
+	// Force relayout after screen change (e.g. hibernate/resume, DPI change)
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	refreshSpectatorsDisplay();
+	update();
+}
+
+void gameTableImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+#ifndef GUI_800x480
+	if (this->isFullScreen()) {
+		QScreen *screen = QGuiApplication::primaryScreen();
+		if (screen) {
+			this->setGeometry(screen->availableGeometry());
+		}
+	}
+#endif
+	refreshSpectatorsDisplay();
+	update();
+}
+
+void gameTableImpl::onScreenDpiChanged(qreal /*dpi*/)
+{
+	if (layout()) {
+		layout()->invalidate();
+		layout()->activate();
+	}
+	refreshSpectatorsDisplay();
+	update();
 }
 
 void gameTableImpl::switchChatWindow()
@@ -4716,10 +4808,6 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		// treat them as active so they remain visible on the table instead of
 		// silently disappearing while the server keeps playing them.
 		if(player->getMyCash() > 0 && player->getMyUniqueID() != 0) {
-			qDebug() << "[GHOST-SAFETY] Player" << player->getMyName().c_str()
-				<< "(ID:" << player->getMyUniqueID() << ") has cash"
-				<< player->getMyCash() << "but myActiveStatus=false!"
-				<< "Treating as SEAT_ACTIVE to prevent ghost player.";
 			// Auto-repair: restore active status
 			player->setMyActiveStatus(true);
 			if(player->isSessionActive()) {
@@ -4735,11 +4823,6 @@ SeatState gameTableImpl::getCurrentSeatState(boost::shared_ptr<PlayerInterface> 
 		if(player->getMyStayOnTableStatus() && (myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_INTERNET || myStartWindow->getSession()->getGameType() == Session::GAME_TYPE_NETWORK)) {
 			return SEAT_STAYONTABLE;
 		} else {
-			qDebug() << "[SEAT_CLEAR]" << player->getMyName().c_str()
-				<< "(ID:" << player->getMyUniqueID() << ") Cash:" << player->getMyCash()
-				<< "Active:" << player->getMyActiveStatus() << "Session:" << player->isSessionActive()
-				<< "StayOnTable:" << player->getMyStayOnTableStatus()
-				<< "Action:" << player->getMyAction();
 			return SEAT_CLEAR;
 		}
 	}
@@ -4862,4 +4945,3 @@ int gameTableImpl::getAndroidApiVersion()
 #endif
     return api;
 }
-

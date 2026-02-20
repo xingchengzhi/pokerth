@@ -321,6 +321,7 @@ public slots:
 
 	void keyPressEvent ( QKeyEvent*);
 	bool eventFilter(QObject *obj, QEvent *event);
+	void changeEvent(QEvent *event) override;
 
 	void switchChatWindow();
 	void switchHelpWindow();
@@ -389,6 +390,11 @@ public slots:
 	void refreshSpectatorsDisplay();
 	void pingUpdate(unsigned, unsigned, unsigned);
 	int getAndroidApiVersion();
+
+private slots:
+	void onScreenChanged(QScreen *screen);
+	void onScreenGeometryChanged(const QRect &geometry);
+	void onScreenDpiChanged(qreal dpi);
 
 private:
 	void applyPotFraction(double fraction);

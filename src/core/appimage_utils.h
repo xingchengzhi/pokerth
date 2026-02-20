@@ -135,7 +135,6 @@ inline bool openUrlSafe(const QUrl& url)
         process.setProgram(QStringLiteral("xdg-open"));
         process.setArguments({url.toString()});
 
-        qDebug() << "[AppImage] openUrlSafe: launching xdg-open with clean env for" << url.toString();
         return process.startDetached();
     }
 #endif
@@ -157,7 +156,6 @@ inline bool startDetachedSafe(const QString& program, const QStringList& args)
         process.setProcessEnvironment(cleanProcessEnvironment());
         process.setProgram(program);
         process.setArguments(args);
-        qDebug() << "[AppImage] startDetachedSafe:" << program << args;
         return process.startDetached();
     }
 #endif

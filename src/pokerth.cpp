@@ -225,6 +225,12 @@ int main( int argc, char **argv )
     //_CrtSetBreakAlloc(49937);
     socket_startup();
 
+    // High DPI support: Use PassThrough rounding to correctly handle fractional
+    // scale factors (e.g. 125% = 1.25x) on Windows.  Must be set before
+    // QApplication is constructed.
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
 #ifdef __APPLE__
 	// The following needs to be done before the application is created, otherwise loading platforms plugin fails.
 	QDir dir(argv[0]);

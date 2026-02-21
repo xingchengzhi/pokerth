@@ -4718,7 +4718,37 @@ void gameTableImpl::restoreGameTableGeometry()
 		//resize only if style size allow this and if NOT fixed windows size
 		if(!myGameTableStyle->getIfFixedWindowSize().toInt() && myConfig->readConfigInt("GameTableHeightSave") <= myGameTableStyle->getMaximumWindowHeight().toInt() && myConfig->readConfigInt("GameTableHeightSave") >= myGameTableStyle->getMinimumWindowHeight().toInt() && myConfig->readConfigInt("GameTableWidthSave") <= myGameTableStyle->getMaximumWindowWidth().toInt() && myConfig->readConfigInt("GameTableWidthSave") >= myGameTableStyle->getMinimumWindowWidth().toInt()) {
 
-			this->resize(myConfig->readConfigInt("GameTableWidthSave"), myConfig->readConfigInt("GameTableHeightSave"));
+			int w = myConfig->readConfigInt("GameTableWidthSave");
+			int h = myConfig->readConfigInt("GameTableHeightSave");
+
+			// Clamp the restored size to the available screen geometry
+			// so the window (including its title-bar frame) never
+			// exceeds the usable desktop area.  This prevents the top
+			// of the table from being clipped on macOS where the
+			// system menu bar and Dock reduce the available space.
+			QScreen *screen = QGuiApplication::primaryScreen();
+			if (screen) {
+				QRect avail = screen->availableGeometry();
+				w = qMin(w, avail.width());
+				h = qMin(h, avail.height());
+			}
+
+			this->resize(w, h);
+
+			// Make sure the window is fully visible on screen.
+			if (screen) {
+				QRect avail = screen->availableGeometry();
+				QRect frame = this->frameGeometry();
+				int nx = frame.x();
+				int ny = frame.y();
+				if (frame.right()  > avail.right())  nx = avail.right()  - frame.width();
+				if (frame.bottom() > avail.bottom()) ny = avail.bottom() - frame.height();
+				if (nx < avail.x()) nx = avail.x();
+				if (ny < avail.y()) ny = avail.y();
+				if (nx != frame.x() || ny != frame.y()) {
+					this->move(nx, ny);
+				}
+			}
 		}
 	}
 #ifdef ANDROID

@@ -524,6 +524,13 @@ private:
 	GameTableStyleReader *myGameTableStyle;
 	CardDeckStyleReader *myCardDeckStyle;
 
+	// Rate-limited AFK timeout reset: tracks when we last sent
+	// ResetTimeoutMessage to the server so that real GUI-level user
+	// activity (mouse/keyboard) prevents the server-side in-game AFK
+	// timer from firing.  Minimum interval: 5 minutes.
+	QElapsedTimer lastAfkResetSentTimer;
+	static const qint64 AFK_RESET_INTERVAL_MS = 5 * 60 * 1000; // 5 min
+
 	QString AllInString;
 	QString RaiseString;
 	QString BetString;

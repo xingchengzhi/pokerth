@@ -130,6 +130,18 @@ ClientThread::SignalTermination()
 }
 
 void
+ClientThread::CloseSocket()
+{
+	try {
+		if (m_context && m_context->GetSessionData()) {
+			m_context->GetSessionData()->CloseSocketHandle();
+		}
+	} catch (...) {
+		// Ignore errors during cleanup.
+	}
+}
+
+void
 ClientThread::SendKickPlayer(unsigned playerId)
 {
 	boost::shared_ptr<NetPacket> packet(new NetPacket);
@@ -596,6 +608,14 @@ ClientThread::Main()
 		}
 		GetCallback().SignalNetClientError(e.GetErrorId(), e.GetOsErrorCode());
 	}
+
+	// Immediately close the socket so the server detects the disconnect
+	// via its pending async_read (TCP FIN / RST).  Without this, the
+	// socket would only be closed when the ClientThread shared_ptrs are
+	// finally released, which may be delayed or may never happen if
+	// Join() times out in terminateNetworkClient().
+	CloseSocket();
+
 	// Set a state which does not do anything.
 	SetState(CLIENT_FINAL_STATE::Instance());
 	// Cancel timers.

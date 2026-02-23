@@ -2805,7 +2805,24 @@ void gameTableImpl::postRiverRunAnimation3()
 		// (Spieler die nur ihren Überschuss zurückbekommen sind keine echten Gewinner)
 		bool isWinner = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
 		bool hasActuallyWon = isWinner && (*it_c)->getLastMoneyWon() > 0;
-		if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon) {
+		
+		// Calculate if this winner won the main pot (vs side pot)
+		// Main pot: if there was an all-in AND multiple winners, then the winner(s)
+		// with the smallest bet amount are main pot; others are side pots.
+		// Otherwise, always main pot.
+		bool isMainPot = true;
+		if (hasAllInPlayer && winnersWithMoney > 1) {
+			int betAmount = (*it_c)->getMyRoundStartCash() - (*it_c)->getMyCash() + (*it_c)->getLastMoneyWon();
+			if(betAmount < 0) {
+				betAmount = 0;
+			}
+			if(betAmount > minWinnerBet) {
+				isMainPot = false;
+			}
+		}
+		
+		// Show Winner label and animation only for main pot winners
+		if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon && isMainPot) {
 
 			//Show "Winner" label
 			actionLabelArray[(*it_c)->getMyID()]->setPixmap(QPixmap::fromImage(QImage(myGameTableStyle->getActionPic(7))));
@@ -2891,21 +2908,12 @@ void gameTableImpl::postRiverRunAnimation3()
 			//Wenn River dann auch das Blatt loggen!
 			// 			if (textLabel_handLabel->text() == "River") {
 
-			// Main pot / side pot labeling:
-			// If there was an all-in and multiple winners, the winner(s) with the smallest
-			// bet amount are main pot; other winners are side pots.
-			// Otherwise, always main pot.
-			bool isMainPot = true;
-			if (hasAllInPlayer && winnersWithMoney > 1) {
-				int betAmount = (*it_c)->getMyRoundStartCash() - (*it_c)->getMyCash() + (*it_c)->getLastMoneyWon();
-				if(betAmount < 0) {
-					betAmount = 0;
-				}
-				if(betAmount > minWinnerBet) {
-					isMainPot = false;
-				}
-			}
-			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(),isMainPot);
+			// Log as main pot (already filtered above)
+			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(), true);
+
+		} else if((*it_c)->getMyAction() != PLAYER_ACTION_FOLD && hasActuallyWon && !isMainPot) {
+			// Sidepot winner - log but don't animate
+			myGuiLog->logPlayerWinsMsg(QString::fromUtf8((*it_c)->getMyName().c_str()),(*it_c)->getLastMoneyWon(), false);
 
 		} else {
 

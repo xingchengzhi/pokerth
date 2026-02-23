@@ -83,7 +83,26 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	
 	// Setze Vollbild-Geometrie bereits im Konstruktor für sofortige Verfügbarkeit
 	MobileInputHelper::prepareAndroidDialog(this);
-	
+
+	// Fix tab widgets: allow eliding of long titles and remove minimum sizes
+	// that were designed for exactly 800px.
+	for (QTabWidget *tw : findChildren<QTabWidget*>()) {
+		tw->setElideMode(Qt::ElideRight);
+		tw->setUsesScrollButtons(true);
+	}
+
+	// Remove groupBox minimumSizes that cause cramped layouts.
+	if (groupBox_manualServerConfig) {
+		groupBox_manualServerConfig->setMinimumSize(0, 0);
+	}
+
+	// In gridLayout_4 (manual server config) give column 1 (inputs) more stretch
+	// so labels in column 0 stay readable and inputs fill the rest.
+	if (gridLayout_4) {
+		gridLayout_4->setColumnStretch(0, 0);
+		gridLayout_4->setColumnStretch(1, 1);
+	}
+
 	// Prepare all QLineEdit widgets for mobile input
 	QList<QLineEdit*> lineEdits = this->findChildren<QLineEdit*>();
 	for (QLineEdit* le : lineEdits) {

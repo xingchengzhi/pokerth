@@ -137,19 +137,26 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	}
 	this->showFullScreen();
 
-	// The .ui file constrains some buttons to maximumWidth=350 (designed for
-	// exactly 800px).  With QT_SCALE_FACTOR the logical width is wider, so
-	// remove the caps and let the grid layout expand buttons to fill.
-	pushButtonStart_Local_Game->setMaximumWidth(QWIDGETSIZE_MAX);
-	pushButton_Create_Network_Game->setMaximumWidth(QWIDGETSIZE_MAX);
-	pushButtonInternet_Game->setMaximumWidth(QWIDGETSIZE_MAX);
-	pushButton_Join_Network_Game->setMaximumWidth(QWIDGETSIZE_MAX);
-	pushButton_Logs->setMaximumWidth(QWIDGETSIZE_MAX);
-	pushButtonStart_Local_Game->setMinimumWidth(0);
-	pushButton_Create_Network_Game->setMinimumWidth(0);
-	pushButtonInternet_Game->setMinimumWidth(0);
-	pushButton_Join_Network_Game->setMinimumWidth(0);
-	pushButton_Logs->setMinimumWidth(0);
+	// showFullScreen() alone does not reliably resize the QMainWindow
+	// when QT_SCALE_FACTOR < 1.0 is set.  Force the geometry explicitly.
+	setMinimumSize(0, 0);
+	{
+		QScreen *scr = QGuiApplication::primaryScreen();
+		if (scr) {
+			setGeometry(scr->availableGeometry());
+		}
+	}
+
+	// The .ui file constrains buttons to fixed 350×80 (designed for 800px).
+	// Remove ALL min/max width caps so the grid layout can expand them.
+	QList<QPushButton*> allBtns = { pushButtonStart_Local_Game,
+		pushButton_Create_Network_Game, pushButtonInternet_Game,
+		pushButton_Join_Network_Game, pushButton_configure,
+		pushButton_about, pushButton_Logs };
+	for (QPushButton *btn : allBtns) {
+		btn->setMinimumSize(0, 0);
+		btn->setMaximumWidth(QWIDGETSIZE_MAX);
+	}
 
 	// The .ui gridLayout_2 has horizontal spacers in columns 0 and 2 that
 	// center the button grid at 800px.  With QT_SCALE_FACTOR the screen is
@@ -159,6 +166,24 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 		mainGrid->setColumnStretch(0, 0);  // left spacer: no stretch
 		mainGrid->setColumnStretch(1, 1);  // button grid: takes all space
 		mainGrid->setColumnStretch(2, 0);  // right spacer: no stretch
+		// Also set row stretches: button grid rows expand, spacers minimal
+		mainGrid->setRowStretch(0, 0);  // top vertical spacer
+		mainGrid->setRowStretch(1, 1);  // button grid row
+		mainGrid->setRowStretch(2, 0);  // Logs row
+		mainGrid->setRowStretch(3, 0);  // bottom vertical spacer
+	}
+
+	// The inner 2-column button grid needs equal column stretches too.
+	if (gridLayout) {
+		gridLayout->setColumnStretch(0, 1);
+		gridLayout->setColumnStretch(1, 1);
+	}
+
+	// Logs row (horizontalLayout): give the button stretch so it fills.
+	if (horizontalLayout) {
+		horizontalLayout->setStretch(0, 0);  // left spacer
+		horizontalLayout->setStretch(1, 1);  // Logs button
+		horizontalLayout->setStretch(2, 0);  // right spacer
 	}
 
 	//TODO HACK Missing QSystemScreenSaver::setScreenSaverInhibited(true)

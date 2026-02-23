@@ -45,14 +45,10 @@ newGameDialogImpl::newGameDialogImpl(QMainWindow *parent, ConfigFile *c)
 #ifdef ANDROID
 	MobileInputHelper::prepareAndroidDialog(this);
 
-	// Override the .ui's hardcoded 320×240 minimum and 30px margins.
-	setMinimumSize(0, 0);
+	// Remove child-level minimum sizes and excess margins.
 	frame->setMinimumSize(0, 0);
 	layout()->setContentsMargins(4, 4, 4, 4);
 	layout()->setSpacing(4);
-
-	// Clear the 26px font stylesheet — the global QT_SCALE_FACTOR handles sizing.
-	setStyleSheet(QString());
 
 	// verticalLayout items: [0] verticalSpacer_2, [1] horizontalLayout_4,
 	//                       [2] verticalSpacer_4, [3] horizontalLayout_5 (OK btn)

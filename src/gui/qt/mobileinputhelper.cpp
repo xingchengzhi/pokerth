@@ -88,6 +88,15 @@ void MobileInputHelper::prepareAndroidDialog(QDialog *dialog)
 	// top-level fullscreen surface.  Plain setWindowState(FullScreen)
 	// on a QDialog may not resize correctly with QT_SCALE_FACTOR.
 	dialog->setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+
+	// Remove hardcoded minimumSize from the .ui (designed for 800×480).
+	dialog->setMinimumSize(0, 0);
+
+	// Clear potential hardcoded font-size stylesheets from the .ui files
+	// (e.g. "QObject {font: 26px}") — the global QT_SCALE_FACTOR and
+	// default font handle sizing automatically.
+	dialog->setStyleSheet(QString());
+
 	QScreen *screen = QGuiApplication::primaryScreen();
 	if (screen) {
 		QRect geo = screen->availableGeometry();

@@ -105,29 +105,28 @@ void newGameDialogImpl::callChangeBlindsDialog(bool show)
 bool newGameDialogImpl::eventFilter(QObject *obj, QEvent *event)
 {
 #ifdef ANDROID
-	if (event->type() == QEvent::KeyPress) {
-		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+	QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 
-		//androi changes for return key behavior (hopefully useless from necessitas beta2)
-		if (keyEvent->key() == Qt::Key_Return) {
-			if(spinBox_gameSpeed->hasFocus()) {
-				spinBox_gameSpeed->clearFocus();
-			}
-			if(spinBox_quantityPlayers->hasFocus()) {
-				spinBox_quantityPlayers->clearFocus();
-			}
-			if(spinBox_startCash->hasFocus()) {
-				spinBox_startCash->clearFocus();
-			}
-			event->ignore();
-			return false;
-		} else if (keyEvent->key() == Qt::Key_Back) {
-			this->reject();
-			return true;
+	//androi changes for return key behavior (hopefully useless from necessitas beta2)
+	if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Return) {
+		if(spinBox_gameSpeed->hasFocus()) {
+			spinBox_gameSpeed->clearFocus();
 		}
+		if(spinBox_quantityPlayers->hasFocus()) {
+			spinBox_quantityPlayers->clearFocus();
+		}
+		if(spinBox_startCash->hasFocus()) {
+			spinBox_startCash->clearFocus();
+		}
+		event->ignore();
+		return false;
+	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Back) {
+		this->reject();
+		return true;
+	} else {
+		// pass the event on to the parent class
+		return QDialog::eventFilter(obj, event);
 	}
-	// pass the event on to the parent class
-	return QDialog::eventFilter(obj, event);
 #else
 	return QDialog::eventFilter(obj, event);
 #endif

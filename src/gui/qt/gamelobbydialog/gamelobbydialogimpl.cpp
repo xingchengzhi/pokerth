@@ -59,6 +59,9 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint);
 #elif _WIN32
 //	setWindowFlags(Qt::Dialog | Qt::WindowMinimizeButtonHint);
+#else
+	// Linux: Enable maximize button so the lobby window can be maximized (Bug report: Zorin 18)
+	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
 #endif
 	setupUi(this);
 	AppImageUtils::patchExternalLinks(this);

@@ -206,12 +206,13 @@ int main(int argc, char *argv[])
 #define ENABLE_LEAK_CHECK()
 #endif
 
-// #ifdef ANDROID
-// #ifndef ANDROID_TEST
-// // #include "QtGui/5.3.0/QtGui/qpa/qplatformnativeinterface.h"
-// // #include <jni.h>
-// #endif
-// #endif
+#ifdef ANDROID
+#ifndef ANDROID_TEST
+#include <QJniEnvironment>
+#include <QJniObject>
+#include <cmath>
+#endif
+#endif
 
 using namespace std;
 
@@ -248,6 +249,40 @@ int main( int argc, char **argv )
 
 	/////// can be removed for non-qt-guis ////////////
 #ifdef ANDROID
+	// The 800×480 mobile layout needs ≥480 logical px on the short screen edge.
+	// Modern high-DPI phones only report ~360 logical dp, clipping dialogs.
+	// Compute QT_SCALE_FACTOR dynamically from Android display metrics so the
+	// fix works on ANY device (phones, tablets, foldables, varying densities).
+	// Must be set BEFORE QApplication is constructed.
+#ifndef ANDROID_TEST
+	{
+		QJniObject resources = QJniObject::callStaticObjectMethod(
+			"android/content/res/Resources",
+			"getSystem",
+			"()Landroid/content/res/Resources;");
+		if (resources.isValid()) {
+			QJniObject dm = resources.callObjectMethod(
+				"getDisplayMetrics",
+				"()Landroid/util/DisplayMetrics;");
+			if (dm.isValid()) {
+				int wPx  = dm.getField<jint>("widthPixels");
+				int hPx  = dm.getField<jint>("heightPixels");
+				float density = dm.getField<jfloat>("density");
+				if (wPx > 0 && hPx > 0 && density > 0.0f) {
+					int shortPx  = qMin(wPx, hPx);
+					int qtDpr    = qMax(1, static_cast<int>(std::round(density)));
+					qreal logicalShort = static_cast<qreal>(shortPx) / qtDpr;
+					if (logicalShort > 0.0 && logicalShort < 480.0) {
+						qreal factor = logicalShort / 480.0;
+						qputenv("QT_SCALE_FACTOR",
+							QByteArray::number(static_cast<double>(factor), 'f', 4));
+					}
+				}
+			}
+		}
+	}
+#endif // !ANDROID_TEST
+
 	QApplication a(argc, argv);
 	a.setApplicationName("PokerTH");
 #else

@@ -53,6 +53,7 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	setWindowFlags(Qt::WindowSystemMenuHint | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::Dialog);
 #endif
 	setupUi(this);
+	this->installEventFilter(this);
 	AppImageUtils::patchExternalLinks(this);
 
 #ifdef ANDROID
@@ -238,6 +239,20 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 
 settingsDialogImpl::~settingsDialogImpl()
 {
+}
+
+bool settingsDialogImpl::eventFilter(QObject *obj, QEvent *event)
+{
+#ifdef ANDROID
+	if (event->type() == QEvent::KeyPress) {
+		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+		if (keyEvent->key() == Qt::Key_Back) {
+			this->reject();
+			return true;
+		}
+	}
+#endif
+	return QDialog::eventFilter(obj, event);
 }
 
 void settingsDialogImpl::prepareDialog()

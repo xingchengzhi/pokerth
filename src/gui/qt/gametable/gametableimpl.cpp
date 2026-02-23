@@ -3492,8 +3492,6 @@ void gameTableImpl::changePlayingMode()
 
 bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 {
-	QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-
 	// --- Rate-limited AFK timeout reset ---
 	// Detect real GUI-level user activity (mouse click/move, key press)
 	// and periodically send ResetTimeoutMessage to the server.  This
@@ -3517,13 +3515,44 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		}
 	}
 
-	if (/*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Tab) {
-		myChat->nickAutoCompletition();
-		return true;
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Back) {
-		event->ignore();
-		closeGameTable();
-		return true;
+	if (event->type() == QEvent::KeyPress) {
+		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+		
+		if (/*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */keyEvent->key() == Qt::Key_Tab) {
+			myChat->nickAutoCompletition();
+			return true;
+		} else if (keyEvent->key() == Qt::Key_Back) {
+			event->ignore();
+			closeGameTable();
+			return true;
+		} else if (keyEvent->key() == Qt::Key_Up &&
+#ifdef GUI_800x480
+		           tabs.lineEdit_ChatInput->hasFocus()
+#else
+		           lineEdit_ChatInput->hasFocus()
+#endif
+		          ) {
+			if((keyUpDownChatCounter + 1) <= myChat->getChatLinesHistorySize()) {
+				keyUpDownChatCounter++;
+			}
+			myChat->showChatHistoryIndex(keyUpDownChatCounter);
+			return true;
+		} else if (keyEvent->key() == Qt::Key_Down &&
+#ifdef GUI_800x480
+		           tabs.lineEdit_ChatInput->hasFocus()
+#else
+		           lineEdit_ChatInput->hasFocus()
+#endif
+		          ) {
+			if((keyUpDownChatCounter - 1) >= 0) {
+				keyUpDownChatCounter--;
+			}
+			myChat->showChatHistoryIndex(keyUpDownChatCounter);
+			return true;
+		} else {
+			// Reset counter for other keys
+			keyUpDownChatCounter = 0;
+		}
 	} else if (event->type() == QEvent::Close) {
 		event->ignore();
 		closeGameTable();
@@ -3536,38 +3565,10 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 			layout()->activate();
 		}
 		return true;
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up &&
-#ifdef GUI_800x480
-	           tabs.lineEdit_ChatInput->hasFocus()
-#else
-	           lineEdit_ChatInput->hasFocus()
-#endif
-	          ) {
-		if((keyUpDownChatCounter + 1) <= myChat->getChatLinesHistorySize()) {
-			keyUpDownChatCounter++;
-		}
-		myChat->showChatHistoryIndex(keyUpDownChatCounter);
-		return true;
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down &&
-#ifdef GUI_800x480
-	           tabs.lineEdit_ChatInput->hasFocus()
-#else
-	           lineEdit_ChatInput->hasFocus()
-#endif
-	          ) {
-		if((keyUpDownChatCounter - 1) >= 0) {
-			keyUpDownChatCounter--;
-		}
-		myChat->showChatHistoryIndex(keyUpDownChatCounter);
-		return true;
-	} else {
-		// Reset counter for other keys
-		if (event->type() == QEvent::KeyPress) {
-			keyUpDownChatCounter = 0;
-		}
-		// pass the event on to the parent class
-		return QMainWindow::eventFilter(obj, event);
 	}
+	
+	// pass the event on to the parent class
+	return QMainWindow::eventFilter(obj, event);
 }
 
 void gameTableImpl::changeEvent(QEvent *event)

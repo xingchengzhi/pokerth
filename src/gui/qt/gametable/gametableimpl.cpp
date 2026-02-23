@@ -87,7 +87,7 @@
 using namespace std;
 
 gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
-	: QMainWindow(parent), myChat(NULL), myConfig(c), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
+	: QMainWindow(parent), myChat(NULL), myConfig(c), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
 {
 	int i;
 
@@ -4973,7 +4973,9 @@ void gameTableImpl::checkActionLabelPosition()
 
 void gameTableImpl::refreshSpectatorsDisplay()
 {
-	assert(myStartWindow->getSession());
+	if (!myStartWindow || !myStartWindow->getSession()) {
+		return;
+	}
 	GameInfo info(myStartWindow->getSession()->getClientGameInfo(myStartWindow->getSession()->getClientCurrentGameId()));
 	if(!info.spectatorsDuringGame.empty()) {
 		spectatorIcon->show();

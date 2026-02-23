@@ -157,13 +157,35 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	centralwidget->setStyleSheet(".QWidget { background-image: url(\""+myAppDataPath+"gfx/gui/misc/startwindowbg10_desktop.png\"); background-position: bottom center; background-origin: content; background-repeat: no-repeat;}");
 #endif
 	// All mobile GUI's
-	pushButtonStart_Local_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButtonInternet_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Create_Network_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Join_Network_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_about->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_configure->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Logs->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
+	// Scale button font-size to screen, same algorithm as in pokerth.cpp.
+	int mobileBtnFontPx = 22;
+#ifdef ANDROID
+	{
+		int userScale = myConfig->readConfigInt("AndroidUiScalePercent");
+		if (userScale > 0) {
+			mobileBtnFontPx = qMax(10, 22 * userScale / 100);
+		} else {
+			QScreen *scr = QGuiApplication::primaryScreen();
+			if (scr) {
+				QRect geo = scr->availableGeometry();
+				int sw = qMax(geo.width(), geo.height());
+				int sh = qMin(geo.width(), geo.height());
+				qreal scale = qMin(static_cast<qreal>(sw) / 800.0,
+				                   static_cast<qreal>(sh) / 480.0);
+				scale = qBound(0.5, scale, 1.0);
+				mobileBtnFontPx = qMax(10, static_cast<int>(22.0 * scale + 0.5));
+			}
+		}
+	}
+#endif
+	QString mobileBtnStyle = QString("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:%1px; border-width: 0px;}").arg(mobileBtnFontPx);
+	pushButtonStart_Local_Game->setStyleSheet(mobileBtnStyle);
+	pushButtonInternet_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_Create_Network_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_Join_Network_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_about->setStyleSheet(mobileBtnStyle);
+	pushButton_configure->setStyleSheet(mobileBtnStyle);
+	pushButton_Logs->setStyleSheet(mobileBtnStyle);
 
 	connect( pushButton_about, SIGNAL( clicked() ), this, SLOT( callAboutPokerthDialog() ) );
 	connect( pushButton_configure, SIGNAL( clicked() ), this, SLOT( callSettingsDialogFromStartwindow() ) );

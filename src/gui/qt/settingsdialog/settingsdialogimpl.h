@@ -212,6 +212,9 @@ public:
 	int changedLanguageIndex;
 	guiLog *myGuiLog;
 	FlickCharm *fc;
+#ifdef ANDROID
+	QSpinBox *spinBox_androidUiScale; // 0=Auto, 50-150=manual percentage
+#endif
 };
 
 #endif

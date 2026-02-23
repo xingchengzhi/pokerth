@@ -129,7 +129,26 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	tabs.setupUi(tabsDiag);
 	textLabel_handLabel->hide();
 #ifdef ANDROID
-	tabsDiag->setStyleSheet("QObject { font: 26px; } QDialog { background-image: url(:/android/android-data/gfx/gui/table/default_800x480/table_dark.png); background-position: bottom center; background-origin: content;  background-repeat: no-repeat;}");
+	// Scale gametable dialog font to screen, same algorithm as in pokerth.cpp.
+	int gtFontPx = 26;
+	{
+		int userScale = myConfig->readConfigInt("AndroidUiScalePercent");
+		if (userScale > 0) {
+			gtFontPx = qMax(10, 26 * userScale / 100);
+		} else {
+			QScreen *scr = QGuiApplication::primaryScreen();
+			if (scr) {
+				QRect geo = scr->availableGeometry();
+				int sw = qMax(geo.width(), geo.height());
+				int sh = qMin(geo.width(), geo.height());
+				qreal scale = qMin(static_cast<qreal>(sw) / 800.0,
+				                   static_cast<qreal>(sh) / 480.0);
+				scale = qBound(0.5, scale, 1.0);
+				gtFontPx = qMax(10, static_cast<int>(26.0 * scale + 0.5));
+			}
+		}
+	}
+	tabsDiag->setStyleSheet(QString("QObject { font: %1px; } QDialog { background-image: url(:/android/android-data/gfx/gui/table/default_800x480/table_dark.png); background-position: bottom center; background-origin: content;  background-repeat: no-repeat;}").arg(gtFontPx));
 	this->setWindowState(Qt::WindowFullScreen);
 	MobileInputHelper::prepareMobileLineEdit(tabs.lineEdit_ChatInput);
 #else

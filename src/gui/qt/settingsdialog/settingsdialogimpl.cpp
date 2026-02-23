@@ -203,6 +203,34 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	comboBox_switchLanguage->setStyleSheet("QObject {font: 30px} QScrollBar:vertical { border: 1px solid grey; background: white; width: 60px; margin: 0px -1px 0px 0px; } QScrollBar::handle:vertical { border-radius: 3px; border: 2px solid grey; background: LightGrey ; min-height: 60px; } QScrollBar::add-line:vertical { background: none; } QScrollBar::sub-line:vertical { background: none; } QScrollBar:up-arrow:vertical, QScrollBar::down-arrow:vertical { background: none; } QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }");
 #endif
 
+#ifdef ANDROID
+	// Add UI scale option programmatically on Android.
+	// Placed in the Interface tab after the existing checkboxes.
+	{
+		QLabel *scaleLabel = new QLabel(tr("UI Scale (0 = Auto):"), this);
+		spinBox_androidUiScale = new QSpinBox(this);
+		spinBox_androidUiScale->setRange(0, 150);
+		spinBox_androidUiScale->setSingleStep(5);
+		spinBox_androidUiScale->setSuffix("%");
+		spinBox_androidUiScale->setSpecialValueText(tr("Auto"));
+		spinBox_androidUiScale->setToolTip(tr("0 = automatic scaling to fit screen.\n50-150 = manual percentage (requires restart)."));
+		// Insert into the Interface tab's first page layout.
+		// checkBox_disableChatEmoticons is the last checkbox in that section.
+		QWidget *interfacePage = checkBox_disableChatEmoticons->parentWidget();
+		if (interfacePage && interfacePage->layout()) {
+			QGridLayout *grid = qobject_cast<QGridLayout*>(interfacePage->layout());
+			if (grid) {
+				int row = grid->rowCount();
+				QHBoxLayout *hbox = new QHBoxLayout;
+				hbox->addWidget(scaleLabel);
+				hbox->addWidget(spinBox_androidUiScale);
+				hbox->addStretch();
+				grid->addLayout(hbox, row, 0);
+			}
+		}
+	}
+#endif
+
 }
 
 settingsDialogImpl::~settingsDialogImpl()
@@ -348,6 +376,9 @@ void settingsDialogImpl::prepareDialog()
 	checkBox_dontHideAvatarsOfIgnored->setChecked(myConfig->readConfigInt("DontHideAvatarsOfIgnored"));
 	checkBox_disableChatEmoticons->setChecked(myConfig->readConfigInt("DisableChatEmoticons"));
 
+#ifdef ANDROID
+	spinBox_androidUiScale->setValue(myConfig->readConfigInt("AndroidUiScalePercent"));
+#endif
 
 	//S t y l e
 	//TABLE
@@ -810,6 +841,10 @@ void settingsDialogImpl::isAccepted()
 	myConfig->writeConfigInt("AccidentallyCallBlocker", checkBox_enableAccidentallyCallBlocker->isChecked());
 	myConfig->writeConfigInt("DontHideAvatarsOfIgnored", checkBox_dontHideAvatarsOfIgnored->isChecked());
 	myConfig->writeConfigInt("DisableChatEmoticons", checkBox_disableChatEmoticons->isChecked());
+
+#ifdef ANDROID
+	myConfig->writeConfigInt("AndroidUiScalePercent", spinBox_androidUiScale->value());
+#endif
 
 	myConfig->writeConfigInt("FlipsideTux", radioButton_flipsideTux->isChecked());
 	myConfig->writeConfigInt("FlipsideOwn", radioButton_flipsideOwn->isChecked());

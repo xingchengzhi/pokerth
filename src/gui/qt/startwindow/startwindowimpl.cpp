@@ -130,12 +130,21 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	QFile customStartWindowBgFile(customStartWindowBgFileString);
 	QFile customWelcomePokerTHFile(customWelcomePokerTHFileString);
 	if(customStartWindowBgFile.exists()) {
-		centralwidget->setStyleSheet(".QWidget { background-image: url("+QFileInfo(customStartWindowBgFile).absoluteFilePath()+"); background-position: top center; background-origin: content; background-repeat: no-repeat;}");
+		centralwidget->setStyleSheet(".QWidget { border-image: url("+QFileInfo(customStartWindowBgFile).absoluteFilePath()+") 0 0 0 0 stretch stretch;}");
 	} else {
 		//if custom bg file could not be found load the big origin file
-		centralwidget->setStyleSheet(".QWidget { background-image: url(:/android/android-data/gfx/gui/misc/startwindowbg10_mobile.png); background-position: top center; background-origin: content; background-repeat: no-repeat;}");
+		centralwidget->setStyleSheet(".QWidget { border-image: url(:/android/android-data/gfx/gui/misc/startwindowbg10_mobile.png) 0 0 0 0 stretch stretch;}");
 	}
 	this->showFullScreen();
+
+	// The .ui file constrains some buttons to maximumWidth=350 (designed for
+	// exactly 800px).  With QT_SCALE_FACTOR the logical width is wider, so
+	// remove the caps and let the grid layout expand buttons to fill.
+	pushButtonStart_Local_Game->setMaximumWidth(QWIDGETSIZE_MAX);
+	pushButton_Create_Network_Game->setMaximumWidth(QWIDGETSIZE_MAX);
+	pushButtonInternet_Game->setMaximumWidth(QWIDGETSIZE_MAX);
+	pushButton_Join_Network_Game->setMaximumWidth(QWIDGETSIZE_MAX);
+	pushButton_Logs->setMaximumWidth(QWIDGETSIZE_MAX);
 
 	//TODO HACK Missing QSystemScreenSaver::setScreenSaverInhibited(true)
 //		#ifndef ANDROID_TEST

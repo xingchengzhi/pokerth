@@ -39,8 +39,20 @@ newGameDialogImpl::newGameDialogImpl(QMainWindow *parent, ConfigFile *c)
 	setWindowModality(Qt::ApplicationModal);
 	setWindowFlags(Qt::WindowSystemMenuHint | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::Dialog);
 #endif
+#ifdef ANDROID
+	// On Android with QT_SCALE_FACTOR, QDialog::showFullScreen() alone
+	// may not reliably set the correct geometry.  Use Window flags so the
+	// dialog behaves like a proper fullscreen top-level window.
+	setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+#endif
 	setupUi(this);
 	this->installEventFilter(this);
+#ifdef ANDROID
+	// Remove hardcoded minimum sizes from the .ui that were designed for
+	// exactly 800×480 – the layout engine handles sizing automatically.
+	frame->setMinimumSize(0, 0);
+	layout()->setContentsMargins(10, 10, 10, 10);
+#endif
 
 	myChangeCompleteBlindsDialog = new changeCompleteBlindsDialogImpl;
 	connect( radioButton_changeBlindsSettings, SIGNAL( clicked(bool) ), this, SLOT( callChangeBlindsDialog(bool) ) );

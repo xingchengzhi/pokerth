@@ -27,6 +27,7 @@
 #include <QTextEdit>
 #include <QPlainTextEdit>
 #include <QDialog>
+#include <QStackedWidget>
 
 /**
  * @brief Interim helper for Qt Widgets mobile keyboard handling
@@ -65,6 +66,10 @@ public:
 	// Call AFTER setupUi().  Uses FramelessWindowHint + screen geometry
 	// so the dialog reliably fills the screen with QT_SCALE_FACTOR.
 	static void prepareAndroidDialog(QDialog *dialog);
+
+	// Wrap each page of a QStackedWidget in a QScrollArea so content
+	// that doesn't fit vertically becomes scrollable.
+	static void wrapStackedWidgetPagesInScrollAreas(QStackedWidget *sw);
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;

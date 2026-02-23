@@ -73,7 +73,15 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
     }
     
     label_soundVolume->hide();
-    
+
+	// Remove hardcoded listWidget minimumWidth (220px) that wastes space.
+	listWidget->setMinimumWidth(0);
+
+	// Add right padding to root layout so content doesn't touch the edge.
+	if (auto *rootGrid = qobject_cast<QGridLayout *>(layout())) {
+		rootGrid->setContentsMargins(0, 0, 8, 0);
+	}
+
 	// Setze Column Stretch für listWidget (Spalte 0) und stackedWidget (Spalte 1)
 	QGridLayout* grid = qobject_cast<QGridLayout*>(layout()->itemAt(0)->layout());
 	if (grid) {
@@ -84,12 +92,21 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	// Setze Vollbild-Geometrie bereits im Konstruktor für sofortige Verfügbarkeit
 	MobileInputHelper::prepareAndroidDialog(this);
 
-	// Fix tab widgets: allow eliding of long titles and remove minimum sizes
-	// that were designed for exactly 800px.
+	// Fix tab widgets: shorten long titles and allow scroll buttons.
 	for (QTabWidget *tw : findChildren<QTabWidget*>()) {
 		tw->setElideMode(Qt::ElideRight);
 		tw->setUsesScrollButtons(true);
+		// Also reduce the tab bar font so tabs fit side-by-side.
+		if (tw->tabBar()) {
+			QFont tabFont = tw->tabBar()->font();
+			tabFont.setPixelSize(11);
+			tw->tabBar()->setFont(tabFont);
+		}
 	}
+
+	// Wrap each stacked widget page into a QScrollArea so the user
+	// can scroll vertically when content doesn't fit the screen.
+	MobileInputHelper::wrapStackedWidgetPagesInScrollAreas(stackedWidget);
 
 	// Remove groupBox minimumSizes that cause cramped layouts.
 	if (groupBox_manualServerConfig) {

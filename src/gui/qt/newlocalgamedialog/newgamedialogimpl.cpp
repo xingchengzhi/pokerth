@@ -113,7 +113,10 @@ int newGameDialogImpl::exec()
 	myChangeCompleteBlindsDialog->radioButton_afterThisStayAtLastBlind->setChecked(myConfig->readConfigInt("AfterMBStayAtLastBlind"));
 
 #ifdef ANDROID
-	this->showFullScreen();
+	// prepareAndroidDialog() already set geometry in the constructor;
+	// showFullScreen() would conflict with the FramelessWindowHint approach.
+#else
+	// Desktop: no-op
 #endif
 	return QDialog::exec();
 }

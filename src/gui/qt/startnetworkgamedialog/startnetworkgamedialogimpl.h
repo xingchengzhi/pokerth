@@ -96,7 +96,7 @@ public slots:
 		return maxPlayerNumber;
 	}
 
-	int exec();
+	int exec() override;
 
 private:
 

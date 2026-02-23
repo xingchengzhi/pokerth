@@ -59,7 +59,7 @@ public:
 	{
 		myUniqueId = theValue;
 	}
-	void contextMenuEvent ( QContextMenuEvent * event );
+	void contextMenuEvent ( QContextMenuEvent * event ) override;
 	QString getPlayerTip(QString);
 	int getPlayerRating(QString);
 

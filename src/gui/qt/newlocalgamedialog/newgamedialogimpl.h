@@ -50,7 +50,7 @@ class newGameDialogImpl: public QDialog, public Ui::newGameDialog
 public:
 	newGameDialogImpl(QMainWindow *parent = 0, ConfigFile* = 0);
 
-	int exec();
+	int exec() override;
 	changeCompleteBlindsDialogImpl* getChangeCompleteBlindsDialog()
 	{
 		return myChangeCompleteBlindsDialog;

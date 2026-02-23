@@ -54,7 +54,7 @@ public:
 	ConfigFile *myConfig;
 	std::string myServerProfilesFile;
 
-	int exec();
+	int exec() override;
 
 public slots:
 

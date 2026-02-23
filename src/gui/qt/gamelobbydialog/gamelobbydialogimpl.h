@@ -64,7 +64,7 @@ public:
 
 	~gameLobbyDialogImpl();
 
-	int exec();
+	int exec() override;
 
 	ChatTools *getMyChat()
 	{

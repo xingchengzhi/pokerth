@@ -104,6 +104,12 @@ void WavMixer::stopAll()
     voices.clear();
 }
 
+bool WavMixer::hasActiveVoices()
+{
+    QMutexLocker lock(&mutex);
+    return !voices.isEmpty();
+}
+
 qint64 WavMixer::readData(char* data, qint64 maxSize)
 {
     QMutexLocker lock(&mutex);
@@ -241,8 +247,10 @@ void QtAudioPlayer::initAudio()
             backend = AudioBackend::SoftwareMixerBackend;
         }
 #elif defined(Q_OS_WIN)
-        // Windows: Win32 PlaySound() — zero CPU when idle, no Qt Multimedia needed
-        backend = AudioBackend::WinMMBackend;
+        // Windows: software mixer with auto-suspend — single WASAPI session
+        // avoids BT distortion from per-sound waveOutOpen; idle auto-suspend
+        // after 3s ensures zero CPU when no sounds are playing.
+        backend = AudioBackend::SoftwareMixerBackend;
 #else
         // macOS: software mixer for low-latency playback
         backend = AudioBackend::SoftwareMixerBackend;
@@ -467,12 +475,46 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
         delete mixerSink;
         mixerSink = nullptr;
     }
+
+    // Auto-suspend: stop QAudioSink after a few seconds of silence to
+    // eliminate idle CPU usage (important for older Windows 10 machines).
+    // playSoundSoftwareMixer() restarts the sink on demand.
+    if (mixerSink) {
+        mixerIdleTimer = new QTimer(this);
+        mixerIdleTimer->setInterval(1000);
+        connect(mixerIdleTimer, &QTimer::timeout, this, [this]() {
+            if (!mixer || !mixerSink) return;
+            if (mixerSink->state() != QAudio::ActiveState) return;
+            if (!mixer->hasActiveVoices()) {
+                if (++mixerIdleCount >= 3) {  // 3 seconds of silence
+                    mixerIdleTimer->stop();
+                    m_stoppingMixerIntentionally = true;
+                    mixerSink->stop();
+                    m_stoppingMixerIntentionally = false;
+                }
+            } else {
+                mixerIdleCount = 0;
+            }
+        });
+        mixerIdleTimer->start();
+    }
 }
 
 void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
 {
-    if (mixer) {
-        mixer->play(key);
+    if (!mixer) return;
+
+    mixer->play(key);
+    mixerIdleCount = 0;
+
+    // Resume the QAudioSink if it was auto-suspended due to idle
+    if (mixerSink && mixerSink->state() != QAudio::ActiveState) {
+        mixerSink->start(mixer);
+    }
+
+    // Ensure idle timer is running
+    if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
+        mixerIdleTimer->start();
     }
 }
 
@@ -735,6 +777,12 @@ void QtAudioPlayer::closeAudio()
         winmmActiveHandles.clear();
     }
 #endif
+    if (mixerIdleTimer) {
+        mixerIdleTimer->stop();
+        delete mixerIdleTimer;
+        mixerIdleTimer = nullptr;
+    }
+    mixerIdleCount = 0;
     if (mixerSink) {
         // Disconnect stateChanged BEFORE stopping so the handler cannot
         // queue a spurious applyDeviceToEffects() call that would fire
@@ -866,6 +914,11 @@ void QtAudioPlayer::applyDeviceToEffects()
         connectMixerSinkSignals();
         if (mixer) {
             mixerSink->start(mixer);
+        }
+        // Reset idle timer after device change
+        mixerIdleCount = 0;
+        if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
+            mixerIdleTimer->start();
         }
         return;
     }

@@ -37,6 +37,7 @@ public:
     void play(const QString& key);
     void setVolume(float vol);
     void stopAll();
+    bool hasActiveVoices();
 
     qint64 readData(char* data, qint64 maxSize) override;
     qint64 writeData(const char* data, qint64 maxSize) override;
@@ -130,6 +131,8 @@ private:
     WavMixer* mixer;
     QAudioSink* mixerSink;
     bool m_stoppingMixerIntentionally = false;
+    QTimer* mixerIdleTimer = nullptr;
+    int mixerIdleCount = 0;
     
     // Device monitoring
     QMediaDevices* mediaDevices;

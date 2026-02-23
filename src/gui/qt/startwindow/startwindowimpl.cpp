@@ -1165,6 +1165,13 @@ void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 							  QMessageBox::Close);
 	}
 	}
+
+	// Always make sure the network client is terminated after any error.
+	// Without this, the ClientThread survives as a zombie after socket-level
+	// errors (ERR_SOCK_CONN_RESET, ERR_SOCK_SEND_FAILED etc.), blocking
+	// any subsequent reconnect/rejoin attempt.
+	mySession->terminateNetworkClient();
+
 	// Stop all game table animation timers BEFORE closing dialogs.
 	// Rejecting the lobby dialog while exec() is running causes
 	// terminateNetworkClient() -> currentGame.reset(). Any animation
@@ -1247,7 +1254,7 @@ void startWindowImpl::networkNotification(int notificationId)
 	break;
 	case NTF_NET_REMOVED_TIMEOUT: {
 		MyMessageBox::warning(this, tr("Network Notification"),
-							  tr("Your admin state timed out due to inactivity. Feel free to create a new game!"),
+							  tr("You were removed due to inactivity."),
 							  QMessageBox::Close);
 	}
 	break;

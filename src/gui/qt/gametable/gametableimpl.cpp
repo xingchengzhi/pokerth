@@ -541,6 +541,12 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 
 	this->installEventFilter(this);
 
+	// Install event filter on QApplication to catch ALL input events,
+	// including clicks on child widgets (Fold/Call/Raise buttons, slider,
+	// checkboxes).  this->installEventFilter(this) alone only catches
+	// events delivered directly to the QMainWindow, not to its children.
+	QApplication::instance()->installEventFilter(this);
+
 	// React to screen changes (hibernate/resume, DPI changes, monitor switch)
 	if (windowHandle()) {
 		connect(windowHandle(), &QWindow::screenChanged,
@@ -746,8 +752,9 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 
 gameTableImpl::~gameTableImpl()
 {
-
-
+	// Remove QApplication-level event filter to prevent stale callbacks
+	// after this widget is destroyed.
+	QApplication::instance()->removeEventFilter(this);
 }
 
 void gameTableImpl::callSettingsDialog()
@@ -3473,9 +3480,11 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 	// and periodically send ResetTimeoutMessage to the server.  This
 	// prevents the server-side in-game AFK timer (15 min) from firing
 	// while the player is genuinely interacting with the game table.
-	// Auto-check/auto-fold are triggered programmatically and do NOT
-	// generate these low-level input events, so they won't reset the
-	// timer – preserving the intended AFK detection for truly idle players.
+	// Because this filter is installed on QApplication, it catches ALL
+	// input events including clicks on child widgets (Fold/Call/Raise
+	// buttons, slider, checkboxes).  Auto-check/auto-fold send network
+	// packets but do NOT generate GUI input events, so they won't
+	// trigger this – preserving AFK detection for truly idle players.
 	if (event->type() == QEvent::MouseButtonPress
 		|| event->type() == QEvent::MouseMove
 		|| event->type() == QEvent::KeyPress

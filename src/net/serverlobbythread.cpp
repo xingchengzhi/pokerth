@@ -2189,7 +2189,10 @@ ServerLobbyThread::SessionError(boost::shared_ptr<SessionData> session, int erro
 		if (errorCode == ERR_NET_SESSION_TIMED_OUT) {
 			boost::shared_ptr<ServerGame> game = session->GetGame();
 			if (game) {
-				game->MoveSessionToLobby(session, NTF_NET_REMOVED_KICKED);
+				// Use NTF_NET_REMOVED_TIMEOUT (not NTF_NET_REMOVED_KICKED) so the
+				// player's GUID is preserved and rejoin is allowed.  KICKED would
+				// cause MarkPlayerAsKicked -> setMyGuid("") -> no rejoin possible.
+				game->MoveSessionToLobby(session, NTF_NET_REMOVED_TIMEOUT);
 				return;
 			}
 		}

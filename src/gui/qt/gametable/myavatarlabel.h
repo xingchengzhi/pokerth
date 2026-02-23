@@ -79,7 +79,7 @@ public slots:
 	{
 		myPath = theValue;
 	}
-	void paintEvent(QPaintEvent*);
+	void paintEvent(QPaintEvent*) override;
 	void putPlayerOnIgnoreList();
 	void removePlayerFromIgnoreList();
 	bool playerIsOnIgnoreList(QString playerName);

@@ -102,7 +102,7 @@ public:
 	}
 
 	//	void keyPressEvent( QKeyEvent *);
-	bool eventFilter(QObject *obj, QEvent *event);
+	bool eventFilter(QObject *obj, QEvent *event) override;
 	void changeEvent(QEvent *event) override;
 
 private slots:

@@ -319,8 +319,8 @@ public slots:
 
 	void breakButtonClicked();
 
-	void keyPressEvent ( QKeyEvent*);
-	bool eventFilter(QObject *obj, QEvent *event);
+	void keyPressEvent ( QKeyEvent*) override;
+	bool eventFilter(QObject *obj, QEvent *event) override;
 	void changeEvent(QEvent *event) override;
 
 	void switchChatWindow();

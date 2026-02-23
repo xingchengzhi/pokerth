@@ -49,7 +49,7 @@ public:
 	changeCompleteBlindsDialogImpl(QWidget *parent = 0, ConfigFile *c = 0);
 
 	int exec();
-	bool eventFilter(QObject *obj, QEvent *event);
+	bool eventFilter(QObject *obj, QEvent *event) override;
 
 public slots:
 	bool getSettingsCorrect() const

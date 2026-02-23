@@ -63,7 +63,7 @@ public slots:
 	void itemFillForm (QTreeWidgetItem* item, int column);
 	void saveServerProfile();
 	void deleteServerProfile();
-	void keyPressEvent ( QKeyEvent * event );
+	void keyPressEvent ( QKeyEvent * event ) override;
 	void checkIp();
 	void connectButtonTest();
 };

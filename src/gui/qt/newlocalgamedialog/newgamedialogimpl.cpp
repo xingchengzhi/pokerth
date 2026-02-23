@@ -44,35 +44,6 @@ newGameDialogImpl::newGameDialogImpl(QMainWindow *parent, ConfigFile *c)
 	this->installEventFilter(this);
 #ifdef ANDROID
 	MobileInputHelper::prepareAndroidDialog(this);
-
-	// Remove child-level minimum sizes and excess margins.
-	frame->setMinimumSize(0, 0);
-	layout()->setContentsMargins(4, 4, 4, 4);
-	layout()->setSpacing(4);
-
-	// verticalLayout items: [0] verticalSpacer_2, [1] horizontalLayout_4,
-	//                       [2] verticalSpacer_4, [3] horizontalLayout_5 (OK btn)
-	// Give the content row all the stretch; spacers get none.
-	if (auto *vl = qobject_cast<QBoxLayout *>(layout())) {
-		vl->setStretch(0, 0);  // top spacer
-		vl->setStretch(1, 1);  // frame content — takes all vertical space
-		vl->setStretch(2, 0);  // bottom spacer
-		vl->setStretch(3, 0);  // OK button row
-	}
-
-	// horizontalLayout_4: [0] hSpacer, [1] frame, [2] hSpacer2
-	// Give the frame all horizontal stretch.
-	if (horizontalLayout_4) {
-		horizontalLayout_4->setStretch(0, 0);
-		horizontalLayout_4->setStretch(1, 1);
-		horizontalLayout_4->setStretch(2, 0);
-	}
-
-	// OK-button row: remove left spacer stretch so the button can expand.
-	if (horizontalLayout_5) {
-		horizontalLayout_5->setStretch(0, 0);
-		horizontalLayout_5->setStretch(1, 1);
-	}
 #endif
 
 	myChangeCompleteBlindsDialog = new changeCompleteBlindsDialogImpl;
@@ -113,10 +84,7 @@ int newGameDialogImpl::exec()
 	myChangeCompleteBlindsDialog->radioButton_afterThisStayAtLastBlind->setChecked(myConfig->readConfigInt("AfterMBStayAtLastBlind"));
 
 #ifdef ANDROID
-	// prepareAndroidDialog() already set geometry in the constructor;
-	// showFullScreen() would conflict with the FramelessWindowHint approach.
-#else
-	// Desktop: no-op
+	this->showFullScreen();
 #endif
 	return QDialog::exec();
 }

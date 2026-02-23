@@ -74,9 +74,6 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
     
     label_soundVolume->hide();
 
-	// Remove hardcoded listWidget minimumWidth (220px) that wastes space.
-	listWidget->setMinimumWidth(0);
-
 	// Add right padding to root layout so content doesn't touch the edge.
 	if (auto *rootGrid = qobject_cast<QGridLayout *>(layout())) {
 		rootGrid->setContentsMargins(0, 0, 8, 0);
@@ -88,37 +85,12 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 		grid->setColumnStretch(0, 1);  // listWidget
 		grid->setColumnStretch(1, 3);  // stackedWidget
 	}
-	
-	// Setze Vollbild-Geometrie bereits im Konstruktor für sofortige Verfügbarkeit
-	MobileInputHelper::prepareAndroidDialog(this);
 
-	// Fix tab widgets: shorten long titles and allow scroll buttons.
-	for (QTabWidget *tw : findChildren<QTabWidget*>()) {
-		tw->setElideMode(Qt::ElideRight);
-		tw->setUsesScrollButtons(true);
-		// Also reduce the tab bar font so tabs fit side-by-side.
-		if (tw->tabBar()) {
-			QFont tabFont = tw->tabBar()->font();
-			tabFont.setPixelSize(11);
-			tw->tabBar()->setFont(tabFont);
-		}
-	}
+	MobileInputHelper::prepareAndroidDialog(this);
 
 	// Wrap each stacked widget page into a QScrollArea so the user
 	// can scroll vertically when content doesn't fit the screen.
 	MobileInputHelper::wrapStackedWidgetPagesInScrollAreas(stackedWidget);
-
-	// Remove groupBox minimumSizes that cause cramped layouts.
-	if (groupBox_manualServerConfig) {
-		groupBox_manualServerConfig->setMinimumSize(0, 0);
-	}
-
-	// In gridLayout_4 (manual server config) give column 1 (inputs) more stretch
-	// so labels in column 0 stay readable and inputs fill the rest.
-	if (gridLayout_4) {
-		gridLayout_4->setColumnStretch(0, 0);
-		gridLayout_4->setColumnStretch(1, 1);
-	}
 
 	// Prepare all QLineEdit widgets for mobile input
 	QList<QLineEdit*> lineEdits = this->findChildren<QLineEdit*>();

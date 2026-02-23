@@ -3515,17 +3515,22 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		}
 	}
 
+	// Only handle events when the game table window is active/visible
+	// Dialogs should process their own events without interference
+	QWidget *focusWidget = QApplication::focusWidget();
+	bool isGameTableFocused = (this == focusWidget || this->isAncestorOf(focusWidget));
+	
 	if (event->type() == QEvent::KeyPress) {
 		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 		
-		if (/*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */keyEvent->key() == Qt::Key_Tab) {
+		if (isGameTableFocused && /*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */keyEvent->key() == Qt::Key_Tab) {
 			myChat->nickAutoCompletition();
 			return true;
 		} else if (keyEvent->key() == Qt::Key_Back) {
 			event->ignore();
 			closeGameTable();
 			return true;
-		} else if (keyEvent->key() == Qt::Key_Up &&
+		} else if (isGameTableFocused && keyEvent->key() == Qt::Key_Up &&
 #ifdef GUI_800x480
 		           tabs.lineEdit_ChatInput->hasFocus()
 #else
@@ -3537,7 +3542,7 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 			}
 			myChat->showChatHistoryIndex(keyUpDownChatCounter);
 			return true;
-		} else if (keyEvent->key() == Qt::Key_Down &&
+		} else if (isGameTableFocused && keyEvent->key() == Qt::Key_Down &&
 #ifdef GUI_800x480
 		           tabs.lineEdit_ChatInput->hasFocus()
 #else
@@ -3549,25 +3554,31 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 			}
 			myChat->showChatHistoryIndex(keyUpDownChatCounter);
 			return true;
-		} else {
-			// Reset counter for other keys
+		} else if (isGameTableFocused) {
+			// Reset counter for other keys only when game table is focused
 			keyUpDownChatCounter = 0;
 		}
+		// Let dialogs/other windows handle their own key events
+		return false;
 	} else if (event->type() == QEvent::Close) {
-		event->ignore();
-		closeGameTable();
-		return true;
-	} else if (event->type() == QEvent::Resize) {
-		refreshSpectatorsDisplay();
-		// Force relayout after resize (e.g. hibernate/resume changes geometry)
-		if (layout()) {
-			layout()->invalidate();
-			layout()->activate();
+		if (isGameTableFocused) {
+			event->ignore();
+			closeGameTable();
+			return true;
 		}
-		return true;
+	} else if (event->type() == QEvent::Resize) {
+		if (isGameTableFocused) {
+			refreshSpectatorsDisplay();
+			// Force relayout after resize (e.g. hibernate/resume changes geometry)
+			if (layout()) {
+				layout()->invalidate();
+				layout()->activate();
+			}
+			return true;
+		}
 	}
 	
-	// pass the event on to the parent class
+	// pass all unhandled events to the parent class to allow normal processing
 	return QMainWindow::eventFilter(obj, event);
 }
 

@@ -22,6 +22,7 @@
 #include <QRect>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
+#include <QScreen>
 
 MobileInputHelper::MobileInputHelper()
 	: QObject(nullptr), currentScrollArea(nullptr)
@@ -76,6 +77,24 @@ void MobileInputHelper::prepareMobilePlainTextEdit(QPlainTextEdit *textEdit)
 #ifdef ANDROID
 	textEdit->setAttribute(Qt::WA_InputMethodEnabled, true);
 	textEdit->installEventFilter(&instance());
+#endif
+}
+
+void MobileInputHelper::prepareAndroidDialog(QDialog *dialog)
+{
+#ifdef ANDROID
+	if (!dialog) return;
+	// Use Window + FramelessWindowHint so the dialog becomes a real
+	// top-level fullscreen surface.  Plain setWindowState(FullScreen)
+	// on a QDialog may not resize correctly with QT_SCALE_FACTOR.
+	dialog->setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+	QScreen *screen = QGuiApplication::primaryScreen();
+	if (screen) {
+		QRect geo = screen->availableGeometry();
+		dialog->setGeometry(geo);
+	}
+#else
+	Q_UNUSED(dialog);
 #endif
 }
 

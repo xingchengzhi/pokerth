@@ -49,7 +49,7 @@ startNetworkGameDialogImpl::startNetworkGameDialogImpl(startWindowImpl *parent, 
 #endif
 	setupUi(this);
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_ChatInput);
 #endif
 	myChat = new ChatTools(lineEdit_ChatInput, myConfig, LAN_LOBBY_CHAT, textBrowser_ChatDisplay);

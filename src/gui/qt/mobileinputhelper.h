@@ -26,6 +26,7 @@
 #include <QLineEdit>
 #include <QTextEdit>
 #include <QPlainTextEdit>
+#include <QDialog>
 
 /**
  * @brief Interim helper for Qt Widgets mobile keyboard handling
@@ -59,6 +60,11 @@ public:
 	// Prepare a text edit for mobile usage
 	static void prepareMobileTextEdit(QTextEdit *textEdit);
 	static void prepareMobilePlainTextEdit(QPlainTextEdit *textEdit);
+
+	// Make a QDialog fullscreen on Android with correct geometry.
+	// Call AFTER setupUi().  Uses FramelessWindowHint + screen geometry
+	// so the dialog reliably fills the screen with QT_SCALE_FACTOR.
+	static void prepareAndroidDialog(QDialog *dialog);
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;

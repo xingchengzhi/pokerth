@@ -145,6 +145,21 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	pushButtonInternet_Game->setMaximumWidth(QWIDGETSIZE_MAX);
 	pushButton_Join_Network_Game->setMaximumWidth(QWIDGETSIZE_MAX);
 	pushButton_Logs->setMaximumWidth(QWIDGETSIZE_MAX);
+	pushButtonStart_Local_Game->setMinimumWidth(0);
+	pushButton_Create_Network_Game->setMinimumWidth(0);
+	pushButtonInternet_Game->setMinimumWidth(0);
+	pushButton_Join_Network_Game->setMinimumWidth(0);
+	pushButton_Logs->setMinimumWidth(0);
+
+	// The .ui gridLayout_2 has horizontal spacers in columns 0 and 2 that
+	// center the button grid at 800px.  With QT_SCALE_FACTOR the screen is
+	// wider, so give column 1 (content) all the stretch.
+	QGridLayout *mainGrid = qobject_cast<QGridLayout*>(centralwidget->layout());
+	if (mainGrid) {
+		mainGrid->setColumnStretch(0, 0);  // left spacer: no stretch
+		mainGrid->setColumnStretch(1, 1);  // button grid: takes all space
+		mainGrid->setColumnStretch(2, 0);  // right spacer: no stretch
+	}
 
 	//TODO HACK Missing QSystemScreenSaver::setScreenSaverInhibited(true)
 //		#ifndef ANDROID_TEST

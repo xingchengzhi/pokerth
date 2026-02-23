@@ -46,7 +46,7 @@ internetGameLoginDialogImpl::internetGameLoginDialogImpl(QWidget *parent, Config
 	AppImageUtils::patchExternalLinks(this);
 	this->installEventFilter(this);
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_username);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_password);
 #endif

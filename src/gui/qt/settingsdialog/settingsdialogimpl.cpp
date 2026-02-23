@@ -82,12 +82,7 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 	}
 	
 	// Setze Vollbild-Geometrie bereits im Konstruktor für sofortige Verfügbarkeit
-	this->setWindowState(Qt::WindowFullScreen);
-	QScreen *screen = QGuiApplication::primaryScreen();
-	if (screen) {
-		QRect screenGeometry = screen->availableGeometry();
-		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
-	}
+	MobileInputHelper::prepareAndroidDialog(this);
 	
 	// Prepare all QLineEdit widgets for mobile input
 	QList<QLineEdit*> lineEdits = this->findChildren<QLineEdit*>();

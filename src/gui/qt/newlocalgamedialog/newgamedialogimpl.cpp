@@ -31,6 +31,7 @@
 #include "newgamedialogimpl.h"
 #include "changecompleteblindsdialogimpl.h"
 #include "configfile.h"
+#include "mobileinputhelper.h"
 
 newGameDialogImpl::newGameDialogImpl(QMainWindow *parent, ConfigFile *c)
 	: QDialog(parent), myConfig(c)
@@ -39,19 +40,43 @@ newGameDialogImpl::newGameDialogImpl(QMainWindow *parent, ConfigFile *c)
 	setWindowModality(Qt::ApplicationModal);
 	setWindowFlags(Qt::WindowSystemMenuHint | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::Dialog);
 #endif
-#ifdef ANDROID
-	// On Android with QT_SCALE_FACTOR, QDialog::showFullScreen() alone
-	// may not reliably set the correct geometry.  Use Window flags so the
-	// dialog behaves like a proper fullscreen top-level window.
-	setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
-#endif
 	setupUi(this);
 	this->installEventFilter(this);
 #ifdef ANDROID
-	// Remove hardcoded minimum sizes from the .ui that were designed for
-	// exactly 800×480 – the layout engine handles sizing automatically.
+	MobileInputHelper::prepareAndroidDialog(this);
+
+	// Override the .ui's hardcoded 320×240 minimum and 30px margins.
+	setMinimumSize(0, 0);
 	frame->setMinimumSize(0, 0);
-	layout()->setContentsMargins(10, 10, 10, 10);
+	layout()->setContentsMargins(4, 4, 4, 4);
+	layout()->setSpacing(4);
+
+	// Clear the 26px font stylesheet — the global QT_SCALE_FACTOR handles sizing.
+	setStyleSheet(QString());
+
+	// verticalLayout items: [0] verticalSpacer_2, [1] horizontalLayout_4,
+	//                       [2] verticalSpacer_4, [3] horizontalLayout_5 (OK btn)
+	// Give the content row all the stretch; spacers get none.
+	if (auto *vl = qobject_cast<QBoxLayout *>(layout())) {
+		vl->setStretch(0, 0);  // top spacer
+		vl->setStretch(1, 1);  // frame content — takes all vertical space
+		vl->setStretch(2, 0);  // bottom spacer
+		vl->setStretch(3, 0);  // OK button row
+	}
+
+	// horizontalLayout_4: [0] hSpacer, [1] frame, [2] hSpacer2
+	// Give the frame all horizontal stretch.
+	if (horizontalLayout_4) {
+		horizontalLayout_4->setStretch(0, 0);
+		horizontalLayout_4->setStretch(1, 1);
+		horizontalLayout_4->setStretch(2, 0);
+	}
+
+	// OK-button row: remove left spacer stretch so the button can expand.
+	if (horizontalLayout_5) {
+		horizontalLayout_5->setStretch(0, 0);
+		horizontalLayout_5->setStretch(1, 1);
+	}
 #endif
 
 	myChangeCompleteBlindsDialog = new changeCompleteBlindsDialogImpl;

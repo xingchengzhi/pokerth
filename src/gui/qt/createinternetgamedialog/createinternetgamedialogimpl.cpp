@@ -49,7 +49,7 @@ createInternetGameDialogImpl::createInternetGameDialogImpl(QWidget *parent, Conf
 	setupUi(this);
 	this->installEventFilter(this);
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_gameName);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_Password);
 #endif

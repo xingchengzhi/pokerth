@@ -48,7 +48,7 @@ changeContentDialogImpl::changeContentDialogImpl(QWidget *parent, ConfigFile *co
 	setupUi(this);
 	this->installEventFilter(this);
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit);
 #endif
 

@@ -77,12 +77,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	}
 
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
-	QScreen *screen = QGuiApplication::primaryScreen();
-	if (screen) {
-		QRect screenGeometry = screen->availableGeometry();
-		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
-	}
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_ChatInput);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_searchForPlayers);
 #endif

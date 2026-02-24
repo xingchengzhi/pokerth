@@ -943,8 +943,11 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 			removeReason = NTF_NET_REMOVED_ALREADY_RUNNING;
 			break;
 		case RemovedFromGameMessage::gameTimeout :
-			removeReason = NTF_NET_REMOVED_TIMEOUT;
-			break;
+			// Trigger the rejoin dialog so the player can immediately re-enter the
+			// game they were removed from due to inactivity (still connected).
+			client->GetCallback().SignalNetClientRejoinPossible(netRemoved.gameid());
+			client->SetState(ClientStateWaitJoin::Instance());
+			return;
 		case RemovedFromGameMessage::removedStartFailed :
 			removeReason = NTF_NET_REMOVED_START_FAILED;
 			break;

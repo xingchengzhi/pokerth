@@ -3,7 +3,6 @@
 - AFK timeout fix
 - lobby playerlist fix
 
-
 2026-02-20 version 2.0.1
 - several bugfixes for linux and windows audio output
 - hibernate/suspend fixes for GUI scaling

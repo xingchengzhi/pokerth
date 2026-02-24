@@ -130,12 +130,61 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	QFile customStartWindowBgFile(customStartWindowBgFileString);
 	QFile customWelcomePokerTHFile(customWelcomePokerTHFileString);
 	if(customStartWindowBgFile.exists()) {
-		centralwidget->setStyleSheet(".QWidget { background-image: url("+QFileInfo(customStartWindowBgFile).absoluteFilePath()+"); background-position: top center; background-origin: content; background-repeat: no-repeat;}");
+		centralwidget->setStyleSheet(".QWidget { border-image: url("+QFileInfo(customStartWindowBgFile).absoluteFilePath()+") 0 0 0 0 stretch stretch;}");
 	} else {
 		//if custom bg file could not be found load the big origin file
-		centralwidget->setStyleSheet(".QWidget { background-image: url(:/android/android-data/gfx/gui/misc/startwindowbg10_mobile.png); background-position: top center; background-origin: content; background-repeat: no-repeat;}");
+		centralwidget->setStyleSheet(".QWidget { border-image: url(:/android/android-data/gfx/gui/misc/startwindowbg10_mobile.png) 0 0 0 0 stretch stretch;}");
 	}
 	this->showFullScreen();
+
+	// showFullScreen() alone does not reliably resize the QMainWindow
+	// when QT_SCALE_FACTOR < 1.0 is set.  Force the geometry explicitly.
+	setMinimumSize(0, 0);
+	{
+		QScreen *scr = QGuiApplication::primaryScreen();
+		if (scr) {
+			setGeometry(scr->availableGeometry());
+		}
+	}
+
+	// The .ui file constrains buttons to fixed 350×80 (designed for 800px).
+	// Remove ALL min/max width caps so the grid layout can expand them.
+	QList<QPushButton*> allBtns = { pushButtonStart_Local_Game,
+		pushButton_Create_Network_Game, pushButtonInternet_Game,
+		pushButton_Join_Network_Game, pushButton_configure,
+		pushButton_about, pushButton_Logs };
+	for (QPushButton *btn : allBtns) {
+		btn->setMinimumSize(0, 0);
+		btn->setMaximumWidth(QWIDGETSIZE_MAX);
+	}
+
+	// The .ui gridLayout_2 has horizontal spacers in columns 0 and 2 that
+	// center the button grid at 800px.  With QT_SCALE_FACTOR the screen is
+	// wider, so give column 1 (content) all the stretch.
+	QGridLayout *mainGrid = qobject_cast<QGridLayout*>(centralwidget->layout());
+	if (mainGrid) {
+		mainGrid->setColumnStretch(0, 0);  // left spacer: no stretch
+		mainGrid->setColumnStretch(1, 1);  // button grid: takes all space
+		mainGrid->setColumnStretch(2, 0);  // right spacer: no stretch
+		// Also set row stretches: button grid rows expand, spacers minimal
+		mainGrid->setRowStretch(0, 0);  // top vertical spacer
+		mainGrid->setRowStretch(1, 1);  // button grid row
+		mainGrid->setRowStretch(2, 0);  // Logs row
+		mainGrid->setRowStretch(3, 0);  // bottom vertical spacer
+	}
+
+	// The inner 2-column button grid needs equal column stretches too.
+	if (gridLayout) {
+		gridLayout->setColumnStretch(0, 1);
+		gridLayout->setColumnStretch(1, 1);
+	}
+
+	// Logs row (horizontalLayout): give the button stretch so it fills.
+	if (horizontalLayout) {
+		horizontalLayout->setStretch(0, 0);  // left spacer
+		horizontalLayout->setStretch(1, 1);  // Logs button
+		horizontalLayout->setStretch(2, 0);  // right spacer
+	}
 
 	//TODO HACK Missing QSystemScreenSaver::setScreenSaverInhibited(true)
 //		#ifndef ANDROID_TEST
@@ -157,13 +206,35 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 	centralwidget->setStyleSheet(".QWidget { background-image: url(\""+myAppDataPath+"gfx/gui/misc/startwindowbg10_desktop.png\"); background-position: bottom center; background-origin: content; background-repeat: no-repeat;}");
 #endif
 	// All mobile GUI's
-	pushButtonStart_Local_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButtonInternet_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Create_Network_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Join_Network_Game->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_about->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_configure->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
-	pushButton_Logs->setStyleSheet("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:22px; border-width: 0px;}");
+	// Scale button font-size to screen, same algorithm as in pokerth.cpp.
+	int mobileBtnFontPx = 22;
+#ifdef ANDROID
+	{
+		int userScale = myConfig->readConfigInt("AndroidUiScalePercent");
+		if (userScale > 0) {
+			mobileBtnFontPx = qMax(10, 22 * userScale / 100);
+		} else {
+			QScreen *scr = QGuiApplication::primaryScreen();
+			if (scr) {
+				QRect geo = scr->availableGeometry();
+				int sw = qMax(geo.width(), geo.height());
+				int sh = qMin(geo.width(), geo.height());
+				qreal scale = qMin(static_cast<qreal>(sw) / 800.0,
+				                   static_cast<qreal>(sh) / 480.0);
+				scale = qBound(0.5, scale, 1.0);
+				mobileBtnFontPx = qMax(10, static_cast<int>(22.0 * scale + 0.5));
+			}
+		}
+	}
+#endif
+	QString mobileBtnStyle = QString("QPushButton { text-align:left; font-weight:bold; padding-left: 3px; padding-bottom: 3px; padding-top: 3px; padding-right: 3px; background-color: #505050; color: #FDC942; font-size:%1px; border-width: 0px;}").arg(mobileBtnFontPx);
+	pushButtonStart_Local_Game->setStyleSheet(mobileBtnStyle);
+	pushButtonInternet_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_Create_Network_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_Join_Network_Game->setStyleSheet(mobileBtnStyle);
+	pushButton_about->setStyleSheet(mobileBtnStyle);
+	pushButton_configure->setStyleSheet(mobileBtnStyle);
+	pushButton_Logs->setStyleSheet(mobileBtnStyle);
 
 	connect( pushButton_about, SIGNAL( clicked() ), this, SLOT( callAboutPokerthDialog() ) );
 	connect( pushButton_configure, SIGNAL( clicked() ), this, SLOT( callSettingsDialogFromStartwindow() ) );
@@ -1165,6 +1236,13 @@ void startWindowImpl::networkError(int errorID, int /*osErrorID*/)
 							  QMessageBox::Close);
 	}
 	}
+
+	// Always make sure the network client is terminated after any error.
+	// Without this, the ClientThread survives as a zombie after socket-level
+	// errors (ERR_SOCK_CONN_RESET, ERR_SOCK_SEND_FAILED etc.), blocking
+	// any subsequent reconnect/rejoin attempt.
+	mySession->terminateNetworkClient();
+
 	// Stop all game table animation timers BEFORE closing dialogs.
 	// Rejecting the lobby dialog while exec() is running causes
 	// terminateNetworkClient() -> currentGame.reset(). Any animation
@@ -1247,7 +1325,7 @@ void startWindowImpl::networkNotification(int notificationId)
 	break;
 	case NTF_NET_REMOVED_TIMEOUT: {
 		MyMessageBox::warning(this, tr("Network Notification"),
-							  tr("Your admin state timed out due to inactivity. Feel free to create a new game!"),
+							  tr("You were removed due to inactivity."),
 							  QMessageBox::Close);
 	}
 	break;

@@ -319,8 +319,8 @@ public slots:
 
 	void breakButtonClicked();
 
-	void keyPressEvent ( QKeyEvent*);
-	bool eventFilter(QObject *obj, QEvent *event);
+	void keyPressEvent ( QKeyEvent*) override;
+	bool eventFilter(QObject *obj, QEvent *event) override;
 	void changeEvent(QEvent *event) override;
 
 	void switchChatWindow();
@@ -529,7 +529,7 @@ private:
 	// activity (mouse/keyboard) prevents the server-side in-game AFK
 	// timer from firing.  Minimum interval: 5 minutes.
 	QElapsedTimer lastAfkResetSentTimer;
-	static const qint64 AFK_RESET_INTERVAL_MS = 5 * 60 * 1000; // 5 min
+	static const qint64 AFK_RESET_INTERVAL_MS = 3 * 60 * 1000; // 3 min
 
 	QString AllInString;
 	QString RaiseString;

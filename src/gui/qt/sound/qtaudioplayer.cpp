@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <cmath>
 
 #ifdef Q_OS_WIN
 #pragma comment(lib, "winmm.lib")
@@ -104,6 +105,12 @@ void WavMixer::stopAll()
     voices.clear();
 }
 
+bool WavMixer::hasActiveVoices()
+{
+    QMutexLocker lock(&mutex);
+    return !voices.isEmpty();
+}
+
 qint64 WavMixer::readData(char* data, qint64 maxSize)
 {
     QMutexLocker lock(&mutex);
@@ -121,6 +128,16 @@ qint64 WavMixer::readData(char* data, qint64 maxSize)
     const qint64 numSamples = maxSize / 2; // 16-bit samples
     qint16* out = reinterpret_cast<qint16*>(data);
 
+    // Attenuate each voice when multiple sounds overlap to prevent
+    // hard-clipping distortion that causes the "stuttering" effect
+    // reported on Windows 11.  With 1 voice: full volume.
+    // With 2+: scale each contribution by 1/sqrt(N) (equal-power mix).
+    const int voiceCount = voices.size();
+    const float attenuation = (voiceCount > 1)
+        ? (1.0f / std::sqrt(static_cast<float>(voiceCount)))
+        : 1.0f;
+    const float effectiveVolume = volume * attenuation;
+
     for (int v = voices.size() - 1; v >= 0; --v) {
         ActiveVoice& voice = voices[v];
         const qint16* src = reinterpret_cast<const qint16*>(
@@ -130,7 +147,7 @@ qint64 WavMixer::readData(char* data, qint64 maxSize)
 
         for (qint64 i = 0; i < toMix; ++i) {
             qint32 mixed = static_cast<qint32>(out[i])
-                         + static_cast<qint32>(src[i] * volume);
+                         + static_cast<qint32>(src[i] * effectiveVolume);
             out[i] = static_cast<qint16>(qBound(-32768, mixed, 32767));
         }
 
@@ -241,7 +258,10 @@ void QtAudioPlayer::initAudio()
             backend = AudioBackend::SoftwareMixerBackend;
         }
 #elif defined(Q_OS_WIN)
-        // Windows: Win32 PlaySound() — zero CPU when idle, no Qt Multimedia needed
+        // Windows: WinMM streaming mixer — single persistent waveOut handle
+        // with double-buffering on a dedicated audio thread.  Avoids both
+        // QAudioSink/WASAPI session issues (clipping, IdleState bugs) and
+        // per-sound waveOutOpen churn that degraded audio over long sessions.
         backend = AudioBackend::WinMMBackend;
 #else
         // macOS: software mixer for low-latency playback
@@ -450,10 +470,11 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
     QAudioDevice sinkDevice = device.isNull() ? QMediaDevices::defaultAudioOutput() : device;
     mixerSink = new QAudioSink(sinkDevice, format, this);
     // WASAPI on Windows needs a larger buffer than PulseAudio/CoreAudio.
-    // 100ms causes underruns that make WASAPI transition to IdleState,
+    // Small buffers cause underruns that trigger IdleState transitions,
     // cutting off sounds mid-playback (e.g. blinds_raises WAVs).
+    // Use 600ms on Windows to prevent stuttering/clipping, 200ms elsewhere.
 #ifdef Q_OS_WIN
-    mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+    mixerSink->setBufferSize(44100 * 4 * 3 / 5); // ~600ms for WASAPI
 #else
     mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms for PulseAudio/CoreAudio
 #endif
@@ -467,12 +488,46 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
         delete mixerSink;
         mixerSink = nullptr;
     }
+
+    // Auto-suspend: stop QAudioSink after several seconds of silence to
+    // eliminate idle CPU usage (important for older Windows 10 machines).
+    // playSoundSoftwareMixer() restarts the sink on demand.
+    if (mixerSink) {
+        mixerIdleTimer = new QTimer(this);
+        mixerIdleTimer->setInterval(1000);
+        connect(mixerIdleTimer, &QTimer::timeout, this, [this]() {
+            if (!mixer || !mixerSink) return;
+            if (mixerSink->state() != QAudio::ActiveState) return;
+            if (!mixer->hasActiveVoices()) {
+                if (++mixerIdleCount >= 5) {  // 5 seconds of silence before suspend
+                    mixerIdleTimer->stop();
+                    m_stoppingMixerIntentionally = true;
+                    mixerSink->stop();
+                    m_stoppingMixerIntentionally = false;
+                }
+            } else {
+                mixerIdleCount = 0;
+            }
+        });
+        mixerIdleTimer->start();
+    }
 }
 
 void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
 {
-    if (mixer) {
-        mixer->play(key);
+    if (!mixer) return;
+
+    mixer->play(key);
+    mixerIdleCount = 0;
+
+    // Resume the QAudioSink if it was auto-suspended due to idle
+    if (mixerSink && mixerSink->state() != QAudio::ActiveState) {
+        mixerSink->start(mixer);
+    }
+
+    // Ensure idle timer is running
+    if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
+        mixerIdleTimer->start();
     }
 }
 
@@ -499,10 +554,12 @@ void QtAudioPlayer::connectMixerSinkSignals()
         if (!mixerSink || !mixer)
             return;
         if (newState == QAudio::IdleState) {
-            m_stoppingMixerIntentionally = true;
-            mixerSink->stop();
-            mixerSink->start(mixer);
-            m_stoppingMixerIntentionally = false;
+            // IdleState means the buffer ran dry.  WavMixer always provides
+            // data (silence when no voices are active), so this is just a
+            // transient underrun.  Do NOT stop/restart the sink here:
+            // on WASAPI (Windows) that tears down and recreates the audio
+            // session, causing audible clicks, stuttering and latency.
+            // The sink will continue pulling from the mixer automatically.
         } else if (newState == QAudio::StoppedState) {
             if (m_stoppingMixerIntentionally)
                 return;   // Intentional stop (IdleState recovery / closeAudio)
@@ -522,18 +579,17 @@ void QtAudioPlayer::connectMixerSinkSignals()
     });
 }
 
-// --- Win32 waveOut backend ---
-// Uses the Windows Multimedia waveOut* API for concurrent WAV playback.
-// Each sound plays in its own thread with its own waveOut handle.
-// Volume is applied directly to PCM samples — no global device volume change.
-// Zero CPU when no sounds are playing.
+// --- Win32 waveOut pool backend ---
+// Pool of pre-opened waveOut handles for concurrent low-latency playback.
+// Each slot can play one sound at a time; sounds on different slots overlap
+// naturally.  Pre-loaded PCM data is volume-scaled per-play and submitted
+// via waveOutWrite.  Zero CPU when idle, no threads, no streaming loop.
+// Handles are opened once at init and closed at shutdown — no churn.
 
 #ifdef Q_OS_WIN
 
-#include <thread>
-
-// Parse a WAV file and store format + PCM data
-static bool parseWavFile(const QString& filePath, QtAudioPlayer::WinMMSound& out)
+// Parse a WAV file and return raw PCM data (must be 44100/16bit/stereo)
+static bool parseWavForWinMM(const QString& filePath, QByteArray& pcmOut)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -548,7 +604,7 @@ static bool parseWavFile(const QString& filePath, QtAudioPlayer::WinMMSound& out
         return false;
 
     int pos = 12;
-    bool fmtFound = false;
+    bool fmtValid = false;
 
     while (pos + 8 <= fileData.size()) {
         QByteArray chunkId = fileData.mid(pos, 4);
@@ -557,25 +613,25 @@ static bool parseWavFile(const QString& filePath, QtAudioPlayer::WinMMSound& out
 
         if (chunkId == "fmt " && chunkSize >= 16) {
             const uchar* fmt = reinterpret_cast<const uchar*>(fileData.constData() + pos + 8);
-            quint16 audioFormat = qFromLittleEndian<quint16>(fmt);
+            quint16 audioFormat   = qFromLittleEndian<quint16>(fmt);
+            quint16 channels      = qFromLittleEndian<quint16>(fmt + 2);
+            quint32 sampleRate    = qFromLittleEndian<quint32>(fmt + 4);
+            quint16 bitsPerSample = qFromLittleEndian<quint16>(fmt + 14);
 
-            if (audioFormat != 1) {  // Must be PCM
-                qWarning() << "[Audio] Not PCM format in:" << filePath;
+            if (audioFormat == 1 && channels == 2 && sampleRate == 44100 && bitsPerSample == 16) {
+                fmtValid = true;
+            } else {
+                qWarning() << "[Audio] Unsupported WAV format in" << filePath
+                           << "- need PCM 16-bit stereo 44100Hz";
                 return false;
             }
-
-            out.channels      = qFromLittleEndian<quint16>(fmt + 2);
-            out.sampleRate    = qFromLittleEndian<quint32>(fmt + 4);
-            out.bitsPerSample = qFromLittleEndian<quint16>(fmt + 14);
-            fmtFound = true;
         }
 
-        if (chunkId == "data" && fmtFound) {
+        if (chunkId == "data" && fmtValid) {
             qint64 avail = fileData.size() - pos - 8;
             if (static_cast<qint64>(chunkSize) > avail)
                 chunkSize = static_cast<quint32>(avail);
-
-            out.pcmData = fileData.mid(pos + 8, chunkSize);
+            pcmOut = fileData.mid(pos + 8, chunkSize);
             return true;
         }
 
@@ -587,35 +643,54 @@ static bool parseWavFile(const QString& filePath, QtAudioPlayer::WinMMSound& out
 
 void QtAudioPlayer::initWinMMBackend(float vol)
 {
-
     winmmVolume = qBound(0.0f, vol, 1.0f);
-    winmmShuttingDown.store(false);
+    winmmPoolOpen = false;
 
-    int loaded = 0;
+    // Pre-load all WAV files into memory
     for (const char* soundName : SOUND_FILES) {
         QString key  = QString::fromLatin1(soundName);
         QString path = myAppDataPath + "sounds/default/" + key + ".wav";
-
         if (!QFileInfo::exists(path)) {
             qWarning() << "[Audio] Sound file not found:" << path;
             continue;
         }
-
-        WinMMSound snd;
-        if (parseWavFile(path, snd)) {
-            winmmSounds.insert(key, snd);
-            loaded++;
+        QByteArray pcm;
+        if (parseWavForWinMM(path, pcm)) {
+            winmmPcmData.insert(key, pcm);
         } else {
             qWarning() << "[Audio] Failed to parse WAV:" << path;
         }
     }
 
+    // Open pool of waveOut handles (all same format: 44100/16bit/stereo)
+    WAVEFORMATEX wfx = {};
+    wfx.wFormatTag      = WAVE_FORMAT_PCM;
+    wfx.nChannels       = 2;
+    wfx.nSamplesPerSec  = 44100;
+    wfx.wBitsPerSample  = 16;
+    wfx.nBlockAlign     = 4;
+    wfx.nAvgBytesPerSec = 44100 * 4;
+    wfx.cbSize          = 0;
+
+    for (int i = 0; i < WINMM_POOL_SIZE; i++) {
+        winmmSlots[i].handle = nullptr;
+        winmmSlots[i].prepared = false;
+        MMRESULT res = waveOutOpen(&winmmSlots[i].handle, WAVE_MAPPER, &wfx,
+                                   0, 0, CALLBACK_NULL);
+        if (res != MMSYSERR_NOERROR) {
+            qWarning() << "[Audio] waveOutOpen failed for slot" << i << ":" << res;
+            winmmSlots[i].handle = nullptr;
+        }
+    }
+    winmmPoolOpen = true;
 }
 
 void QtAudioPlayer::playSoundWinMM(const QString& key)
 {
-    auto it = winmmSounds.constFind(key);
-    if (it == winmmSounds.constEnd()) {
+    if (!winmmPoolOpen) return;
+
+    auto it = winmmPcmData.constFind(key);
+    if (it == winmmPcmData.constEnd()) {
         qWarning() << "[Audio] Unknown sound:" << key;
         return;
     }
@@ -624,91 +699,64 @@ void QtAudioPlayer::playSoundWinMM(const QString& key)
     float vol = myConfig->readConfigInt("SoundVolume") / 10.0f;
     winmmVolume = qBound(0.0f, vol, 1.0f);
 
-    // Copy PCM data and apply volume scaling
-    QByteArray scaledData = it->pcmData;
-    if (it->bitsPerSample == 16) {
-        qint16* samples = reinterpret_cast<qint16*>(scaledData.data());
-        int numSamples = scaledData.size() / 2;
-        for (int i = 0; i < numSamples; i++) {
-            samples[i] = static_cast<qint16>(qBound(-32768,
-                static_cast<qint32>(samples[i] * winmmVolume), 32767));
+    // Find a free slot: prefer one that's finished playing,
+    // then one that was never used
+    int slot = -1;
+    for (int i = 0; i < WINMM_POOL_SIZE; i++) {
+        if (!winmmSlots[i].handle) continue;
+        if (!winmmSlots[i].prepared) {
+            // Never used or already reclaimed — grab it
+            slot = i;
+            break;
         }
-    } else if (it->bitsPerSample == 8) {
-        // 8-bit WAV is unsigned, 128 = silence
-        quint8* samples = reinterpret_cast<quint8*>(scaledData.data());
-        int numSamples = scaledData.size();
-        for (int i = 0; i < numSamples; i++) {
-            int centered = static_cast<int>(samples[i]) - 128;
-            centered = static_cast<int>(centered * winmmVolume);
-            samples[i] = static_cast<quint8>(qBound(0, centered + 128, 255));
+        if (winmmSlots[i].header.dwFlags & WHDR_DONE) {
+            // Finished playing — reclaim and reuse
+            waveOutUnprepareHeader(winmmSlots[i].handle,
+                                   &winmmSlots[i].header, sizeof(WAVEHDR));
+            winmmSlots[i].prepared = false;
+            slot = i;
+            break;
         }
     }
 
-    // Build WAVEFORMATEX from stored format info
-    quint16 channels      = it->channels;
-    quint32 sampleRate    = it->sampleRate;
-    quint16 bitsPerSample = it->bitsPerSample;
-
-    // Pointers captured by the thread
-    std::atomic<bool>* shuttingDown = &winmmShuttingDown;
-    QMutex* mtx = &winmmMutex;
-    QVector<HWAVEOUT>* handles = &winmmActiveHandles;
-
-    // Launch playback in a detached thread
-    std::thread([scaledData = std::move(scaledData),
-                 channels, sampleRate, bitsPerSample,
-                 shuttingDown, mtx, handles]() mutable
-    {
-        if (shuttingDown->load())
-            return;
-
-        WAVEFORMATEX wfx = {};
-        wfx.wFormatTag      = WAVE_FORMAT_PCM;
-        wfx.nChannels       = channels;
-        wfx.nSamplesPerSec  = sampleRate;
-        wfx.wBitsPerSample  = bitsPerSample;
-        wfx.nBlockAlign     = channels * bitsPerSample / 8;
-        wfx.nAvgBytesPerSec = sampleRate * wfx.nBlockAlign;
-        wfx.cbSize           = 0;
-
-        HWAVEOUT hwo = nullptr;
-        MMRESULT res = waveOutOpen(&hwo, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
-        if (res != MMSYSERR_NOERROR) {
-            qWarning() << "[Audio] waveOutOpen failed:" << res;
-            return;
-        }
-
-        // Register handle for cleanup
-        {
-            QMutexLocker lock(mtx);
-            handles->append(hwo);
-        }
-
-        WAVEHDR hdr = {};
-        hdr.lpData         = scaledData.data();
-        hdr.dwBufferLength = static_cast<DWORD>(scaledData.size());
-
-        waveOutPrepareHeader(hwo, &hdr, sizeof(hdr));
-        waveOutWrite(hwo, &hdr, sizeof(hdr));
-
-        // Wait for playback to complete (poll every 10ms)
-        while (!(hdr.dwFlags & WHDR_DONE)) {
-            if (shuttingDown->load()) {
-                waveOutReset(hwo);  // Forces WHDR_DONE
-                break;
+    if (slot < 0) {
+        // All slots busy — force-reclaim slot 0 (oldest)
+        for (int i = 0; i < WINMM_POOL_SIZE; i++) {
+            if (!winmmSlots[i].handle) continue;
+            waveOutReset(winmmSlots[i].handle);
+            if (winmmSlots[i].prepared) {
+                waveOutUnprepareHeader(winmmSlots[i].handle,
+                                       &winmmSlots[i].header, sizeof(WAVEHDR));
+                winmmSlots[i].prepared = false;
             }
-            Sleep(10);
+            slot = i;
+            break;
         }
+    }
 
-        waveOutUnprepareHeader(hwo, &hdr, sizeof(hdr));
-        waveOutClose(hwo);
+    if (slot < 0) return;  // No handles available at all
 
-        // Unregister handle
-        {
-            QMutexLocker lock(mtx);
-            handles->removeOne(hwo);
+    // Copy PCM data and apply volume scaling
+    winmmSlots[slot].buffer = *it;  // deep copy
+    if (winmmVolume < 0.999f) {
+        qint16* samples = reinterpret_cast<qint16*>(winmmSlots[slot].buffer.data());
+        int numSamples = winmmSlots[slot].buffer.size() / 2;
+        for (int s = 0; s < numSamples; s++) {
+            samples[s] = static_cast<qint16>(qBound(-32768,
+                static_cast<qint32>(samples[s] * winmmVolume), 32767));
         }
-    }).detach();
+    }
+
+    // Prepare header and submit for playback (non-blocking)
+    memset(&winmmSlots[slot].header, 0, sizeof(WAVEHDR));
+    winmmSlots[slot].header.lpData         = winmmSlots[slot].buffer.data();
+    winmmSlots[slot].header.dwBufferLength = static_cast<DWORD>(winmmSlots[slot].buffer.size());
+
+    waveOutPrepareHeader(winmmSlots[slot].handle,
+                         &winmmSlots[slot].header, sizeof(WAVEHDR));
+    winmmSlots[slot].prepared = true;
+    waveOutWrite(winmmSlots[slot].handle,
+                 &winmmSlots[slot].header, sizeof(WAVEHDR));
 }
 
 #endif // Q_OS_WIN
@@ -716,25 +764,30 @@ void QtAudioPlayer::playSoundWinMM(const QString& key)
 void QtAudioPlayer::closeAudio()
 {
 #ifdef Q_OS_WIN
-    if (backend == AudioBackend::WinMMBackend) {
-        // Signal all playback threads to stop
-        winmmShuttingDown.store(true);
-
-        // Force-stop all active waveOut handles
-        {
-            QMutexLocker lock(&winmmMutex);
-            for (HWAVEOUT hwo : winmmActiveHandles) {
-                waveOutReset(hwo);
+    if (backend == AudioBackend::WinMMBackend && winmmPoolOpen) {
+        // Stop all playback and close all handles
+        for (int i = 0; i < WINMM_POOL_SIZE; i++) {
+            if (winmmSlots[i].handle) {
+                waveOutReset(winmmSlots[i].handle);
+                if (winmmSlots[i].prepared) {
+                    waveOutUnprepareHeader(winmmSlots[i].handle,
+                                           &winmmSlots[i].header, sizeof(WAVEHDR));
+                    winmmSlots[i].prepared = false;
+                }
+                waveOutClose(winmmSlots[i].handle);
+                winmmSlots[i].handle = nullptr;
             }
         }
-
-        // Give threads a moment to clean up
-        QThread::msleep(50);
-
-        winmmSounds.clear();
-        winmmActiveHandles.clear();
+        winmmPcmData.clear();
+        winmmPoolOpen = false;
     }
 #endif
+    if (mixerIdleTimer) {
+        mixerIdleTimer->stop();
+        delete mixerIdleTimer;
+        mixerIdleTimer = nullptr;
+    }
+    mixerIdleCount = 0;
     if (mixerSink) {
         // Disconnect stateChanged BEFORE stopping so the handler cannot
         // queue a spurious applyDeviceToEffects() call that would fire
@@ -844,6 +897,13 @@ void QtAudioPlayer::applyDeviceToEffects()
         return;
     }
     
+#ifdef Q_OS_WIN
+    if (backend == AudioBackend::WinMMBackend) {
+        // WinMM uses WAVE_MAPPER which follows the system default device.
+        // No action needed — the OS handles device routing.
+        return;
+    }
+#endif
     if (backend == AudioBackend::SoftwareMixerBackend) {
         // Recreate the audio sink with the new device
         if (mixerSink) {
@@ -859,13 +919,18 @@ void QtAudioPlayer::applyDeviceToEffects()
         format.setSampleFormat(QAudioFormat::Int16);
         mixerSink = new QAudioSink(deviceToUse, format, this);
 #ifdef Q_OS_WIN
-        mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+        mixerSink->setBufferSize(44100 * 4 * 3 / 5); // ~600ms for WASAPI
 #else
         mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms
 #endif
         connectMixerSinkSignals();
         if (mixer) {
             mixerSink->start(mixer);
+        }
+        // Reset idle timer after device change
+        mixerIdleCount = 0;
+        if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
+            mixerIdleTimer->start();
         }
         return;
     }

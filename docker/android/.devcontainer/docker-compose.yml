@@ -2,7 +2,7 @@ services:
   devcontainer:
     build:
       context: .
-      dockerfile: Dockerfile.universal
+      dockerfile: Dockerfile
     volumes:
       - ../../android:/workspaces/android:cached
       - /var/run/docker.sock:/var/run/docker.sock

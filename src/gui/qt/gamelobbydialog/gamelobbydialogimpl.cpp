@@ -55,12 +55,16 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	: QDialog(parent), myW(NULL), myStartWindow(parent), myConfig(c), currentGameName(""), myPlayerId(0), isGameAdministrator(false), inGame(false), guestMode(false), blinkingButtonAnimationState(true), myChat(NULL), keyUpCounter(0), infoMsgToShowId(0), currentInvitationGameId(0), inviteDialogIsCurrentlyShown(false), autoStartTimerCounter(0), lastNickListFilterState(0)
 {
 
+	setupUi(this);
+
 #ifdef __APPLE__
 	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint);
 #elif _WIN32
 //	setWindowFlags(Qt::Dialog | Qt::WindowMinimizeButtonHint);
+#else
+	// Linux: Enable maximize button so the lobby window can be maximized (Bug report: Zorin 18)
+	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
 #endif
-	setupUi(this);
 	AppImageUtils::patchExternalLinks(this);
 	myAppDataPath = QString::fromUtf8(myConfig->readConfigString("AppDataDir").c_str());
 
@@ -74,12 +78,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	}
 
 #ifdef ANDROID
-	this->setWindowState(Qt::WindowFullScreen);
-	QScreen *screen = QGuiApplication::primaryScreen();
-	if (screen) {
-		QRect screenGeometry = screen->availableGeometry();
-		this->setGeometry(0, 0, screenGeometry.width(), screenGeometry.height());
-	}
+	MobileInputHelper::prepareAndroidDialog(this);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_ChatInput);
 	MobileInputHelper::prepareMobileLineEdit(lineEdit_searchForPlayers);
 #endif
@@ -1488,39 +1487,44 @@ void gameLobbyDialogImpl::keyPressEvent ( QKeyEvent * event )
 
 bool gameLobbyDialogImpl::eventFilter(QObject *obj, QEvent *event)
 {
-	QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-	QFocusEvent *focusEvent = static_cast<QFocusEvent*>(event);
-
-	if (obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Tab) {
-		myChat->nickAutoCompletition();
-		return true;
-	} else if (obj == lineEdit_searchForPlayers && focusEvent->gotFocus() && lineEdit_searchForPlayers->text() == tr("search for player ...")) {
-		lineEdit_searchForPlayers->clear();
-		return QDialog::eventFilter(obj, event);
-	} else if (event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Back) {
-		event->ignore();
-		this->reject();
-		return false;
-	} else if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Up) {
-		if((keyUpCounter + 1) <= myChat->getChatLinesHistorySize()) {
-			keyUpCounter++;
+	if (event->type() == QEvent::KeyPress) {
+		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+		
+		if (obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && keyEvent->key() == Qt::Key_Tab) {
+			myChat->nickAutoCompletition();
+			return true;
+		} else if (keyEvent->key() == Qt::Key_Back) {
+			event->ignore();
+			this->reject();
+			return false;
+		} else if (obj == lineEdit_ChatInput && keyEvent->key() == Qt::Key_Up) {
+			if((keyUpCounter + 1) <= myChat->getChatLinesHistorySize()) {
+				keyUpCounter++;
+			}
+			myChat->showChatHistoryIndex(keyUpCounter);
+			return true;
+		} else if (obj == lineEdit_ChatInput && keyEvent->key() == Qt::Key_Down) {
+			if((keyUpCounter - 1) >= 0) {
+				keyUpCounter--;
+			}
+			myChat->showChatHistoryIndex(keyUpCounter);
+			return true;
+		} else {
+			// Reset counter for other keys when chat input has focus
+			if (obj == lineEdit_ChatInput) {
+				keyUpCounter = 0;
+			}
 		}
-		myChat->showChatHistoryIndex(keyUpCounter);
-		return true;
-	} else if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Down) {
-		if((keyUpCounter - 1) >= 0) {
-			keyUpCounter--;
+	} else if (event->type() == QEvent::FocusIn) {
+		QFocusEvent *focusEvent = static_cast<QFocusEvent*>(event);
+		if (obj == lineEdit_searchForPlayers && focusEvent->gotFocus() && lineEdit_searchForPlayers->text() == tr("search for player ...")) {
+			lineEdit_searchForPlayers->clear();
+			return QDialog::eventFilter(obj, event);
 		}
-		myChat->showChatHistoryIndex(keyUpCounter);
-		return true;
-	} else {
-		// Reset counter for other keys when chat input has focus
-		if (obj == lineEdit_ChatInput && event->type() == QEvent::KeyPress) {
-			keyUpCounter = 0;
-		}
-		// pass the event on to the parent class
-		return QDialog::eventFilter(obj, event);
 	}
+	
+	// pass the event on to the parent class
+	return QDialog::eventFilter(obj, event);
 }
 
 bool gameLobbyDialogImpl::event ( QEvent * event )

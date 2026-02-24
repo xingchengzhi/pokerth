@@ -80,15 +80,12 @@ NetPacket::IsClientActivity() const
 			 || m_msg->messagetype() == PokerTHMessage::Type_KickPlayerRequestMessage
 			 || m_msg->messagetype() == PokerTHMessage::Type_LeaveGameRequestMessage
 			 || m_msg->messagetype() == PokerTHMessage::Type_StartEventMessage
-			 // MyActionRequestMessage IS included here: while auto-check/fold
-			 // send the same message type as a manual click, the client GUI
-			 // also sends ResetTimeoutMessage every 3 min on real user
-			 // interaction.  Including game actions as activity prevents
-			 // edge-case kicks on slow Linux systems or headless clients
-			 // where the GUI event filter may not fire reliably, and a
-			 // player who is actively making game decisions (even via
-			 // keyboard shortcuts) should never be considered AFK.
-			 || m_msg->messagetype() == PokerTHMessage::Type_MyActionRequestMessage
+			 // NOTE: MyActionRequestMessage is NOT included here because
+			 // auto-check, auto-fold and auto-call send exactly the same
+			 // message type as a manual click.  Counting it as activity
+			 // would prevent the in-game AFK timeout from ever firing.
+			 // Real user activity (chat, votes, ResetTimeout) still resets
+			 // the session timer.
 			 || m_msg->messagetype() == PokerTHMessage::Type_ResetTimeoutMessage
 			 || m_msg->messagetype() == PokerTHMessage::Type_ChatRequestMessage
 			 // NOTE: PlayerInfoRequestMessage and AvatarRequestMessage are NOT

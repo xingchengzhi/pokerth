@@ -15,6 +15,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <mmsystem.h>
+#include <thread>
 #endif
 
 // Software mixer: pre-loads WAV PCM data into memory,
@@ -77,15 +78,7 @@ public:
     
     AudioBackend activeBackend() const { return backend; }
 
-#ifdef Q_OS_WIN
-    // WinMM waveOut backend — pre-loaded WAV data, threaded playback
-    struct WinMMSound {
-        QByteArray pcmData;       // Raw PCM samples
-        quint16 channels;
-        quint32 sampleRate;
-        quint16 bitsPerSample;
-    };
-#endif
+
 
 private slots:
     void onAudioOutputsChanged();
@@ -120,11 +113,12 @@ private:
     QString paplayBinary;                     // path to paplay
     
 #ifdef Q_OS_WIN
-    QHash<QString, WinMMSound> winmmSounds;   // pre-loaded sounds
+    // WinMM streaming mixer: single persistent waveOut handle with
+    // double-buffering on a dedicated audio thread.  The WavMixer
+    // (member 'mixer') handles all software mixing.
+    std::thread winmmStreamThread;
+    std::atomic<bool> winmmStreamRunning{false};
     float winmmVolume;                         // 0.0 .. 1.0
-    QMutex winmmMutex;                         // protects winmmActiveHandles
-    QVector<HWAVEOUT> winmmActiveHandles;      // currently playing handles
-    std::atomic<bool> winmmShuttingDown{false}; // stop signal for threads
 #endif
     
     // Software mixer backend

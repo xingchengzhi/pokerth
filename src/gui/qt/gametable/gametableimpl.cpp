@@ -3519,9 +3519,7 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 	// packets but do NOT generate GUI input events, so they won't
 	// trigger this – preserving AFK detection for truly idle players.
 	if (event->type() == QEvent::MouseButtonPress
-		|| event->type() == QEvent::MouseMove
-		|| event->type() == QEvent::KeyPress
-		|| event->type() == QEvent::Wheel) {
+		|| event->type() == QEvent::KeyPress) {
 		if (lastAfkResetSentTimer.elapsed() >= AFK_RESET_INTERVAL_MS) {
 			if (myStartWindow && myStartWindow->getSession()
 				&& myStartWindow->getSession()->isNetworkClientRunning()) {

@@ -419,9 +419,8 @@ ServerLobbyThread::MoveSessionToGame(boost::shared_ptr<ServerGame> game, boost::
 	// Set the game id of the session.
 	session->SetGame(game);
 	// Switch to a shorter activity timeout for in-game AFK detection.
-	// Only real user activity (chat, votes, ResetTimeout) resets this timer;
-	// auto-check/fold/call do NOT (MyActionRequestMessage excluded from
-	// IsClientActivity).
+	// Activity is reset by chat, votes, ResetTimeout, and also by
+	// MyActionRequestMessage (game actions like check/fold/raise).
 	session->StartTimerActivityTimeout(SERVER_INGAME_ACTIVITY_TIMEOUT_SEC, SERVER_TIMEOUT_WARNING_REMAINING_SEC);
 	// Add session to the game.
 	game->AddSession(session, spectateOnly);

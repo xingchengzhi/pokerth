@@ -779,7 +779,15 @@ gameTableImpl::~gameTableImpl()
 void gameTableImpl::callSettingsDialog()
 {
 	bool iamInGame = true;
+	// Stop animation timers while the modal settings dialog is open.
+	// On Windows, the many concurrent QTimer events flooding the event
+	// loop during exec() cause UI sluggishness / apparent hangs.
+	stopTimer();
 	myStartWindow->callSettingsDialog(iamInGame);
+	// Restart timers — setSpeeds() recalculates animation intervals
+	// and the game engine will retrigger the appropriate timers on the
+	// next GUI update cycle.
+	setSpeeds();
 }
 
 void gameTableImpl::applySettings(settingsDialogImpl* mySettingsDialog)
@@ -3534,7 +3542,10 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		if (isGameTableFocused && /*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */keyEvent->key() == Qt::Key_Tab) {
 			myChat->nickAutoCompletition();
 			return true;
-		} else if (keyEvent->key() == Qt::Key_Back) {
+		} else if (isGameTableFocused && keyEvent->key() == Qt::Key_Back) {
+			// Only handle Back key when game table is focused, to prevent
+			// close-dialog from triggering when Back is pressed in other
+			// windows (e.g. lobby, settings dialog).
 			event->ignore();
 			closeGameTable();
 			return true;
@@ -3569,7 +3580,14 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		// Let dialogs/other windows handle their own key events
 		return false;
 	} else if (event->type() == QEvent::Close) {
-		if (isGameTableFocused) {
+		// Only intercept close events that target the game table itself
+		// (or one of its child widgets).  Previously, close events from
+		// other windows (e.g. lobby dialog, settings dialog) were also
+		// caught here when the game table happened to have focus, causing
+		// an unexpected exit confirmation dialog to appear — especially
+		// immediately after rejoining a game.
+		QWidget *targetWidget = qobject_cast<QWidget*>(obj);
+		if (targetWidget && (targetWidget == this || this->isAncestorOf(targetWidget))) {
 			event->ignore();
 			closeGameTable();
 			return true;
@@ -3582,7 +3600,12 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 				layout()->invalidate();
 				layout()->activate();
 			}
-			return true;
+			// Do NOT return true here — the base class must also process
+			// the resize event so the window can actually be resized by
+			// the user (dragging edges/corners).  Returning true was
+			// swallowing the event and preventing window resizing on
+			// Windows 11.
+			return false;
 		}
 	}
 	

@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <cmath>
 
 #ifdef Q_OS_WIN
 #pragma comment(lib, "winmm.lib")
@@ -127,6 +128,16 @@ qint64 WavMixer::readData(char* data, qint64 maxSize)
     const qint64 numSamples = maxSize / 2; // 16-bit samples
     qint16* out = reinterpret_cast<qint16*>(data);
 
+    // Attenuate each voice when multiple sounds overlap to prevent
+    // hard-clipping distortion that causes the "stuttering" effect
+    // reported on Windows 11.  With 1 voice: full volume.
+    // With 2+: scale each contribution by 1/sqrt(N) (equal-power mix).
+    const int voiceCount = voices.size();
+    const float attenuation = (voiceCount > 1)
+        ? (1.0f / std::sqrt(static_cast<float>(voiceCount)))
+        : 1.0f;
+    const float effectiveVolume = volume * attenuation;
+
     for (int v = voices.size() - 1; v >= 0; --v) {
         ActiveVoice& voice = voices[v];
         const qint16* src = reinterpret_cast<const qint16*>(
@@ -136,7 +147,7 @@ qint64 WavMixer::readData(char* data, qint64 maxSize)
 
         for (qint64 i = 0; i < toMix; ++i) {
             qint32 mixed = static_cast<qint32>(out[i])
-                         + static_cast<qint32>(src[i] * volume);
+                         + static_cast<qint32>(src[i] * effectiveVolume);
             out[i] = static_cast<qint16>(qBound(-32768, mixed, 32767));
         }
 
@@ -458,10 +469,11 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
     QAudioDevice sinkDevice = device.isNull() ? QMediaDevices::defaultAudioOutput() : device;
     mixerSink = new QAudioSink(sinkDevice, format, this);
     // WASAPI on Windows needs a larger buffer than PulseAudio/CoreAudio.
-    // 100ms causes underruns that make WASAPI transition to IdleState,
+    // Small buffers cause underruns that trigger IdleState transitions,
     // cutting off sounds mid-playback (e.g. blinds_raises WAVs).
+    // Use 600ms on Windows to prevent stuttering/clipping, 200ms elsewhere.
 #ifdef Q_OS_WIN
-    mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+    mixerSink->setBufferSize(44100 * 4 * 3 / 5); // ~600ms for WASAPI
 #else
     mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms for PulseAudio/CoreAudio
 #endif
@@ -476,7 +488,7 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
         mixerSink = nullptr;
     }
 
-    // Auto-suspend: stop QAudioSink after a few seconds of silence to
+    // Auto-suspend: stop QAudioSink after several seconds of silence to
     // eliminate idle CPU usage (important for older Windows 10 machines).
     // playSoundSoftwareMixer() restarts the sink on demand.
     if (mixerSink) {
@@ -486,7 +498,7 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
             if (!mixer || !mixerSink) return;
             if (mixerSink->state() != QAudio::ActiveState) return;
             if (!mixer->hasActiveVoices()) {
-                if (++mixerIdleCount >= 3) {  // 3 seconds of silence
+                if (++mixerIdleCount >= 5) {  // 5 seconds of silence before suspend
                     mixerIdleTimer->stop();
                     m_stoppingMixerIntentionally = true;
                     mixerSink->stop();
@@ -541,10 +553,12 @@ void QtAudioPlayer::connectMixerSinkSignals()
         if (!mixerSink || !mixer)
             return;
         if (newState == QAudio::IdleState) {
-            m_stoppingMixerIntentionally = true;
-            mixerSink->stop();
-            mixerSink->start(mixer);
-            m_stoppingMixerIntentionally = false;
+            // IdleState means the buffer ran dry.  WavMixer always provides
+            // data (silence when no voices are active), so this is just a
+            // transient underrun.  Do NOT stop/restart the sink here:
+            // on WASAPI (Windows) that tears down and recreates the audio
+            // session, causing audible clicks, stuttering and latency.
+            // The sink will continue pulling from the mixer automatically.
         } else if (newState == QAudio::StoppedState) {
             if (m_stoppingMixerIntentionally)
                 return;   // Intentional stop (IdleState recovery / closeAudio)
@@ -907,7 +921,7 @@ void QtAudioPlayer::applyDeviceToEffects()
         format.setSampleFormat(QAudioFormat::Int16);
         mixerSink = new QAudioSink(deviceToUse, format, this);
 #ifdef Q_OS_WIN
-        mixerSink->setBufferSize(44100 * 4 * 2 / 5); // ~400ms for WASAPI
+        mixerSink->setBufferSize(44100 * 4 * 3 / 5); // ~600ms for WASAPI
 #else
         mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms
 #endif

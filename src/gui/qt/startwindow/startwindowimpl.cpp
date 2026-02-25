@@ -380,6 +380,11 @@ startWindowImpl::startWindowImpl(ConfigFile *c, Log *l)
 
 startWindowImpl::~startWindowImpl()
 {
+#if !defined(__APPLE__) && !defined(_WIN32)
+	// On Linux the lobby dialog has no Qt parent (setParent(nullptr) to
+	// break WM_TRANSIENT_FOR), so it must be deleted explicitly.
+	delete myGameLobbyDialog;
+#endif
 }
 
 void startWindowImpl::callNewGameDialog()

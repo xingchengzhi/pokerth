@@ -576,9 +576,9 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                 }
 
                 if (!ka_ec) {
-                    // Configure aggressive keepalive parameters:
-                    //   First probe after 60s idle, then every 15s, fail after 5 missed probes.
-                    //   Total detection time: 60 + 5*15 = 135s.
+                    // Aggressive keepalive to prevent WiFi power-save drops.
+                    // Probe every 10s during idle → WiFi adapter stays awake.
+                    // Total detection time: 10 + 3*5 = 25s.
                     int fd = -1;
                     if (client->GetContext().GetSessionData()->IsSsl()) {
                         fd = static_cast<int>(client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().native_handle());
@@ -589,17 +589,17 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     // Windows: use SIO_KEEPALIVE_VALS via WSAIoctl
                     struct tcp_keepalive keepaliveVals;
                     keepaliveVals.onoff = 1;
-                    keepaliveVals.keepalivetime = 60000;      // 60s until first probe (ms)
-                    keepaliveVals.keepaliveinterval = 15000;  // 15s between probes (ms)
+                    keepaliveVals.keepalivetime = 10000;      // 10s until first probe (ms)
+                    keepaliveVals.keepaliveinterval = 5000;   // 5s between probes (ms)
                     DWORD bytesReturned = 0;
                     WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
                              &keepaliveVals, sizeof(keepaliveVals),
                              NULL, 0, &bytesReturned, NULL, NULL);
 #else
                     // Linux / macOS: per-socket keepalive tuning
-                    int keepidle  = 60;   // seconds until first keepalive probe
-                    int keepintvl = 15;   // seconds between subsequent probes
-                    int keepcnt   = 5;    // failed probes before disconnect
+                    int keepidle  = 10;   // seconds until first keepalive probe
+                    int keepintvl = 5;    // seconds between subsequent probes
+                    int keepcnt   = 3;    // failed probes before disconnect
 #if defined(__APPLE__)
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &keepidle,  sizeof(keepidle));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
@@ -610,6 +610,21 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
 #endif
 #endif
+                }
+
+                // Increase socket buffers to absorb game-start traffic bursts
+                // on high-latency WiFi connections (default is often 8-16KB).
+                {
+                    boost::asio::socket_base::send_buffer_size    sndbuf(131072);  // 128 KB
+                    boost::asio::socket_base::receive_buffer_size rcvbuf(131072);  // 128 KB
+                    boost::system::error_code buf_ec;
+                    if (client->GetContext().GetSessionData()->IsSsl()) {
+                        client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().set_option(sndbuf, buf_ec);
+                        client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().set_option(rcvbuf, buf_ec);
+                    } else {
+                        client->GetContext().GetSessionData()->GetAsioSocket()->set_option(sndbuf, buf_ec);
+                        client->GetContext().GetSessionData()->GetAsioSocket()->set_option(rcvbuf, buf_ec);
+                    }
                 }
             }
 

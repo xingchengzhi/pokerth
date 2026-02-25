@@ -66,7 +66,7 @@
 #define SERVER_MAX_NUM_LOBBY_SESSIONS				1536		// Maximum number of idle users in lobby.
 #define SERVER_MAX_NUM_TOTAL_SESSIONS				2000	// Total maximum of sessions, fitting a 2048 handle limit
 
-#define SERVER_SAVE_STATISTICS_INTERVAL_SEC			60
+#define SERVER_SAVE_STATISTICS_INTERVAL_SEC			15		// heartbeat for WiFi keepalive (was 60)
 #define SERVER_CHECK_SESSION_TIMEOUTS_INTERVAL_MSEC	500
 #define SERVER_REMOVE_GAME_INTERVAL_MSEC			500
 #define SERVER_REMOVE_PLAYER_INTERVAL_MSEC			100

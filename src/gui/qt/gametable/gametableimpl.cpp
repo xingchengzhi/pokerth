@@ -3508,18 +3508,11 @@ void gameTableImpl::changePlayingMode()
 
 bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 {
+	const auto etype = event->type();
+
 	// --- Rate-limited AFK timeout reset ---
-	// Detect real GUI-level user activity (mouse click/move, key press)
-	// and periodically send ResetTimeoutMessage to the server.  This
-	// prevents the server-side in-game AFK timer (15 min) from firing
-	// while the player is genuinely interacting with the game table.
-	// Because this filter is installed on QApplication, it catches ALL
-	// input events including clicks on child widgets (Fold/Call/Raise
-	// buttons, slider, checkboxes).  Auto-check/auto-fold send network
-	// packets but do NOT generate GUI input events, so they won't
-	// trigger this – preserving AFK detection for truly idle players.
-	if (event->type() == QEvent::MouseButtonPress
-		|| event->type() == QEvent::KeyPress) {
+	if (etype == QEvent::MouseButtonPress
+		|| etype == QEvent::KeyPress) {
 		if (lastAfkResetSentTimer.elapsed() >= AFK_RESET_INTERVAL_MS) {
 			if (myStartWindow && myStartWindow->getSession()
 				&& myStartWindow->getSession()->isNetworkClientRunning()) {
@@ -3530,20 +3523,16 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 	}
 
 	// Only handle events when the game table window is active/visible
-	// Dialogs should process their own events without interference
 	QWidget *focusWidget = QApplication::focusWidget();
 	bool isGameTableFocused = (this == focusWidget || this->isAncestorOf(focusWidget));
 	
-	if (event->type() == QEvent::KeyPress) {
+	if (etype == QEvent::KeyPress) {
 		QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 		
-		if (isGameTableFocused && /*obj == lineEdit_ChatInput && lineEdit_ChatInput->text() != "" && */keyEvent->key() == Qt::Key_Tab) {
+		if (isGameTableFocused && keyEvent->key() == Qt::Key_Tab) {
 			myChat->nickAutoCompletition();
 			return true;
 		} else if (isGameTableFocused && keyEvent->key() == Qt::Key_Back) {
-			// Only handle Back key when game table is focused, to prevent
-			// close-dialog from triggering when Back is pressed in other
-			// windows (e.g. lobby, settings dialog).
 			event->ignore();
 			closeGameTable();
 			return true;
@@ -3572,42 +3561,27 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 			myChat->showChatHistoryIndex(keyUpDownChatCounter);
 			return true;
 		} else if (isGameTableFocused) {
-			// Reset counter for other keys only when game table is focused
 			keyUpDownChatCounter = 0;
 		}
-		// Let dialogs/other windows handle their own key events
 		return false;
-	} else if (event->type() == QEvent::Close) {
-		// Only intercept close events that target the game table itself
-		// (or one of its child widgets).  Previously, close events from
-		// other windows (e.g. lobby dialog, settings dialog) were also
-		// caught here when the game table happened to have focus, causing
-		// an unexpected exit confirmation dialog to appear — especially
-		// immediately after rejoining a game.
+	} else if (etype == QEvent::Close) {
 		QWidget *targetWidget = qobject_cast<QWidget*>(obj);
 		if (targetWidget && (targetWidget == this || this->isAncestorOf(targetWidget))) {
 			event->ignore();
 			closeGameTable();
 			return true;
 		}
-	} else if (event->type() == QEvent::Resize) {
+	} else if (etype == QEvent::Resize) {
 		if (isGameTableFocused) {
 			refreshSpectatorsDisplay();
-			// Force relayout after resize (e.g. hibernate/resume changes geometry)
 			if (layout()) {
 				layout()->invalidate();
 				layout()->activate();
 			}
-			// Do NOT return true here — the base class must also process
-			// the resize event so the window can actually be resized by
-			// the user (dragging edges/corners).  Returning true was
-			// swallowing the event and preventing window resizing on
-			// Windows 11.
 			return false;
 		}
 	}
 	
-	// pass all unhandled events to the parent class to allow normal processing
 	return QMainWindow::eventFilter(obj, event);
 }
 

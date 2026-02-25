@@ -278,6 +278,25 @@ void QtAudioPlayer::initAudio()
     
     if (backend == AudioBackend::SoftwareMixerBackend) {
         initSoftwareMixerBackend(deviceToUse, vol);
+        // If the QAudioSink failed to start (broken PulseAudio/PipeWire/
+        // CoreAudio setup), fall back to an alternative backend.
+        if (!mixerSink) {
+            qWarning() << "[Audio] SoftwareMixer sink failed — trying fallback";
+#ifdef Q_OS_LINUX
+            if (detectPaPlay()) {
+                backend = AudioBackend::PaPlayBackend;
+                initPaPlayBackend();
+            } else {
+                qWarning() << "[Audio] No fallback available (paplay not found)";
+                backend = AudioBackend::QSoundEffectBackend;
+                initQSoundEffectBackend(deviceToUse, vol);
+            }
+#else
+            // macOS: fall back to QSoundEffect
+            backend = AudioBackend::QSoundEffectBackend;
+            initQSoundEffectBackend(deviceToUse, vol);
+#endif
+        }
     } else if (backend == AudioBackend::PaPlayBackend) {
         if (detectPaPlay()) {
             initPaPlayBackend();
@@ -489,28 +508,13 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
         mixerSink = nullptr;
     }
 
-    // Auto-suspend: stop QAudioSink after several seconds of silence to
-    // eliminate idle CPU usage (important for older Windows 10 machines).
-    // playSoundSoftwareMixer() restarts the sink on demand.
-    if (mixerSink) {
-        mixerIdleTimer = new QTimer(this);
-        mixerIdleTimer->setInterval(1000);
-        connect(mixerIdleTimer, &QTimer::timeout, this, [this]() {
-            if (!mixer || !mixerSink) return;
-            if (mixerSink->state() != QAudio::ActiveState) return;
-            if (!mixer->hasActiveVoices()) {
-                if (++mixerIdleCount >= 5) {  // 5 seconds of silence before suspend
-                    mixerIdleTimer->stop();
-                    m_stoppingMixerIntentionally = true;
-                    mixerSink->stop();
-                    m_stoppingMixerIntentionally = false;
-                }
-            } else {
-                mixerIdleCount = 0;
-            }
-        });
-        mixerIdleTimer->start();
-    }
+    // NOTE: The mixer sink streams continuously (silence when no sounds
+    // are active).  We intentionally do NOT auto-suspend the sink after
+    // idle periods because repeated QAudioSink::stop()/start() cycles
+    // are unreliable on PulseAudio/PipeWire (Linux) and CoreAudio
+    // (macOS) — after ~20 cycles the sink silently stops producing
+    // output.  The CPU cost of streaming silence is negligible (one
+    // memset per audio callback).
 }
 
 void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
@@ -518,16 +522,14 @@ void QtAudioPlayer::playSoundSoftwareMixer(const QString& key)
     if (!mixer) return;
 
     mixer->play(key);
-    mixerIdleCount = 0;
 
-    // Resume the QAudioSink if it was auto-suspended due to idle
+    // Safety: if the sink was stopped due to a device change or error,
+    // restart it.  Under normal operation the sink runs continuously.
     if (mixerSink && mixerSink->state() != QAudio::ActiveState) {
+        if (!mixer->isOpen()) {
+            mixer->open(QIODevice::ReadOnly);
+        }
         mixerSink->start(mixer);
-    }
-
-    // Ensure idle timer is running
-    if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
-        mixerIdleTimer->start();
     }
 }
 
@@ -536,33 +538,28 @@ void QtAudioPlayer::connectMixerSinkSignals()
     if (!mixerSink)
         return;
 
-    // CRITICAL (Windows & macOS/Linux): Handle QAudioSink state changes.
+    // Handle QAudioSink state transitions:
     //
-    // IdleState  — buffer underrun; restart the stream so the next
-    //              play() is immediately audible.  We set a guard flag
-    //              before stop() so the StoppedState handler knows this
-    //              is an intentional (internal) stop, not a device-lost
-    //              event.
+    // IdleState     — the internal buffer drained.  WavMixer always
+    //                 provides data (silence when idle), so this is a
+    //                 transient underrun.  Ignore it — the sink keeps
+    //                 pulling and recovers by itself.
     //
-    // StoppedState — if the error is NoError the stop was intentional
-    //                (either our IdleState handler or closeAudio()).
-    //                Only recreate the sink for real errors (FatalError,
-    //                device lost after sleep/hibernate, etc.).
+    // StoppedState  — check the error code.  NoError means an
+    //                 intentional stop (closeAudio / applyDeviceToEffects).
+    //                 Real errors (FatalError, device lost) trigger a
+    //                 sink recreation via applyDeviceToEffects().
     //
-    // SuspendedState — system suspended audio; try to resume.
+    // SuspendedState — system suspended audio (e.g. screen lock on
+    //                  macOS); try to resume immediately.
     connect(mixerSink, &QAudioSink::stateChanged, this, [this](QAudio::State newState) {
         if (!mixerSink || !mixer)
             return;
         if (newState == QAudio::IdleState) {
-            // IdleState means the buffer ran dry.  WavMixer always provides
-            // data (silence when no voices are active), so this is just a
-            // transient underrun.  Do NOT stop/restart the sink here:
-            // on WASAPI (Windows) that tears down and recreates the audio
-            // session, causing audible clicks, stuttering and latency.
-            // The sink will continue pulling from the mixer automatically.
+            // Transient underrun — do nothing.  The sink keeps pulling.
         } else if (newState == QAudio::StoppedState) {
             if (m_stoppingMixerIntentionally)
-                return;   // Intentional stop (IdleState recovery / closeAudio)
+                return;   // Intentional stop (closeAudio / applyDeviceToEffects)
             auto err = mixerSink->error();
             if (err == QAudio::NoError)
                 return;   // Clean stop — nothing to recover from
@@ -782,12 +779,6 @@ void QtAudioPlayer::closeAudio()
         winmmPoolOpen = false;
     }
 #endif
-    if (mixerIdleTimer) {
-        mixerIdleTimer->stop();
-        delete mixerIdleTimer;
-        mixerIdleTimer = nullptr;
-    }
-    mixerIdleCount = 0;
     if (mixerSink) {
         // Disconnect stateChanged BEFORE stopping so the handler cannot
         // queue a spurious applyDeviceToEffects() call that would fire
@@ -926,11 +917,6 @@ void QtAudioPlayer::applyDeviceToEffects()
         connectMixerSinkSignals();
         if (mixer) {
             mixerSink->start(mixer);
-        }
-        // Reset idle timer after device change
-        mixerIdleCount = 0;
-        if (mixerIdleTimer && !mixerIdleTimer->isActive()) {
-            mixerIdleTimer->start();
         }
         return;
     }

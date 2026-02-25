@@ -62,7 +62,18 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 #elif _WIN32
 //	setWindowFlags(Qt::Dialog | Qt::WindowMinimizeButtonHint);
 #else
-	// Linux: Enable maximize button so the lobby window can be maximized (Bug report: Zorin 18)
+	// Linux: Enable maximize AND minimize buttons (Bug report: Zorin 18).
+	// Qt::Window alone is not enough — QDialog passes the parent as
+	// transient-for hint to the window manager.  GNOME/Mutter treats
+	// transient windows as "attached" to the parent and silently
+	// ignores the minimize request.  Clearing the parent for the
+	// window system breaks the transient-for relationship so the
+	// lobby behaves as an independent top-level window.
+	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
+	// Remove the WM_TRANSIENT_FOR hint so GNOME/Mutter allows minimize.
+	// On Wayland this is the equivalent of clearing the transient parent.
+	setParent(nullptr);
+	// Re-apply the flags (setParent resets them)
 	setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
 #endif
 	AppImageUtils::patchExternalLinks(this);

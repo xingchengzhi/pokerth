@@ -841,6 +841,38 @@ ServerGameStateStartGame::TimerTimeout(const boost::system::error_code &ec, boos
 }
 
 void
+ServerGameStateStartGame::NotifySessionRemoved(boost::shared_ptr<ServerGame> server)
+{
+	// A player disconnected during the start-game handshake (e.g. WiFi drop).
+	// Instead of waiting the full timeout, check if remaining players are
+	// all ready and start right away.
+	TryStartWithRemainingPlayers(server);
+}
+
+void
+ServerGameStateStartGame::TryStartWithRemainingPlayers(boost::shared_ptr<ServerGame> server)
+{
+	unsigned gameCount = server->GetSessionManager().GetSessionCountWithState(SessionData::Game);
+	if (gameCount < 2) {
+		// Not enough players left — abort game start immediately instead
+		// of waiting the full 20s timeout.
+		LOG_MSG("Game " << server->GetId() << " - not enough players to start (" << gameCount << "), aborting.");
+		server->GetStateTimer1().cancel();
+		server->GetSessionManager().ResetAllReadyFlags();
+		DoStart(server);  // Will move remaining player back to lobby
+		return;
+	}
+	// If all remaining players have ACKed, start immediately.
+	if (server->GetSessionManager().CountReadySessions() >= gameCount) {
+		LOG_MSG("Game " << server->GetId() << " - all remaining " << gameCount << " players ready after disconnect, starting.");
+		server->GetStateTimer1().cancel();
+		server->GetSessionManager().ResetAllReadyFlags();
+		DoStart(server);
+	}
+	// Otherwise, keep waiting for more ACKs or timeout.
+}
+
+void
 ServerGameStateStartGame::DoStart(boost::shared_ptr<ServerGame> server)
 {
 	PlayerDataList tmpPlayerList(server->InternalStartGame());

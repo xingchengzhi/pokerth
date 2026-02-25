@@ -401,6 +401,11 @@ void settingsDialogImpl::prepareDialog()
 	//S t y l e
 	//TABLE
 
+	// Block signals while rebuilding the tree to prevent the
+	// currentItemChanged -> setSelectedGameTableStyleActivated() cascade
+	// from moving the "active" icon during clear/add/sort.
+	treeWidget_gameTableStyles->blockSignals(true);
+
 #ifdef GUI_800x480
 	// 	define PokerTH default GameTableStyle for Maemo
 	treeWidget_gameTableStyles->clear();
@@ -507,8 +512,14 @@ void settingsDialogImpl::prepareDialog()
 		}
 	}
 
+	// Unblock signals now that the correct item is selected.
+	treeWidget_gameTableStyles->blockSignals(false);
+
 	//refresh Game Table Style Preview
 	showCurrentGameTableStylePreview();
+
+	// Block signals while rebuilding the card deck tree (same reason as above).
+	treeWidget_cardDeckStyles->blockSignals(true);
 
 	//CARDS
 	// 	define PokerTH 1.0 default carddeck
@@ -605,6 +616,8 @@ void settingsDialogImpl::prepareDialog()
 			treeWidget_cardDeckStyles->setCurrentItem(item);
 		}
 	}
+
+	treeWidget_cardDeckStyles->blockSignals(false);
 
 	// 	refresh Card Deck Style Preview
 	showCurrentCardDeckStylePreview();

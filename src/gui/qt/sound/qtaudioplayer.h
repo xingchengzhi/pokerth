@@ -134,8 +134,6 @@ private:
     WavMixer* mixer;
     QAudioSink* mixerSink;
     bool m_stoppingMixerIntentionally = false;
-    QTimer* mixerIdleTimer = nullptr;
-    int mixerIdleCount = 0;
     
     // Device monitoring
     QMediaDevices* mediaDevices;

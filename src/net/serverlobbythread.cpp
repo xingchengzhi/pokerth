@@ -78,7 +78,7 @@
 #define SERVER_INIT_SESSION_TIMEOUT_SEC				60
 #define SERVER_TIMEOUT_WARNING_REMAINING_SEC		60
 #define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1800	// 30 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
-#define SERVER_INGAME_ACTIVITY_TIMEOUT_SEC			960		// 16 min (warning at 15 min) - only real UI activity resets
+#define SERVER_INGAME_ACTIVITY_TIMEOUT_SEC			1860	// 31 min (warning at 30 min) - only real UI activity resets
 #define SERVER_SESSION_FORCED_TIMEOUT_SEC			604800	// 7 days - reset on every client activity
 
 #define SERVER_ADDRESS_LOCALHOST_STR_V4				"127.0.0.1"

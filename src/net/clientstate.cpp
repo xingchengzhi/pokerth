@@ -576,9 +576,11 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                 }
 
                 if (!ka_ec) {
-                    // Aggressive keepalive to prevent WiFi power-save drops.
-                    // Probe every 10s during idle → WiFi adapter stays awake.
-                    // Total detection time: 10 + 3*5 = 25s.
+                    // WiFi-friendly keepalive: tolerate brief WiFi power-save
+                    // sleep (common on Windows laptops, typically 10-30s).
+                    // First probe after 30s idle, then every 10s, fail after 6.
+                    // Total detection time: 30 + 6*10 = 90s.
+                    // (On Windows, probe count is OS-controlled ~10, so ~130s.)
                     int fd = -1;
                     if (client->GetContext().GetSessionData()->IsSsl()) {
                         fd = static_cast<int>(client->GetContext().GetSessionData()->GetSslStream()->lowest_layer().native_handle());
@@ -589,17 +591,17 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     // Windows: use SIO_KEEPALIVE_VALS via WSAIoctl
                     struct tcp_keepalive keepaliveVals;
                     keepaliveVals.onoff = 1;
-                    keepaliveVals.keepalivetime = 10000;      // 10s until first probe (ms)
-                    keepaliveVals.keepaliveinterval = 5000;   // 5s between probes (ms)
+                    keepaliveVals.keepalivetime = 30000;      // 30s until first probe (ms)
+                    keepaliveVals.keepaliveinterval = 10000;  // 10s between probes (ms)
                     DWORD bytesReturned = 0;
                     WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
                              &keepaliveVals, sizeof(keepaliveVals),
                              NULL, 0, &bytesReturned, NULL, NULL);
 #else
                     // Linux / macOS: per-socket keepalive tuning
-                    int keepidle  = 10;   // seconds until first keepalive probe
-                    int keepintvl = 5;    // seconds between subsequent probes
-                    int keepcnt   = 3;    // failed probes before disconnect
+                    int keepidle  = 30;   // seconds until first keepalive probe
+                    int keepintvl = 10;   // seconds between subsequent probes
+                    int keepcnt   = 6;    // failed probes before disconnect
 #if defined(__APPLE__)
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &keepidle,  sizeof(keepidle));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
@@ -608,6 +610,12 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,  &keepidle,  sizeof(keepidle));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
                     setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,   &keepcnt,   sizeof(keepcnt));
+#endif
+                    // TCP_USER_TIMEOUT: abort connection if sent data remains
+                    // unacknowledged for 90s (matches keepalive detection time).
+#ifdef TCP_USER_TIMEOUT
+                    unsigned int user_timeout_ms = 90000;
+                    setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &user_timeout_ms, sizeof(user_timeout_ms));
 #endif
 #endif
                 }

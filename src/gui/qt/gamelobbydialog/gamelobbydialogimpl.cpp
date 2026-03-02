@@ -778,13 +778,44 @@ void gameLobbyDialogImpl::updateGameAdmin(unsigned /*gameId*/, unsigned adminPla
 
 void gameLobbyDialogImpl::removeGame(unsigned gameId)
 {
+	bool wasSelected = false;
 	int it = 0;
 	while (myGameListModel->item(it)) {
 		if (myGameListModel->item(it, 0)->data(Qt::UserRole) == gameId) {
+			// Check whether this game is currently selected in the list
+			// before removing it.  The proxy model maps visual selection
+			// to source rows, so compare at the source-model level.
+			QModelIndex currentProxy = myGameListSelectionModel->currentIndex();
+			if (currentProxy.isValid()) {
+				int selectedSourceRow = myGameListSortFilterProxyModel->mapToSource(currentProxy).row();
+				if (selectedSourceRow == it) {
+					wasSelected = true;
+				}
+			}
 			myGameListModel->removeRow(it);
 			break;
 		}
 		it++;
+	}
+
+	// If the removed game was the one whose details were shown in the
+	// right-hand panel, reset that panel so stale info is not displayed.
+	if (wasSelected && !inGame) {
+		groupBox_GameInfo->setTitle(tr("Game Info"));
+		groupBox_GameInfo->setEnabled(false);
+		currentGameName = "";
+		showGameDescription(false);
+		label_typeIcon->setText(" ");
+		label_typeText->setText(" ");
+		label_SmallBlind->setText("");
+		label_StartCash->setText("");
+		label_blindsRaiseIntervall->setText("");
+		label_blindsRaiseMode->setText("");
+		label_blindsList->setText("");
+		label_GameTiming->setText("");
+		treeWidget_connectedPlayers->clear();
+		treeWidget_connectedSpectators->clear();
+		pushButton_JoinGame->setEnabled(false);
 	}
 
 	refreshGameStats();

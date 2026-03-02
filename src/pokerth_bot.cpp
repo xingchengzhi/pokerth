@@ -37,6 +37,7 @@
 #include <boost/array.hpp>
 #include <third_party/protobuf/pokerth.pb.h>
 #include <net/netpacket.h>
+#include <game_defs.h>
 
 #include <iostream>
 #include <vector>
@@ -664,7 +665,7 @@ private:
                 InitMessage *initMsg = init->GetMsg()->mutable_initmessage();
                 initMsg->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
                 initMsg->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-                initMsg->set_buildid(0);
+                initMsg->set_buildid(POKERTH_BUILD_ID);
                 initMsg->set_login(InitMessage::authenticatedLogin);
                 initMsg->set_nickname(bot->name());
                 initMsg->set_clientuserdata(bot->name());  // Password = username (für test* accounts)

@@ -1327,7 +1327,7 @@ ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cl
 			InitMessage *netInit = init->GetMsg()->mutable_initmessage();
 			netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
 			netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-			netInit->set_buildid(0);
+			netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
 			if (!context.GetSessionGuid().empty()) {
 				netInit->set_mylastsessionid(context.GetSessionGuid());
 			}
@@ -1405,7 +1405,7 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             InitMessage *netInit = init->GetMsg()->mutable_initmessage();
             netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
             netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-            netInit->set_buildid(0);
+            netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
             
             // Include session GUID and server password BEFORE setting login type
             if (!context.GetSessionGuid().empty()) {

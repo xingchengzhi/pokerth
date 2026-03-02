@@ -1916,6 +1916,10 @@ ServerLobbyThread::UserValid(unsigned playerId, const DBPlayerData &dbPlayerData
     if (!providedPassword.empty() && providedPassword == dbPlayerData.secret) {
         tmpSession->GetPlayerData()->SetDBId(dbPlayerData.id);
         tmpSession->GetPlayerData()->SetCountry(dbPlayerData.country);
+        // Set admin rights if the player is in the admin list.
+        if (GetBanManager().IsAdminPlayer(dbPlayerData.id)) {
+            tmpSession->GetPlayerData()->SetRights(PLAYER_RIGHTS_ADMIN);
+        }
         InitAfterLogin(tmpSession);
     } else {
         LOG_MSG("Authentication failed for player " << playerId << " (" << tmpSession->GetClientAddr() << ")");

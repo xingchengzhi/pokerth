@@ -1534,6 +1534,25 @@ bool gameLobbyDialogImpl::eventFilter(QObject *obj, QEvent *event)
 	return QDialog::eventFilter(obj, event);
 }
 
+void gameLobbyDialogImpl::showEvent(QShowEvent *e)
+{
+	QDialog::showEvent(e);
+#if !defined(__APPLE__) && !defined(_WIN32)
+	// Zorin 18 / GNOME-Mutter fix:
+	// QDialog::exec() sets WA_ShowModal which makes Qt's xcb plug-in
+	// (re-)set WM_TRANSIENT_FOR when the window is shown.  Mutter treats
+	// transient windows as "attached" and silently blocks the minimize
+	// request.  Clearing the transient parent after the window is fully
+	// mapped (via singleShot-0) lets the WM treat the lobby as a normal
+	// top-level window so both minimize AND maximize work.
+	QTimer::singleShot(0, this, [this]() {
+		if (QWindow *wh = windowHandle()) {
+			wh->setTransientParent(nullptr);
+		}
+	});
+#endif
+}
+
 bool gameLobbyDialogImpl::event ( QEvent * event )
 {
 

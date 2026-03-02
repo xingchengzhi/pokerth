@@ -80,11 +80,13 @@ static string getTimestamp() {
 class BotSession {
 public:
     BotSession(boost::asio::io_context &io, ssl::context &sslCtx, 
-               const string &name, const string &password, int foldPercent = 0)
+               const string &name, const string &password, int foldPercent = 0,
+               bool useTls = true)
         : socket_(io, sslCtx), name_(name), password_(password), 
           playerId_(0), gameId_(0), handNum_(0), mySet_(0), highestSet_(0), 
           myCash_(10000), lastGameState_(netStatePreflop), currentGameState_(netStatePreflop), 
-          isAllIn_(false), foldPercent_(foldPercent), rng_(std::random_device{}()), recBufPos_(0) {
+          isAllIn_(false), foldPercent_(foldPercent), useTls_(useTls),
+          rng_(std::random_device{}()), recBufPos_(0) {
         recBuf_.fill(0);
     }
     
@@ -173,8 +175,13 @@ public:
             }
             
             // Lese verfügbare Daten (oder blockiere wenn blocking=true)
-            size_t bytesRead = socket_.read_some(
-                boost::asio::buffer(recBuf_.data() + recBufPos_, BUF_SIZE - recBufPos_), ec);
+            // Bei non-TLS direkt über den TCP-Socket lesen (next_layer()),
+            // da ssl::stream ohne Handshake nicht funktioniert.
+            size_t bytesRead = useTls_
+                ? socket_.read_some(
+                    boost::asio::buffer(recBuf_.data() + recBufPos_, BUF_SIZE - recBufPos_), ec)
+                : socket_.next_layer().read_some(
+                    boost::asio::buffer(recBuf_.data() + recBufPos_, BUF_SIZE - recBufPos_), ec);
             
             if (ec == boost::asio::error::eof) {
                 cerr << "[" << name_ << "] Connection closed by server" << endl;
@@ -218,7 +225,11 @@ public:
         packet->GetMsg()->SerializeWithCachedSizesToArray(&buf[NET_HEADER_SIZE]);
         
         boost::system::error_code ec;
-        boost::asio::write(socket_, boost::asio::buffer(buf), ec);
+        // Bei non-TLS direkt über den TCP-Socket schreiben
+        if (useTls_)
+            boost::asio::write(socket_, boost::asio::buffer(buf), ec);
+        else
+            boost::asio::write(socket_.next_layer(), boost::asio::buffer(buf), ec);
         
         if (ec) {
             cerr << "[" << name_ << "] Send error: " << ec.message() << endl;
@@ -227,8 +238,11 @@ public:
         return true;
     }
 
+    bool useTls() const { return useTls_; }
+
 private:
     ssl::stream<tcp::socket> socket_;
+    bool useTls_;
     string name_;
     string password_;
     uint32_t playerId_;
@@ -275,7 +289,7 @@ public:
 
         for (int i = 0; i < numBots; i++) {
             string botName = "test" + to_string(startId + i);
-            auto bot = make_shared<BotSession>(io_, sslCtx_, botName, password, foldPercent_);
+            auto bot = make_shared<BotSession>(io_, sslCtx_, botName, password, foldPercent_, useTls_);
             
             if (!connectBot(bot)) {
                 cerr << "[" << getTimestamp() << "] Failed to connect bot: " << botName << endl;
@@ -437,7 +451,7 @@ public:
                     this_thread::sleep_for(chrono::milliseconds(100));  // Warte auf Server-Verarbeitung
                 }
                 
-                cout << "[" << bot->name() << "] Closing SSL connection..." << endl;
+                cout << "[" << bot->name() << "] Closing connection..." << endl;
                 
                 // SSL Shutdown (bidirektional - wichtig!)
                 boost::system::error_code ec;
@@ -631,14 +645,14 @@ private:
                             // WICHTIG: Altes Socket-Objekt vollständig verwerfen
                             bot.reset();
                             // Neues Socket erstellen für retry mit gespeicherten Werten
-                            bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                            bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                             continue; // Retry
                         }
                         return false;
                     }
                 }
                 
-                // TLS Handshake erfolgreich - weiter mit Announce/Init
+                // TLS Handshake erfolgreich (oder übersprungen) - weiter mit Announce/Init
                 cout << " Waiting for announce..." << flush;
                 // Empfange AnnounceMessage
                 auto announce = bot->receiveMessage(true);  // blocking: wait for AnnounceMessage
@@ -653,7 +667,7 @@ private:
                             bot->socket().lowest_layer().close(closeEc);
                         } catch (...) {}
                         bot.reset();
-                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                         continue; // Retry
                     }
                     return false;
@@ -681,7 +695,7 @@ private:
                             bot->socket().lowest_layer().close(closeEc);
                         } catch (...) {}
                         bot.reset();
-                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                         continue; // Retry
                     }
                     return false;
@@ -700,7 +714,7 @@ private:
                             bot->socket().lowest_layer().close(closeEc);
                         } catch (...) {}
                         bot.reset();
-                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                         continue; // Retry
                     }
                     return false;
@@ -717,7 +731,7 @@ private:
                             bot->socket().lowest_layer().close(closeEc);
                         } catch (...) {}
                         bot.reset();
-                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                        bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                         continue; // Retry
                     }
                     return false;
@@ -741,7 +755,7 @@ private:
                     // Altes Objekt vollständig verwerfen
                     bot.reset();
                     // Neues Socket erstellen für retry
-                    bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_);
+                    bot = make_shared<BotSession>(io_, sslCtx_, botName, botPassword, foldPercent_, useTls_);
                     continue; // Retry
                 }
                 return false;

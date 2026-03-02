@@ -65,6 +65,12 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <mstcpip.h>   // SIO_KEEPALIVE_VALS
+// TCP_KEEPCNT available since Windows 10 version 1703 (SDK 15063).
+// Define it here for older SDKs; setsockopt will simply fail on
+// older Windows versions, which is harmless.
+#ifndef TCP_KEEPCNT
+#define TCP_KEEPCNT 16
+#endif
 #else
 #include <sys/socket.h>
 #include <netinet/tcp.h>
@@ -594,9 +600,22 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                     keepaliveVals.keepalivetime = 30000;      // 30s until first probe (ms)
                     keepaliveVals.keepaliveinterval = 10000;  // 10s between probes (ms)
                     DWORD bytesReturned = 0;
-                    WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
+                    int wsaRet = WSAIoctl(static_cast<SOCKET>(fd), SIO_KEEPALIVE_VALS,
                              &keepaliveVals, sizeof(keepaliveVals),
                              NULL, 0, &bytesReturned, NULL, NULL);
+                    if (wsaRet != 0) {
+                        LOG_ERROR("WSAIoctl SIO_KEEPALIVE_VALS failed: " << WSAGetLastError());
+                    }
+                    // TCP_KEEPCNT: Limit the number of keepalive probes.
+                    // Available since Windows 10 1703.  On older Windows
+                    // the call silently fails, keeping the OS default (~10).
+                    // With 6 probes at 10s intervals the total detection
+                    // time matches Linux/macOS: 30 + 6*10 = 90s.
+                    {
+                        int keepcnt = 6;
+                        setsockopt(static_cast<SOCKET>(fd), IPPROTO_TCP, TCP_KEEPCNT,
+                                   (const char*)&keepcnt, sizeof(keepcnt));
+                    }
 #else
                     // Linux / macOS: per-socket keepalive tuning
                     int keepidle  = 30;   // seconds until first keepalive probe

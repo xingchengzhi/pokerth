@@ -825,6 +825,10 @@ void startWindowImpl::callSettingsDialog(bool ingame)
 		myGuiInterface->getMyW()->applySettings(mySettingsDialog);
 		// Apply dark mode palette based on updated config
 		DarkModeHelper::applyPalette(myConfig);
+		// Re-apply game table style AFTER DarkModeHelper, because
+		// applyPalette() iterates all widgets with unpolish/polish/
+		// setPalette which can override stylesheet-based styling.
+		myGuiInterface->getMyW()->refreshGameTableStyle();
 		// Update lobby dialog dark mode styling if visible
 		myGameLobbyDialog->updateGameListStyleSheet();
 	}

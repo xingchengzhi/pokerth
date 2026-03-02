@@ -259,15 +259,12 @@ void CleanerConfig::fillBuffer()
 			if (!conf.isNull())
 			{
 
-				const char *tmpStr1 = conf.attribute("value", "").toStdString().c_str();
-				if (tmpStr1)
-					tempString1 = tmpStr1;
+				tempString1 = conf.attribute("value", "").toStdString();
 				configBufferList[i].defaultValue = tempString1;
 
-				const char *tmpStr2 = conf.attribute("type").toStdString().c_str();
-				if (tmpStr2)
+				tempString2 = conf.attribute("type").toStdString();
+				if (!tempString2.empty())
 				{
-					tempString2 = tmpStr2;
 					if (tempString2 == "list")
 					{
 

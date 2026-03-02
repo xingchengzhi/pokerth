@@ -3522,6 +3522,18 @@ bool gameTableImpl::eventFilter(QObject *obj, QEvent *event)
 		}
 	}
 
+	// --- Block accidental mouse-wheel changes on the bet SpinBox and Slider ---
+	// The SpinBox receives automatic focus (setFocus + selectAll) whenever the
+	// player is in action, so any scroll-wheel movement would silently change
+	// the bet value.  The slider also reacts to wheel events by default.
+	// Both widgets are still fully usable via keyboard input / click-drag.
+	if (etype == QEvent::Wheel) {
+		QWidget *targetWidget = qobject_cast<QWidget*>(obj);
+		if (targetWidget == spinBox_betValue || targetWidget == horizontalSlider_bet) {
+			return true; // eat the event
+		}
+	}
+
 	// Only handle events when the game table window is active/visible
 	QWidget *focusWidget = QApplication::focusWidget();
 	bool isGameTableFocused = (this == focusWidget || this->isAncestorOf(focusWidget));

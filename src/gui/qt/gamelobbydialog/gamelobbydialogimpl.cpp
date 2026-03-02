@@ -1840,10 +1840,9 @@ void gameLobbyDialogImpl::showNickListContextMenu(QPoint p)
 			nickListAdminTotalKickBan->setEnabled(true);
 		}
 
-//		check for admin	and remove admin actions for non-admins
-		if(!mySession->getClientPlayerInfo(mySession->getClientUniquePlayerId()).isAdmin) {
-			nickListContextMenu->removeAction(nickListAdminSubMenu->menuAction());
-		}
+//		check for admin	and show/hide admin actions
+		nickListAdminSubMenu->menuAction()->setVisible(
+			mySession->getClientPlayerInfo(mySession->getClientUniquePlayerId()).isAdmin);
 
 		//popup a little more to the right to avaoid double click action
 		QPoint tempPoint = p;
@@ -1864,10 +1863,9 @@ void gameLobbyDialogImpl::showGameListContextMenu(QPoint p)
 			gameListAdminCloseGame->setEnabled(true);
 		}
 
-//		check for admin	and remove admin actions for non-admins
-		if(!mySession->getClientPlayerInfo(mySession->getClientUniquePlayerId()).isAdmin) {
-			gameListContextMenu->removeAction(gameListAdminSubMenu->menuAction());
-		}
+//		check for admin	and show/hide admin actions
+		gameListAdminSubMenu->menuAction()->setVisible(
+			mySession->getClientPlayerInfo(mySession->getClientUniquePlayerId()).isAdmin);
 
 		//popup a little more to the right to avaoid double click action
 		QPoint tempPoint = p;

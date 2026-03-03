@@ -604,7 +604,7 @@ ClientStateStartConnect::HandleConnect(const boost::system::error_code& ec, boos
                              &keepaliveVals, sizeof(keepaliveVals),
                              NULL, 0, &bytesReturned, NULL, NULL);
                     if (wsaRet != 0) {
-                        LOG_ERROR("WSAIoctl SIO_KEEPALIVE_VALS failed: " << WSAGetLastError());
+                        qDebug() << "WSAIoctl SIO_KEEPALIVE_VALS failed: " << WSAGetLastError();
                     }
                     // TCP_KEEPCNT: Limit the number of keepalive probes.
                     // Available since Windows 10 1703.  On older Windows

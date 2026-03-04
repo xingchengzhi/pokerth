@@ -14,11 +14,11 @@ rm -f "${REPO_ROOT}/snapcraft.yaml"
 
 cd "${REPO_ROOT}"
 
-# Fix python3 in extracted snapcraft — snap's binary can't run outside confinement,
-# replace with wrapper using system python3 + snap's PYTHONPATH
-if [ ! -x /snap/snapcraft/current/bin/python3 ] || file /snap/snapcraft/current/bin/python3 | grep -q ELF; then
+# Fix python3 in extracted snapcraft — symlink chain broken after unsquashfs.
+# Create wrapper using snap's own python3.12 + its LD_LIBRARY_PATH.
+if [ ! -x /snap/snapcraft/current/bin/python3 ] || file /snap/snapcraft/current/bin/python3 2>/dev/null | grep -q ELF; then
   sudo rm -f /snap/snapcraft/current/bin/python3
-  printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport PYTHONPATH="${SNAP_ROOT}/lib/python3.12/site-packages:${SNAP_ROOT}/usr/lib/python3/dist-packages:${PYTHONPATH:-}"\nexec /usr/bin/python3 "$@"\n' \
+  printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport LD_LIBRARY_PATH="${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:${SNAP_ROOT}/lib:${SNAP_ROOT}/usr/lib:${LD_LIBRARY_PATH:-}"\nexec "${SNAP_ROOT}/usr/bin/python3.12" "$@"\n' \
     | sudo tee /snap/snapcraft/current/bin/python3 > /dev/null
   sudo chmod +x /snap/snapcraft/current/bin/python3
 fi

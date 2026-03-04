@@ -32,10 +32,10 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && unsquashfs -d /snap/snapcraft/current /tmp/snapcraft.snap \
     && rm /tmp/snapcraft.snap
 
-# The snap's python3.12 binary can't run outside snap confinement (ELF interpreter).
-# Replace it with a wrapper that uses the system python3 + snap's PYTHONPATH.
+# The snap's python3 symlink chain is broken after unsquashfs.
+# Create a wrapper that uses the snap's own python3.12 binary with its libraries.
 RUN rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
-    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport PYTHONPATH="${SNAP_ROOT}/lib/python3.12/site-packages:${SNAP_ROOT}/usr/lib/python3/dist-packages:${PYTHONPATH:-}"\nexec /usr/bin/python3 "$@"\n' \
+    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport LD_LIBRARY_PATH="${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:${SNAP_ROOT}/lib:${SNAP_ROOT}/usr/lib:${LD_LIBRARY_PATH:-}"\nexec "${SNAP_ROOT}/usr/bin/python3.12" "$@"\n' \
        > /snap/snapcraft/current/bin/python3 \
     && chmod +x /snap/snapcraft/current/bin/python3 \
     && ln -s python3 /snap/snapcraft/current/bin/python

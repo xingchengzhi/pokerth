@@ -31,7 +31,6 @@ RUN apt-get update && apt-get install -y \
     qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 qt6-websockets-dev \
     qt6-multimedia-dev libqt6sql6-mysql libssl-dev \
     locales sudo nano mc \
-    python3-pip python3-venv squashfs-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Install docker
@@ -71,13 +70,11 @@ RUN mkdir -p ${ROOT} && chown -R vscode:vscode ${ROOT}
 
 USER vscode
 
-# Install snapcraft via pip (works without systemd/snapd in Docker)
-RUN python3 -m venv ${ROOT}/venv
-ENV PATH="${ROOT}/venv/bin:${PATH}"
-RUN pip install --upgrade pip && pip install snapcraft
-
 # Clone pokerth repo
 RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
+
+# NOTE: snapcraft runs via Docker (snapcore/snapcraft image) — see build_snap.sh
+# No local snapcraft installation needed.
 
 # Entrypoint/Command used from docker-compose.yml
 # ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]

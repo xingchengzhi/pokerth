@@ -37,35 +37,60 @@ parts:
       - usr/lib
       - usr/include
 
+  # Install Qt 6.9.2 via aqtinstall (Ubuntu 24.04 only has Qt 6.4.2)
+  qt6:
+    plugin: nil
+    build-packages:
+      - python3-pip
+      - python3-venv
+    override-build: |
+      python3 -m venv /tmp/aqt-venv
+      /tmp/aqt-venv/bin/pip install aqtinstall
+      /tmp/aqt-venv/bin/aqt install-qt linux desktop 6.9.2 \
+        -m qtwebsockets qtmultimedia qtsvg qt5compat qtshadertools \
+        -O $CRAFT_PART_INSTALL/opt/qt6
+    override-prime: |
+      craftctl default
+
   pokerth:
-    after: [boost]
-    plugin: cmake
+    after: [boost, qt6]
+    plugin: nil
     source: .
     build-packages:
       - build-essential
       - cmake
       - ninja-build
-      - qt6-base-dev
-      - qt6-svg-dev
-      - qt6-declarative-dev
-      - qt6-tools-dev
-      - linguist-qt6
-      - qt6-websockets-dev
-      - qt6-multimedia-dev
       - libssl-dev
       - libprotobuf-dev
       - protobuf-compiler
       - libwebsocketpp-dev
+      - libgl-dev
+      - libx11-dev
+      - libxkbcommon-dev
     stage-packages:
-      - libqt6core6t64
-      - libqt6gui6
-      - libqt6widgets6
-      - libqt6svg6
-      - libqt6websockets6
       - libx11-6
       - libssl3t64
       - zlib1g
       - libprotobuf-lite32t64
-    cmake-parameters:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -G Ninja
+      - libgl1
+      - libxkbcommon0
+      - libfontconfig1
+      - libfreetype6
+      - libicu74
+    override-build: |
+      QT_DIR="${CRAFT_STAGE}/opt/qt6/6.9.2/gcc_64"
+      cmake ${CRAFT_PART_SRC} \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=${CRAFT_PART_INSTALL} \
+        -DBOOST_ROOT=${CRAFT_STAGE}/usr \
+        -DCMAKE_PREFIX_PATH="${QT_DIR}" \
+        -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
+      cmake --build . -j$(nproc)
+      cmake --install .
+      # Copy Qt runtime libs into snap
+      mkdir -p ${CRAFT_PART_INSTALL}/lib
+      cp -a ${QT_DIR}/lib/libQt6*.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
+      # Copy Qt plugins
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins
+      cp -a ${QT_DIR}/plugins/* ${CRAFT_PART_INSTALL}/plugins/ 2>/dev/null || true

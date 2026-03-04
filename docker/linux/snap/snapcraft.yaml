@@ -67,6 +67,7 @@ parts:
       - libgl-dev
       - libx11-dev
       - libxkbcommon-dev
+      - libglib2.0-dev
     stage-packages:
       - libx11-6
       - libssl3t64

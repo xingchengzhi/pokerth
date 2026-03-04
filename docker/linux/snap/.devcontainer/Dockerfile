@@ -30,8 +30,15 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && curl -sL "${SNAP_URL}" -o /tmp/snapcraft.snap \
     && mkdir -p /snap/snapcraft/current \
     && unsquashfs -d /snap/snapcraft/current /tmp/snapcraft.snap \
-    && rm /tmp/snapcraft.snap \
-    && ln -sf /snap/snapcraft/current/usr/bin/python3.12 /snap/snapcraft/current/bin/python3
+    && rm /tmp/snapcraft.snap
+
+# The snap's python3.12 binary can't run outside snap confinement (ELF interpreter).
+# Replace it with a wrapper that uses the system python3 + snap's PYTHONPATH.
+RUN rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
+    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport PYTHONPATH="${SNAP_ROOT}/lib/python3.12/site-packages:${SNAP_ROOT}/usr/lib/python3/dist-packages:${PYTHONPATH:-}"\nexec /usr/bin/python3 "$@"\n' \
+       > /snap/snapcraft/current/bin/python3 \
+    && chmod +x /snap/snapcraft/current/bin/python3 \
+    && ln -s python3 /snap/snapcraft/current/bin/python
 
 # Make extracted snapcraft available
 ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"

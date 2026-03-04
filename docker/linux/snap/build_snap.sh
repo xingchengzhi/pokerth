@@ -14,8 +14,14 @@ rm -f "${REPO_ROOT}/snapcraft.yaml"
 
 cd "${REPO_ROOT}"
 
-# Fix python3 symlink in extracted snapcraft (broken relative symlink after unsquashfs)
-sudo ln -sf /snap/snapcraft/current/usr/bin/python3.12 /snap/snapcraft/current/bin/python3
+# Fix python3 in extracted snapcraft — snap's binary can't run outside confinement,
+# replace with wrapper using system python3 + snap's PYTHONPATH
+if [ ! -x /snap/snapcraft/current/bin/python3 ] || file /snap/snapcraft/current/bin/python3 | grep -q ELF; then
+  sudo rm -f /snap/snapcraft/current/bin/python3
+  printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport PYTHONPATH="${SNAP_ROOT}/lib/python3.12/site-packages:${SNAP_ROOT}/usr/lib/python3/dist-packages:${PYTHONPATH:-}"\nexec /usr/bin/python3 "$@"\n' \
+    | sudo tee /snap/snapcraft/current/bin/python3 > /dev/null
+  sudo chmod +x /snap/snapcraft/current/bin/python3
+fi
 
 # Run snapcraft directly (already installed in this container via unsquashfs)
 sudo /snap/snapcraft/current/bin/snapcraft --destructive-mode

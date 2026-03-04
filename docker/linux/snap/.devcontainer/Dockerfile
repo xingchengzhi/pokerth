@@ -32,10 +32,10 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && unsquashfs -d /snap/snapcraft/current /tmp/snapcraft.snap \
     && rm /tmp/snapcraft.snap
 
-# The snap's python3 symlink chain is broken after unsquashfs.
-# Create a wrapper that uses the snap's own python3.12 binary with its libraries.
+# The snap's python3.12 expects /snap/core24/current/lib64/ld-linux-x86-64.so.2
+# which doesn't exist. Use system ld-linux with snap's library paths instead.
 RUN rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
-    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nexport LD_LIBRARY_PATH="${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:${SNAP_ROOT}/lib:${SNAP_ROOT}/usr/lib:${LD_LIBRARY_PATH:-}"\nexec "${SNAP_ROOT}/usr/bin/python3.12" "$@"\n' \
+    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nLIB_PATH="${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"\nexec /lib64/ld-linux-x86-64.so.2 --library-path "${LIB_PATH}" "${SNAP_ROOT}/usr/bin/python3.12" "$@"\n' \
        > /snap/snapcraft/current/bin/python3 \
     && chmod +x /snap/snapcraft/current/bin/python3 \
     && ln -s python3 /snap/snapcraft/current/bin/python

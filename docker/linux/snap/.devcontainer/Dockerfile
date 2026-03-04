@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget unzip git build-essential pkg-config \
     cmake ninja-build debhelper zip \
-    squashfs-tools python3 \
+    squashfs-tools python3 patchelf \
     libwebsocketpp-dev libprotobuf-dev protobuf-compiler libboost-all-dev \
     qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 \
     qt6-websockets-dev qt6-multimedia-dev libssl-dev \
@@ -32,14 +32,21 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && unsquashfs -d /snap/snapcraft/current /tmp/snapcraft.snap \
     && rm /tmp/snapcraft.snap
 
-# The snap's python3.12 expects /snap/core24/current/lib64/ld-linux-x86-64.so.2
-# which doesn't exist. Create that symlink so ALL snap binaries work natively.
-# Also set LD_LIBRARY_PATH so C extensions (like _yaml) find their .so deps.
-RUN mkdir -p /snap/core24/current/lib64 \
-    && ln -s /lib64/ld-linux-x86-64.so.2 /snap/core24/current/lib64/ld-linux-x86-64.so.2 \
-    && rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
-    && ln -s ../usr/bin/python3.12 /snap/snapcraft/current/bin/python3 \
-    && ln -s python3 /snap/snapcraft/current/bin/python
+# Patch ALL snap ELF binaries to use system ld-linux + combined RPATH.
+# core24 = Ubuntu 24.04 = this system, so system libs are ABI-compatible.
+# This replaces the snap interpreter (/snap/core24/...) and adds system lib dirs to RPATH
+# so binaries find BOTH system libs (libm, libc, ...) AND snap-specific libs (_yaml, etc.)
+RUN SNAP_ROOT="/snap/snapcraft/current" \
+    && RPATH="/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:${SNAP_ROOT}/lib:${SNAP_ROOT}/usr/lib" \
+    && find "${SNAP_ROOT}/usr/bin" "${SNAP_ROOT}/bin" "${SNAP_ROOT}/lib" "${SNAP_ROOT}/usr/lib" \
+       -type f -executable 2>/dev/null | while read f; do \
+         if readelf -l "$f" 2>/dev/null | grep -q 'Requesting program interpreter'; then \
+           patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 --set-rpath "$RPATH" "$f" 2>/dev/null || true; \
+         fi; \
+       done \
+    && rm -f "${SNAP_ROOT}/bin/python3" "${SNAP_ROOT}/bin/python" \
+    && ln -s ../usr/bin/python3.12 "${SNAP_ROOT}/bin/python3" \
+    && ln -s python3 "${SNAP_ROOT}/bin/python"
 
 # Snapcraft env vars (safe — no path/lib changes yet)
 ENV SNAP="/snap/snapcraft/current"

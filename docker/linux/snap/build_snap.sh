@@ -26,9 +26,11 @@ export SNAP_INSTANCE_NAME="snapcraft"
 export SNAP_ARCH="amd64"
 export LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 
-# Run snapcraft directly — sudo --preserve-env passes all SNAP_* and LD_LIBRARY_PATH
+# Run snapcraft — sudo --preserve-env passes all SNAP_* and LD_LIBRARY_PATH.
+# snapcraft internally calls apt, so we need to unset LD_LIBRARY_PATH for apt
+# but keep it for the python/snapcraft process. We wrap with a helper.
 sudo --preserve-env=SNAP,SNAP_NAME,SNAP_VERSION,SNAP_INSTANCE_NAME,SNAP_ARCH,LD_LIBRARY_PATH,PATH \
-  snapcraft --destructive-mode
+  bash -c 'export SNAPCRAFT_BUILD_ENVIRONMENT=host; snapcraft --destructive-mode'
 
 echo "Build finished."
 ls -la "${REPO_ROOT}"/*.snap 2>/dev/null || echo "No .snap files found in ${REPO_ROOT}/"

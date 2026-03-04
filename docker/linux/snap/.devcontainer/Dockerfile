@@ -41,14 +41,13 @@ RUN mkdir -p /snap/core24/current/lib64 \
     && ln -s ../usr/bin/python3.12 /snap/snapcraft/current/bin/python3 \
     && ln -s python3 /snap/snapcraft/current/bin/python
 
-# Make extracted snapcraft available
+# Make extracted snapcraft available (LD_LIBRARY_PATH set later — after all apt calls)
 ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"
 ENV SNAP="/snap/snapcraft/current"
 ENV SNAP_NAME="snapcraft"
 ENV SNAP_VERSION="8.0"
 ENV SNAP_INSTANCE_NAME="snapcraft"
 ENV SNAP_ARCH="amd64"
-ENV LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu"
 
 # Locales & timezone
 RUN sed -i '/'${LANG}'/s/^# //g' /etc/locale.gen && \
@@ -59,7 +58,7 @@ ENV LC_ALL=${LC_ALL}
 ENV TZ=Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# apt cleanup
+# apt cleanup (before LD_LIBRARY_PATH is set, so apt finds system libs)
 RUN apt-get autoremove --purge && rm -Rf /var/cache/apt/archives && \
     unset DEBIAN_FRONTEND
 
@@ -72,6 +71,9 @@ RUN userdel -r ubuntu 2>/dev/null || true && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
 RUN mkdir -p ${ROOT} && chown -R vscode:vscode ${ROOT}
+
+# NOW set LD_LIBRARY_PATH for snap C extensions (after all apt/system calls)
+ENV LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu"
 
 USER vscode
 

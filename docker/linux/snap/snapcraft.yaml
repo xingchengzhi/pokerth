@@ -1,8 +1,16 @@
 name: pokerth
 version: '2.0.6'
+title: PokerTH
 summary: Multiplayer Texas Hold'em poker client and server
 description: |
   PokerTH is an open-source multiplayer Texas Hold'em poker client and server.
+  Play Texas Hold'em against up to nine computer opponents or online with
+  other players from around the world.
+license: AGPL-3.0-only
+contact: https://github.com/pokerth/pokerth/issues
+issues: https://github.com/pokerth/pokerth/issues
+source-code: https://github.com/pokerth/pokerth
+website: https://www.pokerth.net
 base: core24
 grade: stable
 confinement: strict
@@ -34,8 +42,19 @@ parts:
       ./bootstrap.sh --prefix=$CRAFT_PART_INSTALL/usr
       ./b2 -j$(nproc) install --prefix=$CRAFT_PART_INSTALL/usr
     prime:
-      - usr/lib
-      - usr/include
+      - usr/lib/libboost_iostreams*
+      - usr/lib/libboost_random*
+      - usr/lib/libboost_thread*
+      - usr/lib/libboost_filesystem*
+      - usr/lib/libboost_program_options*
+      - usr/lib/libboost_regex*
+      - usr/lib/libboost_system*
+      - usr/lib/libboost_chrono*
+      - usr/lib/libboost_date_time*
+      - usr/lib/libboost_atomic*
+      - usr/lib/libboost_serialization*
+      - usr/lib/libboost_log*
+      - usr/lib/libboost_charconv*
 
   # Install Qt 6.9.2 via aqtinstall (Ubuntu 24.04 only has Qt 6.4.2)
   qt6:
@@ -95,11 +114,20 @@ parts:
         -DCMAKE_POLICY_DEFAULT_CMP0144=NEW \
         -DCMAKE_PREFIX_PATH="${QT_DIR}" \
         -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
-      cmake --build . --target pokerth_client -j$(nproc)
+      cmake --build . --target pokerth_client pokerth_lib pokerth_db pokerth_protocol zlib_compress -j$(nproc)
       cmake --install . --component pokerth_client
-      # Copy Qt runtime libs into snap
+      # Copy icon for desktop file
+      mkdir -p ${CRAFT_PART_INSTALL}/share/icons/hicolor/256x256/apps
+      cp ${CRAFT_PART_SRC}/pokerth.png ${CRAFT_PART_INSTALL}/share/icons/hicolor/256x256/apps/pokerth.png
+      # Copy only needed Qt runtime libs into snap
       mkdir -p ${CRAFT_PART_INSTALL}/lib
-      cp -a ${QT_DIR}/lib/libQt6*.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
-      # Copy Qt plugins
+      for lib in Core Gui Widgets Network Sql Xml Multimedia MultimediaWidgets Svg SvgWidgets WebSockets OpenGL OpenGLWidgets Core5Compat DBus XcbQpa WaylandClient WlShellIntegration; do
+        cp -a ${QT_DIR}/lib/libQt6${lib}.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
+      done
+      # Copy ICU libs needed by Qt
+      cp -a ${QT_DIR}/lib/libicu*.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
+      # Copy Qt plugins (only needed ones)
       mkdir -p ${CRAFT_PART_INSTALL}/plugins
-      cp -a ${QT_DIR}/plugins/* ${CRAFT_PART_INSTALL}/plugins/ 2>/dev/null || true
+      for plugin in platforms imageformats sqldrivers tls multimedia networkinformation platformthemes platforminputcontexts iconengines; do
+        cp -a ${QT_DIR}/plugins/${plugin} ${CRAFT_PART_INSTALL}/plugins/ 2>/dev/null || true
+      done

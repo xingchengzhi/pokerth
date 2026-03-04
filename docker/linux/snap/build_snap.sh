@@ -10,6 +10,8 @@ echo "Building snap for PokerTH version 2.0.6..."
 # snapcraft expects snap/snapcraft.yaml inside the project root
 mkdir -p "${REPO_ROOT}/snap"
 cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snap/snapcraft.yaml"
+# Remove root-level snapcraft.yaml if present (snapcraft refuses both)
+rm -f "${REPO_ROOT}/snapcraft.yaml"
 
 # Run snapcraft via the official snapcore/snapcraft Docker image.
 # We pipe the source via tar to avoid Docker-in-Docker volume mount issues

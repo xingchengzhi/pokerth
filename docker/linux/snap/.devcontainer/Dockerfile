@@ -30,7 +30,8 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && curl -sL "${SNAP_URL}" -o /tmp/snapcraft.snap \
     && mkdir -p /snap/snapcraft/current \
     && unsquashfs -d /snap/snapcraft/current /tmp/snapcraft.snap \
-    && rm /tmp/snapcraft.snap
+    && rm /tmp/snapcraft.snap \
+    && ln -sf /snap/snapcraft/current/usr/bin/python3.12 /snap/snapcraft/current/bin/python3
 
 # Make extracted snapcraft available
 ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"

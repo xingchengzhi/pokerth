@@ -71,14 +71,14 @@ RUN userdel -r ubuntu 2>/dev/null || true && \
 
 RUN mkdir -p ${ROOT} && chown -R vscode:vscode ${ROOT}
 
-# NOW set PATH and LD_LIBRARY_PATH (after ALL apt/system calls)
-# snap's usr/bin contains its own apt-get, dpkg etc. which break if loaded before this point
-ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu"
-
 USER vscode
 
-# Clone pokerth repo
+# Clone pokerth repo (before any snap PATH/LD changes)
 RUN cd ${ROOT} && git clone https://github.com/pokerth/pokerth.git && cd pokerth && git checkout stable
+
+# PATH only adds snap/bin (for snapcraft itself) — NOT snap/usr/bin (contains apt, git, dpkg...)
+# LD_LIBRARY_PATH is NOT set globally — it breaks system binaries.
+# build_snap.sh sets both LD_LIBRARY_PATH and extended PATH only for the snapcraft invocation.
+ENV PATH="/snap/snapcraft/current/bin:${PATH}"
 
 # snapcraft is available directly — run: ./build_snap.sh

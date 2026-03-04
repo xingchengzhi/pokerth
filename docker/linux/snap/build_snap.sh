@@ -14,16 +14,8 @@ rm -f "${REPO_ROOT}/snapcraft.yaml"
 
 cd "${REPO_ROOT}"
 
-# snapcraft env vars (normally set by snap confinement)
-export SNAP="/snap/snapcraft/current"
-export SNAP_NAME="snapcraft"
-export SNAP_VERSION="8.0"
-export SNAP_INSTANCE_NAME="snapcraft"
-export SNAP_ARCH="amd64"
-
-# Run snapcraft — no LD_LIBRARY_PATH needed (binaries are patched with patchelf)
-sudo --preserve-env=SNAP,SNAP_NAME,SNAP_VERSION,SNAP_INSTANCE_NAME,SNAP_ARCH \
-  /snap/snapcraft/current/bin/snapcraft --destructive-mode
+# snapcraft wrapper is at /usr/local/bin/snapcraft (uses system python3 + snap packages)
+sudo snapcraft --destructive-mode
 
 echo "Build finished."
 ls -la "${REPO_ROOT}"/*.snap 2>/dev/null || echo "No .snap files found in ${REPO_ROOT}/"

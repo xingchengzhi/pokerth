@@ -1,22 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SNAP_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="/opt/pokerth-snap/pokerth"
+cat <<'EOF'
+==========================================================
+  PokerTH Snap Build
+==========================================================
 
-echo "Building snap for PokerTH version 2.0.6..."
+  Snap builds use GitHub Actions (snapcore/action-build).
+  
+  To trigger a build:
+    1. Push to 'testing' or 'stable' branch
+    2. Or trigger manually via GitHub → Actions → Run workflow
+  
+  The workflow is at: .github/workflows/snap.yml
+  
+  To publish to Snap Store from 'stable':
+    - Set SNAPCRAFT_STORE_CREDENTIALS secret in GitHub repo
+    - Run: snapcraft export-login --snaps pokerth --channels stable credentials.txt
+    - Copy contents of credentials.txt to the GitHub secret
 
-# snapcraft expects snap/snapcraft.yaml inside the project root
-mkdir -p "${REPO_ROOT}/snap"
-cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snap/snapcraft.yaml"
-# Remove root-level snapcraft.yaml if present (snapcraft refuses both)
-rm -f "${REPO_ROOT}/snapcraft.yaml"
+  For local CMake build testing (in this devcontainer):
+    cd /opt/pokerth-snap/pokerth
+    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    cmake --build build
 
-cd "${REPO_ROOT}"
-
-# snapcraft wrapper is at /usr/local/bin/snapcraft (uses system python3 + snap packages)
-sudo snapcraft --destructive-mode
-
-echo "Build finished."
-ls -la "${REPO_ROOT}"/*.snap 2>/dev/null || echo "No .snap files found in ${REPO_ROOT}/"
+==========================================================
+EOF
 

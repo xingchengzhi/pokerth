@@ -1,0 +1,54 @@
+name: Build & Publish Snap
+
+on:
+  push:
+    branches: [stable, testing]
+    paths:
+      - 'docker/linux/snap/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/snap.yml'
+  workflow_dispatch:
+
+jobs:
+  build-snap:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # snapcraft expects snap/snapcraft.yaml in the repo root
+      - name: Prepare snapcraft.yaml
+        run: |
+          mkdir -p snap
+          cp docker/linux/snap/snapcraft.yaml snap/snapcraft.yaml
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: snap-build
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pokerth-snap
+          path: ${{ steps.snap-build.outputs.snap }}
+          retention-days: 30
+
+  # Publish only from stable branch (manual trigger or push)
+  publish-snap:
+    needs: build-snap
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/stable'
+    steps:
+      - name: Download snap artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pokerth-snap
+
+      - name: Publish to Snap Store
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: pokerth_2.0.6_amd64.snap
+          release: stable

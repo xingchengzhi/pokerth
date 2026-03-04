@@ -1,11 +1,11 @@
 {
   "name": "PokerTH Snap Builder",
   "context": "..",
-  "dockerFile": "Dockerfile",
+  "dockerFile": "../Dockerfile",
   "workspaceFolder": "/workspace",
   "runArgs": ["--privileged"],
   "settings": {},
   "extensions": [],
   "postCreateCommand": "echo 'Devcontainer ready. Run ./docker/linux/snap/build_snap.sh inside the container.'",
-  "remoteUser": "vscode"
+  "remoteUser": "root"
 }

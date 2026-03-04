@@ -41,18 +41,14 @@ RUN rm -rf /snap/snapcraft/current/lib/python3.12/site-packages/yaml \
 
 # Create /usr/local/bin/snapcraft wrapper that uses SYSTEM python3
 # with snap's packages via PYTHONPATH (no snap binaries needed at all)
-RUN printf '#!/bin/bash\n\
-export PYTHONPATH="/snap/snapcraft/current/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}"\n\
-export SNAP="/snap/snapcraft/current"\n\
-export SNAP_NAME="snapcraft"\n\
-export SNAP_VERSION="8.0"\n\
-export SNAP_INSTANCE_NAME="snapcraft"\n\
-export SNAP_ARCH="amd64"\n\
-exec /usr/bin/python3 -c "\n\
-import sys\n\
-from snapcraft.application import main\n\
-sys.exit(main())\n\
-" "$@"\n' > /usr/local/bin/snapcraft \
+RUN echo '#!/bin/bash' > /usr/local/bin/snapcraft \
+    && echo 'export PYTHONPATH="/snap/snapcraft/current/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}"' >> /usr/local/bin/snapcraft \
+    && echo 'export SNAP="/snap/snapcraft/current"' >> /usr/local/bin/snapcraft \
+    && echo 'export SNAP_NAME="snapcraft"' >> /usr/local/bin/snapcraft \
+    && echo 'export SNAP_VERSION="8.0"' >> /usr/local/bin/snapcraft \
+    && echo 'export SNAP_INSTANCE_NAME="snapcraft"' >> /usr/local/bin/snapcraft \
+    && echo 'export SNAP_ARCH="amd64"' >> /usr/local/bin/snapcraft \
+    && echo 'exec /usr/bin/python3 -c "import sys; from snapcraft.application import main; sys.exit(main())" "$@"' >> /usr/local/bin/snapcraft \
     && chmod +x /usr/local/bin/snapcraft
 
 # Locales & timezone

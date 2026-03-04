@@ -23,16 +23,22 @@ jobs:
           mkdir -p snap
           cp docker/linux/snap/snapcraft.yaml snap/snapcraft.yaml
 
+      - name: Set up LXD
+        uses: canonical/setup-lxd@main
+
       - name: Install snapcraft
-        run: |
-          sudo snap refresh
-          sudo snap install snapcraft --classic
+        run: sudo snap install snapcraft --classic
 
       - name: Build snap
-        run: |
-          snapcraft --verbose
-        env:
-          SNAPCRAFT_BUILD_ENVIRONMENT: host
+        run: snapcraft --verbose 2>&1 | tee snapcraft.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapcraft-log
+          path: snapcraft.log
+          retention-days: 7
 
       - name: Upload snap artifact
         uses: actions/upload-artifact@v4

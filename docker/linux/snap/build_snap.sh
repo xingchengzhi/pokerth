@@ -14,8 +14,10 @@ rm -f "${REPO_ROOT}/snapcraft.yaml"
 
 cd "${REPO_ROOT}"
 
+# Fix python3 symlink in extracted snapcraft (broken relative symlink after unsquashfs)
+sudo ln -sf /snap/snapcraft/current/usr/bin/python3.12 /snap/snapcraft/current/bin/python3
+
 # Run snapcraft directly (already installed in this container via unsquashfs)
-# Use full path to avoid sudo PATH issues
 sudo /snap/snapcraft/current/bin/snapcraft --destructive-mode
 
 echo "Build finished."

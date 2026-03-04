@@ -15,7 +15,8 @@ rm -f "${REPO_ROOT}/snapcraft.yaml"
 cd "${REPO_ROOT}"
 
 # Run snapcraft directly (already installed in this container via unsquashfs)
-sudo snapcraft --destructive-mode
+# Use full path to avoid sudo PATH issues
+sudo /snap/snapcraft/current/bin/snapcraft --destructive-mode
 
 echo "Build finished."
 ls -la "${REPO_ROOT}"/*.snap 2>/dev/null || echo "No .snap files found in ${REPO_ROOT}/"

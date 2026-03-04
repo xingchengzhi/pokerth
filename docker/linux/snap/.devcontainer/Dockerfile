@@ -51,8 +51,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get autoremove --purge && rm -Rf /var/cache/apt/archives && \
     unset DEBIAN_FRONTEND
 
-# vscode user
-RUN groupadd -g $USER_GID $USERNAME && \
+# vscode user (remove default ubuntu user first — GID 1000 conflict)
+RUN userdel -r ubuntu 2>/dev/null || true && \
+    groupadd -g $USER_GID $USERNAME && \
     useradd -s /bin/bash -m -d /home/vscode -u $USER_UID -g $USER_GID $USERNAME && \
     mkdir -p /etc/sudoers.d && \
     echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \

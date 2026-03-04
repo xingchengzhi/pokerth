@@ -13,22 +13,41 @@ cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snap/snapcraft.yaml"
 # Remove root-level snapcraft.yaml if present (snapcraft refuses both)
 rm -f "${REPO_ROOT}/snapcraft.yaml"
 
-# Run snapcraft via the official snapcore/snapcraft Docker image.
-# We pipe the source via tar to avoid Docker-in-Docker volume mount issues
-# (volume paths refer to the Docker HOST, not to this devcontainer).
-echo "Sending source tree to snapcraft container and building..."
+# snapcraft with base: core24 requires a build env based on Ubuntu 24.04.
+# The old snapcore/snapcraft:stable image is xenial-based and unusable.
+# We use an Ubuntu 24.04 container, install snapcraft via snap, and build.
+echo "Sending source tree to build container..."
 
-# 1) Create container, pipe source in, build
 tar -C "${REPO_ROOT}" -c . \
-  | docker run --name "${CONTAINER_NAME}" -i snapcore/snapcraft:stable \
-      bash -c 'set -e; mkdir -p /build; tar -C /build -x; cd /build; snapcraft --destructive-mode'
+  | docker run --name "${CONTAINER_NAME}" --privileged -i ubuntu:24.04 \
+      bash -c '
+        set -e
+        export DEBIAN_FRONTEND=noninteractive
 
-# 2) Copy .snap file(s) out of the stopped container
+        # Unpack source
+        mkdir -p /build && tar -C /build -x && cd /build
+
+        # Install snapd and snapcraft
+        apt-get update
+        apt-get install -y snapd
+        # Start snapd manually (no systemd)
+        /usr/lib/snapd/snapd &
+        sleep 3
+        snap install snapcraft --classic
+        snap install core24
+
+        # Build
+        cd /build
+        snapcraft --destructive-mode
+      '
+
+# Copy .snap file(s) out of the stopped container
 echo "Extracting .snap file(s)..."
+mkdir -p /tmp/snap-output
 docker cp "${CONTAINER_NAME}:/build/." /tmp/snap-output/ 2>/dev/null || true
-find /tmp/snap-output -name '*.snap' -exec cp {} "${REPO_ROOT}/" \; 2>/dev/null
+find /tmp/snap-output -name '*.snap' -exec cp {} "${REPO_ROOT}/" \;
 
-# 3) Cleanup container
+# Cleanup container
 docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 rm -rf /tmp/snap-output
 

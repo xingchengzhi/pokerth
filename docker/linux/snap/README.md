@@ -1,22 +1,38 @@
 # Snap deployment for PokerTH
 
-Kurz: Dieses Verzeichnis enthält die Snap-Paketdefinition für PokerTH (Version 2.0.6).
+Dieses Verzeichnis enthält die Snap-Paketdefinition für PokerTH (Version 2.0.6).
 
-Schnellstart (lokal bauen):
+## Aufbau
 
-1. Stelle sicher, dass `snapcraft` installiert ist und LXD oder multipass verfügbar ist.
-2. Ausführen:
+- `snapcraft.yaml` — Snap-Manifest (base: core24, Qt6, Boost 1.88 from source)
+- `build_snap.sh` — Build-Script, ruft `snapcraft --destructive-mode` auf
+- `.devcontainer/` — VS Code Devcontainer (Ubuntu 24.04), snapcraft vorinstalliert
+
+## Snap bauen
+
+### Option A: Devcontainer (empfohlen)
+
+1. Devcontainer in VS Code öffnen (`docker/linux/snap/.devcontainer/`)
+2. Im Terminal:
 
 ```bash
-cd docker/linux/snap
 ./build_snap.sh
 ```
 
-Das erzeugt ein Snap im lokalen Verzeichnis (oder baut direkt, je nach Snapcraft-Konfiguration).
+Der Container basiert auf Ubuntu 24.04 (= core24) und hat snapcraft direkt verfügbar.
+Kein Docker-in-Docker nötig.
 
-Veröffentlichen in den Snap Store:
+### Option B: Manuell im Container
 
-1. `snapcraft login`
-2. `snapcraft upload --release=stable pokerth_2.0.6_*.snap`
+```bash
+cd docker/linux/snap/.devcontainer
+docker compose build
+docker compose run --rm devcontainer bash -c "cd /workspaces/snap && ./build_snap.sh"
+```
 
-Hinweis: Passe `snapcraft.yaml` an, falls zusätzliche Qt- und System-Bibliotheken benötigt werden.
+## Veröffentlichen
+
+```bash
+snapcraft login
+snapcraft upload --release=stable pokerth_2.0.6_*.snap
+```

@@ -47,7 +47,7 @@ parts:
       python3 -m venv /tmp/aqt-venv
       /tmp/aqt-venv/bin/pip install aqtinstall
       /tmp/aqt-venv/bin/aqt install-qt linux desktop 6.9.2 \
-        -m qtwebsockets qtmultimedia qtsvg qt5compat qtshadertools \
+        -m qtwebsockets qtmultimedia qt5compat qtshadertools \
         -O $CRAFT_PART_INSTALL/opt/qt6
     override-prime: |
       craftctl default

@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-snap:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,15 +23,22 @@ jobs:
           mkdir -p snap
           cp docker/linux/snap/snapcraft.yaml snap/snapcraft.yaml
 
+      - name: Install snapcraft
+        run: |
+          sudo snap refresh
+          sudo snap install snapcraft --classic
+
       - name: Build snap
-        uses: snapcore/action-build@v1
-        id: snap-build
+        run: |
+          snapcraft --verbose
+        env:
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
 
       - name: Upload snap artifact
         uses: actions/upload-artifact@v4
         with:
           name: pokerth-snap
-          path: ${{ steps.snap-build.outputs.snap }}
+          path: "*.snap"
           retention-days: 30
 
   # Publish only from stable branch (manual trigger or push)
@@ -45,10 +52,11 @@ jobs:
         with:
           name: pokerth-snap
 
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
       - name: Publish to Snap Store
-        uses: snapcore/action-publish@v1
+        run: |
+          snapcraft upload --release=stable pokerth_*.snap
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: pokerth_2.0.6_amd64.snap
-          release: stable

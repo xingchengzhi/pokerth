@@ -9,8 +9,8 @@ confinement: strict
 
 apps:
   pokerth:
-    command: bin/pokerth
-    desktop: pokerth.desktop
+    command: bin/pokerth_client
+    desktop: share/applications/pokerth.desktop
     plugs:
       - network
       - network-bind
@@ -95,8 +95,8 @@ parts:
         -DCMAKE_POLICY_DEFAULT_CMP0144=NEW \
         -DCMAKE_PREFIX_PATH="${QT_DIR}" \
         -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
-      cmake --build . -j$(nproc)
-      cmake --install .
+      cmake --build . --target pokerth_client -j$(nproc)
+      cmake --install . --component pokerth_client
       # Copy Qt runtime libs into snap
       mkdir -p ${CRAFT_PART_INSTALL}/lib
       cp -a ${QT_DIR}/lib/libQt6*.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true

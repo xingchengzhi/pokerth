@@ -69,7 +69,9 @@ parts:
         -m qtwebsockets qtmultimedia qt5compat qtshadertools \
         -O $CRAFT_PART_INSTALL/opt/qt6
     override-prime: |
-      craftctl default
+      # Qt libs/plugins are copied selectively in the pokerth part,
+      # so exclude the full aqtinstall tree from the snap to avoid duplicates
+      true
 
   pokerth:
     after: [boost, qt6]
@@ -95,12 +97,28 @@ parts:
       - libx11-6
       - libssl3t64
       - zlib1g
-      - libprotobuf-lite32t64
+      - libprotobuf32t64
       - libgl1
       - libxkbcommon0
       - libfontconfig1
       - libfreetype6
       - libicu74
+      - libegl1
+      - libpulse0
+      - libsndfile1
+      - libxcb-cursor0
+      - libxcb-icccm4
+      - libxcb-image0
+      - libxcb-keysyms1
+      - libxcb-render-util0
+      - libxcb-render0
+      - libxcb-shape0
+      - libxcb-util1
+      - libxcb-xkb1
+      - libxkbcommon-x11-0
+      - libwayland-client0
+      - libwayland-cursor0
+      - libwayland-egl1
     override-build: |
       # Remove outdated custom FindBoost.cmake that disables imported targets
       # for Boost >= 1.66 — CMake's built-in module handles 1.88 correctly

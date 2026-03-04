@@ -24,7 +24,16 @@ if [ ! -x /snap/snapcraft/current/bin/python3 ] || file /snap/snapcraft/current/
 fi
 
 # Run snapcraft directly (already installed in this container via unsquashfs)
-sudo /snap/snapcraft/current/bin/snapcraft --destructive-mode
+# Set environment variables that snapcraft expects (normally set by snap confinement)
+sudo env \
+  SNAP="/snap/snapcraft/current" \
+  SNAP_NAME="snapcraft" \
+  SNAP_VERSION="8.0" \
+  SNAP_ARCH="amd64" \
+  SNAP_INSTANCE_NAME="snapcraft" \
+  PYTHONPATH="/snap/snapcraft/current/lib/python3.12/site-packages:/snap/snapcraft/current/usr/lib/python3/dist-packages" \
+  PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:$PATH" \
+  /snap/snapcraft/current/bin/snapcraft --destructive-mode
 
 echo "Build finished."
 ls -la "${REPO_ROOT}"/*.snap 2>/dev/null || echo "No .snap files found in ${REPO_ROOT}/"

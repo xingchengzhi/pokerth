@@ -6,8 +6,9 @@ REPO_ROOT="/opt/pokerth-snap/pokerth"
 
 echo "Building snap for PokerTH version 2.0.6..."
 
-# Copy snapcraft.yaml into repo root (snapcraft expects it there)
-cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snapcraft.yaml"
+# snapcraft expects snap/snapcraft.yaml inside the project root
+mkdir -p "${REPO_ROOT}/snap"
+cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snap/snapcraft.yaml"
 
 # Run snapcraft via the official snapcore/snapcraft Docker image
 # This avoids needing snapd/systemd in the devcontainer

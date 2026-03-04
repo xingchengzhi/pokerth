@@ -33,18 +33,22 @@ RUN SNAP_URL=$(curl -s -H "Snap-Device-Series: 16" \
     && rm /tmp/snapcraft.snap
 
 # The snap's python3.12 expects /snap/core24/current/lib64/ld-linux-x86-64.so.2
-# which doesn't exist. Use system ld-linux with snap's library paths instead.
-RUN rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
-    && printf '#!/bin/sh\nSNAP_ROOT="/snap/snapcraft/current"\nLIB_PATH="${SNAP_ROOT}/lib/x86_64-linux-gnu:${SNAP_ROOT}/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"\nexec /lib64/ld-linux-x86-64.so.2 --library-path "${LIB_PATH}" "${SNAP_ROOT}/usr/bin/python3.12" "$@"\n' \
-       > /snap/snapcraft/current/bin/python3 \
-    && chmod +x /snap/snapcraft/current/bin/python3 \
+# which doesn't exist. Create that symlink so ALL snap binaries work natively.
+# Also set LD_LIBRARY_PATH so C extensions (like _yaml) find their .so deps.
+RUN mkdir -p /snap/core24/current/lib64 \
+    && ln -s /lib64/ld-linux-x86-64.so.2 /snap/core24/current/lib64/ld-linux-x86-64.so.2 \
+    && rm -f /snap/snapcraft/current/bin/python3 /snap/snapcraft/current/bin/python \
+    && ln -s ../usr/bin/python3.12 /snap/snapcraft/current/bin/python3 \
     && ln -s python3 /snap/snapcraft/current/bin/python
 
 # Make extracted snapcraft available
 ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"
 ENV SNAP="/snap/snapcraft/current"
 ENV SNAP_NAME="snapcraft"
+ENV SNAP_VERSION="8.0"
+ENV SNAP_INSTANCE_NAME="snapcraft"
 ENV SNAP_ARCH="amd64"
+ENV LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu"
 
 # Locales & timezone
 RUN sed -i '/'${LANG}'/s/^# //g' /etc/locale.gen && \

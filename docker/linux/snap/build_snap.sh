@@ -1,22 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+
+SNAP_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="/opt/pokerth-snap/pokerth"
+
 echo "Building snap for PokerTH version 2.0.6..."
 
-# Determine snapcraft invocation. Prefer LXD if available, otherwise destructive-mode.
-if command -v snapcraft >/dev/null 2>&1; then
-	echo "snapcraft found locally"
-	if command -v lxd >/dev/null 2>&1 || command -v lxd.lxc >/dev/null 2>&1; then
-		echo "Using LXD for clean build"
-		snapcraft
-	else
-		echo "LXD not found — using destructive-mode (unsafe for host)"
-		snapcraft --destructive-mode
-	fi
-else
-	echo "snapcraft not found in PATH. Expect to run inside a snapcraft-enabled container. Trying snapcraft command (may fail)..."
-	snapcraft --destructive-mode || { echo "snapcraft failed or not available."; exit 2; }
+# Activate venv if present (snapcraft installed via pip)
+if [ -f /opt/pokerth-snap/venv/bin/activate ]; then
+    source /opt/pokerth-snap/venv/bin/activate
 fi
 
-echo "Build finished. Look for .snap files in the current directory or in parts/*/install/*/snap/"
+# Verify snapcraft is available
+if ! command -v snapcraft >/dev/null 2>&1; then
+    echo "ERROR: snapcraft not found. Install via: pip install snapcraft"
+    exit 2
+fi
+
+echo "snapcraft version: $(snapcraft --version)"
+
+# snapcraft needs to run from the directory containing snapcraft.yaml
+# Copy snapcraft.yaml into the repo root (source: ../../../ relative won't work from repo)
+cp "${SNAP_DIR}/snapcraft.yaml" "${REPO_ROOT}/snapcraft.yaml"
+cd "${REPO_ROOT}"
+
+echo "Running snapcraft --destructive-mode in ${REPO_ROOT} ..."
+snapcraft --destructive-mode
+
+echo "Build finished. Look for .snap files in ${REPO_ROOT}/"
+ls -la *.snap 2>/dev/null || echo "No .snap files found."
 

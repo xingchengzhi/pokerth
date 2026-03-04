@@ -24,7 +24,7 @@ apps:
 parts:
   pokerth:
     plugin: cmake
-    source: ../../../
+    source: .
     build-packages:
       - build-essential
       - cmake

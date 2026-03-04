@@ -1,0 +1,9 @@
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../../flatpak:/workspaces/flatpak:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: sleep infinity

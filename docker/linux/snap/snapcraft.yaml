@@ -1,0 +1,46 @@
+name: pokerth
+version: '2.0.6'
+summary: Multiplayer Texas Hold'em poker client and server
+description: |
+  PokerTH is an open-source multiplayer Texas Hold'em poker client and server.
+base: core22
+grade: stable
+confinement: strict
+
+apps:
+  pokerth:
+    command: bin/pokerth
+    desktop: pokerth.desktop
+    plugs:
+      - network
+      - network-bind
+      - home
+      - removable-media
+      - audio-playback
+      - x11
+      - wayland
+      - opengl
+
+parts:
+  pokerth:
+    plugin: cmake
+    source: ../../../
+    build-packages:
+      - build-essential
+      - cmake
+      - qtbase5-dev
+      - qtdeclarative5-dev
+      - libqt5svg5-dev
+      - libssl-dev
+      - zlib1g-dev
+      - libsqlite3-dev
+    stage-packages:
+      - libqt5core5a
+      - libqt5gui5
+      - libqt5widgets5
+      - libx11-6
+      - libssl3
+      - zlib1g
+      - libsqlite3-0
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release

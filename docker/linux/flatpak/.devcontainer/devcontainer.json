@@ -1,0 +1,10 @@
+{
+  "name": "PokerTH Flatpak Builder",
+  "context": "..",
+  "dockerFile": "Dockerfile",
+  "workspaceFolder": "/workspace",
+  "settings": {},
+  "extensions": [],
+  "postCreateCommand": "echo 'Devcontainer ready. Run ./docker/linux/flatpak/build_flatpak.sh inside the container.'",
+  "remoteUser": "vscode"
+}

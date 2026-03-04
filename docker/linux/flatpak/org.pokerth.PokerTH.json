@@ -1,0 +1,33 @@
+{
+  "app-id": "org.pokerth.PokerTH",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "22.08",
+  "sdk": "org.freedesktop.Sdk",
+  "command": "pokerth",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=pulseaudio",
+    "--talk-name=org.freedesktop.Flatpak",
+    "--filesystem=home",
+    "--device=all"
+  ],
+  "modules": [
+    {
+      "name": "pokerth",
+      "buildsystem": "cmake",
+      "config-opts": ["-DCMAKE_BUILD_TYPE=Release"],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../../../"
+        }
+      ],
+      "build-commands": [
+        "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
+        "cmake --build build -- -j$(nproc)",
+        "cmake --install build --prefix=/app"
+      ]
+    }
+  ]
+}

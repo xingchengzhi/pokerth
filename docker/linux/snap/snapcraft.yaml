@@ -78,12 +78,16 @@ parts:
       - libfreetype6
       - libicu74
     override-build: |
+      # Remove outdated custom FindBoost.cmake that disables imported targets
+      # for Boost >= 1.66 — CMake's built-in module handles 1.88 correctly
+      rm -f ${CRAFT_PART_SRC}/cmake/FindBoost.cmake
       QT_DIR="${CRAFT_STAGE}/opt/qt6/6.9.2/gcc_64"
       cmake ${CRAFT_PART_SRC} \
         -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=${CRAFT_PART_INSTALL} \
         -DBOOST_ROOT=${CRAFT_STAGE}/usr \
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW \
         -DCMAKE_PREFIX_PATH="${QT_DIR}" \
         -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
       cmake --build . -j$(nproc)

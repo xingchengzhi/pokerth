@@ -41,8 +41,7 @@ RUN mkdir -p /snap/core24/current/lib64 \
     && ln -s ../usr/bin/python3.12 /snap/snapcraft/current/bin/python3 \
     && ln -s python3 /snap/snapcraft/current/bin/python
 
-# Make extracted snapcraft available (LD_LIBRARY_PATH set later — after all apt calls)
-ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"
+# Snapcraft env vars (safe — no path/lib changes yet)
 ENV SNAP="/snap/snapcraft/current"
 ENV SNAP_NAME="snapcraft"
 ENV SNAP_VERSION="8.0"
@@ -58,7 +57,7 @@ ENV LC_ALL=${LC_ALL}
 ENV TZ=Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# apt cleanup (before LD_LIBRARY_PATH is set, so apt finds system libs)
+# apt cleanup (PATH/LD_LIBRARY_PATH not yet modified — system apt works)
 RUN apt-get autoremove --purge && rm -Rf /var/cache/apt/archives && \
     unset DEBIAN_FRONTEND
 
@@ -72,7 +71,9 @@ RUN userdel -r ubuntu 2>/dev/null || true && \
 
 RUN mkdir -p ${ROOT} && chown -R vscode:vscode ${ROOT}
 
-# NOW set LD_LIBRARY_PATH for snap C extensions (after all apt/system calls)
+# NOW set PATH and LD_LIBRARY_PATH (after ALL apt/system calls)
+# snap's usr/bin contains its own apt-get, dpkg etc. which break if loaded before this point
+ENV PATH="/snap/snapcraft/current/bin:/snap/snapcraft/current/usr/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/snap/snapcraft/current/lib/x86_64-linux-gnu:/snap/snapcraft/current/usr/lib/x86_64-linux-gnu"
 
 USER vscode

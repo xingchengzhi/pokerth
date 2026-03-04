@@ -1,26 +1,31 @@
-FROM ubuntu:25.10
+FROM ubuntu:questing
+# Based on docker/linux/Dockerfile — Ubuntu 25.10 (questing)
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Berlin
 
-# Install build dependencies that match Ubuntu 25.10 repositories (includes libboost 1.88)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl gnupg lsb-release build-essential cmake git python3-pip \
-    pkg-config libssl-dev zlib1g-dev libsqlite3-dev wget sudo \
-    libboost-all-dev protobuf-compiler libprotobuf-dev \
-    qtbase5-dev qtdeclarative5-dev libqt5svg5-dev libx11-dev \
-  && rm -rf /var/lib/apt/lists/*
+USER root
 
-# Install docker CLI to allow usage if needed inside container (optional)
-RUN apt-get update && apt-get install -y --no-install-recommends docker.io && rm -rf /var/lib/apt/lists/*
+# Enable deb-src for questing
+RUN echo '\nTypes: deb-src' >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo 'URIs: http://archive.ubuntu.com/ubuntu/' >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo 'Suites: questing questing-updates questing-backports' >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo 'Components: main universe restricted multiverse' >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' >> /etc/apt/sources.list.d/ubuntu.sources
 
-# Install snapd/snapcraft via snaps (may require privileged container/runtime that supports snapd)
-RUN apt-get update && apt-get install -y --no-install-recommends snapd squashfuse fuse && rm -rf /var/lib/apt/lists/*
-RUN snap install core20 --classic || true
+# Build dependencies (Qt 6.9, libboost 1.88, protobuf, websocketpp)
+RUN apt update && DEBIAN_FRONTEND="noninteractive" && apt upgrade -y
+RUN apt install -y wget git ca-certificates build-essential cmake debhelper zip ninja-build \
+    libwebsocketpp-dev libprotobuf-dev protobuf-compiler libboost1.88-all-dev \
+    qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-tools-dev linguist-qt6 qt6-websockets-dev \
+    qt6-multimedia-dev libqt6sql6-mysql libssl-dev
+
+# Install snapd and snapcraft for snap packaging
+RUN apt install -y snapd squashfuse fuse
 RUN snap install snapcraft --classic || true
+
+# Cleanup
+RUN apt clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /workspace
 
-COPY build_snap.sh /workspace/docker/linux/snap/build_snap.sh
-RUN chmod +x /workspace/docker/linux/snap/build_snap.sh
-
-CMD ["/bin/bash"]
+ENTRYPOINT ["/bin/bash"]

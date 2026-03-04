@@ -28,19 +28,29 @@ parts:
     build-packages:
       - build-essential
       - cmake
-      - qtbase5-dev
-      - qtdeclarative5-dev
-      - libqt5svg5-dev
+      - ninja-build
+      - qt6-base-dev
+      - qt6-svg-dev
+      - qt6-declarative-dev
+      - qt6-tools-dev
+      - linguist-qt6
+      - qt6-websockets-dev
+      - qt6-multimedia-dev
       - libssl-dev
-      - zlib1g-dev
-      - libsqlite3-dev
+      - libboost1.88-all-dev
+      - libprotobuf-dev
+      - protobuf-compiler
+      - libwebsocketpp-dev
     stage-packages:
-      - libqt5core5a
-      - libqt5gui5
-      - libqt5widgets5
+      - libqt6core6
+      - libqt6gui6
+      - libqt6widgets6
+      - libqt6svg6
+      - libqt6websockets6
       - libx11-6
       - libssl3
       - zlib1g
-      - libsqlite3-0
+      - libprotobuf32
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=Release
+      - -G Ninja

@@ -23,6 +23,13 @@ lint:
         - lib/libQt6WaylandClient.so*
         - lib/libQt6OpenGL.so*
         - lib/libQt6WebSockets.so*
+        - usr/lib/x86_64-linux-gnu/libEGL_mesa.so*
+        - usr/lib/x86_64-linux-gnu/libGLX_mesa.so*
+        - usr/lib/x86_64-linux-gnu/libicuio.so*
+        - usr/lib/x86_64-linux-gnu/libicutest.so*
+        - usr/lib/x86_64-linux-gnu/libpulse-simple.so*
+        - usr/lib/x86_64-linux-gnu/libvulkan.so*
+        - usr/lib/x86_64-linux-gnu/libwayland-egl.so*
 
 apps:
   pokerth:

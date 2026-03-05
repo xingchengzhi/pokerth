@@ -27,9 +27,12 @@ lint:
         - usr/lib/x86_64-linux-gnu/libGLX_mesa.so*
         - usr/lib/x86_64-linux-gnu/libicuio.so*
         - usr/lib/x86_64-linux-gnu/libicutest.so*
+        - usr/lib/x86_64-linux-gnu/libicutu.so*
         - usr/lib/x86_64-linux-gnu/libpulse-simple.so*
         - usr/lib/x86_64-linux-gnu/libvulkan.so*
         - usr/lib/x86_64-linux-gnu/libwayland-egl.so*
+        - usr/lib/x86_64-linux-gnu/libXxf86vm.so*
+        - usr/lib/x86_64-linux-gnu/libxcb-glx.so*
 
 apps:
   pokerth:

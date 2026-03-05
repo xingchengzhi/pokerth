@@ -150,6 +150,8 @@ parts:
         -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
       cmake --build . --target pokerth_client pokerth_lib pokerth_db pokerth_protocol zlib_compress -j$(nproc)
       cmake --install . --component pokerth_client
+      # Fix desktop file: Snapcraft needs a simple Exec= line to map to the snap command
+      sed -i 's|^Exec=.*|Exec=pokerth_client|' ${CRAFT_PART_INSTALL}/share/applications/pokerth.desktop
       # Copy icon for desktop file (usr/ prefix for snapcraft linter)
       mkdir -p ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/256x256/apps
       cp ${CRAFT_PART_SRC}/pokerth.png ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/256x256/apps/pokerth.png

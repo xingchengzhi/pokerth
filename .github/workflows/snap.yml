@@ -1,30 +1,16 @@
 name: Build & Publish Snap
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 jobs:
   build-snap:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest release tag
-        id: release
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          else
-            TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Checkout release
+      - name: Checkout stable
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.release.outputs.tag }}
+          ref: stable
 
       # snapcraft expects snap/snapcraft.yaml in the repo root
       - name: Prepare snapcraft.yaml
@@ -56,11 +42,10 @@ jobs:
           path: "*.snap"
           retention-days: 30
 
-  # Publish on release (auto) or manual trigger
+  # Publish to Snap Store after successful build
   publish-snap:
     needs: build-snap
     runs-on: ubuntu-24.04
-    if: github.event_name == 'release'
     steps:
       - name: Download snap artifact
         uses: actions/download-artifact@v4

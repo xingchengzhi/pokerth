@@ -11,9 +11,21 @@ contact: https://github.com/pokerth/pokerth/issues
 issues: https://github.com/pokerth/pokerth/issues
 source-code: https://github.com/pokerth/pokerth
 website: https://www.pokerth.net
+donation: https://www.pokerth.net
+icon: pokerth.png
 base: core24
 grade: stable
 confinement: strict
+
+lint:
+  ignore:
+    - library:
+        - usr/lib/x86_64-linux-gnu/libEGL_mesa.so*
+        - usr/lib/x86_64-linux-gnu/libGLX_mesa.so*
+        - usr/lib/x86_64-linux-gnu/libicuio.so*
+        - usr/lib/x86_64-linux-gnu/libicutest.so*
+        - usr/lib/x86_64-linux-gnu/libpulse-simple.so*
+        - usr/lib/x86_64-linux-gnu/libvulkan.so*
 
 apps:
   pokerth:
@@ -47,12 +59,10 @@ parts:
       - usr/lib/libboost_thread*
       - usr/lib/libboost_filesystem*
       - usr/lib/libboost_program_options*
-      - usr/lib/libboost_regex*
       - usr/lib/libboost_system*
       - usr/lib/libboost_chrono*
       - usr/lib/libboost_date_time*
       - usr/lib/libboost_atomic*
-      - usr/lib/libboost_serialization*
       - usr/lib/libboost_log*
       - usr/lib/libboost_charconv*
 
@@ -134,9 +144,9 @@ parts:
         -DQt6_DIR="${QT_DIR}/lib/cmake/Qt6"
       cmake --build . --target pokerth_client pokerth_lib pokerth_db pokerth_protocol zlib_compress -j$(nproc)
       cmake --install . --component pokerth_client
-      # Copy icon for desktop file
-      mkdir -p ${CRAFT_PART_INSTALL}/share/icons/hicolor/256x256/apps
-      cp ${CRAFT_PART_SRC}/pokerth.png ${CRAFT_PART_INSTALL}/share/icons/hicolor/256x256/apps/pokerth.png
+      # Copy icon for desktop file (usr/ prefix for snapcraft linter)
+      mkdir -p ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/256x256/apps
+      cp ${CRAFT_PART_SRC}/pokerth.png ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/256x256/apps/pokerth.png
       # Copy only needed Qt runtime libs into snap
       mkdir -p ${CRAFT_PART_INSTALL}/lib
       for lib in Core Gui Widgets Network Sql Xml Multimedia MultimediaWidgets Svg SvgWidgets WebSockets OpenGL OpenGLWidgets Core5Compat DBus XcbQpa WaylandClient WlShellIntegration; do

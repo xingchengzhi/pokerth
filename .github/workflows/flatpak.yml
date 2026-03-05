@@ -1,0 +1,60 @@
+name: Build & Publish Flatpak
+
+on:
+  push:
+    branches: [stable, testing]
+    paths:
+      - 'docker/linux/flatpak/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/flatpak.yml'
+  workflow_dispatch:
+
+jobs:
+  build-flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:kde-6.8
+      options: --privileged
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # flatpak-builder expects the manifest to reference sources relative to
+      # its own location — copy manifest to repo root so "type: dir, path: ."
+      # points at the full source tree
+      - name: Prepare manifest
+        run: cp docker/linux/flatpak/org.pokerth.PokerTH.json .
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: org.pokerth.PokerTH.json
+          bundle: pokerth.flatpak
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-build-log
+          path: .flatpak-builder/build/pokerth/
+          retention-days: 7
+
+  # Publish only from stable branch
+  publish-flatpak:
+    needs: build-flatpak
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/stable'
+    steps:
+      - name: Download Flatpak bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: pokerth.flatpak
+
+      # Placeholder: add Flathub submission or custom repo upload here
+      - name: Publish info
+        run: |
+          echo "Flatpak bundle ready for distribution."
+          echo "To submit to Flathub, see: https://docs.flathub.org/docs/for-app-authors/submission"
+          ls -lh *.flatpak

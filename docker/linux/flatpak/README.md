@@ -1,26 +1,42 @@
-# Flatpak deployment for PokerTH
+# Flatpak-Paket für PokerTH
 
-Kurz: Dieses Verzeichnis enthält ein Flatpak-Manifest und ein kleines Build-Skript für PokerTH (Version 2.0.6).
+Dieses Verzeichnis enthält das Flatpak-Manifest für PokerTH (v2.0.6).
 
-Voraussetzungen:
+## Übersicht
 
-- `flatpak` und `flatpak-builder` installiert
-- Geeignete `org.freedesktop.Sdk`/`Platform`-Runtimes (z.B. 22.08)
+- **Runtime:** org.kde.Platform 6.8 (liefert Qt 6.8.x)
+- **SDK:** org.kde.Sdk 6.8
+- **Boost:** 1.88 (aus Source)
+- **Protobuf:** 3.21.12 (aus Source)
+- **WebSocket++:** 0.8.2 (aus Source)
+- **Target:** `pokerth_client` (Qt Widgets)
 
-Lokal bauen:
+## Build via GitHub Actions
+
+Der Flatpak wird über [`.github/workflows/flatpak.yml`](../../../.github/workflows/flatpak.yml) gebaut.
+
+### Automatisch
+
+Bei Push auf `testing` oder `stable` Branch, wenn Dateien in einem dieser Pfade geändert wurden:
+- `docker/linux/flatpak/**`
+- `src/**`
+- `CMakeLists.txt`
+
+### Manuell
+
+GitHub → Actions → **Build & Publish Flatpak** → **Run workflow**
+
+Das `.flatpak`-Bundle kann unter Actions → Build-Run → Artifacts heruntergeladen werden.
+
+## Lokal installieren
 
 ```bash
-cd docker/linux/flatpak
-./build_flatpak.sh
+# Bundle herunterladen, dann:
+flatpak install --user pokerth.flatpak
+flatpak run org.pokerth.PokerTH
 ```
 
-Das Skript legt ein lokales Repo (`repo`), einen Build-Ordner (`build-dir`) und ein Bundle `pokerth-2.0.6.flatpak` an.
+## Flathub-Veröffentlichung
 
-Veröffentlichen:
-
-- Lade das Bundle zu deinem Flatpak-Hosting hoch oder erstelle ein Repo auf einem Server.
-- Alternativ: verwende `flatpak remote-add --user --no-gpg-verify myrepo file://$PWD/repo` und `flatpak install --user myrepo org.pokerth.PokerTH 2.0.6`.
-
-Anpassungen:
-
-- Passe `org.pokerth.PokerTH.json` an, falls zusätzliche Build-Options oder Runtime-Pakete benötigt werden.
+Für die Veröffentlichung auf Flathub siehe:
+https://docs.flathub.org/docs/for-app-authors/submission

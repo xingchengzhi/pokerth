@@ -1,8 +1,0 @@
-services:
-  devcontainer:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ../../snap:/workspaces/snap:cached
-    command: sleep infinity

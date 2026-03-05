@@ -38,6 +38,11 @@ apps:
   pokerth:
     command: bin/pokerth_client
     desktop: share/applications/pokerth.desktop
+    environment:
+      LD_LIBRARY_PATH: $SNAP/lib:$SNAP/usr/lib:$SNAP/usr/lib/x86_64-linux-gnu
+      QT_PLUGIN_PATH: $SNAP/plugins
+      QT_QPA_PLATFORM_PLUGIN_PATH: $SNAP/plugins/platforms
+      XDG_DATA_DIRS: $SNAP/share:$XDG_DATA_DIRS
     plugs:
       - network
       - network-bind

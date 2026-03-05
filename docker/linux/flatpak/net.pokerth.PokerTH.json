@@ -1,5 +1,5 @@
 {
-  "app-id": "org.pokerth.PokerTH",
+  "app-id": "net.pokerth.PokerTH",
   "runtime": "org.kde.Platform",
   "runtime-version": "6.9",
   "sdk": "org.kde.Sdk",
@@ -84,9 +84,9 @@
         "cmake --install _build --component pokerth_client"
       ],
       "post-install": [
-        "install -Dm644 pokerth.png /app/share/icons/hicolor/256x256/apps/org.pokerth.PokerTH.png",
-        "mv /app/share/applications/pokerth.desktop /app/share/applications/org.pokerth.PokerTH.desktop",
-        "sed -i 's/^Icon=pokerth$/Icon=org.pokerth.PokerTH/' /app/share/applications/org.pokerth.PokerTH.desktop"
+        "install -Dm644 pokerth.png /app/share/icons/hicolor/256x256/apps/net.pokerth.PokerTH.png",
+        "mv /app/share/applications/pokerth.desktop /app/share/applications/net.pokerth.PokerTH.desktop",
+        "sed -i 's/^Icon=pokerth$/Icon=net.pokerth.PokerTH/' /app/share/applications/net.pokerth.PokerTH.desktop"
       ]
     }
   ]

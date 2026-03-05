@@ -28,12 +28,12 @@ jobs:
       # its own location — copy manifest to repo root so "type: dir, path: ."
       # points at the full source tree
       - name: Prepare manifest
-        run: cp docker/linux/flatpak/org.pokerth.PokerTH.json .
+        run: cp docker/linux/flatpak/net.pokerth.PokerTH.json .
 
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          manifest-path: org.pokerth.PokerTH.json
+          manifest-path: net.pokerth.PokerTH.json
           bundle: pokerth.flatpak
           cache-key: flatpak-builder-${{ github.sha }}
 

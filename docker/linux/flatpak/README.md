@@ -4,8 +4,8 @@ Dieses Verzeichnis enthält das Flatpak-Manifest für PokerTH (v2.0.6).
 
 ## Übersicht
 
-- **Runtime:** org.kde.Platform 6.8 (liefert Qt 6.8.x)
-- **SDK:** org.kde.Sdk 6.8
+- **Runtime:** org.kde.Platform 6.9 (liefert Qt 6.9.x)
+- **SDK:** org.kde.Sdk 6.9
 - **Boost:** 1.88 (aus Source)
 - **Protobuf:** 3.21.12 (aus Source)
 - **WebSocket++:** 0.8.2 (aus Source)
@@ -33,7 +33,7 @@ Das `.flatpak`-Bundle kann unter Actions → Build-Run → Artifacts heruntergel
 ```bash
 # Bundle herunterladen, dann:
 flatpak install --user pokerth.flatpak
-flatpak run org.pokerth.PokerTH
+flatpak run net.pokerth.PokerTH
 ```
 
 ## Flathub-Veröffentlichung

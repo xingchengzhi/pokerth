@@ -20,12 +20,8 @@ confinement: strict
 lint:
   ignore:
     - library:
-        - usr/lib/x86_64-linux-gnu/libEGL_mesa.so*
-        - usr/lib/x86_64-linux-gnu/libGLX_mesa.so*
-        - usr/lib/x86_64-linux-gnu/libicuio.so*
-        - usr/lib/x86_64-linux-gnu/libicutest.so*
-        - usr/lib/x86_64-linux-gnu/libpulse-simple.so*
-        - usr/lib/x86_64-linux-gnu/libvulkan.so*
+        - lib/libQt6WaylandClient.so*
+        - lib/libQt6OpenGL.so*
 
 apps:
   pokerth:
@@ -58,13 +54,8 @@ parts:
       - usr/lib/libboost_random*
       - usr/lib/libboost_thread*
       - usr/lib/libboost_filesystem*
-      - usr/lib/libboost_program_options*
       - usr/lib/libboost_system*
-      - usr/lib/libboost_chrono*
       - usr/lib/libboost_date_time*
-      - usr/lib/libboost_atomic*
-      - usr/lib/libboost_log*
-      - usr/lib/libboost_charconv*
 
   # Install Qt 6.9.2 via aqtinstall (Ubuntu 24.04 only has Qt 6.4.2)
   qt6:
@@ -76,7 +67,7 @@ parts:
       python3 -m venv /tmp/aqt-venv
       /tmp/aqt-venv/bin/pip install aqtinstall
       /tmp/aqt-venv/bin/aqt install-qt linux desktop 6.9.2 \
-        -m qtwebsockets qtmultimedia qt5compat qtshadertools \
+        -m qtmultimedia qtshadertools \
         -O $CRAFT_PART_INSTALL/opt/qt6
     override-prime: |
       # Qt libs/plugins are copied selectively in the pokerth part,
@@ -112,7 +103,6 @@ parts:
       - libxkbcommon0
       - libfontconfig1
       - libfreetype6
-      - libicu74
       - libegl1
       - libpulse0
       - libsndfile1
@@ -149,13 +139,25 @@ parts:
       cp ${CRAFT_PART_SRC}/pokerth.png ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/256x256/apps/pokerth.png
       # Copy only needed Qt runtime libs into snap
       mkdir -p ${CRAFT_PART_INSTALL}/lib
-      for lib in Core Gui Widgets Network Sql Xml Multimedia MultimediaWidgets Svg SvgWidgets WebSockets OpenGL OpenGLWidgets Core5Compat DBus XcbQpa WaylandClient WlShellIntegration; do
+      for lib in Core Gui Widgets Network Sql Xml Multimedia Svg OpenGL DBus XcbQpa WaylandClient; do
         cp -a ${QT_DIR}/lib/libQt6${lib}.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
       done
-      # Copy ICU libs needed by Qt
-      cp -a ${QT_DIR}/lib/libicu*.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
-      # Copy Qt plugins (only needed ones)
-      mkdir -p ${CRAFT_PART_INSTALL}/plugins
-      for plugin in platforms imageformats sqldrivers tls multimedia networkinformation platformthemes platforminputcontexts iconengines; do
-        cp -a ${QT_DIR}/plugins/${plugin} ${CRAFT_PART_INSTALL}/plugins/ 2>/dev/null || true
+      # Copy ICU libs needed by Qt (only data, i18n, uc — skip io, test, tu)
+      for iculib in libicudata libicui18n libicuuc; do
+        cp -a ${QT_DIR}/lib/${iculib}.so* ${CRAFT_PART_INSTALL}/lib/ 2>/dev/null || true
       done
+      # Copy Qt plugins — only the specific ones we need
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/platforms
+      cp -a ${QT_DIR}/plugins/platforms/libqxcb.so ${CRAFT_PART_INSTALL}/plugins/platforms/
+      cp -a ${QT_DIR}/plugins/platforms/libqwayland-generic.so ${CRAFT_PART_INSTALL}/plugins/platforms/ 2>/dev/null || true
+      cp -a ${QT_DIR}/plugins/platforms/libqminimal.so ${CRAFT_PART_INSTALL}/plugins/platforms/ 2>/dev/null || true
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/imageformats
+      cp -a ${QT_DIR}/plugins/imageformats/*.so ${CRAFT_PART_INSTALL}/plugins/imageformats/
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/sqldrivers
+      cp -a ${QT_DIR}/plugins/sqldrivers/libqsqlite.so ${CRAFT_PART_INSTALL}/plugins/sqldrivers/
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/tls
+      cp -a ${QT_DIR}/plugins/tls/*.so ${CRAFT_PART_INSTALL}/plugins/tls/
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/iconengines
+      cp -a ${QT_DIR}/plugins/iconengines/*.so ${CRAFT_PART_INSTALL}/plugins/iconengines/ 2>/dev/null || true
+      mkdir -p ${CRAFT_PART_INSTALL}/plugins/platforminputcontexts
+      cp -a ${QT_DIR}/plugins/platforminputcontexts/*.so ${CRAFT_PART_INSTALL}/plugins/platforminputcontexts/ 2>/dev/null || true

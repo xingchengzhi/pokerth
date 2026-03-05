@@ -1,0 +1,73 @@
+name: Build & Publish Flatpak
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - name: Install flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub org.kde.Platform//6.9 org.kde.Sdk//6.9
+
+      # flatpak-builder expects the manifest to reference sources relative to
+      # its own location — copy manifest to repo root so "type: dir, path: ."
+      # points at the full source tree
+      - name: Prepare manifest
+        run: cp docker/linux/flatpak/net.pokerth.PokerTH.json .
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: net.pokerth.PokerTH.json
+          bundle: pokerth.flatpak
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-build-log
+          path: .flatpak-builder/build/pokerth/
+          retention-days: 7
+
+  # Publish on release
+  publish-flatpak:
+    needs: build-flatpak
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Download Flatpak bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: pokerth.flatpak
+
+      # Placeholder: add Flathub submission or custom repo upload here
+      - name: Publish info
+        run: |
+          echo "Flatpak bundle ready for distribution."
+          echo "To submit to Flathub, see: https://docs.flathub.org/docs/for-app-authors/submission"
+          ls -lh *.flatpak

@@ -21,6 +21,22 @@
   ],
   "modules": [
     {
+      "name": "gsfonts",
+      "buildsystem": "simple",
+      "sources": [
+        {
+          "type": "file",
+          "url": "http://archive.ubuntu.com/ubuntu/pool/universe/g/gsfonts/gsfonts_8.11+urwcyr1.0.7~pre44-4.4_all.deb",
+          "sha256": "14b9c058a7bb18c0d19d9f2735f3ad34cbc613702440bb46e8adafbeec4aabad"
+        }
+      ],
+      "build-commands": [
+        "ar x gsfonts_*.deb",
+        "tar xf data.tar.* ./usr/share/fonts/type1/gsfonts/n019003l.pfb",
+        "install -Dm644 usr/share/fonts/type1/gsfonts/n019003l.pfb /app/share/fonts/type1/gsfonts/n019003l.pfb"
+      ]
+    },
+    {
       "name": "boost",
       "buildsystem": "simple",
       "sources": [
@@ -86,7 +102,9 @@
       "post-install": [
         "install -Dm644 pokerth.png /app/share/icons/hicolor/256x256/apps/net.pokerth.PokerTH.png",
         "mv /app/share/applications/pokerth.desktop /app/share/applications/net.pokerth.PokerTH.desktop",
-        "sed -i 's/^Icon=pokerth$/Icon=net.pokerth.PokerTH/' /app/share/applications/net.pokerth.PokerTH.desktop"
+        "sed -i 's/^Exec=.*$/Exec=pokerth_client/' /app/share/applications/net.pokerth.PokerTH.desktop",
+        "sed -i 's/^Icon=pokerth$/Icon=net.pokerth.PokerTH/' /app/share/applications/net.pokerth.PokerTH.desktop",
+        "cp /app/share/fonts/type1/gsfonts/n019003l.pfb /app/share/pokerth/data/fonts/n019003l.pfb"
       ]
     }
   ]

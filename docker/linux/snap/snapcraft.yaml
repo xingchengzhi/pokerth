@@ -44,6 +44,8 @@ apps:
       QT_QPA_PLATFORM_PLUGIN_PATH: $SNAP/plugins/platforms
       XDG_DATA_DIRS: $SNAP/share:$XDG_DATA_DIRS
     plugs:
+      - desktop
+      - desktop-legacy
       - network
       - network-bind
       - home

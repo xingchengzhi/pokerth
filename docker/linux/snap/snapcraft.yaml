@@ -200,21 +200,5 @@ parts:
       # Copy missing Nimbus Sans L font (referenced by PokerTH on Linux)
       cp /usr/share/fonts/type1/gsfonts/n019003l.pfb \
         ${CRAFT_PART_INSTALL}/share/pokerth/data/fonts/ 2>/dev/null || true
-      # Create launcher script for PulseAudio socket fix in snap confinement
-      cat > ${CRAFT_PART_INSTALL}/bin/launcher << 'LAUNCHER'
-#!/bin/bash
-# PulseAudio: snapd bind-mounts the host pulse socket into
-# $XDG_RUNTIME_DIR/pulse/ when audio-playback is connected.
-# If that path doesn't exist (e.g. PipeWire-Pulse), fall back
-# to the real user runtime directory.
-if [ -z "$PULSE_SERVER" ] && [ -n "$XDG_RUNTIME_DIR" ]; then
-    if [ ! -S "$XDG_RUNTIME_DIR/pulse/native" ]; then
-        REAL_RUNTIME="$(dirname "$XDG_RUNTIME_DIR")"
-        if [ -S "$REAL_RUNTIME/pulse/native" ]; then
-            export PULSE_SERVER="unix:$REAL_RUNTIME/pulse/native"
-        fi
-    fi
-fi
-exec "$@"
-LAUNCHER
-      chmod +x ${CRAFT_PART_INSTALL}/bin/launcher
+      # Install launcher script for PulseAudio socket fix in snap confinement
+      install -m 755 ${CRAFT_PART_SRC}/docker/linux/snap/launcher.sh ${CRAFT_PART_INSTALL}/bin/launcher

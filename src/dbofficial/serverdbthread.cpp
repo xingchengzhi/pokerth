@@ -614,9 +614,34 @@ ServerDBThread::HandleNextQuery()
 		static const int MAX_TRANSIENT_RETRIES = 2;
 		int transientRetries = 0;
 
+		// Maximum number of times a query may be deferred (re-queued)
+		// because a dependency (e.g. game DB ID from AsyncCreateGame)
+		// is not yet available.  This allows the dependent CreateGame
+		// query to be processed first.  If the limit is exceeded the
+		// dependency will never arrive (permanent CreateGame failure)
+		// and we give up with an error.
+		static const unsigned MAX_DEFER_COUNT = 50;
+
 retry_query:
 		do {
-			nextQuery->Init(m_dbIdManager);
+			if (!nextQuery->Init(m_dbIdManager)) {
+				// Dependency not available – defer this query.
+				nextQuery->IncrementDeferCount();
+				if (nextQuery->GetDeferCount() <= MAX_DEFER_COUNT) {
+					LOG_ERROR("Deferring query " + nextQuery->GetPreparedName()
+						+ " (defer #" + std::to_string(nextQuery->GetDeferCount())
+						+ ") – waiting for dependency.");
+					boost::mutex::scoped_lock lock(m_asyncQueueMutex);
+					m_asyncQueue.push(nextQuery);
+					m_semaphore.post();
+				} else {
+					LOG_ERROR("Query " + nextQuery->GetPreparedName()
+						+ " deferred " + std::to_string(MAX_DEFER_COUNT)
+						+ " times – dependency never arrived, giving up.");
+					nextQuery->HandleError(*m_ioService, m_callback);
+				}
+				break;
+			}
 			mysqlpp::Query executeQuery = m_connData->conn.query();
 			executeQuery << "EXECUTE " << nextQuery->GetPreparedName();
 

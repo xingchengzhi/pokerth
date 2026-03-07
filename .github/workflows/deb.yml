@@ -101,6 +101,20 @@ jobs:
           cp -a $HOME/boost-install/lib/libboost_system.so*      ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
           cp -a $HOME/boost-install/lib/libboost_date_time.so*   ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
 
+          # Install AppStream MetaInfo so package managers show "PokerTH" as display name
+          mkdir -p ${PKG_DIR}/usr/share/metainfo
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<component type="desktop-application">'
+            echo '  <id>net.pokerth.PokerTH</id>'
+            echo '  <metadata_license>CC-BY-3.0</metadata_license>'
+            echo '  <project_license>AGPL-3.0</project_license>'
+            echo "  <name>PokerTH</name>"
+            echo '  <summary>Poker game with single and multiplayer support</summary>'
+            echo "  <releases><release version=\"${VERSION}\" date=\"$(date +%Y-%m-%d)\" type=\"stable\"/></releases>"
+            echo '</component>'
+          } > ${PKG_DIR}/usr/share/metainfo/net.pokerth.PokerTH.metainfo.xml
+
           # Fix desktop file: Exec must point to wrapper so LD_LIBRARY_PATH is set
           sed -i 's|^Exec=.*|Exec=pokerth|' ${PKG_DIR}/usr/share/applications/pokerth.desktop
 

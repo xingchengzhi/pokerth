@@ -94,12 +94,8 @@ jobs:
           mkdir -p ${PKG_DIR}/usr/lib/pokerth/qt6-plugins/multimedia
           cp -a ${QT_DIR}/plugins/multimedia/*.so                ${PKG_DIR}/usr/lib/pokerth/qt6-plugins/multimedia/ 2>/dev/null || true
 
-          # Bundle Boost runtime libs
-          cp -a $HOME/boost-install/lib/libboost_iostreams.so*   ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
-          cp -a $HOME/boost-install/lib/libboost_thread.so*      ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
-          cp -a $HOME/boost-install/lib/libboost_filesystem.so*  ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
-          cp -a $HOME/boost-install/lib/libboost_system.so*      ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
-          cp -a $HOME/boost-install/lib/libboost_date_time.so*   ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
+          # Bundle all built Boost runtime libs (avoids missing lib issues on target)
+          cp -a $HOME/boost-install/lib/libboost_*.so* ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
 
           # Install AppStream MetaInfo so package managers show "PokerTH" as display name
           mkdir -p ${PKG_DIR}/usr/share/metainfo

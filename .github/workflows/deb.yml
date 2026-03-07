@@ -101,6 +101,9 @@ jobs:
           cp -a $HOME/boost-install/lib/libboost_system.so*      ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
           cp -a $HOME/boost-install/lib/libboost_date_time.so*   ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true
 
+          # Fix desktop file: Exec must point to wrapper so LD_LIBRARY_PATH is set
+          sed -i 's|^Exec=.*|Exec=pokerth|' ${PKG_DIR}/usr/share/applications/pokerth.desktop
+
           # Wrapper script that sets QT_PLUGIN_PATH and LD_LIBRARY_PATH
           mkdir -p ${PKG_DIR}/usr/bin
           cat > ${PKG_DIR}/usr/bin/pokerth << 'WRAPPER'

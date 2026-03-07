@@ -117,18 +117,18 @@ jobs:
             ${PKG_DIR}/usr/share/pokerth/data/fonts/ 2>/dev/null || true
 
           cat > ${PKG_DIR}/DEBIAN/control << EOF
-          Package: pokerth
-          Version: ${VERSION}
-          Architecture: amd64
-          Maintainer: Kai Philipp <webmaster@pokerth.net>
-          Depends: libssl3t64, libprotobuf32t64, libgl1, libx11-6, libxkbcommon0, libfontconfig1, libfreetype6, libegl1, libpulse0, zlib1g
-          Section: games
-          Priority: optional
-          Homepage: https://www.pokerth.net
-          Description: Texas Hold'em poker game
-           PokerTH is an open-source multiplayer Texas Hold'em poker client and server.
-           Play against up to nine computer opponents or online with other players.
-          EOF
+Package: pokerth
+Version: ${VERSION}
+Architecture: amd64
+Maintainer: PokerTH GbR <webmaster@pokerth.net>
+Depends: libssl3t64, libprotobuf32t64, libgl1, libx11-6, libxkbcommon0, libfontconfig1, libfreetype6, libegl1, libpulse0, zlib1g
+Section: games
+Priority: optional
+Homepage: https://www.pokerth.net
+Description: PokerTH ${VERSION} - Texas Hold'em poker game
+ PokerTH is an open-source multiplayer Texas Hold'em poker client and server.
+ Play against up to nine computer opponents or online with other players.
+EOF
 
           dpkg-deb --build --root-owner-group ${PKG_DIR}
 

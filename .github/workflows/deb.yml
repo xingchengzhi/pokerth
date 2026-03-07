@@ -93,6 +93,10 @@ jobs:
           cp -a ${QT_DIR}/plugins/tls/*.so                       ${PKG_DIR}/usr/lib/pokerth/qt6-plugins/tls/
           mkdir -p ${PKG_DIR}/usr/lib/pokerth/qt6-plugins/multimedia
           cp -a ${QT_DIR}/plugins/multimedia/*.so                ${PKG_DIR}/usr/lib/pokerth/qt6-plugins/multimedia/ 2>/dev/null || true
+          # Bundle Qt's own FFmpeg libs required by the multimedia backend
+          for lib in ${QT_DIR}/lib/libav*.so* ${QT_DIR}/lib/libsw*.so*; do
+            [ -f "$lib" ] && cp -a "$lib" ${PKG_DIR}/usr/lib/pokerth/ || true
+          done
 
           # Bundle all built Boost runtime libs (avoids missing lib issues on target)
           cp -a $HOME/boost-install/lib/libboost_*.so* ${PKG_DIR}/usr/lib/pokerth/ 2>/dev/null || true

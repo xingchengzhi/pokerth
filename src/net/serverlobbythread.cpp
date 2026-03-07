@@ -318,7 +318,6 @@ ServerLobbyThread::AddConnection(boost::shared_ptr<SessionData> sessionData)
 	m_sessionManager.AddSession(sessionData);
 
 	LOG_VERBOSE(sessionData->GetRemoteIPAddressFromSocket() << " Accepted connection - session #" << sessionData->GetId() << ".");
-	LOG_ERROR(sessionData->GetRemoteIPAddressFromSocket() << " Accepted connection - session #" << sessionData->GetId() << ".");
 
 	sessionData->StartTimerInitTimeout(SERVER_INIT_SESSION_TIMEOUT_SEC);
 	sessionData->StartTimerGlobalTimeout(SERVER_SESSION_FORCED_TIMEOUT_SEC);
@@ -1344,7 +1343,7 @@ ServerLobbyThread::HandleNetPacketAvatarEnd(boost::shared_ptr<SessionData> sessi
 					session->GetPlayerData()->SetAvatarFile(avatarFileName);
 				// Init finished - start session.
 				EstablishSession(session);
-				LOG_MSG("Client \"" << session->GetClientAddr() << "\" uploaded avatar \""
+				LOG_VERBOSE("Client \"" << session->GetClientAddr() << "\" uploaded avatar \""
 						<< boost::filesystem::path(avatarFileName).string() << "\".");
 			} else
 				SessionError(session, ERR_NET_WRONG_AVATAR_SIZE);
@@ -1431,7 +1430,7 @@ ServerLobbyThread::HandleNetPacketRetrieveAvatar(boost::shared_ptr<SessionData> 
 void
 ServerLobbyThread::HandleNetPacketCreateGame(boost::shared_ptr<SessionData> session, const JoinNewGameMessage &newGame)
 {
-	LOG_ERROR("Creating new game, initiated by session #" << session->GetId() << ".");
+	LOG_VERBOSE("Creating new game, initiated by session #" << session->GetId() << ".");
 
 	string password;
 	if (newGame.has_password())

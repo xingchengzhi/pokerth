@@ -1661,7 +1661,7 @@ ServerGameStateWaitPlayerAction::InternalProcessPacket(boost::shared_ptr<ServerG
 		}
 
 		if (code == ACTION_CODE_VALID) {
-			LOG_MSG("Player " << tmpPlayer->getMyName() << " action accepted, switching state immediately");
+			// LOG_VERBOSE("Player " << tmpPlayer->getMyName() << " action accepted, switching state immediately");
 			tmpPlayer->setIsSessionActive(true);
 			tmpPlayer->markRemoteAction();
 			PerformPlayerAction(*server, tmpPlayer, static_cast<PlayerAction>(netMyAction->myaction()), netMyAction->myrelativebet());

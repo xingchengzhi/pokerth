@@ -49,7 +49,7 @@ jobs:
           rm -f cmake/FindBoost.cmake
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$HOME/pokerth-install \
+            -DCMAKE_INSTALL_PREFIX=$HOME/pokerth-install/usr \
             -DBOOST_ROOT=$HOME/boost-install \
             -DCMAKE_POLICY_DEFAULT_CMP0144=NEW \
             -DCMAKE_PREFIX_PATH="${QT_DIR}" \
@@ -65,11 +65,12 @@ jobs:
           VERSION=$(grep 'POKERTH_BETA_RELEASE_STRING' src/game_defs.h | grep -oP '"\K[^"]+')
           QT_DIR="$HOME/qt6/6.9.2/gcc_64"
           PKG_DIR=pokerth_${VERSION}_amd64
-          INSTALL=$HOME/pokerth-install
+          INSTALL=$HOME/pokerth-install/usr
 
           mkdir -p ${PKG_DIR}/DEBIAN
-          # Copy installed files
-          cp -r ${INSTALL}/* ${PKG_DIR}/
+          # Copy installed files (preserves /usr/ prefix for deb)
+          mkdir -p ${PKG_DIR}/usr
+          cp -r ${INSTALL}/* ${PKG_DIR}/usr/
 
           # Bundle required Qt libs
           mkdir -p ${PKG_DIR}/usr/lib/pokerth
@@ -111,6 +112,7 @@ jobs:
           chmod +x ${PKG_DIR}/usr/bin/pokerth
 
           # Copy font
+          mkdir -p ${PKG_DIR}/usr/share/pokerth/data/fonts
           cp /usr/share/fonts/type1/gsfonts/n019003l.pfb \
             ${PKG_DIR}/usr/share/pokerth/data/fonts/ 2>/dev/null || true
 

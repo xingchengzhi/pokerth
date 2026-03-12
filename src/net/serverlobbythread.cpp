@@ -276,6 +276,9 @@ ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigF
 
 	std::string discordUrl = m_serverConfig.readConfigString("DiscordChatWebhookUrl");
 	m_discordWebhook.reset(new DiscordWebhookSender(discordUrl));
+	if (m_discordWebhook->IsEnabled()) {
+		LOG_MSG("Discord chat webhook enabled.");
+	}
 	DBFactory dbFactory;
 	m_database = dbFactory.CreateServerDBObject(*m_internalServerCallback, m_ioService);
 }

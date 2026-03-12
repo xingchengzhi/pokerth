@@ -1,14 +1,17 @@
 #include <net/discordwebhook.h>
 #include <core/loghelper.h>
 
+#include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QEventLoop>
 #include <QUrl>
+#include <thread>
 
-DiscordWebhookSender::DiscordWebhookSender(const std::string &webhookUrl, QObject *parent)
-	: QObject(parent), m_webhookUrl(webhookUrl)
+DiscordWebhookSender::DiscordWebhookSender(const std::string &webhookUrl)
+	: m_webhookUrl(webhookUrl)
 {
 }
 
@@ -25,18 +28,28 @@ DiscordWebhookSender::SendChatMessage(const std::string &playerName, const std::
 		return;
 	}
 
-	QJsonObject json;
-	json["content"] = QString::fromStdString("**" + playerName + ":** " + message);
+	std::string url = m_webhookUrl;
+	std::string content = "**" + playerName + ":** " + message;
 
-	QNetworkRequest request(QUrl(QString::fromStdString(m_webhookUrl)));
-	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+	// Fire-and-forget in a detached thread with its own Qt event loop,
+	// because the server main loop does not run QCoreApplication::exec().
+	std::thread([url, content]() {
+		QNetworkAccessManager manager;
+		QEventLoop loop;
 
-	QNetworkReply *reply = m_networkManager.post(request, QJsonDocument(json).toJson(QJsonDocument::Compact));
+		QJsonObject json;
+		json["content"] = QString::fromStdString(content);
 
-	connect(reply, &QNetworkReply::finished, reply, [reply]() {
+		QNetworkRequest request(QUrl(QString::fromStdString(url)));
+		request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+		QNetworkReply *reply = manager.post(request, QJsonDocument(json).toJson(QJsonDocument::Compact));
+		QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+		loop.exec();
+
 		if (reply->error() != QNetworkReply::NoError) {
 			LOG_ERROR("Discord webhook failed: " << reply->errorString().toStdString());
 		}
 		reply->deleteLater();
-	});
+	}).detach();
 }

@@ -100,6 +100,9 @@ public:
 	void RemovePlayer(unsigned playerId, unsigned errorCode);
 	void MutePlayerInGame(unsigned playerId);
 
+	bool IsPlayerInLobby(unsigned playerId) const;
+	bool IsPlayerInAnotherGame(unsigned playerId, unsigned currentGameId) const;
+
 	void SendGlobalChat(const std::string &message);
 	void SendGlobalMsgBox(const std::string &message);
 	void SendChatBotMsg(const std::string &message);

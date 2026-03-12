@@ -77,8 +77,8 @@
 
 #define SERVER_INIT_SESSION_TIMEOUT_SEC				60
 #define SERVER_TIMEOUT_WARNING_REMAINING_SEC		60
-#define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1800	// 30 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
-#define SERVER_INGAME_ACTIVITY_TIMEOUT_SEC			1860	// 31 min (warning at 30 min) - only real UI activity resets
+#define SERVER_SESSION_ACTIVITY_TIMEOUT_SEC			1200	// 20 min, MUST be > SERVER_TIMEOUT_WARNING_REMAINING_SEC
+#define SERVER_INGAME_ACTIVITY_TIMEOUT_SEC			1260	// 21 min (warning at 20 min) - only real UI activity resets
 #define SERVER_SESSION_FORCED_TIMEOUT_SEC			604800	// 7 days - reset on every client activity
 
 #define SERVER_ADDRESS_LOCALHOST_STR_V4				"127.0.0.1"
@@ -735,6 +735,25 @@ void
 ServerLobbyThread::MutePlayerInGame(unsigned playerId)
 {
 	boost::asio::post(*m_ioService, boost::bind(&ServerLobbyThread::InternalMutePlayerInGame, shared_from_this(), playerId));
+}
+
+bool
+ServerLobbyThread::IsPlayerInLobby(unsigned playerId) const
+{
+	return m_sessionManager.IsPlayerConnected(playerId);
+}
+
+bool
+ServerLobbyThread::IsPlayerInAnotherGame(unsigned playerId, unsigned currentGameId) const
+{
+	boost::shared_ptr<SessionData> session = m_gameSessionManager.GetSessionByUniquePlayerId(playerId);
+	if (session && session->GetPlayerData()) {
+		boost::shared_ptr<ServerGame> game = session->GetGame();
+		if (game && game->GetId() != currentGameId) {
+			return true;
+		}
+	}
+	return false;
 }
 
 void
@@ -2189,8 +2208,8 @@ ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 		session->SetGame(boost::shared_ptr<ServerGame>());
 		// Reset timers when returning to lobby - prevents stale timeouts from
 		// the original connection time killing long-lived sessions.
-		// Explicitly set the lobby timeout (30 min) because the session may
-		// still carry the shorter in-game timeout (15 min).
+		// Explicitly set the lobby timeout (20 min) because the session may
+		// still carry the shorter in-game timeout.
 		session->StartTimerActivityTimeout(SERVER_SESSION_ACTIVITY_TIMEOUT_SEC, SERVER_TIMEOUT_WARNING_REMAINING_SEC);
 		session->ResetGlobalTimeout();
 		// Add session to lobby list.

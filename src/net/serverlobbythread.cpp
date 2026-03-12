@@ -273,6 +273,9 @@ ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigF
 	m_sender.reset(new SenderHelper(m_ioService));
 	m_banManager.reset(new ServerBanManager(m_ioService));
 	m_chatCleanerManager.reset(new ChatCleanerManager(*m_internalServerCallback, m_ioService));
+
+	std::string discordUrl = m_serverConfig.readConfigString("DiscordChatWebhookUrl");
+	m_discordWebhook.reset(new DiscordWebhookSender(discordUrl));
 	DBFactory dbFactory;
 	m_database = dbFactory.CreateServerDBObject(*m_internalServerCallback, m_ioService);
 }
@@ -1593,6 +1596,13 @@ ServerLobbyThread::HandleNetPacketChatRequest(boost::shared_ptr<SessionData> ses
 				session->GetPlayerData()->GetUniqueId(),
 				session->GetPlayerData()->GetName(),
 				chatMsg);
+
+			// Forward lobby chat to Discord.
+			if (m_discordWebhook && m_discordWebhook->IsEnabled()) {
+				m_discordWebhook->SendChatMessage(
+					session->GetPlayerData()->GetName(),
+					chatMsg);
+			}
 			chatSent = true;
 		} else if (!chatRequest.has_targetgameid() && chatRequest.has_targetplayerid()) {
 			boost::shared_ptr<SessionData> targetSession = m_sessionManager.GetSessionByUniquePlayerId(chatRequest.targetplayerid());

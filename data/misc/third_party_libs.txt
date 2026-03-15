@@ -2,10 +2,10 @@ Qt 6.9.2 LTS
 https://www.qt.io/development/download-open-source
 
 Boost
-http://www.boost.org/users/license.html
+https://www.boost.org/doc/user-guide/bsl.html
 
 libprotobuf
-http://code.google.com/p/protobuf/
+https://github.com/protocolbuffers/protobuf
 
 websocket++
 https://github.com/zaphoyd/websocketpp/blob/master/COPYING

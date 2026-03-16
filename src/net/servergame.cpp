@@ -398,6 +398,11 @@ ServerGame::InternalStartGame()
 void
 ServerGame::InitRankingMap(const PlayerDataList &playerDataList)
 {
+	// Clear any stale entries from a previous game to prevent duplicate
+	// DB rows if StoreAndResetRanking was not called (e.g. all players
+	// disconnected before the game ended normally).
+	m_rankingMap.clear();
+
 	PlayerDataList::const_iterator i = playerDataList.begin();
 	PlayerDataList::const_iterator end = playerDataList.end();
 	while (i != end) {

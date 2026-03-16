@@ -1214,7 +1214,13 @@ ServerGameStateHand::EngineLoop(boost::shared_ptr<ServerGame> server)
 			playersWithCash.remove_if(boost::bind(&PlayerInterface::getMyCash, boost::placeholders::_1) < 1);
 
 			if (playersWithCash.empty()) {
-				// No more players left - restart.
+				// No more players left - end game properly and restart.
+				// InternalEndGame() stores rankings to DB and clears
+				// m_rankingMap.  Without this, stale ranking entries
+				// leak into the next game played on this ServerGame object,
+				// causing duplicate rows in game_has_player for players
+				// who participate in both games.
+				server->InternalEndGame();
 				server->SetState(SERVER_INITIAL_STATE::Instance());
 			} else if (playersWithCash.size() == 1) {
 				boost::shared_ptr<PlayerInterface> winnerPlayer = *(playersWithCash.begin());

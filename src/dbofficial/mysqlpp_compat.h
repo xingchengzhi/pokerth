@@ -42,7 +42,7 @@ struct String {
 struct DateTime {
     explicit DateTime(time_t t = 0) { setTime(t); }
     void setTime(time_t t) { dt = QDateTime::fromSecsSinceEpoch((qint64)t); }
-    operator std::string() const { return dt.toString(Qt::ISODate).toStdString(); }
+    operator std::string() const { return dt.toString("yyyy-MM-dd hh:mm:ss").toStdString(); }
 private:
     QDateTime dt;
 };

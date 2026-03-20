@@ -1673,7 +1673,7 @@ ServerGameStateWaitPlayerAction::InternalProcessPacket(boost::shared_ptr<ServerG
 			PerformPlayerAction(*server, tmpPlayer, static_cast<PlayerAction>(netMyAction->myaction()), netMyAction->myrelativebet());
 			server->SetState(ServerGameStateHand::Instance());
 		} else {
-			LOG_ERROR("Player " << tmpPlayer->getMyName() << " action REJECTED with code " << code);
+			// LOG_ERROR("Player " << tmpPlayer->getMyName() << " action REJECTED with code " << code);
 			// Send reject message.
 			boost::shared_ptr<NetPacket> reject(new NetPacket);
 			reject->GetMsg()->set_messagetype(PokerTHMessage::Type_YourActionRejectedMessage);

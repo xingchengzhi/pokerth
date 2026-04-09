@@ -1007,7 +1007,8 @@ ServerGameStateHand::TimerLoop(const boost::system::error_code &ec, boost::share
 		try {
 			EngineLoop(server);
 		} catch (const PokerTHException &e) {
-			LOG_ERROR("Game " << server->GetId() << " - Engine exception: " << e.what());
+			LOG_ERROR("Game " << server->GetId() << " - Engine exception in TimerLoop: " << e.what()
+				<< " - players in game: " << server->GetSessionManager().GetSessionCountWithState(SessionData::Game));
 			server->RemoveAllSessions(); // Close this game on error.
 		}
 	}
@@ -1266,7 +1267,8 @@ ServerGameStateHand::TimerComputerAction(const boost::system::error_code &ec, bo
 			SendPlayerAction(*server, curPlayer);
 			EngineLoop(server);
 		} catch (const PokerTHException &e) {
-			LOG_ERROR("Game " << server->GetId() << " - Computer timer exception: " << e.what());
+			LOG_ERROR("Game " << server->GetId() << " - Computer timer exception: " << e.what()
+				<< " - players in game: " << server->GetSessionManager().GetSessionCountWithState(SessionData::Game));
 			server->RemoveAllSessions(); // Close this game on error.
 		}
 	}
@@ -1707,7 +1709,8 @@ ServerGameStateWaitPlayerAction::TimerTimeout(const boost::system::error_code &e
 
 			server->SetState(ServerGameStateHand::Instance());
 		} catch (const PokerTHException &e) {
-			LOG_ERROR("Game " << server->GetId() << " - Player timer exception: " << e.what());
+			LOG_ERROR("Game " << server->GetId() << " - Player timer exception: " << e.what()
+				<< " - players in game: " << server->GetSessionManager().GetSessionCountWithState(SessionData::Game));
 			server->RemoveAllSessions(); // Close this game on error.
 		}
 	}

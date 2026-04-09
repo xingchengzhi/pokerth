@@ -36,6 +36,7 @@
 #include <core/loghelper.h>
 #include "localexception.h"
 #include "engine_msg.h"
+#include <sstream>
 
 LocalBoard::LocalBoard() : BoardInterface(), pot(0), sets(0), allInCondition(false), lastActionPlayerID(0)
 {
@@ -147,6 +148,25 @@ void LocalBoard::distributePot(unsigned dealerPosition)
 			// determine the number of level winners
 			winnerCount = potLevel.size()-2;
 			if (!winnerCount) {
+				// Debug: log player state to help diagnose ERR_NO_WINNER
+				{
+					std::ostringstream oss;
+					oss << "ERR_NO_WINNER debug: potLevel[0]=" << potLevel[0]
+						<< " potLevel[1]=" << potLevel[1]
+						<< " highestCardsValue=" << highestCardsValue
+						<< " seats=[";
+					size_t idx = 0;
+					for (it_c = seatsList->begin(); it_c != seatsList->end(); ++it_c, ++idx) {
+						if (idx > 0) oss << ", ";
+						oss << "{id=" << (*it_c)->getMyUniqueID()
+							<< " active=" << (*it_c)->getMyActiveStatus()
+							<< " action=" << (*it_c)->getMyAction()
+							<< " cardsVal=" << (*it_c)->getMyCardsValueInt()
+							<< " set=" << playerSets[idx] << "}";
+					}
+					oss << "]";
+					LOG_ERROR(oss.str());
+				}
 				throw LocalException(__FILE__, __LINE__, ERR_NO_WINNER);
 			}
 

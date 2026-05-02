@@ -1104,7 +1104,9 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 		if (netPlayerList.playerlistnotification() == PlayerListMessage::playerListNew) {
 			client->GetCallback().SignalLobbyPlayerJoined(netPlayerList.playerid(), client->GetPlayerName(netPlayerList.playerid()));
 		} else if (netPlayerList.playerlistnotification() == PlayerListMessage::playerListLeft) {
-			client->GetCallback().SignalLobbyPlayerLeft(netPlayerList.playerid());
+			unsigned leftPlayerId = netPlayerList.playerid();
+			client->GetCallback().SignalLobbyPlayerLeft(leftPlayerId);
+			client->RemoveCachedPlayerInfo(leftPlayerId);
 		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_GameListNewMessage) {
 		// A new game was created on the server.

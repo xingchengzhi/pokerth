@@ -137,6 +137,7 @@ declare -a VCPKG_PORTS=(
   boost-thread
   boost-serialization
   boost-smart-ptr
+  boost-uuid
   protobuf
 )
 # Note: Main 'boost' package removed - it would include all submodules including boost-cobalt

@@ -137,6 +137,7 @@ declare -a VCPKG_PORTS=(
   boost-thread
   boost-serialization
   boost-smart-ptr
+  boost-uuid
   protobuf
 )
 # Note: Main 'boost' package removed - it would include all submodules including boost-cobalt
@@ -322,9 +323,9 @@ cat > "$APP_CONTENTS/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0.6</string>
+    <string>2.0.7</string>
     <key>CFBundleVersion</key>
-    <string>2.0.6</string>
+    <string>2.0.7</string>
     <key>CFBundleIconFile</key>
     <string>pokerth.icns</string>
     <key>NSHighResolutionCapable</key>

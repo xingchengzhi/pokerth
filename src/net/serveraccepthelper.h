@@ -48,8 +48,6 @@
 #include <netinet/tcp.h>
 #endif
 #include <sstream>
-#include <sys/socket.h>  // für setsockopt
-#include <netinet/tcp.h>  // für TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
 
 #include <net/serveracceptinterface.h>
 #include <net/serverlobbythread.h>

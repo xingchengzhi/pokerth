@@ -220,7 +220,12 @@ ClientStateStartServerListDownload::Enter(boost::shared_ptr<ClientThread> client
 		// If the previous file is older than one day, delete it.
 		// Also delete the file if it is empty.
 		if (file_size(tmpServerListPath) == 0 || (last_write_time(tmpServerListPath) + 86400 < time(NULL))) {
-			remove(tmpServerListPath);
+			try {
+				remove(tmpServerListPath);
+			} catch (const boost::filesystem::filesystem_error &) {
+				// File may be inaccessible (e.g. old snap revision directory).
+				// Ignore and proceed with a fresh download.
+			}
 		}
 	}
 

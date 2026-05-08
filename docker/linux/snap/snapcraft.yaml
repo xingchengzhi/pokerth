@@ -146,6 +146,7 @@ parts:
       - fonts-dejavu-core
       - gsfonts
       - pulseaudio-utils
+      - libsqlite3-0
     override-build: |
       # Remove outdated custom FindBoost.cmake that disables imported targets
       # for Boost >= 1.66 — CMake's built-in module handles 1.88 correctly

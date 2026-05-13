@@ -2826,12 +2826,13 @@ void gameTableImpl::postRiverRunAnimation3()
 	// Determine if there was any all-in player and count actual winners.
 	// Side pot labeling: if there is an all-in AND multiple winners, then the winner(s)
 	// with the best hand (highest cardsValueInt) won the main pot; others won side pots.
-	bool hasAllInPlayer = false;
+	// NOTE: We use getAllInCondition() rather than checking getMyAction() == PLAYER_ACTION_ALLIN
+	// because ResetPlayerActions() resets all-in players' actions to NONE at the start of each
+	// new betting round (flop/turn/river), so by the time this animation fires the
+	// PLAYER_ACTION_ALLIN flag is no longer set on any player.
+	bool hasAllInPlayer = currentHand->getAllInCondition();
 	int winnersWithMoney = 0;
 	for(it_c=activePlayerList->begin(); it_c!=activePlayerList->end(); ++it_c) {
-		if((*it_c)->getMyAction() == PLAYER_ACTION_ALLIN) {
-			hasAllInPlayer = true;
-		}
 		bool isW = std::find(winners.begin(), winners.end(), (*it_c)->getMyUniqueID()) != winners.end();
 		bool actuallyWon = isW && (*it_c)->getLastMoneyWon() > 0;
 		if(actuallyWon) {

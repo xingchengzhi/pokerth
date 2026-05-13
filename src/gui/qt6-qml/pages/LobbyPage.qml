@@ -87,7 +87,7 @@ Rectangle {
                         Layout.fillHeight: true
                         clip: true
                         
-                        model: Lobby.playerListModel
+                        model: Lobby ? Lobby.playerListModel : null
 
                         delegate: ItemDelegate {
                             width: playerListView.width
@@ -170,7 +170,7 @@ Rectangle {
                             Layout.fillHeight: true
                             clip: true
 
-                            model: Lobby.gameListModel
+                            model: Lobby ? Lobby.gameListModel : null
 
                             delegate: ItemDelegate {
                                 width: gameListView.width
@@ -225,7 +225,7 @@ Rectangle {
                     spacing: 10
 
 Label {
-                            text: qsTr("Player: %1").arg(Lobby.myPlayerName !== "" ? Lobby.myPlayerName : "Guest")
+                            text: qsTr("Player: %1").arg(Lobby && Lobby.myPlayerName !== "" ? Lobby.myPlayerName : "Guest")
                             font.family: Config.StaticData.loadedFont.font.family
                             font.bold: true
                             font.pixelSize: 14

@@ -135,7 +135,7 @@ if [ -d "$QT6_PLUGINS" ]; then
     echo "Qt6 Plugins gefunden: $QT6_PLUGINS"
     
     # Kopiere wichtige Plugin-Kategorien
-    for plugin_category in platforms xcbglintegrations platforminputcontexts imageformats platformthemes multimedia sqldrivers tls; do
+    for plugin_category in platforms xcbglintegrations platforminputcontexts imageformats platformthemes multimedia sqldrivers tls wayland-shell-integration wayland-decoration-client wayland-graphics-integration-client; do
         if [ -d "$QT6_PLUGINS/$plugin_category" ]; then
             echo "Kopiere $plugin_category plugins..."
             mkdir -p "$DEPLOY_DIR/plugins/$plugin_category"
@@ -150,6 +150,32 @@ if [ -d "$QT6_PLUGINS" ]; then
     done
 else
     echo "WARNUNG: Qt6 Plugins nicht gefunden in $QT6_PLUGINS"
+fi
+
+echo ""
+echo "=== Sammle Qt-QML-Module ==="
+# QML-Module werden für den QML-Client zwingend benötigt (QtQuick.Controls, etc.)
+QT6_QML=$(find /usr/lib* -type d -name "qml" -path "*/qt6/*" 2>/dev/null | head -1)
+if [ -z "$QT6_QML" ]; then
+    QT6_QML="/usr/lib/x86_64-linux-gnu/qt6/qml"
+fi
+
+if [ -d "$QT6_QML" ]; then
+    echo "Qt6 QML-Module gefunden: $QT6_QML"
+    mkdir -p "$DEPLOY_DIR/qml"
+
+    for qml_module in QtCore QtQuick QtQml Qt5Compat QtMultimedia; do
+        if [ -d "$QT6_QML/$qml_module" ]; then
+            echo "Kopiere $qml_module QML-Modul..."
+            cp -r "$QT6_QML/$qml_module" "$DEPLOY_DIR/qml/"
+            # Sammle Abhängigkeiten der QML-Plugins
+            while IFS= read -r plugin; do
+                collect_dependencies "$plugin" "$DEPLOY_DIR/lib"
+            done < <(find "$DEPLOY_DIR/qml/$qml_module" -name "*.so" 2>/dev/null)
+        fi
+    done
+else
+    echo "WARNUNG: Qt6 QML-Module nicht gefunden in $QT6_QML"
 fi
 
 echo ""
@@ -203,6 +229,7 @@ cat > "$DEPLOY_DIR/bin/qt.conf" << 'EOF'
 [Paths]
 Plugins = ../plugins
 Libraries = ../lib
+Qml2Imports = ../qml
 EOF
 echo "qt.conf erstellt in bin/"
 
@@ -248,6 +275,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"
 export QT_PLUGIN_PATH="$SCRIPT_DIR/plugins:$QT_PLUGIN_PATH"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$SCRIPT_DIR/plugins/platforms"
+export QML2_IMPORT_PATH="$SCRIPT_DIR/qml:$QML2_IMPORT_PATH"
 export QT_MEDIA_BACKEND=ffmpeg
 cd "$SCRIPT_DIR"
 exec "$SCRIPT_DIR/bin/pokerth_qml-client" "$@"

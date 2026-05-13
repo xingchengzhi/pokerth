@@ -114,9 +114,9 @@ int main(int argc, char *argv[])
     boost::shared_ptr<Session> session;
     try {
         session.reset(new Session(guiInterface, myConfig.get(), log));
-        int initResult = session->init();
-        if (initResult != 0) {
-            qWarning() << "Session initialization failed with code:" << initResult;
+        bool initResult = session->init();
+        if (!initResult) {
+            qWarning() << "Session initialization failed";
         }
         log->init();
         
@@ -140,24 +140,27 @@ int main(int argc, char *argv[])
 	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
 
 	if (engine.rootObjects().isEmpty()) {
-        delete lobbyHandler;
-        delete connectionHandler;
+        // Session owns log – do NOT delete log here.
+        // lobbyHandler/connectionHandler are parented to &app – Qt handles them.
+        session.reset();
         delete guiInterface;
-        delete log;
         return -1;
     }
 
     int result = app.exec();
-    
-    // Cleanup
+
+    // Cleanup order matters:
+    // 1. Stop network thread first (before any owned objects are freed).
+    // 2. Destroy session explicitly – ~Session() deletes myLog (= log) and
+    //    myQtToolsInterface, so we must NOT delete log manually.
+    // 3. Only then delete guiInterface (session no longer holds a raw ptr to it).
+    // lobbyHandler / connectionHandler are parented to &app – Qt handles them.
     if (session) {
         session->terminateNetworkClient();
     }
-    delete lobbyHandler;
-    delete connectionHandler;
+    session.reset(); // ~Session() runs here: deletes myLog, myQtToolsInterface
     delete guiInterface;
-    delete log;
-    
+
     return result;
 }
 

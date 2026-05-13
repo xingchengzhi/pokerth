@@ -189,11 +189,39 @@ void ServerConnectionHandler::onNetClientError(int errorID, int osErrorID)
         case 11:
             errorMsg = tr("TLS connection error");
             break;
+        case 101:
+            errorMsg = tr("Protocol version not supported by server");
+            break;
+        case 102:
+            errorMsg = tr("Server is under maintenance");
+            break;
+        case 103:
+            errorMsg = tr("Server is full");
+            break;
+        case 104:
+        case 105:
+            errorMsg = tr("Invalid password");
+            break;
+        case 106:
+            errorMsg = tr("Username already in use");
+            break;
+        case 107:
+            errorMsg = tr("Invalid username");
+            break;
+        case 118:
+            errorMsg = tr("You have been kicked from the server");
+            break;
+        case 119:
+            errorMsg = tr("You are banned from this server");
+            break;
+        case 121:
+            errorMsg = tr("Session timed out");
+            break;
         case 133:
             errorMsg = tr("Connection blocked (too many attempts)");
             break;
         default:
-            errorMsg = tr("Unknown network error");
+            errorMsg = tr("Network error (%1)").arg(errorID);
             break;
     }
     

@@ -232,7 +232,8 @@ Rectangle {
 
                     ProgressBar {
                         id: connectionProgress
-                        Layout.preferredWidth: Math.min(parent.width * 0.8, 300)
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 300
                         Layout.alignment: Qt.AlignHCenter
                         from: 0
                         to: 100

@@ -67,6 +67,13 @@
 #define QML_VERSION_MINOR		1
 #define QML_VERSION_REVISION	0
 
+// --- QML client production mode ---
+// Set to 1 once the official server (pokerth.net) supports CLIENT_TYPE_QML (expected in v2.1.0).
+// While 0, the QML client identifies itself as CLIENT_TYPE_QT_WIDGET to stay compatible
+// with the current official server (v2.0.7), which does not yet know CLIENT_TYPE_QML.
+// TODO: set to 1 when deploying QML client as the primary/official client.
+#define QML_CLIENT_PRODUCTION_MODE	0
+
 // --- Minimum supported build IDs (server rejects anything below) ---
 // Policy: current and previous release are allowed for each client type.
 // Qt Widget: min 2.0.6, current 2.0.7 (both allowed)

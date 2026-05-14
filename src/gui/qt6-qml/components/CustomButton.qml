@@ -40,5 +40,8 @@ AbstractButton {
         Behavior on color { ColorAnimation { duration: 100 } }
     }
 
-    cursorShape: Qt.PointingHandCursor
+    HoverHandler {
+        cursorShape: Qt.PointingHandCursor
+    }
 }
+

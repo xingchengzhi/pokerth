@@ -17,19 +17,27 @@ ApplicationWindow {
     // portraitMode is now provided by Config.Responsive.portrait
     property StartPage startPage: StartPage {}
     property SideMenu sideMenu: SideMenu {}
-    width: 900
-    height: 600
+    width: 390
+    height: 844
     // TRY to center the window, doesn't work on my Ubuntu but should work on other platforms.
     visible: true
     title: qsTr("PokerTH - v2.0 alpha")
 
     // Keep Responsive singleton in sync with the actual window dimensions
-    onWidthChanged:  Config.Responsive.windowWidth  = width
-    onHeightChanged: Config.Responsive.windowHeight = height
+    onWidthChanged: {
+        Config.Responsive.windowWidth = width
+        Config.Theme.windowWidth      = width
+    }
+    onHeightChanged: {
+        Config.Responsive.windowHeight = height
+        Config.Theme.windowHeight      = height
+    }
 
     Component.onCompleted: {
         Config.Responsive.windowWidth  = width
         Config.Responsive.windowHeight = height
+        Config.Theme.windowWidth       = width
+        Config.Theme.windowHeight      = height
         x = screen.width / 2 - width / 2
         y = screen.height / 2 - height / 2
         LanguageManager.switchLanguage(Config.Parameters.language)

@@ -15,12 +15,66 @@ Rectangle {
     Layout.fillHeight: true
     color: Config.StaticData.palette.secondary.col700
 
+    // Compact: horizontale Icon-Tabs für Kategorien
+    ListView {
+        id: compactCategoryStrip
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: Config.Theme.touchTarget
+        visible: Config.Responsive.compact
+        orientation: ListView.Horizontal
+        clip: true
+        model: settingsMenuListItems
+        currentIndex: 0
+        z: 1
+
+        Rectangle { anchors.fill: parent; color: Config.StaticData.palette.secondary.col700 }
+
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 1
+            color: Config.StaticData.palette.secondary.col500
+        }
+
+        delegate: Item {
+            width: compactCategoryStrip.width / compactCategoryStrip.count
+            height: compactCategoryStrip.height
+
+            Rectangle {
+                anchors { fill: parent; margins: 3 }
+                radius: Config.Theme.radiusSmall
+                color: compactCategoryStrip.currentIndex === index
+                       ? Config.StaticData.palette.secondary.col600
+                       : "transparent"
+
+                VectorImage {
+                    anchors.centerIn: parent
+                    width: Config.Theme.iconSize
+                    height: Config.Theme.iconSize
+                    source: "../resources/" + icon + ".svg"
+                }
+            }
+
+            TapHandler {
+                onTapped: {
+                    compactCategoryStrip.currentIndex = index
+                    settingsStackView.replaceCurrentItem(
+                        "qrc:/components/" + source + "Settings.qml",
+                        {}, StackView.Immediate)
+                }
+            }
+        }
+    }
+
     RowLayout {
-        anchors.fill: parent
+        anchors {
+            top: Config.Responsive.compact ? compactCategoryStrip.bottom : parent.top
+            left: parent.left; right: parent.right; bottom: parent.bottom
+        }
         spacing: 0
 
         Rectangle {
             id: settingsNMenuBox
+            visible: !Config.Responsive.compact
             Layout.alignment: Qt.AlignLeft
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -140,10 +194,10 @@ Rectangle {
             Layout.horizontalStretchFactor: 2
             Layout.preferredHeight: mainWindow.height
             Layout.topMargin: 4
-            Layout.leftMargin: 8
-            Layout.rightMargin: 16
-            Layout.bottomMargin: 16
-            border.width: 1
+            Layout.leftMargin: Config.Responsive.compact ? 0 : 8
+            Layout.rightMargin: Config.Responsive.compact ? 0 : 16
+            Layout.bottomMargin: Config.Responsive.compact ? 0 : 16
+            border.width: Config.Responsive.compact ? 0 : 1
             border.color: Config.StaticData.palette.secondary.col500
             radius: 5
             color: "transparent"

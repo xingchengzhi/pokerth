@@ -1,23 +1,30 @@
 pragma Singleton
 import QtQuick
-import Config
 
-// Adaptive design tokens — all values react to Responsive breakpoints.
-// Usage:  import Config as Config
-//         leftPadding: Config.Theme.margin
+// Adaptive design tokens — all values react to window dimensions.
+// NOTE: We cannot `import Config` here (same-module circular dependency in Qt 6).
+// windowWidth / windowHeight must be kept in sync by ApplicationWindow
+// alongside Config.Responsive (see pokerth.qml onWidthChanged / onHeightChanged).
 QtObject {
 
+    // Set by ApplicationWindow — mirrors Responsive.windowWidth/windowHeight
+    property real windowWidth:  900
+    property real windowHeight: 600
+
+    readonly property bool compact: windowWidth < 600
+    readonly property bool tablet:  windowWidth >= 900 && windowWidth < 1400
+
     // ── Spacing & Layout ────────────────────────────────────────────────────
-    readonly property real margin:  Config.Responsive.compact ? 12 : Config.Responsive.tablet ? 20 : 28
-    readonly property real spacing: Config.Responsive.compact ?  8 : Config.Responsive.tablet ? 12 : 16
+    readonly property real margin:  compact ? 12 : tablet ? 20 : 28
+    readonly property real spacing: compact ?  8 : tablet ? 12 : 16
 
     // ── Touch Targets ────────────────────────────────────────────────────────
     // Apple HIG / Material: minimum interactive area 44–48 dp
-    readonly property real touchTarget:     Config.Responsive.compact ? 48 : 44
-    readonly property real buttonHeight:    Config.Responsive.compact ? 48 : 40
-    readonly property real buttonWidth:     Config.Responsive.compact ? -1 : 180   // -1 = fillWidth
-    readonly property real iconSize:        Config.Responsive.compact ? 28 : 24
-    readonly property real smallIconSize:   Config.Responsive.compact ? 22 : 18
+    readonly property real touchTarget:   compact ? 48 : 44
+    readonly property real buttonHeight:  compact ? 48 : 40
+    readonly property real buttonWidth:   compact ? -1 : 180   // -1 = fillWidth
+    readonly property real iconSize:      compact ? 28 : 24
+    readonly property real smallIconSize: compact ? 22 : 18
 
     // ── Border Radius ────────────────────────────────────────────────────────
     readonly property real radiusSmall:  4
@@ -25,11 +32,11 @@ QtObject {
     readonly property real radiusLarge:  16
 
     // ── Typography ───────────────────────────────────────────────────────────
-    readonly property real fontSizeCaption: Config.Responsive.compact ? 11 : 12
-    readonly property real fontSizeBody:    Config.Responsive.compact ? 14 : 15
-    readonly property real fontSizeLabel:   Config.Responsive.compact ? 14 : 14
-    readonly property real fontSizeTitle:   Config.Responsive.compact ? 20 : 24
-    readonly property real fontSizeHeader:  Config.Responsive.compact ? 26 : 32
+    readonly property real fontSizeCaption: compact ? 11 : 12
+    readonly property real fontSizeBody:    compact ? 14 : 15
+    readonly property real fontSizeLabel:   compact ? 14 : 14
+    readonly property real fontSizeTitle:   compact ? 20 : 24
+    readonly property real fontSizeHeader:  compact ? 26 : 32
 
     // ── Colors (mirrors StaticData.palette for use without Config prefix) ────
     // Background levels

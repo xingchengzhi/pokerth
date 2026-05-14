@@ -8,7 +8,7 @@ import "../config" as Config
 
 Drawer {
     id: sideMenu
-    width: mainWindow.portraitMode ? mainWindow.width : mainWindow.width / 3
+    width: Config.Responsive.compact ? mainWindow.width : mainWindow.width / 3
     height: mainWindow.height - 38
     y: 38
 
@@ -63,7 +63,7 @@ Drawer {
 
                 color: Config.StaticData.palette.secondary.col500
                 width: parent.width
-                height: 36
+                height: Config.Theme.touchTarget
 
                 RowLayout {
                     anchors.fill: parent

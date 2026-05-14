@@ -67,7 +67,8 @@ Rectangle {
             id: loginCard
             Layout.alignment: Qt.AlignCenter
             Layout.preferredWidth: Math.min(parent.width * 0.9, 360)
-            Layout.preferredHeight: 400
+            Layout.preferredHeight: Math.min(parent.height * 0.88, 500)
+            Layout.minimumHeight: 320
             color: "transparent"
 
             Rectangle {
@@ -129,7 +130,7 @@ Rectangle {
                         Layout.alignment: Qt.AlignHCenter
                         font.family: Config.StaticData.loadedFont.font.family
                         font.bold: true
-                        font.pointSize: 14
+                        font.pixelSize: Config.Theme.fontSizeTitle
                         color: Config.StaticData.palette.secondary.col200
                     }
 
@@ -143,6 +144,7 @@ Rectangle {
                         id: usernameInput
                         placeholderText: qsTr("Username")
                         Layout.fillWidth: true
+                        Layout.preferredHeight: Config.Theme.touchTarget
                         font.family: Config.StaticData.loadedFont.font.family
                         color: Config.StaticData.palette.secondary.col200
                         placeholderTextColor: Config.StaticData.palette.secondary.col400
@@ -159,6 +161,7 @@ Rectangle {
                         placeholderText: qsTr("Password")
                         echoMode: TextInput.Password
                         Layout.fillWidth: true
+                        Layout.preferredHeight: Config.Theme.touchTarget
                         font.family: Config.StaticData.loadedFont.font.family
                         color: Config.StaticData.palette.secondary.col200
                         placeholderTextColor: Config.StaticData.palette.secondary.col400
@@ -179,16 +182,17 @@ Rectangle {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: Config.Theme.spacing
 
                         CustomButton {
                             text: qsTr("Back")
+                            Layout.fillWidth: true
                             onClicked: mainStack.currentIndex = 0
                         }
 
-                        Item { Layout.fillWidth: true }
-
                         CustomButton {
                             text: qsTr("Login")
+                            Layout.fillWidth: true
                             onClicked: {
                                 console.log("Login clicked. Username:", usernameInput.text, "Remember me:", rememberMeCheckbox.isChecked)
                                 usernameLabel.text = usernameInput.text
@@ -212,7 +216,7 @@ Rectangle {
                     Text {
                         text: qsTr("Connecting as...")
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pointSize: 11
+                        font.pixelSize: Config.Theme.fontSizeBody
                         color: Config.StaticData.palette.secondary.col300
                         Layout.alignment: Qt.AlignHCenter
                     }
@@ -221,7 +225,7 @@ Rectangle {
                         id: usernameLabel
                         text: qsTr("Username/Guest")
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pointSize: 16
+                        font.pixelSize: Config.Theme.fontSizeTitle
                         font.bold: true
                         color: Config.StaticData.palette.secondary.col200
                         Layout.alignment: Qt.AlignHCenter
@@ -265,7 +269,7 @@ Rectangle {
                             id: statusText
                             text: qsTr("Initializing connection...")
                             font.family: Config.StaticData.loadedFont.font.family
-                            font.pointSize: 11
+                            font.pixelSize: Config.Theme.fontSizeBody
                             color: Config.StaticData.palette.secondary.col300
                             Layout.alignment: Qt.AlignHCenter
                         }

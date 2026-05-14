@@ -15,53 +15,59 @@ Rectangle {
     Layout.fillHeight: true
     color: Config.StaticData.palette.secondary.col700
 
+    // Aktuelle Kategorie für den Compact-Strip
+    property int currentCategoryIndex: 0
+
     // Compact: horizontale Icon-Tabs für Kategorien
-    ListView {
+    Rectangle {
         id: compactCategoryStrip
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: Config.Theme.touchTarget
         visible: Config.Responsive.compact
-        orientation: ListView.Horizontal
-        clip: true
-        model: settingsMenuListItems
-        currentIndex: 0
+        color: Config.StaticData.palette.secondary.col700
         z: 1
 
-        Rectangle { anchors.fill: parent; color: Config.StaticData.palette.secondary.col700 }
+        RowLayout {
+            anchors.fill: parent
+            spacing: 0
+
+            Repeater {
+                model: settingsMenuListItems
+                delegate: Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    Rectangle {
+                        anchors { fill: parent; margins: 3 }
+                        radius: Config.Theme.radiusSmall
+                        color: settingsPage.currentCategoryIndex === index
+                               ? Config.StaticData.palette.secondary.col600
+                               : "transparent"
+
+                        VectorImage {
+                            anchors.centerIn: parent
+                            width: Config.Theme.iconSize
+                            height: Config.Theme.iconSize
+                            source: "../resources/" + icon + ".svg"
+                        }
+                    }
+
+                    TapHandler {
+                        onTapped: {
+                            settingsPage.currentCategoryIndex = index
+                            settingsStackView.replaceCurrentItem(
+                                "qrc:/components/" + source + "Settings.qml",
+                                {}, StackView.Immediate)
+                        }
+                    }
+                }
+            }
+        }
 
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 1
             color: Config.StaticData.palette.secondary.col500
-        }
-
-        delegate: Item {
-            width: compactCategoryStrip.width / compactCategoryStrip.count
-            height: compactCategoryStrip.height
-
-            Rectangle {
-                anchors { fill: parent; margins: 3 }
-                radius: Config.Theme.radiusSmall
-                color: compactCategoryStrip.currentIndex === index
-                       ? Config.StaticData.palette.secondary.col600
-                       : "transparent"
-
-                VectorImage {
-                    anchors.centerIn: parent
-                    width: Config.Theme.iconSize
-                    height: Config.Theme.iconSize
-                    source: "../resources/" + icon + ".svg"
-                }
-            }
-
-            TapHandler {
-                onTapped: {
-                    compactCategoryStrip.currentIndex = index
-                    settingsStackView.replaceCurrentItem(
-                        "qrc:/components/" + source + "Settings.qml",
-                        {}, StackView.Immediate)
-                }
-            }
         }
     }
 

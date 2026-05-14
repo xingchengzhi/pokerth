@@ -8,7 +8,7 @@ import "../config" as Config
 AbstractButton {
     id: customButton
 
-    implicitWidth:  Config.Theme.buttonWidth < 0 ? parent.width : Config.Theme.buttonWidth
+    implicitWidth:  Config.Theme.buttonWidth < 0 ? 160 : Config.Theme.buttonWidth
     implicitHeight: Config.Theme.touchTarget
 
     // Visual feedback state

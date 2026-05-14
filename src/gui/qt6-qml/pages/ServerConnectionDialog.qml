@@ -93,19 +93,19 @@ Rectangle {
 
                     CustomButton {
                         text: qsTr("Login as User")
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         onClicked: mainStack.currentIndex = 1
                     }
 
                     CustomButton {
                         text: qsTr("Register")
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         onClicked: Qt.openUrlExternally("https://www.pokerth.net/ucp.php?mode=register")
                     }
 
                     CustomButton {
                         text: qsTr("Continue as Guest")
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         onClicked: {
                             var guestName = "Guest" + Math.floor(Math.random() * 10000)
                             usernameLabel.text = guestName
@@ -279,7 +279,7 @@ Rectangle {
 
                     CustomButton {
                         text: qsTr("Cancel")
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
                         onClicked: {
                             ServerConnection.cancelConnection()
                             connectionProgress.value = 0

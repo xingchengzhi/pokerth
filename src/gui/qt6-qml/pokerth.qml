@@ -188,6 +188,37 @@ ApplicationWindow {
         }
     }
 
+    // ── Tastenkürzel ──────────────────────────────────────────────────────────
+    Shortcut {
+        sequence: "Escape"
+        onActivated: {
+            if (mainStackView.depth > 1) {
+                mainStackView.pop()
+            } else if (sideMenu.visible) {
+                sideMenu.visible = false
+                topBarMenuIcon.source = "resources/threeLines.svg"
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: StandardKey.Back
+        onActivated: {
+            if (mainStackView.depth > 1)
+                mainStackView.pop()
+        }
+    }
+
+    Shortcut {
+        sequence: "Alt+S"
+        onActivated: {
+            if (mainStackView.depth === 1) {
+                mainStackView.push("pages/SettingsPage.qml")
+                sideMenu.visible = false
+            }
+        }
+    }
+
     SideMenu {}
 
     Connections {

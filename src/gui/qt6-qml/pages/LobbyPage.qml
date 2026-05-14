@@ -18,17 +18,20 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 10
+        anchors.margins: Config.Theme.margin
+        spacing: Config.Theme.spacing
 
         // Top section: Filters and search
-        RowLayout {
+        // GridLayout collapses to 1 column on compact (mobile portrait)
+        GridLayout {
             Layout.fillWidth: true
-            spacing: 10
+            columns: Config.Responsive.compact ? 1 : 2
+            columnSpacing: Config.Theme.spacing
+            rowSpacing: Config.Theme.spacing
 
             TextField {
                 id: searchPlayerField
-                Layout.preferredWidth: 200
+                Layout.fillWidth: true
                 placeholderText: qsTr("search for player ...")
                 font.family: Config.StaticData.loadedFont.font.family
                 color: Config.StaticData.palette.secondary.col200
@@ -60,8 +63,9 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 10
 
-            // Left side: Player List
+            // Left side: Player List — hidden on compact (phone portrait)
             Rectangle {
+                visible: !Config.Responsive.compact
                 Layout.preferredWidth: 200
                 Layout.fillHeight: true
                 color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
@@ -251,8 +255,9 @@ Label {
                 }
             }
 
-            // Right side: Game Info and Chat
+            // Right side: Game Info and Chat — hidden on compact (phone portrait)
             ColumnLayout {
+                visible: !Config.Responsive.compact
                 Layout.preferredWidth: 250
                 Layout.fillHeight: true
                 spacing: 10

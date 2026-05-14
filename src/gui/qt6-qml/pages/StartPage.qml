@@ -31,8 +31,13 @@ Rectangle {
 
             Rectangle {
                 id: startPageMainButtonsBox
-                Layout.preferredWidth: 287
-                Layout.preferredHeight: 300
+                Layout.alignment:   Qt.AlignHCenter
+                Layout.fillWidth:   true
+                Layout.maximumWidth: 320
+                Layout.leftMargin:  Config.Theme.margin
+                Layout.rightMargin: Config.Theme.margin
+                // Height grows with content
+                Layout.preferredHeight: startPageMainButtons.implicitHeight + Config.Theme.margin * 2
                 color: "transparent"
 
                 Rectangle {
@@ -44,42 +49,40 @@ Rectangle {
 
                 ColumnLayout {
                     id: startPageMainButtons
-                    anchors.centerIn: parent
-                    spacing: 18
+                    anchors {
+                        left: parent.left; right: parent.right; top: parent.top
+                        margins: Config.Theme.margin
+                    }
+                    spacing: Config.Theme.spacing
 
                     CustomButton {
                         text: qsTr("Internetspiel")
-                        onClicked: {
-                            mainStackView.push("ServerConnectionDialog.qml");
-                        }
+                        Layout.fillWidth: true
+                        onClicked: mainStackView.push("ServerConnectionDialog.qml")
                     }
 
                     CustomButton {
                         text: qsTr("Lokales Spiel starten")
-                        onClicked: {
-                            mainStackView.push("LocalGamePage.qml");
-                        }
+                        Layout.fillWidth: true
+                        onClicked: mainStackView.push("LocalGamePage.qml")
                     }
 
                     CustomButton {
                         text: qsTr("Netzwerkspiel erstellen")
-                        onClicked: {
-                            mainStackView.push("NetworkGameCreatePage.qml");
-                        }
+                        Layout.fillWidth: true
+                        onClicked: mainStackView.push("NetworkGameCreatePage.qml")
                     }
 
                     CustomButton {
                         text: qsTr("Netzwerkspiel beitreten")
-                        onClicked: {
-                            mainStackView.push("NetworkGameEnterPage.qml");
-                        }
+                        Layout.fillWidth: true
+                        onClicked: mainStackView.push("NetworkGameEnterPage.qml")
                     }
 
                     CustomButton {
                         text: qsTr("Logs")
-                        onClicked: {
-                            mainStackView.push("LogsPage.qml");
-                        }
+                        Layout.fillWidth: true
+                        onClicked: mainStackView.push("LogsPage.qml")
                     }
                 }
             }

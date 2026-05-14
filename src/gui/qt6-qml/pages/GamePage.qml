@@ -49,6 +49,7 @@ Rectangle {
 
     Image {
         id: gameTable
+        visible: !Config.Responsive.compact
         anchors.centerIn: parent
         source: parent.width > 1920 ? "../resources/gameTableUHD.png" : "../resources/gameTableHD.png"
         fillMode: Image.PreserveAspectFit
@@ -56,6 +57,7 @@ Rectangle {
     }
 
     RowLayout {
+        visible: !Config.Responsive.compact
         width: gamePage.width / 12 * 8
         x: gamePage.width / 12 * 2
         y: gamePage.height / 12
@@ -86,6 +88,7 @@ Rectangle {
     }
 
     RowLayout {
+        visible: !Config.Responsive.compact
         width: parent.width / 24 * 20
         x: parent.width / 24 * 2
         y: parent.height / 24 * 6
@@ -108,6 +111,7 @@ Rectangle {
     }
 
     RowLayout {
+        visible: !Config.Responsive.compact
         width: parent.width / 24 * 20
         x: parent.width / 24 * 2
         y: parent.height / 24 * 17 - 48
@@ -130,6 +134,7 @@ Rectangle {
     }
 
     RowLayout {
+        visible: !Config.Responsive.compact
         width: parent.width / 12 * 6
         x: parent.width / 24 * 6
         y: parent.height / 24 * 21 - 64
@@ -161,6 +166,7 @@ Rectangle {
 
     RowLayout {
         id: gameDataBox
+        visible: !Config.Responsive.compact
         width: gamePage.width / 12 * 4
         x: gamePage.width / 24 * 8
         y: gamePage.height / 12 * 4 + 8
@@ -247,6 +253,7 @@ Rectangle {
 
     RowLayout {
         id: cardHolderBox
+        visible: !Config.Responsive.compact
         width: gamePage.width / 12 * 4
         x: gamePage.width / 24 * 8
         anchors.top: gameDataBox.bottom
@@ -384,6 +391,129 @@ Rectangle {
                 height: 72 * gamePage.hScaleFactor
                 fillMode: IconImage.Stretch
                 source: "../resources/cardBackground.svg"
+            }
+        }
+    }
+
+    // ── Portrait / compact layout ────────────────────────────────────────────
+    // Shown when window width < 600 (phone portrait). Uses a vertical stack:
+    // Status strip → Opponent grid → Community cards → Self box → Action bar
+    ColumnLayout {
+        id: portraitLayout
+        anchors.fill: parent
+        visible: Config.Responsive.compact
+        spacing: 0
+
+        // 1. Status strip: Round | Pot | Hand
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 36
+            color: Qt.rgba(0.11, 0.13, 0.17, 0.92)
+
+            RowLayout {
+                anchors { fill: parent; leftMargin: Config.Theme.margin; rightMargin: Config.Theme.margin }
+                spacing: 0
+
+                Text {
+                    text: qsTr("Preflop")
+                    color: Config.Theme.colorTextSecondary
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: Config.Theme.fontSizeBody
+                    font.bold: true
+                }
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: qsTr("Pot: $0")
+                    color: Config.Theme.colorAccent
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: Config.Theme.fontSizeBody
+                    font.bold: true
+                }
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: qsTr("Hand 1")
+                    color: Config.Theme.colorTextMuted
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: Config.Theme.fontSizeCaption
+                }
+            }
+        }
+
+        // 2. Opponent grid — 2 rows × 3 columns = 6 opponents
+        GridLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin:  Config.Theme.spacing / 2
+            Layout.rightMargin: Config.Theme.spacing / 2
+            Layout.topMargin:   Config.Theme.spacing / 2
+            columns: 3
+            columnSpacing: Config.Theme.spacing / 2
+            rowSpacing:    Config.Theme.spacing / 2
+
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+            GamePlayerBox { Layout.fillWidth: true; up: false }
+        }
+
+        // 3. Community cards — 5 face-down card slots
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin:  Config.Theme.spacing
+            Layout.rightMargin: Config.Theme.spacing
+            Layout.topMargin:   Config.Theme.spacing
+            Layout.preferredHeight: 66
+            spacing: Config.Theme.spacing / 2
+
+            Repeater {
+                model: 5
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 66
+                    color: "transparent"
+                    border.color: Config.StaticData.palette.secondary.col300
+                    border.width: 1
+                    radius: Config.Theme.radiusSmall
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Config.StaticData.palette.secondary.col300
+                        opacity: Config.Theme.dimmedOpacity
+                        radius: parent.radius
+                    }
+
+                    VectorImage {
+                        anchors.fill: parent
+                        source: "../resources/cardBackground.svg"
+                        fillMode: VectorImage.Stretch
+                    }
+                }
+            }
+        }
+
+        // Flexible spacer — pushes self box and action bar to screen bottom
+        Item { Layout.fillHeight: true }
+
+        // 4. Own cards + chip info
+        GamePlayerSelfBox {
+            Layout.alignment:   Qt.AlignHCenter
+            Layout.bottomMargin: Config.Theme.spacing
+        }
+
+        // 5. Action bar — Fold / Check / Raise
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Config.Theme.touchTarget + Config.Theme.spacing * 2
+            color: Qt.rgba(0.11, 0.13, 0.17, 0.95)
+
+            RowLayout {
+                anchors { fill: parent; margins: Config.Theme.spacing }
+                spacing: Config.Theme.spacing
+
+                CustomButton { text: qsTr("Fold");  Layout.fillWidth: true }
+                CustomButton { text: qsTr("Check"); Layout.fillWidth: true }
+                CustomButton { text: qsTr("Raise"); Layout.fillWidth: true }
             }
         }
     }

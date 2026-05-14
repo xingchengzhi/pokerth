@@ -14,8 +14,7 @@ import "components"
 ApplicationWindow {
     id: mainWindow
 
-    readonly property bool portraitMode: mainWindow.width < mainWindow.height
-
+    // portraitMode is now provided by Config.Responsive.portrait
     property StartPage startPage: StartPage {}
     property SideMenu sideMenu: SideMenu {}
     width: 900
@@ -24,7 +23,13 @@ ApplicationWindow {
     visible: true
     title: qsTr("PokerTH - v2.0 alpha")
 
+    // Keep Responsive singleton in sync with the actual window dimensions
+    onWidthChanged:  Config.Responsive.windowWidth  = width
+    onHeightChanged: Config.Responsive.windowHeight = height
+
     Component.onCompleted: {
+        Config.Responsive.windowWidth  = width
+        Config.Responsive.windowHeight = height
         x = screen.width / 2 - width / 2
         y = screen.height / 2 - height / 2
         LanguageManager.switchLanguage(Config.Parameters.language)

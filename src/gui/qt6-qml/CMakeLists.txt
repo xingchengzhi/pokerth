@@ -56,7 +56,9 @@ set(QML_FILES
     pages/SettingsPage.qml
     pages/StartPage.qml
     config/StaticData.qml
-    config/Parameters.qml)
+    config/Parameters.qml
+    config/Responsive.qml
+    config/Theme.qml)
 
 set(TS_FILES
     i18n/pokerth_de_DE.ts

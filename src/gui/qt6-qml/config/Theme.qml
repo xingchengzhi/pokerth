@@ -11,6 +11,12 @@ QtObject {
     property real windowWidth:  900
     property real windowHeight: 600
 
+    // Set by ApplicationWindow and GuiSettings — same semantics as StaticData.darkMode
+    // 0 = Hell (Light), 1 = Dunkel (Dark), 2 = Automatisch
+    property int darkMode: 1
+
+    readonly property bool isDark: darkMode !== 0  // 0=Hell → false, alles andere (1=Dunkel, 2=Auto) → true
+
     readonly property bool compact: windowWidth < 600
     readonly property bool tablet:  windowWidth >= 900 && windowWidth < 1400
 
@@ -40,15 +46,15 @@ QtObject {
 
     // ── Colors (mirrors StaticData.palette for use without Config prefix) ────
     // Background levels
-    readonly property color colorBackground:    "#1d222b"   // col700
-    readonly property color colorSurface:       "#394150"   // col600
-    readonly property color colorSurfaceMid:    "#576378"   // col500
-    readonly property color colorSurfaceLight:  "#7787a3"   // col400
+    readonly property color colorBackground:    isDark ? "#1d222b" : "#f0f3f8"   // col700
+    readonly property color colorSurface:       isDark ? "#394150" : "#dce2ec"   // col600
+    readonly property color colorSurfaceMid:    isDark ? "#576378" : "#a0acc4"   // col500
+    readonly property color colorSurfaceLight:  isDark ? "#7787a3" : "#7787a3"   // col400
 
     // Text / icon levels
-    readonly property color colorTextPrimary:   "#eff1f5"   // col100
-    readonly property color colorTextSecondary: "#cdd3e0"   // col200
-    readonly property color colorTextMuted:     "#a0acc4"   // col300
+    readonly property color colorTextPrimary:   isDark ? "#eff1f5" : "#1d222b"   // col100
+    readonly property color colorTextSecondary: isDark ? "#cdd3e0" : "#394150"   // col200
+    readonly property color colorTextMuted:     isDark ? "#a0acc4" : "#576378"   // col300
 
     // Accent (poker gold — used for active player, chips, highlights)
     readonly property color colorAccent:        "#E3C800"

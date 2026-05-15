@@ -42,17 +42,18 @@ Rectangle {
         }
 
         ScrollView {
+            id: netScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.leftMargin: 12
-            Layout.rightMargin: 12
             clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: parent.width
-                spacing: 12
+                width: parent.width - 12
 
                 // Spieler & Startkapital
                 GroupBox {
@@ -66,11 +67,12 @@ Rectangle {
                         rowSpacing: 8
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Anzahl der Spieler:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: netNumberOfPlayers
                             from: 2
                             to: 10
@@ -81,11 +83,12 @@ Rectangle {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Startkapital:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: netStartCash
                             from: 100
                             to: 1000000
@@ -97,11 +100,12 @@ Rectangle {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Erster Small Blind:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: netFirstSmallBlind
                             from: 5
                             to: 10000
@@ -144,12 +148,13 @@ Rectangle {
                             Layout.leftMargin: 30
 
                             Label {
+                                Layout.fillWidth: true
                                 text: qsTr("Small Blind erhöhen alle:")
                                 color: Config.StaticData.palette.secondary.col200
                                 enabled: netRaiseBlindsAtHands.checked
                             }
 
-                            SpinBox {
+                            CustomSpinBox {
                                 id: netRaiseSmallBlindEveryHands
                                 from: 1
                                 to: 100
@@ -184,12 +189,13 @@ Rectangle {
                             Layout.leftMargin: 30
 
                             Label {
+                                Layout.fillWidth: true
                                 text: qsTr("Small Blind erhöhen alle:")
                                 color: Config.StaticData.palette.secondary.col200
                                 enabled: netRaiseBlindsAtMinutes.checked
                             }
 
-                            SpinBox {
+                            CustomSpinBox {
                                 id: netRaiseSmallBlindEveryMinutes
                                 from: 1
                                 to: 60
@@ -271,11 +277,12 @@ Rectangle {
                         rowSpacing: 8
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Verzögerung zwischen Händen (Sekunden):")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: netDelayBetweenHands
                             from: 0
                             to: 30
@@ -286,11 +293,12 @@ Rectangle {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Timeout für Spieleraktion (Sekunden):")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: netTimeOutPlayerAction
                             from: 10
                             to: 120
@@ -314,11 +322,12 @@ Rectangle {
                         rowSpacing: 8
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Server-Port:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: serverPort
                             from: 1024
                             to: 65535

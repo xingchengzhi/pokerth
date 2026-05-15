@@ -4,6 +4,7 @@ import QtQuick.Controls.Universal
 import QtQuick.Layouts
 
 import "../config" as Config
+import QtQuick.Dialogs
 
 Rectangle {
     id: nicknameAvatarSettings
@@ -11,6 +12,21 @@ Rectangle {
     //Layout.preferredHeight: parent.height - 8
     Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
     color: "transparent"
+
+    property var activeAvatarField: null
+    property string activeAvatarKey: ""
+
+    FileDialog {
+        id: avatarFileDialog
+        nameFilters: [qsTr("Bilder") + " (*.png *.jpg *.jpeg *.gif *.bmp)"]
+        onAccepted: {
+            let path = decodeURIComponent(selectedFile.toString().replace(/^file:\/\//, ""))
+            if (nicknameAvatarSettings.activeAvatarField)
+                nicknameAvatarSettings.activeAvatarField.text = path
+            if (SettingsManager && nicknameAvatarSettings.activeAvatarKey)
+                SettingsManager.writeConfigString(nicknameAvatarSettings.activeAvatarKey, path)
+        }
+    }
 
     ColumnLayout {
         id: nicknameAvatarSettingsContent
@@ -42,16 +58,18 @@ Rectangle {
         }
 
         ScrollView {
+            id: nickScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.leftMargin: 12
-            Layout.rightMargin: 12
             clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: parent.width
+                width: parent.width - 12
 
                 // Mein Name / Avatar
                 GroupBox {
@@ -82,24 +100,62 @@ Rectangle {
 
                         RowLayout {
                             Layout.fillWidth: true
+                            spacing: 8
 
-                            Label {
-                                Layout.preferredWidth: 120
-                                text: qsTr("Mein Avatar:")
-                                color: Config.StaticData.palette.secondary.col200
+                            Rectangle {
+                                Layout.preferredWidth: 56
+                                Layout.preferredHeight: 56
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: 6
+                                color: Config.StaticData.palette.secondary.col600
+                                clip: true
+
+                                Image {
+                                    id: myAvatarPreview
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    source: myAvatarField.text.startsWith("/")
+                                            ? ("file://" + myAvatarField.text.replace(/#/g, "%23"))
+                                            : ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    smooth: true
+                                    visible: status === Image.Ready
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Label {
+                                    text: qsTr("Mein Avatar:")
+                                    color: Config.StaticData.palette.secondary.col200
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: myAvatarField.text.length > 0
+                                          ? myAvatarField.text.split("/").pop()
+                                          : qsTr("Kein Avatar gewählt")
+                                    font.pointSize: 10
+                                    font.family: Config.StaticData.loadedFont.font.family
+                                    color: Config.StaticData.palette.secondary.col400
+                                    elide: Text.ElideLeft
+                                }
                             }
 
                             TextField {
                                 id: myAvatarField
-                                Layout.fillWidth: true
+                                visible: false
                                 text: SettingsManager ? SettingsManager.readConfigString("MyAvatar") : ""
-                                readOnly: true
                             }
 
                             Button {
                                 text: qsTr("Auswählen...")
                                 onClicked: {
-                                    // TODO: Avatar-Auswahl-Dialog implementieren
+                                    nicknameAvatarSettings.activeAvatarField = myAvatarField
+                                    nicknameAvatarSettings.activeAvatarKey = "MyAvatar"
+                                    avatarFileDialog.open()
                                 }
                             }
                         }
@@ -137,24 +193,62 @@ Rectangle {
 
                             RowLayout {
                                 Layout.fillWidth: true
+                                spacing: 8
 
-                                Label {
-                                    Layout.preferredWidth: 120
-                                    text: qsTr("Avatar:")
-                                    color: Config.StaticData.palette.secondary.col200
+                                Rectangle {
+                                    Layout.preferredWidth: 56
+                                    Layout.preferredHeight: 56
+                                    Layout.alignment: Qt.AlignVCenter
+                                    radius: 6
+                                    color: Config.StaticData.palette.secondary.col600
+                                    clip: true
+
+                                    Image {
+                                        id: opponentAvatarPreview
+                                        anchors.fill: parent
+                                        anchors.margins: 2
+                                        source: opponentAvatarField.text.startsWith("/")
+                                                ? ("file://" + opponentAvatarField.text.replace(/#/g, "%23"))
+                                                : ""
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                        visible: status === Image.Ready
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Label {
+                                        text: qsTr("Avatar:")
+                                        color: Config.StaticData.palette.secondary.col200
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: opponentAvatarField.text.length > 0
+                                              ? opponentAvatarField.text.split("/").pop()
+                                              : qsTr("Kein Avatar gewählt")
+                                        font.pointSize: 10
+                                        font.family: Config.StaticData.loadedFont.font.family
+                                        color: Config.StaticData.palette.secondary.col400
+                                        elide: Text.ElideLeft
+                                    }
                                 }
 
                                 TextField {
                                     id: opponentAvatarField
-                                    Layout.fillWidth: true
+                                    visible: false
                                     text: SettingsManager ? SettingsManager.readConfigString("Opponent" + (index + 1) + "Avatar") : ""
-                                    readOnly: true
                                 }
 
                                 Button {
                                     text: qsTr("Auswählen...")
                                     onClicked: {
-                                        // TODO: Avatar-Auswahl-Dialog implementieren
+                                        nicknameAvatarSettings.activeAvatarField = opponentAvatarField
+                                        nicknameAvatarSettings.activeAvatarKey = "Opponent" + (index + 1) + "Avatar"
+                                        avatarFileDialog.open()
                                     }
                                 }
                             }

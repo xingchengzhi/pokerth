@@ -4,6 +4,7 @@ import QtCore
 import QtQuick
 import QtQuick.VectorImage
 import QtQuick.Controls
+import QtQuick.Controls.Universal
 import QtQuick.Layouts
 import QtQuick.Effects
 
@@ -13,6 +14,8 @@ import "components"
 
 ApplicationWindow {
     id: mainWindow
+
+    Universal.theme: Config.StaticData.isDark ? Universal.Dark : Universal.Light
 
     // portraitMode is now provided by Config.Responsive.portrait
     property StartPage startPage: StartPage {}
@@ -41,6 +44,10 @@ ApplicationWindow {
         x = screen.width / 2 - width / 2
         y = screen.height / 2 - height / 2
         LanguageManager.switchLanguage(Config.Parameters.language)
+        // Initialise dark/light mode from stored preference
+        var dm = SettingsManager ? SettingsManager.readConfigInt("DarkMode") : 1
+        Config.StaticData.darkMode = dm
+        Config.Theme.darkMode = dm
     }
     
     Rectangle {
@@ -73,6 +80,13 @@ ApplicationWindow {
                     Layout.margins: 6
                     source: "resources/threeLines.svg"
                     visible: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorization: 1.0
+                        colorizationColor: menuArea.containsMouse
+                            ? Config.StaticData.palette.secondary.col100
+                            : Config.StaticData.palette.secondary.col200
+                    }
 
                     MouseArea {
                         id: menuArea
@@ -88,21 +102,6 @@ ApplicationWindow {
                                 sideMenu.visible = !sideMenu.visible;
                             }
                         }
-
-                        onEntered: {
-                            topBarMenuIconCol.colorizationColor = Config.StaticData.palette.secondary.col100;
-                        }
-
-                        onExited: {
-                            topBarMenuIconCol.colorizationColor = Config.StaticData.palette.secondary.col200;
-                        }
-                    }
-                    MultiEffect {
-                        id: topBarMenuIconCol
-                        source: topBarMenuIcon
-                        anchors.fill: topBarMenuIcon
-                        colorization: 1.0 // opacity equivalent
-                        colorizationColor: Config.StaticData.palette.secondary.col200
                     }
                 }
 
@@ -119,6 +118,13 @@ ApplicationWindow {
                     Layout.margins: 6
                     source: "resources/settings.svg"
                     visible: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorization: 1.0
+                        colorizationColor: settingsArea.containsMouse
+                            ? Config.StaticData.palette.secondary.col100
+                            : Config.StaticData.palette.secondary.col200
+                    }
 
                     MouseArea {
                         id: settingsArea
@@ -131,21 +137,6 @@ ApplicationWindow {
                             sideMenu.visible = false;
                         }
 
-                        onEntered: {
-                            topBarSettingsIconCol.colorizationColor = Config.StaticData.palette.secondary.col100;
-                        }
-
-                        onExited: {
-                            topBarSettingsIconCol.colorizationColor = Config.StaticData.palette.secondary.col200;
-                        }
-                    }
-
-                    MultiEffect {
-                        id: topBarSettingsIconCol
-                        source: topBarSettingsIcon
-                        anchors.fill: topBarSettingsIcon
-                        colorization: 1.0 // opacity equivalent
-                        colorizationColor: Config.StaticData.palette.secondary.col200
                     }
                 }
             }

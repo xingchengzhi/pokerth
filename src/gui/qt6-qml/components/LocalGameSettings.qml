@@ -42,16 +42,18 @@ Rectangle {
         }
 
         ScrollView {
+            id: localScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.leftMargin: 12
-            Layout.rightMargin: 12
             clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: parent.width
+                width: parent.width - 12
                 spacing: 12
 
                 // Spieler & Startkapital
@@ -66,11 +68,12 @@ Rectangle {
                         rowSpacing: 8
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Anzahl der Spieler:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: numberOfPlayers
                             from: 2
                             to: 10
@@ -81,11 +84,12 @@ Rectangle {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Startkapital:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: startCash
                             from: 100
                             to: 1000000
@@ -97,11 +101,12 @@ Rectangle {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Erster Small Blind:")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: firstSmallBlind
                             from: 5
                             to: 10000
@@ -144,12 +149,13 @@ Rectangle {
                             Layout.leftMargin: 30
 
                             Label {
+                                Layout.fillWidth: true
                                 text: qsTr("Small Blind erhöhen alle:")
                                 color: Config.StaticData.palette.secondary.col200
                                 enabled: raiseBlindsAtHands.checked
                             }
 
-                            SpinBox {
+                            CustomSpinBox {
                                 id: raiseSmallBlindEveryHands
                                 from: 1
                                 to: 100
@@ -184,12 +190,13 @@ Rectangle {
                             Layout.leftMargin: 30
 
                             Label {
+                                Layout.fillWidth: true
                                 text: qsTr("Small Blind erhöhen alle:")
                                 color: Config.StaticData.palette.secondary.col200
                                 enabled: raiseBlindsAtMinutes.checked
                             }
 
-                            SpinBox {
+                            CustomSpinBox {
                                 id: raiseSmallBlindEveryMinutes
                                 from: 1
                                 to: 60
@@ -271,11 +278,12 @@ Rectangle {
                         rowSpacing: 8
 
                         Label {
-                            text: qsTr("Spielgeschwindigkeit (1=langsam, 11=schnell):")
+                            Layout.fillWidth: true
+                            text: qsTr("Spielgeschwindigkeit\n(1=langsam, 11=schnell):")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        SpinBox {
+                        CustomSpinBox {
                             id: gameSpeed
                             from: 1
                             to: 11

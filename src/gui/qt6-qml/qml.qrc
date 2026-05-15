@@ -4,6 +4,7 @@
         <file>qtquickcontrols2.conf</file>
         <file>components/CustomButton.qml</file>
         <file>components/CustomCheckBox.qml</file>
+        <file>components/CustomSpinBox.qml</file>
         <file>components/CustomComboBox.qml</file>
         <file>components/CustomTabBar.qml</file>
         <file>components/CustomToggle.qml</file>

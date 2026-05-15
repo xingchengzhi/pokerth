@@ -49,6 +49,13 @@ Rectangle {
                             width: Config.Theme.iconSize
                             height: Config.Theme.iconSize
                             source: "../resources/" + icon + ".svg"
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: settingsPage.currentCategoryIndex === index
+                                    ? Config.StaticData.palette.secondary.col100
+                                    : Config.StaticData.palette.secondary.col200
+                            }
                         }
                     }
 
@@ -109,19 +116,19 @@ Rectangle {
                 delegate: Rectangle {
                     id: settingsMenuListItem
 
+                    readonly property bool isCurrent: ListView.isCurrentItem
+                    readonly property bool isHighlighted: isCurrent || hoverArea.containsMouse
+
                     property alias labelText: label.text
-                    property alias labelColor: label.color
                     property alias iconSource: iconImage.source
                     property alias iconWidth: iconImage.width
                     property alias iconHeight: iconImage.height
-                    property alias iconColor: iconImageCol.colorizationColor
                     signal clicked
 
                     labelText: name
                     iconSource: "../resources/" + icon + ".svg"
 
-                    color: ListView.isCurrentItem ? Config.StaticData.palette.secondary.col600 : "transparent"
-                    labelColor: ListView.isCurrentItem ? Config.StaticData.palette.secondary.col100 : Config.StaticData.palette.secondary.col200
+                    color: isHighlighted ? Config.StaticData.palette.secondary.col600 : "transparent"
                     width: parent.width
                     height: 36
 
@@ -137,13 +144,12 @@ Rectangle {
                             Layout.alignment: Qt.AlignLeft
                             Layout.preferredHeight: 24
                             Layout.preferredWidth: 24
-
-                            MultiEffect {
-                                id: iconImageCol
-                                source: iconImage
-                                anchors.fill: iconImage
-                                colorization: 1.0 // opacity equivalent
-                                colorizationColor: Config.StaticData.palette.secondary.col200
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: settingsMenuListItem.isHighlighted
+                                    ? Config.StaticData.palette.secondary.col100
+                                    : Config.StaticData.palette.secondary.col200
                             }
                         }
 
@@ -155,10 +161,14 @@ Rectangle {
                             Layout.bottomMargin: 4
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pointSize: 12
+                            color: settingsMenuListItem.isHighlighted
+                                ? Config.StaticData.palette.secondary.col100
+                                : Config.StaticData.palette.secondary.col200
                         }
                     }
 
                     MouseArea {
+                        id: hoverArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -166,30 +176,9 @@ Rectangle {
                             settingsMenuList.currentIndex = index;
                             settingsStackView.replaceCurrentItem("qrc:/components/" + source + "Settings.qml", {}, StackView.Immediate);
                         }
-
-                        onEntered: {
-                            iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col100;
-                            settingsMenuListItem.color = Config.StaticData.palette.secondary.col600;
-                        }
-
-                        onExited: {
-                            iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col200;
-                            if (settingsMenuList.currentIndex !== index) {
-                                iconImageCol.colorizationColor = label.color = Config.StaticData.palette.secondary.col200;
-                                settingsMenuListItem.color = "transparent";
-                            }
-                        }
                     }
                 }
-
-                onCurrentIndexChanged: {
-                    settingsMenuList.currentItem.labelColor = settingsMenuList.currentItem.iconColor = Config.StaticData.palette.secondary.col100;
-                    settingsMenuList.currentItem.color = Config.StaticData.palette.secondary.col600;
-                    settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).labelColor = settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).iconColor = Config.StaticData.palette.secondary.col200;
-                    settingsMenuList.itemAtIndex(settingsMenuList.prevIndex).color = "transparent";
-                    prevIndex = settingsMenuList.currentIndex;
-                }
-            }
+        }
         }
 
         Rectangle {
@@ -211,6 +200,7 @@ Rectangle {
             StackView {
                 id: settingsStackView
                 anchors.fill: parent
+                clip: true
                 initialItem: GuiSettings {}
             }
         }

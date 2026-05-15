@@ -60,6 +60,8 @@ public:
     Q_INVOKABLE int readConfigInt(const QString &key) const;
     Q_INVOKABLE void writeConfigString(const QString &key, const QString &value);
     Q_INVOKABLE void writeConfigInt(const QString &key, int value);
+    Q_INVOKABLE QStringList readConfigStringList(const QString &key) const;
+    Q_INVOKABLE void writeConfigStringList(const QString &key, const QStringList &list);
     Q_INVOKABLE void saveConfig();
 
 signals:

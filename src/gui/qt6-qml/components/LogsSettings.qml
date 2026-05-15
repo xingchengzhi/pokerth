@@ -42,19 +42,18 @@ Rectangle {
         }
 
         ScrollView {
+            id: logsScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.leftMargin: 12
-            Layout.rightMargin: 12
             clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: parent.width
-                spacing: 12
-
-                // Log-Aktivierung
+                width: parent.width - 12
                 GroupBox {
                     Layout.fillWidth: true
                     title: qsTr("Log-Einstellungen")
@@ -110,7 +109,7 @@ Rectangle {
                                 enabled: logOnOff.checked
                             }
 
-                            SpinBox {
+                            CustomSpinBox {
                                 id: logStoreDuration
                                 from: 1
                                 to: 365

@@ -32,6 +32,7 @@ set(QML_FILES
     components/CustomComboBox.qml
     components/CustomTabBar.qml
     components/CustomToggle.qml
+    components/CustomSpinBox.qml
     components/GamePlayerBox.qml
     components/GamePlayerSelfBox.qml
     components/GuiSettings.qml

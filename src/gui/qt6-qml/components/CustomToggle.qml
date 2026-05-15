@@ -18,31 +18,28 @@ Rectangle {
 
     Layout.fillWidth: true
     Layout.fillHeight: false
-    Layout.preferredHeight: 24
+    Layout.preferredHeight: 36
     Layout.topMargin: 8
     color: "transparent"
 
     RowLayout {
-        spacing: 8
+        spacing: 10
         VectorImage {
             id: toggleIcon
             source: toggle.isToggled ? "../resources/toggleRight.svg" : "../resources/toggleLeft.svg"
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 24
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 36
             visible: true
-
-            MultiEffect {
-                id: toggleIconCol
-                source: toggleIcon
-                anchors.fill: toggleIcon
-                colorization: 1.0 // opacity equivalent
-                colorizationColor: Config.StaticData.palette.secondary.col200
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorization: 1.0
+                colorizationColor: Config.StaticData.palette.secondary.col100
             }
         }
 
         Label {
             id: toggleLabel
-            color: Config.StaticData.palette.secondary.col200
+            color: Config.StaticData.palette.secondary.col100
             text: qsTr("CheckBox LabelText")
             font.pointSize: 12
         }

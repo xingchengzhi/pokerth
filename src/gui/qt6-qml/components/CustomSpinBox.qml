@@ -7,14 +7,14 @@ import "../config" as Config
 SpinBox {
     id: control
 
-    leftPadding:  36
-    rightPadding: 36
+    leftPadding:  22
+    rightPadding: 22
     topPadding:   0
     bottomPadding: 0
 
     // ─── Hintergrund ──────────────────────────────────────────────────────────
     background: Rectangle {
-        implicitWidth:  150
+        implicitWidth:  100
         implicitHeight: 36
         radius: 8
         color:        Config.StaticData.palette.secondary.col600
@@ -44,7 +44,7 @@ SpinBox {
     // ─── Minus-Knopf (links, rot/orange) ──────────────────────────────────────
     down.indicator: Rectangle {
         x: control.mirrored ? parent.width - width : 0
-        implicitWidth:  36
+        implicitWidth:  24
         implicitHeight: 36
         topLeftRadius:    8
         bottomLeftRadius: 8
@@ -77,7 +77,7 @@ SpinBox {
     // ─── Plus-Knopf (rechts, grün) ────────────────────────────────────────────
     up.indicator: Rectangle {
         x: control.mirrored ? 0 : parent.width - width
-        implicitWidth:   36
+        implicitWidth:   24
         implicitHeight:  36
         topRightRadius:    8
         bottomRightRadius: 8

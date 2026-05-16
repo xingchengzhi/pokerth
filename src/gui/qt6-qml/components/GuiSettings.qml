@@ -53,15 +53,22 @@ Rectangle {
 
             CustomTabBar {
                 id: guiSettingsTabBar
-                model: [qsTr("Gemeinsam"), qsTr("Netzwerk-/Internetspiel")]
+                model: [qsTr("Allgemein"), qsTr("Netzwerk")]
             }
 
             StackLayout {
-                width: parent.width
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 currentIndex: guiSettingsTabBar.currentIndex
 
-                ColumnLayout {
+                ScrollView {
                     id: generalTab
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                        width: parent.width
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -111,19 +118,24 @@ Rectangle {
                             font.pointSize: 12
                         }
 
-                        CustomComboBox {
+                        ComboBox {
                             id: languageSelector
                             model: Config.StaticData.languages
+                            textRole: "langName"
                             Component.onCompleted: {
                                 if (SettingsManager) {
                                     var lang = SettingsManager.language
-                                    var idx = model.indexOf(lang)
-                                    if (idx >= 0) currentIndex = idx
+                                    for (var i = 0; i < model.length; ++i) {
+                                        if (model[i].langName === lang || model[i].code === lang) {
+                                            currentIndex = i
+                                            return
+                                        }
+                                    }
                                 }
                             }
-                            onCurrentTextChanged: {
-                                if (SettingsManager && currentText && currentText !== "")
-                                    SettingsManager.language = currentText
+                            onActivated: {
+                                if (SettingsManager)
+                                    SettingsManager.language = model[currentIndex].langName
                             }
                         }
                     }
@@ -200,14 +212,29 @@ Rectangle {
 
                     CheckBox {
                         objectName: "doNotTranslatePokerTermsCheckbox"
+                        Layout.fillWidth: true
                         text: qsTr("Internationale Pokerausdrücke (Check, Call, Raise) nicht übersetzen")
                         checked: SettingsManager ? SettingsManager.readConfigInt("DontTranslateInternationalPokerStringsFromStyle") !== 0 : false
                         onCheckedChanged: { if (SettingsManager) SettingsManager.writeConfigInt("DontTranslateInternationalPokerStringsFromStyle", checked ? 1 : 0) }
+                        contentItem: Text {
+                            text: parent.text
+                            wrapMode: Text.Wrap
+                            leftPadding: parent.indicator.width + parent.spacing
+                            verticalAlignment: Text.AlignVCenter
+                            color: parent.palette.windowText
+                        }
                     }
+                    } // ColumnLayout
                 }
 
-                ColumnLayout {
+                ScrollView {
                     id: networkTab
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                        width: parent.width
 
                     CheckBox {
                         objectName: "showCountryFlagOnAvatarCheckbox"
@@ -257,6 +284,7 @@ Rectangle {
                         checked: SettingsManager ? SettingsManager.readConfigInt("DisableChatEmoticons") !== 0 : false
                         onCheckedChanged: { if (SettingsManager) SettingsManager.writeConfigInt("DisableChatEmoticons", checked ? 1 : 0) }
                     }
+                    } // ColumnLayout
                 }
             }
         }

@@ -18,6 +18,7 @@
 
 #include "settingsmanager.h"
 #include "configfile.h"
+#include <QFileDialog>
 
 SettingsManager::SettingsManager(boost::shared_ptr<ConfigFile> config, QObject *parent)
     : QObject(parent), m_config(config)
@@ -150,4 +151,25 @@ void SettingsManager::writeConfigStringList(const QString &key, const QStringLis
 void SettingsManager::saveConfig()
 {
     m_config->writeBuffer();
+}
+
+void SettingsManager::resetToDefaults()
+{
+    m_config->resetToDefaults();
+    emit languageChanged();
+    emit styleChanged();
+    emit soundEnabledChanged();
+    emit disableSplashScreenChanged();
+    emit myNameChanged();
+    emit myAvatarChanged();
+}
+
+QString SettingsManager::pickImageFile(const QString &title)
+{
+    return QFileDialog::getOpenFileName(
+        nullptr,
+        title,
+        QString(),
+        tr("Images (*.png *.jpg *.jpeg *.gif *.bmp)")
+    );
 }

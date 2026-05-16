@@ -278,7 +278,7 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: qsTr("Verzögerung zwischen Händen (Sekunden):")
+                            text: qsTr("Verzögerung zwischen Händen\n(Sekunden):")
                             color: Config.StaticData.palette.secondary.col200
                         }
 
@@ -294,7 +294,7 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: qsTr("Timeout für Spieleraktion (Sekunden):")
+                            text: qsTr("Timeout für Spieleraktion\n(Sekunden):")
                             color: Config.StaticData.palette.secondary.col200
                         }
 

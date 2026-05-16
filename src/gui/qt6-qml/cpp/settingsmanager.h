@@ -63,6 +63,8 @@ public:
     Q_INVOKABLE QStringList readConfigStringList(const QString &key) const;
     Q_INVOKABLE void writeConfigStringList(const QString &key, const QStringList &list);
     Q_INVOKABLE void saveConfig();
+    Q_INVOKABLE void resetToDefaults();
+    Q_INVOKABLE QString pickImageFile(const QString &title);
 
 signals:
     void languageChanged();

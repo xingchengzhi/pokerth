@@ -79,6 +79,7 @@ public:
 	void writeConfigInt(std::string varName, int varCont);
 	void writeConfigIntList(std::string varName, std::list<int> varCont);
 	void deleteConfigFile();
+	void resetToDefaults();
 	std::string configFileName;
 
 protected:

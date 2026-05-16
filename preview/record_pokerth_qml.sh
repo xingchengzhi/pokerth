@@ -1,25 +1,16 @@
 #!/bin/bash
 # PokerTH QML-Client Headless-Demo: Screenshots + Video
 # Portrait-Modus (390×844)
-# Flow: Startseite → Einstellungen → Internet-Login → Lobby (als Gast)
+# Flow: Startseite → Einstellungen (alle 9 Pages) → Zurück → Internet-Login → Lobby (als Gast)
 #
-# Fenster bei 600×1000 Xvfb zentriert auf (105, 78) per QML-Formel:
-#   x = screenWidth/2 - 390/2 = 300 - 195 = 105
-#   y = screenHeight/2 - 844/2 = 500 - 422 = 78
+# Fensterlayout (compact=true, da windowWidth=390 < 600):
+#   TopBar:              y+0  .. y+37  (38px)  – kein XTEST (Qt6/XCB-Bug)
+#   compactCategoryStrip y+38 .. y+85  (48px)  – 9 Settings-Icons
+#   Settings-Inhalt:     y+86 .. y+843
 #
-# Relative Click-Offsets (vom Client-Topleft):
-#   "Internetspiel": x+195, y+349  (StartPage-Button)
-#   "Continue as Guest": x+195, y+507 (ServerConnectionDialog)
+#   9 Icons à 390/9≈43px; Mitte von Icon i = x + 43*i + 21
 #
-# Tastenkürzel (in pokerth.qml implementiert):
-#   Alt+S  → Einstellungen öffnen (wenn auf Startseite)
-#   Escape → Zurück / SideMenu schließen
-#   Alt+←  → Zurück (StandardKey.Back)
-#
-# HINWEIS: TopBar-Klicks (y+0..y+38) reagieren nicht auf XTEST (Qt6/XCB-Bug).
-#          Navigation erfolgt daher über Tastenkürzel.
-#
-# Benötigte apt-Pakete (einmalig installieren):
+# Benötigte apt-Pakete:
 #   sudo apt install xvfb openbox ffmpeg scrot xdotool
 
 set -euo pipefail
@@ -33,29 +24,32 @@ VIDEO_FILE="${SCRIPT_DIR}/pokerth_qml_demo.mp4"
 export DISPLAY=":${DISPLAY_NUM}"
 
 mkdir -p "$OUTPUT_DIR"
-rm -f "${OUTPUT_DIR}"/0*.png
+rm -f "${OUTPUT_DIR}"/*.png
 
-# ── Hilfsfunktion: Vollbild-Screenshot ─────────────────────────────────────────
+# ── Reste vom letzten Lauf bereinigen ─────────────────────────────────────────
+echo "[0/6] Bereinige Reste vom letzten Lauf ..."
+pkill -f "pokerth_qml-client" 2>/dev/null || true
+pkill -f "Xvfb :${DISPLAY_NUM}"  2>/dev/null || true
+pkill -f "openbox"               2>/dev/null || true
+sleep 1
+
+# ── Hilfsfunktionen ────────────────────────────────────────────────────────────
 shot() {
-    local label="$1"
-    local out="${OUTPUT_DIR}/${label}"
+    local file="${OUTPUT_DIR}/$1"
     sleep 0.8
-    DISPLAY=":${DISPLAY_NUM}" scrot "$out"
-    echo "      Screenshot → $out"
+    DISPLAY=":${DISPLAY_NUM}" scrot "$file"
+    echo "      Screenshot → $file"
 }
 
-# ── Hilfsfunktion: Klick mit Verzögerung ───────────────────────────────────────
 click_at() {
-    local x="$1"
-    local y="$2"
-    local desc="${3:-}"
-    echo "      Klick bei (${x}, ${y}) ${desc}"
+    local x="$1" y="$2" desc="${3:-}"
+    echo "      Klick (${x}, ${y}) ${desc}"
     DISPLAY=":${DISPLAY_NUM}" xdotool mousemove "$x" "$y"
-    sleep 0.1
+    sleep 0.15
     DISPLAY=":${DISPLAY_NUM}" xdotool click 1
 }
 
-# ── Cleanup ─────────────────────────────────────────────────────────────────────
+# ── Cleanup ────────────────────────────────────────────────────────────────────
 cleanup() {
     echo "[cleanup] Beende alle Prozesse ..."
     kill "${POKERTH_PID:-}" 2>/dev/null || true
@@ -69,20 +63,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ── Xvfb ───────────────────────────────────────────────────────────────────────
-echo "[1/8] Starte Xvfb :${DISPLAY_NUM} (${DISPLAY_RES}x24) ..."
+# ── Xvfb ──────────────────────────────────────────────────────────────────────
+echo "[1/6] Starte Xvfb :${DISPLAY_NUM} (${DISPLAY_RES}x24) ..."
 Xvfb ":${DISPLAY_NUM}" -screen 0 "${DISPLAY_RES}x24" -ac &
 XVFB_PID=$!
 sleep 1
 
 # ── Window-Manager ─────────────────────────────────────────────────────────────
-echo "[2/8] Starte openbox ..."
+echo "[2/6] Starte openbox ..."
 DISPLAY=":${DISPLAY_NUM}" openbox &
 WM_PID=$!
 sleep 1
 
-# ── ffmpeg-Aufnahme ─────────────────────────────────────────────────────────────
-echo "[3/8] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
+# ── ffmpeg-Aufnahme ────────────────────────────────────────────────────────────
+echo "[3/6] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
 ffmpeg -f x11grab \
     -video_size "${DISPLAY_RES}" \
     -framerate 15 \
@@ -94,17 +88,15 @@ FFMPEG_PID=$!
 sleep 1
 
 # ── QML-Client starten ─────────────────────────────────────────────────────────
-echo "[4/8] Starte QML-Client ..."
-# Config-LoginMode für konsistente Tab-Navigation zurücksetzen (irrelevant für
-# QML-Client, aber schadet nicht)
+echo "[4/6] Starte QML-Client ..."
 if [ -f ~/.pokerth/config.xml ]; then
     sed -i 's|<InternetLoginMode value="[0-9]*"/>|<InternetLoginMode value="0"/>|' ~/.pokerth/config.xml
 fi
 DISPLAY=":${DISPLAY_NUM}" "${BINARY}" > "${SCRIPT_DIR}/pokerth_qml.log" 2>&1 &
 POKERTH_PID=$!
 
-# ── Auf Startfenster warten ─────────────────────────────────────────────────────
-echo "      Warte auf QML-Startfenster ..."
+# ── Auf Startfenster warten ────────────────────────────────────────────────────
+echo "      Warte auf QML-Fenster ..."
 WIN_ID=""
 for i in $(seq 1 40); do
     WIN_ID=$(DISPLAY=":${DISPLAY_NUM}" xdotool search --onlyvisible --name "PokerTH" 2>/dev/null | head -1 || true)
@@ -112,92 +104,103 @@ for i in $(seq 1 40); do
     sleep 1
     echo "      ... $i/40"
 done
-
 if [ -z "$WIN_ID" ]; then
     echo "[FEHLER] QML-Fenster nicht gefunden!"
     DISPLAY=":${DISPLAY_NUM}" scrot "${OUTPUT_DIR}/debug_no_window.png" || true
     exit 1
 fi
 
-# Fensterposition dynamisch ermitteln
 GEOM=$(DISPLAY=":${DISPLAY_NUM}" xdotool getwindowgeometry "$WIN_ID" 2>/dev/null)
 WX=$(echo "$GEOM" | grep "Position:" | grep -oP '\d+(?=,)')
 WY=$(echo "$GEOM" | grep "Position:" | grep -oP '(?<=,)\d+')
-echo "      Fenster-ID: ${WIN_ID}  Position: ${WX},${WY}  – Warte 8s (PreLoader: 5s) ..."
+echo "      Fenster ${WIN_ID}: Position=${WX},${WY}  – Warte 8s (PreLoader 5s) ..."
 sleep 8
 
-# Fenster fokussieren (nötig für Tastenkürzel)
 DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID"
 sleep 0.3
 
-# Klick-Koordinaten berechnen (relativ zu Client-Topleft)
-INTERNET_X=$(( WX + 195 )) # "Internetspiel"-Button
+# ── Koordinaten ────────────────────────────────────────────────────────────────
+APP_W=390
+N_TABS=9
+TAB_W=$(( APP_W / N_TABS ))        # 43 px je Icon
+STRIP_CY=$(( WY + 38 + 24 ))       # Mitte compactCategoryStrip (WY+62)
+INTERNET_X=$(( WX + 195 ))
 INTERNET_Y=$(( WY + 349 ))
-GUEST_X=$(( WX + 195 ))    # "Continue as Guest"-Button
+GUEST_X=$(( WX + 195 ))
 GUEST_Y=$(( WY + 507 ))
 
-# ── Screenshot 1: Startseite ───────────────────────────────────────────────────
+# Settings-Labels (für Dateinamen, Index 0-8)
+SETTINGS_NAMES=(
+    "gui"
+    "stil"
+    "sound"
+    "lokales-spiel"
+    "netzwerkspiel"
+    "internetspiel"
+    "nicknamen-avatare"
+    "log-nachrichten"
+    "reset"
+)
+
+# ── Screenshot 01: Startseite ──────────────────────────────────────────────────
 echo ""
-echo "[5/8] Screenshot 1: Startseite (Portrait)"
+echo "[5/6] Demo-Flow ..."
 shot "01_startseite.png"
 
-# ── Einstellungen öffnen via Alt+S ───────────────────────────────────────────
-echo ""
-echo "      Öffne Einstellungen (Alt+S) ..."
+# ── Einstellungen öffnen (Alt+S) ───────────────────────────────────────────────
+echo "      Einstellungen öffnen (Alt+S) ..."
 DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers alt+s
-sleep 2
+sleep 1.5
 
-# Screenshot 2: Einstellungen
-echo "      Screenshot 2: Einstellungen-Seite"
-shot "02_einstellungen.png"
-sleep 1
+# ── Alle 9 Settings-Pages durchklicken ────────────────────────────────────────
+echo "      Durchklicke alle ${N_TABS} Settings-Pages ..."
+for i in $(seq 0 $(( N_TABS - 1 ))); do
+    ICON_X=$(( WX + TAB_W * i + TAB_W / 2 ))
+    NAME="${SETTINGS_NAMES[$i]}"
+    NUM=$(printf '%02d' $(( i + 2 )))
+    click_at "$ICON_X" "$STRIP_CY" "[${i}] ${NAME}"
+    sleep 1.5
+    shot "${NUM}_settings_${NAME}.png"
+done
 
-# Zurück zur Startseite (Escape)
+# ── Zurück zur Startseite ──────────────────────────────────────────────────────
 echo "      Zurück via Escape ..."
 DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers Escape
 sleep 1.5
 
-# ── Internetspiel → ServerConnectionDialog ─────────────────────────────────────
+# ── Internetspiel → Login ──────────────────────────────────────────────────────
 echo ""
-echo "[6/8] Klicke 'Internetspiel' bei (${INTERNET_X},${INTERNET_Y}) ..."
+echo "[6/6] Internetspiel → Lobby als Gast ..."
 click_at "$INTERNET_X" "$INTERNET_Y" "(Internetspiel)"
 sleep 2
+shot "11_login.png"
 
-# Screenshot 3: Server-Connection-Dialog
-echo "      Screenshot 3: Internet-Login-Auswahl"
-shot "03_login.png"
-
-# ── Als Gast verbinden ─────────────────────────────────────────────────────────
-echo ""
-echo "[7/8] Klicke 'Continue as Guest' bei (${GUEST_X},${GUEST_Y}) ..."
 click_at "$GUEST_X" "$GUEST_Y" "(Continue as Guest)"
-echo "      Warte auf Lobby-Verbindung (10s) ..."
+echo "      Warte auf Lobby (10s) ..."
 sleep 10
+shot "12_lobby.png"
+sleep 3
 
-# Screenshot 4: Lobby
-echo "[8/8] Screenshot 4: Lobby"
-shot "04_lobby.png"
-sleep 5  # Lobby im Video zeigen
-
-# ── Aufnahme beenden ────────────────────────────────────────────────────────────
+# ── Aufnahme beenden ───────────────────────────────────────────────────────────
 echo ""
-echo "      Beende ffmpeg-Aufnahme ..."
+echo "      Beende ffmpeg ..."
 kill -INT "$FFMPEG_PID" 2>/dev/null || true
 wait "$FFMPEG_PID" 2>/dev/null || true
 unset FFMPEG_PID
 
-# ── Zusammenfassung ─────────────────────────────────────────────────────────────
+# ── Zusammenfassung ────────────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║    PokerTH QML-Demo – Fertig         ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 echo "Screenshots:"
-ls -lh "${OUTPUT_DIR}"/0*.png 2>/dev/null || echo "  (keine)"
+ls -lh "${OUTPUT_DIR}"/*.png 2>/dev/null || echo "  (keine)"
 echo ""
 if [ -f "${VIDEO_FILE}" ]; then
     VIDEO_SIZE=$(du -sh "${VIDEO_FILE}" | cut -f1)
-    VIDEO_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${VIDEO_FILE}" 2>/dev/null | awk '{printf "%.1fs", $1}' || echo "?")
+    VIDEO_DUR=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${VIDEO_FILE}" 2>/dev/null \
+        | awk '{printf "%.1fs", $1}' || echo "?")
     echo "Video: ${VIDEO_FILE}"
     echo "  Größe: ${VIDEO_SIZE}  Dauer: ${VIDEO_DUR}"
 else

@@ -946,3 +946,10 @@ void ConfigFile::deleteConfigFile()
 {
 	remove(configFileName.c_str());
 }
+
+void ConfigFile::resetToDefaults()
+{
+	boost::recursive_mutex::scoped_lock lock(m_configMutex);
+	configBufferList = configList;
+	writeBuffer();
+}

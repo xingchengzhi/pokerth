@@ -4,7 +4,6 @@ import QtQuick.Controls.Universal
 import QtQuick.Layouts
 
 import "../config" as Config
-import QtQuick.Dialogs
 
 Rectangle {
     id: nicknameAvatarSettings
@@ -12,21 +11,6 @@ Rectangle {
     //Layout.preferredHeight: parent.height - 8
     Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
     color: "transparent"
-
-    property var activeAvatarField: null
-    property string activeAvatarKey: ""
-
-    FileDialog {
-        id: avatarFileDialog
-        nameFilters: [qsTr("Bilder") + " (*.png *.jpg *.jpeg *.gif *.bmp)"]
-        onAccepted: {
-            let path = decodeURIComponent(selectedFile.toString().replace(/^file:\/\//, ""))
-            if (nicknameAvatarSettings.activeAvatarField)
-                nicknameAvatarSettings.activeAvatarField.text = path
-            if (SettingsManager && nicknameAvatarSettings.activeAvatarKey)
-                SettingsManager.writeConfigString(nicknameAvatarSettings.activeAvatarKey, path)
-        }
-    }
 
     ColumnLayout {
         id: nicknameAvatarSettingsContent
@@ -153,9 +137,12 @@ Rectangle {
                             Button {
                                 text: qsTr("Auswählen...")
                                 onClicked: {
-                                    nicknameAvatarSettings.activeAvatarField = myAvatarField
-                                    nicknameAvatarSettings.activeAvatarKey = "MyAvatar"
-                                    avatarFileDialog.open()
+                                    if (!SettingsManager) return
+                                    let path = SettingsManager.pickImageFile(qsTr("Avatar auswählen"))
+                                    if (path) {
+                                        myAvatarField.text = path
+                                        SettingsManager.writeConfigString("MyAvatar", path)
+                                    }
                                 }
                             }
                         }
@@ -246,9 +233,12 @@ Rectangle {
                                 Button {
                                     text: qsTr("Auswählen...")
                                     onClicked: {
-                                        nicknameAvatarSettings.activeAvatarField = opponentAvatarField
-                                        nicknameAvatarSettings.activeAvatarKey = "Opponent" + (index + 1) + "Avatar"
-                                        avatarFileDialog.open()
+                                        if (!SettingsManager) return
+                                        let path = SettingsManager.pickImageFile(qsTr("Avatar auswählen"))
+                                        if (path) {
+                                            opponentAvatarField.text = path
+                                            SettingsManager.writeConfigString("Opponent" + (index + 1) + "Avatar", path)
+                                        }
                                     }
                                 }
                             }

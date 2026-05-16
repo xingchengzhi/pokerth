@@ -70,6 +70,9 @@ ffmpeg -f x11grab \
     -framerate 15 \
     -i ":${DISPLAY_NUM}" \
     -c:v libx264 -preset fast -crf 23 \
+    -pix_fmt yuv420p \
+    -profile:v baseline -level 3.1 \
+    -movflags +faststart \
     -y "${VIDEO_FILE}" \
     > "${SCRIPT_DIR}/ffmpeg_pokerth.log" 2>&1 &
 FFMPEG_PID=$!

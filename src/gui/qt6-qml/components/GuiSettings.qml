@@ -123,19 +123,18 @@ Rectangle {
                             model: Config.StaticData.languages
                             textRole: "langName"
                             Component.onCompleted: {
-                                if (SettingsManager) {
-                                    var lang = SettingsManager.language
-                                    for (var i = 0; i < model.length; ++i) {
-                                        if (model[i].langName === lang || model[i].code === lang) {
-                                            currentIndex = i
-                                            return
-                                        }
+                                var currentCode = Config.Parameters.language
+                                for (var i = 0; i < model.length; ++i) {
+                                    if (model[i].code === currentCode) {
+                                        currentIndex = i
+                                        return
                                     }
                                 }
                             }
                             onActivated: {
-                                if (SettingsManager)
-                                    SettingsManager.language = model[currentIndex].langName
+                                var code = model[currentIndex].code
+                                Config.Parameters.language = code
+                                LanguageManager.switchLanguage(code)
                             }
                         }
                     }

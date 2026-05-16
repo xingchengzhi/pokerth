@@ -55,7 +55,7 @@ Rectangle {
 
         function onShowLobby() {
             console.log("Showing lobby...")
-            mainStackView.push("LobbyPage.qml")
+            mainStackView.replace(mainStackView.currentItem, "LobbyPage.qml")
         }
     }
 

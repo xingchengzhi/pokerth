@@ -1,14 +1,8 @@
 #!/bin/bash
-# PokerTH QML-Client Headless-Demo: Screenshots + Video
-# Portrait-Modus (390×844)
-# Flow: Startseite → Einstellungen (alle 9 Pages) → Zurück → Internet-Login → Lobby (als Gast)
-#
-# Fensterlayout (compact=true, da windowWidth=390 < 600):
-#   TopBar:              y+0  .. y+37  (38px)  – kein XTEST (Qt6/XCB-Bug)
-#   compactCategoryStrip y+38 .. y+85  (48px)  – 9 Settings-Icons
-#   Settings-Inhalt:     y+86 .. y+843
-#
-#   9 Icons à 390/9≈43px; Mitte von Icon i = x + 43*i + 21
+# PokerTH QML-Client Headless-Demo
+# Flow: Startseite → Internet-Login als Gast → Lobby
+#        (Lobby-Preview-Sequenz läuft automatisch via QML SequentialAnimation:
+#         Spielerliste öffnen/schließen → Spiel selektieren → Game-Info → zurück)
 #
 # Benötigte apt-Pakete:
 #   sudo apt install xvfb openbox ffmpeg scrot xdotool
@@ -27,29 +21,31 @@ mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*.png
 
 # ── Reste vom letzten Lauf bereinigen ─────────────────────────────────────────
-echo "[0/6] Bereinige Reste vom letzten Lauf ..."
+echo "[0/5] Bereinige Reste vom letzten Lauf ..."
 pkill -f "pokerth_qml-client" 2>/dev/null || true
 pkill -f "Xvfb :${DISPLAY_NUM}"  2>/dev/null || true
 pkill -f "openbox"               2>/dev/null || true
 sleep 1
 
-# ── Hilfsfunktionen ────────────────────────────────────────────────────────────
+# ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 shot() {
     local file="${OUTPUT_DIR}/$1"
     sleep 0.8
-    DISPLAY=":${DISPLAY_NUM}" scrot "$file"
+    DISPLAY=":${DISPLAY_NUM}" scrot -p "$file"
     echo "      Screenshot → $file"
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "${WIN_ID:-}" 2>/dev/null || true
+    sleep 0.1
 }
 
 click_at() {
     local x="$1" y="$2" desc="${3:-}"
     echo "      Klick (${x}, ${y}) ${desc}"
-    DISPLAY=":${DISPLAY_NUM}" xdotool mousemove "$x" "$y"
-    sleep 0.15
-    DISPLAY=":${DISPLAY_NUM}" xdotool click 1
+    DISPLAY=":${DISPLAY_NUM}" xdotool mousemove --sync "$x" "$y"
+    sleep 0.2
+    DISPLAY=":${DISPLAY_NUM}" xdotool click --clearmodifiers 1
 }
 
-# ── Cleanup ────────────────────────────────────────────────────────────────────
+# ── Cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
     echo "[cleanup] Beende alle Prozesse ..."
     kill "${POKERTH_PID:-}" 2>/dev/null || true
@@ -64,19 +60,19 @@ cleanup() {
 trap cleanup EXIT
 
 # ── Xvfb ──────────────────────────────────────────────────────────────────────
-echo "[1/6] Starte Xvfb :${DISPLAY_NUM} (${DISPLAY_RES}x24) ..."
+echo "[1/5] Starte Xvfb :${DISPLAY_NUM} (${DISPLAY_RES}x24) ..."
 Xvfb ":${DISPLAY_NUM}" -screen 0 "${DISPLAY_RES}x24" -ac &
 XVFB_PID=$!
 sleep 1
 
-# ── Window-Manager ─────────────────────────────────────────────────────────────
-echo "[2/6] Starte openbox ..."
+# ── Window-Manager ────────────────────────────────────────────────────────────
+echo "[2/5] Starte openbox ..."
 DISPLAY=":${DISPLAY_NUM}" openbox &
 WM_PID=$!
 sleep 1
 
-# ── ffmpeg-Aufnahme ────────────────────────────────────────────────────────────
-echo "[3/6] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
+# ── ffmpeg-Aufnahme ───────────────────────────────────────────────────────────
+echo "[3/5] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
 ffmpeg -f x11grab \
     -video_size "${DISPLAY_RES}" \
     -framerate 15 \
@@ -90,15 +86,15 @@ ffmpeg -f x11grab \
 FFMPEG_PID=$!
 sleep 1
 
-# ── QML-Client starten ─────────────────────────────────────────────────────────
-echo "[4/6] Starte QML-Client ..."
+# ── QML-Client starten ────────────────────────────────────────────────────────
+echo "[4/5] Starte QML-Client ..."
 if [ -f ~/.pokerth/config.xml ]; then
     sed -i 's|<InternetLoginMode value="[0-9]*"/>|<InternetLoginMode value="0"/>|' ~/.pokerth/config.xml
 fi
 DISPLAY=":${DISPLAY_NUM}" "${BINARY}" > "${SCRIPT_DIR}/pokerth_qml.log" 2>&1 &
 POKERTH_PID=$!
 
-# ── Auf Startfenster warten ────────────────────────────────────────────────────
+# ── Auf Startfenster warten ───────────────────────────────────────────────────
 echo "      Warte auf QML-Fenster ..."
 WIN_ID=""
 for i in $(seq 1 40); do
@@ -116,82 +112,79 @@ fi
 GEOM=$(DISPLAY=":${DISPLAY_NUM}" xdotool getwindowgeometry "$WIN_ID" 2>/dev/null)
 WX=$(echo "$GEOM" | grep "Position:" | grep -oP '\d+(?=,)')
 WY=$(echo "$GEOM" | grep "Position:" | grep -oP '(?<=,)\d+')
-echo "      Fenster ${WIN_ID}: Position=${WX},${WY}  – Warte 8s (PreLoader 5s) ..."
+echo "      Fenster ${WIN_ID}: Position=${WX},${WY} – Warte 8s (PreLoader) ..."
 sleep 8
 
 DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID"
 sleep 0.3
 
-# ── Koordinaten ────────────────────────────────────────────────────────────────
-APP_W=390
-N_TABS=9
-TAB_W=$(( APP_W / N_TABS ))        # 43 px je Icon
-STRIP_CY=$(( WY + 38 + 24 ))       # Mitte compactCategoryStrip (WY+62)
+# ── Koordinaten ───────────────────────────────────────────────────────────────
 INTERNET_X=$(( WX + 195 ))
 INTERNET_Y=$(( WY + 349 ))
 GUEST_X=$(( WX + 195 ))
 GUEST_Y=$(( WY + 507 ))
 
-# Settings-Labels (für Dateinamen, Index 0-8)
-SETTINGS_NAMES=(
-    "gui"
-    "stil"
-    "sound"
-    "lokales-spiel"
-    "netzwerkspiel"
-    "internetspiel"
-    "nicknamen-avatare"
-    "log-nachrichten"
-    "reset"
-)
-
-# ── Screenshot 01: Startseite ──────────────────────────────────────────────────
+# ── Demo-Flow ─────────────────────────────────────────────────────────────────
 echo ""
-echo "[5/6] Demo-Flow ..."
+echo "[5/5] Demo-Flow ..."
+
+# Startseite
 shot "01_startseite.png"
 
-# ── Einstellungen öffnen (Alt+S) ───────────────────────────────────────────────
-echo "      Einstellungen öffnen (Alt+S) ..."
-DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers alt+s
-sleep 1.5
-
-# ── Alle 9 Settings-Pages durchklicken ────────────────────────────────────────
-echo "      Durchklicke alle ${N_TABS} Settings-Pages ..."
-for i in $(seq 0 $(( N_TABS - 1 ))); do
-    ICON_X=$(( WX + TAB_W * i + TAB_W / 2 ))
-    NAME="${SETTINGS_NAMES[$i]}"
-    NUM=$(printf '%02d' $(( i + 2 )))
-    click_at "$ICON_X" "$STRIP_CY" "[${i}] ${NAME}"
-    sleep 1.5
-    shot "${NUM}_settings_${NAME}.png"
-done
-
-# ── Zurück zur Startseite ──────────────────────────────────────────────────────
-echo "      Zurück via Escape ..."
-DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers Escape
-sleep 1.5
-
-# ── Internetspiel → Login ──────────────────────────────────────────────────────
-echo ""
-echo "[6/6] Internetspiel → Lobby als Gast ..."
+# Internetspiel anklicken
 click_at "$INTERNET_X" "$INTERNET_Y" "(Internetspiel)"
 sleep 2
-shot "11_login.png"
+shot "02_login.png"
 
+# Als Gast einloggen
 click_at "$GUEST_X" "$GUEST_Y" "(Continue as Guest)"
-echo "      Warte auf Lobby (10s) ..."
-sleep 10
-shot "12_lobby.png"
+echo "      Warte auf Lobby ..."
 sleep 3
+shot "03_lobby_start.png"
 
-# ── Aufnahme beenden ───────────────────────────────────────────────────────────
+# ── Lobby-Interaktionen ────────────────────────────────────────────────────────
+PLAYERS_X=$(( WX + 31 ))
+PLAYERS_Y=$(( WY + 38 ))        # lobbyMargin(12) + halbe Toggle-Höhe(19) + Offset(7)
+CLOSE_PLAYERS_X=$(( WX + 365 ))
+CLOSE_PLAYERS_Y=$(( WY + 32 ))  # panelMargin(10) + halbe ✕-Höhe(15) + Offset(7)
+BACK_X=$(( WX + 31 ))
+BACK_Y=$(( WY + 38 ))           # overlayMargin(12) + halbe Back-Höhe(19) + Offset(7)
+echo "      DEBUG: WX=${WX} WY=${WY} → Toggle=(${PLAYERS_X},${PLAYERS_Y}) Close=(${CLOSE_PLAYERS_X},${CLOSE_PLAYERS_Y})"
+GAME_X=$(( WX + 195 ))
+GAME_Y=$(( WY + 97 ))           # margin(12) + filterRow(38) + spacing(8) + halbesGameItem(27+5) + Offset(7)
+
+# Spielerliste öffnen
+click_at "$PLAYERS_X" "$PLAYERS_Y" "(Spielerliste öffnen)"
+sleep 1.5
+shot "04_player_list.png"
+sleep 0.5
+
+# Spielerliste schließen
+click_at "$CLOSE_PLAYERS_X" "$CLOSE_PLAYERS_Y" "(Spielerliste ✕ schließen)"
+sleep 1.5
+shot "05_lobby_back.png"
+sleep 0.5
+
+# Erstes Spiel selektieren → Game-Info overlay
+click_at "$GAME_X" "$GAME_Y" "(Spiel selektieren)"
+sleep 1.5
+shot "06_game_info.png"
+sleep 0.5
+
+# Game-Info schließen (← zurück)
+click_at "$BACK_X" "$BACK_Y" "(Game-Info schließen)"
+sleep 1.5
+shot "07_lobby_final.png"
+sleep 1
+
+# ── Aufnahme beenden ──────────────────────────────────────────────────────────
 echo ""
 echo "      Beende ffmpeg ..."
 kill -INT "$FFMPEG_PID" 2>/dev/null || true
 wait "$FFMPEG_PID" 2>/dev/null || true
 unset FFMPEG_PID
 
-# ── Zusammenfassung ────────────────────────────────────────────────────────────
+# ── Zusammenfassung ───────────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║    PokerTH QML-Demo – Fertig         ║"
@@ -209,3 +202,56 @@ if [ -f "${VIDEO_FILE}" ]; then
 else
     echo "Video: nicht erstellt (Log: ${SCRIPT_DIR}/ffmpeg_qml.log)"
 fi
+
+# ── [AUSKOMMENTIERT: Settings-Demo] ─────────────────────────────────────────
+# APP_W=390
+# N_TABS=9
+# TAB_W=$(( APP_W / N_TABS ))        # 43 px je Icon
+# STRIP_CY=$(( WY + 38 + 24 ))       # Mitte compactCategoryStrip (WY+62)
+# INTERNET_X=$(( WX + 195 ))
+# INTERNET_Y=$(( WY + 349 ))
+# GUEST_X=$(( WX + 195 ))
+# GUEST_Y=$(( WY + 507 ))
+#
+# SETTINGS_NAMES=(
+#     "gui"
+#     "stil"
+#     "sound"
+#     "lokales-spiel"
+#     "netzwerkspiel"
+#     "internetspiel"
+#     "nicknamen-avatare"
+#     "log-nachrichten"
+#     "reset"
+# )
+#
+# echo "[5/6] Demo-Flow ..."
+# shot "01_startseite.png"
+#
+# echo "      Einstellungen öffnen (Alt+S) ..."
+# DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers alt+s
+# sleep 1.5
+#
+# echo "      Durchklicke alle ${N_TABS} Settings-Pages ..."
+# for i in $(seq 0 $(( N_TABS - 1 ))); do
+#     ICON_X=$(( WX + TAB_W * i + TAB_W / 2 ))
+#     NAME="${SETTINGS_NAMES[$i]}"
+#     NUM=$(printf '%02d' $(( i + 2 )))
+#     click_at "$ICON_X" "$STRIP_CY" "[${i}] ${NAME}"
+#     sleep 1.5
+#     shot "${NUM}_settings_${NAME}.png"
+# done
+#
+# echo "      Zurück via Escape ..."
+# DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" --clearmodifiers Escape
+# sleep 1.5
+#
+# echo "[6/6] Internetspiel → Lobby als Gast ..."
+# click_at "$INTERNET_X" "$INTERNET_Y" "(Internetspiel)"
+# sleep 2
+# shot "11_login.png"
+# click_at "$GUEST_X" "$GUEST_Y" "(Continue as Guest)"
+# echo "      Warte auf Lobby (2s) ..."
+# sleep 2
+# shot "12_lobby.png"
+# sleep 3

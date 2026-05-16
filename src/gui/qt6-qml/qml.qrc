@@ -64,6 +64,9 @@
         <file>resources/power.svg</file>
         <file>resources/Rubik-Italic-VariableFont_wght.ttf</file>
         <file>resources/Rubik-VariableFont_wght.ttf</file>
+        <file>resources/minus.svg</file>
+        <file>resources/plus.svg</file>
+        <file>resources/send.svg</file>
         <file>resources/settings.svg</file>
         <file>resources/spade.svg</file>
         <file>resources/speaker.svg</file>
@@ -75,6 +78,7 @@
         <file>resources/toggleLeft.svg</file>
         <file>resources/toggleRight.svg</file>
         <file>resources/user.svg</file>
+        <file>resources/users.svg</file>
         <file>resources/userSquare.svg</file>
     </qresource>
 </RCC>

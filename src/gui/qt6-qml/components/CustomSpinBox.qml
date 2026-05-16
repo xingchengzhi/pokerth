@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.VectorImage
+import QtQuick.Effects
 
 import "../config" as Config
 
@@ -61,16 +63,22 @@ SpinBox {
 
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Text {
+        VectorImage {
+            id: minusIcon
             anchors.centerIn: parent
-            text: "−"
-            font.pixelSize: 20
-            font.bold: true
-            color: control.down.pressed
-                ? "#ffffff"
-                : control.down.hovered
-                    ? Config.StaticData.chartColor(5, true)
-                    : Config.StaticData.palette.secondary.col300
+            width: 14
+            height: 14
+            source: "../resources/minus.svg"
+            MultiEffect {
+                source: minusIcon
+                anchors.fill: minusIcon
+                colorization: 1.0
+                colorizationColor: control.down.pressed
+                    ? "#ffffff"
+                    : control.down.hovered
+                        ? Config.StaticData.chartColor(5, true)
+                        : Config.StaticData.palette.secondary.col300
+            }
         }
     }
 
@@ -94,16 +102,22 @@ SpinBox {
 
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Text {
+        VectorImage {
+            id: plusIcon
             anchors.centerIn: parent
-            text: "+"
-            font.pixelSize: 20
-            font.bold: true
-            color: control.up.pressed
-                ? "#ffffff"
-                : control.up.hovered
-                    ? Config.StaticData.chartColor(0, true)
-                    : Config.StaticData.palette.secondary.col300
+            width: 14
+            height: 14
+            source: "../resources/plus.svg"
+            MultiEffect {
+                source: plusIcon
+                anchors.fill: plusIcon
+                colorization: 1.0
+                colorizationColor: control.up.pressed
+                    ? "#ffffff"
+                    : control.up.hovered
+                        ? Config.StaticData.chartColor(0, true)
+                        : Config.StaticData.palette.secondary.col300
+            }
         }
     }
 }

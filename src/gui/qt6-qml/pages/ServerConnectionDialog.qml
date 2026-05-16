@@ -46,16 +46,22 @@ Rectangle {
             console.log("Connection failed:", errorMessage)
             statusText.text = errorMessage
             statusText.color = "#FF5252"
-
-            Qt.callLater(function() {
-                mainStack.currentIndex = 0
-                statusText.color = Config.StaticData.palette.secondary.col300
-            })
+            errorResetTimer.restart()
         }
 
         function onShowLobby() {
             console.log("Showing lobby...")
             mainStackView.replace(mainStackView.currentItem, "LobbyPage.qml")
+        }
+    }
+
+    Timer {
+        id: errorResetTimer
+        interval: 3500
+        repeat: false
+        onTriggered: {
+            mainStack.currentIndex = 0
+            statusText.color = Config.StaticData.palette.secondary.col300
         }
     }
 

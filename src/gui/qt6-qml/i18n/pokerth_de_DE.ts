@@ -865,8 +865,8 @@ Chat-Nachrichten erscheinen hier...</translation>
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="125"/>
-        <source>PokerTH - v2.0 alpha</source>
-        <translation>PokerTH - v2.0 alpha</translation>
+        <source>PokerTH - v2.1.0preview</source>
+        <translation>PokerTH - v2.1.0preview</translation>
     </message>
 </context>
 <context>
@@ -1012,8 +1012,8 @@ Chat-Nachrichten erscheinen hier...</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="36"/>
-        <source>PokerTH - v2.0 alpha</source>
-        <translation>PokerTH - v2.0 alpha</translation>
+        <source>PokerTH - v2.1.0preview</source>
+        <translation>PokerTH - v2.1.0preview</translation>
     </message>
     <message>
         <location filename="../components/SideMenu.qml" line="134"/>
@@ -1204,8 +1204,8 @@ Chat-Nachrichten erscheinen hier...</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="25"/>
-        <source>PokerTH - v2.0 alpha</source>
-        <translation>PokerTH - v2.0 alpha</translation>
+        <source>PokerTH - v2.1.0preview</source>
+        <translation>PokerTH - v2.1.0preview</translation>
     </message>
 </context>
 </TS>

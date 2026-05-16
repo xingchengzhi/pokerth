@@ -120,7 +120,7 @@ Rectangle {
 
                 Text {
                     id: preLoaderFooterText
-                    text: qsTr("PokerTH - v2.0 alpha")
+                    text: qsTr("PokerTH - v2.1.0preview")
                     color: Config.StaticData.palette.secondary.col200
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pointSize: 12

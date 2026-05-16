@@ -24,7 +24,7 @@ ApplicationWindow {
     height: 844
     // TRY to center the window, doesn't work on my Ubuntu but should work on other platforms.
     visible: true
-    title: qsTr("PokerTH - v2.0 alpha")
+    title: qsTr("PokerTH - v2.1.0preview")
 
     // Keep Responsive singleton in sync with the actual window dimensions
     onWidthChanged: {

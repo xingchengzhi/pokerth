@@ -26,6 +26,40 @@ Rectangle {
     property var selectedGame: null
     property int playerListCollapseResetCounter: 0
 
+    readonly property int gameListRevision: Lobby ? Lobby.gameListRevision : 0
+    readonly property var selectedGamePlayers: {
+        var _playerRev = Lobby ? Lobby.playerListRevision : 0
+        var _gameRev = gameListRevision
+        var gid = selectedGame ? selectedGame.gameId : 0
+        return (Lobby && gid) ? Lobby.gamePlayersInGame(gid) : []
+    }
+
+    function gameTypeText(gameType) {
+        if (gameType === 2) return qsTr("Registered players only")
+        if (gameType === 3) return qsTr("Invited players only")
+        if (gameType === 4) return qsTr("Ranking game")
+        return qsTr("Standard")
+    }
+
+    function gameTypeIconSource(gameType) {
+        if (gameType === 2) return "../resources/userSquare.svg"
+        if (gameType === 3) return "../resources/users.svg"
+        if (gameType === 4) return "../resources/chipStack.svg"
+        return "../resources/user.svg"
+    }
+
+    function gameStatusText(mode, count, maxPlayers) {
+        if (mode === 2) return qsTr("Running")
+        if (mode === 3) return qsTr("Closed")
+        return count < maxPlayers ? qsTr("Open") : qsTr("Full")
+    }
+
+    function gameStatusColor(mode, count, maxPlayers) {
+        if (mode === 2) return "#FF9800"
+        if (mode === 3) return "#EF5350"
+        return count < maxPlayers ? "#4CAF50" : "#FFC107"
+    }
+
     function resetPlayerListDelegates() {
         playerListCollapseResetCounter += 1
         playerPanelList.currentIndex = -1
@@ -55,6 +89,12 @@ Rectangle {
                 playerListFilterWide.currentIndex = Lobby.playerListFilterMode
             }
             lobbyPage.resetPlayerListDelegates()
+        }
+
+        function onGameListFilterModeChanged() {
+            if (gameListFilter.currentIndex !== Lobby.gameListFilterMode) {
+                gameListFilter.currentIndex = Lobby.gameListFilterMode
+            }
         }
     }
 
@@ -258,7 +298,7 @@ Rectangle {
             // Game details card
             Rectangle {
                 Layout.fillWidth: true
-                height: 200
+                Layout.fillHeight: true
                 color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
                 radius: 6
 
@@ -293,21 +333,206 @@ Rectangle {
                     Label {
                         text: {
                             if (!lobbyPage.selectedGame) return ""
+                            var mode = lobbyPage.selectedGame.gameMode || 1
                             var cnt = lobbyPage.selectedGame.playerCount || 0
                             var max = lobbyPage.selectedGame.maxPlayers || 10
-                            return cnt < max ? qsTr("Status: Open") : qsTr("Status: Full")
+                            return qsTr("Status: %1").arg(lobbyPage.gameStatusText(mode, cnt, max))
                         }
                         font.family: Config.StaticData.loadedFont.font.family
                         font.pixelSize: 13
                         color: {
                             if (!lobbyPage.selectedGame) return Config.StaticData.palette.secondary.col300
+                            var mode = lobbyPage.selectedGame.gameMode || 1
                             var cnt = lobbyPage.selectedGame.playerCount || 0
                             var max = lobbyPage.selectedGame.maxPlayers || 10
-                            return cnt < max ? "#4CAF50" : "#FFC107"
+                            return lobbyPage.gameStatusColor(mode, cnt, max)
                         }
                     }
 
-                    Item { Layout.fillHeight: true }
+                    RowLayout {
+                        visible: lobbyPage.selectedGame !== null
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        VectorImage {
+                            id: compactGameTypeIcon
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                            source: lobbyPage.gameTypeIconSource((lobbyPage.selectedGame && lobbyPage.selectedGame.gameType) || 1)
+
+                            MultiEffect {
+                                source: compactGameTypeIcon
+                                anchors.fill: compactGameTypeIcon
+                                colorization: 1.0
+                                colorizationColor: Config.StaticData.palette.secondary.col300
+                            }
+                        }
+
+                        Label {
+                            text: lobbyPage.selectedGame
+                                  ? qsTr("Type: %1").arg(lobbyPage.gameTypeText(lobbyPage.selectedGame.gameType || 1))
+                                  : ""
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 13
+                            color: Config.StaticData.palette.secondary.col200
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    Label {
+                        text: lobbyPage.selectedGame
+                              ? qsTr("Small blind: %1").arg(lobbyPage.selectedGame.firstSmallBlind || 10)
+                              : ""
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                    }
+
+                    Label {
+                        text: lobbyPage.selectedGame
+                              ? qsTr("Start cash: %1").arg(lobbyPage.selectedGame.startMoney || 0)
+                              : ""
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                    }
+
+                    Label {
+                        text: {
+                            if (!lobbyPage.selectedGame) return ""
+                            var mode = lobbyPage.selectedGame.raiseIntervalMode || 1
+                            if (mode === 1) {
+                                return qsTr("Blinds raise interval: %1 hands").arg(lobbyPage.selectedGame.raiseEveryHands || 0)
+                            }
+                            return qsTr("Blinds raise interval: %1 minutes").arg(lobbyPage.selectedGame.raiseEveryMinutes || 0)
+                        }
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        text: lobbyPage.selectedGame
+                              ? qsTr("Blinds raise mode: %1").arg((lobbyPage.selectedGame.raiseMode || 1) === 1
+                                  ? qsTr("double blinds") : qsTr("manual blinds order"))
+                              : ""
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        visible: lobbyPage.selectedGame && (lobbyPage.selectedGame.raiseMode || 1) !== 1 &&
+                                 (lobbyPage.selectedGame.manualBlindsText || "").length > 0
+                        text: lobbyPage.selectedGame
+                              ? qsTr("Blinds list: %1").arg(lobbyPage.selectedGame.manualBlindsText || "")
+                              : ""
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        text: lobbyPage.selectedGame
+                              ? qsTr("Game timing: %1 sec (action)\n%2 sec (hand delay)")
+                                .arg(lobbyPage.selectedGame.playerActionTimeoutSec || 0)
+                                .arg(lobbyPage.selectedGame.delayBetweenHandsSec || 0)
+                              : ""
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col200
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        visible: lobbyPage.selectedGame !== null
+                        text: qsTr("Players in game (%1)").arg(lobbyPage.selectedGamePlayers.length)
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.bold: true
+                        font.pixelSize: 13
+                        color: Config.StaticData.palette.secondary.col100
+                    }
+
+                    ListView {
+                        visible: lobbyPage.selectedGame !== null
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: lobbyPage.selectedGamePlayers
+                        spacing: 4
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: ListView.view ? ListView.view.width : 0
+                            height: 32
+                            radius: 4
+                            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.1)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 6
+                                anchors.rightMargin: 6
+                                spacing: 6
+
+                                Rectangle {
+                                    Layout.preferredWidth: 22
+                                    Layout.preferredHeight: 22
+                                    radius: 11
+                                    color: Qt.darker(Config.StaticData.palette.secondary.col600, 1.2)
+                                    border.width: 1
+                                    border.color: Config.StaticData.palette.secondary.col500
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: (modelData.avatarUrl || "").length > 0
+                                        source: modelData.avatarUrl || ""
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                    }
+
+                                    VectorImage {
+                                        visible: !((modelData.avatarUrl || "").length > 0)
+                                        anchors.centerIn: parent
+                                        width: 12
+                                        height: 12
+                                        source: "../resources/user.svg"
+                                    }
+                                }
+
+                                Image {
+                                    visible: (modelData.countryCode || "") !== ""
+                                    source: (modelData.countryCode || "") !== ""
+                                        ? "qrc:/resources/cflags/" + (modelData.countryCode || "").toLowerCase() + ".svg"
+                                        : ""
+                                    Layout.preferredWidth: 18
+                                    Layout.preferredHeight: 14
+                                    fillMode: Image.PreserveAspectFit
+                                    smooth: true
+                                }
+
+                                Text {
+                                    text: modelData.playerName || ""
+                                    font.family: Config.StaticData.loadedFont.font.family
+                                    font.pixelSize: 12
+                                    color: (modelData.isAdmin === true)
+                                        ? Config.StaticData.chartColor(3, true)
+                                        : Config.StaticData.palette.secondary.col200
+                                    font.bold: modelData.isAdmin === true
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
 
@@ -323,8 +548,6 @@ Rectangle {
                     }
                 }
             }
-
-            Item { Layout.fillHeight: true }
         }
     }
 
@@ -402,6 +625,12 @@ Rectangle {
                     qsTr("Show open & non-full & private games"),
                     qsTr("Show open & non-full & ranking games")
                 ]
+                currentIndex: Lobby ? Lobby.gameListFilterMode : 0
+                onCurrentIndexChanged: {
+                    if (Lobby && Lobby.gameListFilterMode !== currentIndex) {
+                        Lobby.gameListFilterMode = currentIndex
+                    }
+                }
             }
         }
 
@@ -488,7 +717,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            model: Lobby ? Lobby.gameListModel : null
+                            model: Lobby ? Lobby.gameListProxyModel : null
 
                             delegate: ItemDelegate {
                                 width: gameListView.width
@@ -528,12 +757,21 @@ Rectangle {
                                             color: Config.StaticData.palette.secondary.col500
                                         }
                                         Text {
-                                            text: (model.playerCount || 0) < (model.maxPlayers || 10)
-                                                  ? qsTr("Open") : qsTr("Full")
+                                            readonly property int gm: (model.gameMode || 1)
+                                            readonly property int cnt: (model.playerCount || 0)
+                                            readonly property int max: (model.maxPlayers || 10)
+                                            text: {
+                                                if (gm === 2) return qsTr("Running")
+                                                if (gm === 3) return qsTr("Closed")
+                                                return cnt < max ? qsTr("Open") : qsTr("Full")
+                                            }
                                             font.family: Config.StaticData.loadedFont.font.family
                                             font.pixelSize: 12
-                                            color: (model.playerCount || 0) < (model.maxPlayers || 10)
-                                                   ? "#4CAF50" : "#FFC107"
+                                            color: {
+                                                if (gm === 2) return "#FF9800"
+                                                if (gm === 3) return "#EF5350"
+                                                return cnt < max ? "#4CAF50" : "#FFC107"
+                                            }
                                         }
                                         Text {
                                             text: "·"
@@ -541,10 +779,35 @@ Rectangle {
                                             color: Config.StaticData.palette.secondary.col500
                                         }
                                         Text {
-                                            text: qsTr("Blind: 10/20")
+                                            readonly property int sb: model.firstSmallBlind > 0 ? model.firstSmallBlind : 10
+                                            text: qsTr("Blind: %1/%2").arg(sb).arg(sb * 2)
                                             font.family: Config.StaticData.loadedFont.font.family
                                             font.pixelSize: 12
                                             color: Config.StaticData.palette.secondary.col300
+                                        }
+                                        Text {
+                                            text: "·"
+                                            font.pixelSize: 12
+                                            color: Config.StaticData.palette.secondary.col500
+                                        }
+                                        Text {
+                                            text: model.isPrivate ? qsTr("Private") : qsTr("Public")
+                                            font.family: Config.StaticData.loadedFont.font.family
+                                            font.pixelSize: 12
+                                            color: Config.StaticData.palette.secondary.col300
+                                        }
+                                        Text {
+                                            text: "·"
+                                            font.pixelSize: 12
+                                            color: Config.StaticData.palette.secondary.col500
+                                            visible: model.gameType === 4
+                                        }
+                                        Text {
+                                            text: qsTr("Ranking")
+                                            font.family: Config.StaticData.loadedFont.font.family
+                                            font.pixelSize: 12
+                                            color: Config.StaticData.palette.secondary.col300
+                                            visible: model.gameType === 4
                                         }
                                         Item { Layout.fillWidth: true }
                                     }
@@ -558,11 +821,28 @@ Rectangle {
                                 }
 
                                 onClicked: {
+                                    gameListView.currentIndex = index
+                                    lobbyPage.selectedGame = {
+                                        gameId: model.gameId,
+                                        gameName: model.gameName,
+                                        playerCount: model.playerCount,
+                                        maxPlayers: model.maxPlayers,
+                                        gameMode: model.gameMode,
+                                        isPrivate: model.isPrivate,
+                                        gameType: model.gameType,
+                                        firstSmallBlind: model.firstSmallBlind,
+                                        startMoney: model.startMoney,
+                                        raiseIntervalMode: model.raiseIntervalMode,
+                                        raiseEveryHands: model.raiseEveryHands,
+                                        raiseEveryMinutes: model.raiseEveryMinutes,
+                                        raiseMode: model.raiseMode,
+                                        manualBlindsText: model.manualBlindsText,
+                                        playerActionTimeoutSec: model.playerActionTimeoutSec,
+                                        delayBetweenHandsSec: model.delayBetweenHandsSec
+                                    }
+
                                     if (Config.Responsive.compact) {
-                                        lobbyPage.selectedGame = model
                                         lobbyPage.showingGameInfo = true
-                                    } else {
-                                        Lobby.joinGame(model.gameId)
                                     }
                                 }
                             }
@@ -679,11 +959,10 @@ Rectangle {
                         font.family: Config.StaticData.loadedFont.font.family
                         Layout.fillWidth: true
                         visible: !Config.Responsive.compact
-                        enabled: gameListView.currentIndex >= 0
+                        enabled: lobbyPage.selectedGame !== null
                         onClicked: {
-                            if (gameListView.currentIndex >= 0) {
-                                var item = Lobby.gameListModel.get(gameListView.currentIndex)
-                                if (item) Lobby.joinGame(item.gameId)
+                            if (lobbyPage.selectedGame) {
+                                Lobby.joinGame(lobbyPage.selectedGame.gameId)
                             }
                         }
                     }
@@ -717,13 +996,131 @@ Rectangle {
                             color: Config.StaticData.palette.secondary.col200
                         }
 
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            VectorImage {
+                                id: wideGameTypeIcon
+                                visible: lobbyPage.selectedGame !== null
+                                Layout.preferredWidth: 14
+                                Layout.preferredHeight: 14
+                                source: lobbyPage.gameTypeIconSource((lobbyPage.selectedGame && lobbyPage.selectedGame.gameType) || 1)
+
+                                MultiEffect {
+                                    source: wideGameTypeIcon
+                                    anchors.fill: wideGameTypeIcon
+                                    colorization: 1.0
+                                    colorizationColor: Config.StaticData.palette.secondary.col300
+                                }
+                            }
+
+                            Label {
+                                text: lobbyPage.selectedGame
+                                      ? qsTr("Type: %1").arg(lobbyPage.gameTypeText(lobbyPage.selectedGame.gameType || 1))
+                                      : qsTr("Select a game to see details")
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 12
+                                color: Config.StaticData.palette.secondary.col300
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
+
                         Label {
-                            text: qsTr("Select a game to see details")
+                            visible: lobbyPage.selectedGame !== null
+                            text: lobbyPage.selectedGame
+                                  ? qsTr("SB: %1 | Start cash: %2")
+                                    .arg(lobbyPage.selectedGame.firstSmallBlind || 10)
+                                    .arg(lobbyPage.selectedGame.startMoney || 0)
+                                  : ""
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 12
                             color: Config.StaticData.palette.secondary.col300
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
+                        }
+
+                        Label {
+                            visible: lobbyPage.selectedGame !== null
+                            text: qsTr("Players in game (%1)").arg(lobbyPage.selectedGamePlayers.length)
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.bold: true
+                            font.pixelSize: 12
+                            color: Config.StaticData.palette.secondary.col200
+                        }
+
+                        ListView {
+                            visible: lobbyPage.selectedGame !== null
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: lobbyPage.selectedGamePlayers
+                            spacing: 4
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: ListView.view ? ListView.view.width : 0
+                                height: 30
+                                radius: 4
+                                color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.1)
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 6
+                                    anchors.rightMargin: 6
+                                    spacing: 6
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 20
+                                        Layout.preferredHeight: 20
+                                        radius: 10
+                                        color: Qt.darker(Config.StaticData.palette.secondary.col600, 1.2)
+                                        border.width: 1
+                                        border.color: Config.StaticData.palette.secondary.col500
+                                        clip: true
+
+                                        Image {
+                                            anchors.fill: parent
+                                            visible: (modelData.avatarUrl || "").length > 0
+                                            source: modelData.avatarUrl || ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            smooth: true
+                                        }
+
+                                        VectorImage {
+                                            visible: !((modelData.avatarUrl || "").length > 0)
+                                            anchors.centerIn: parent
+                                            width: 10
+                                            height: 10
+                                            source: "../resources/user.svg"
+                                        }
+                                    }
+
+                                    Image {
+                                        visible: (modelData.countryCode || "") !== ""
+                                        source: (modelData.countryCode || "") !== ""
+                                            ? "qrc:/resources/cflags/" + (modelData.countryCode || "").toLowerCase() + ".svg"
+                                            : ""
+                                        Layout.preferredWidth: 16
+                                        Layout.preferredHeight: 12
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
+                                    }
+
+                                    Text {
+                                        text: modelData.playerName || ""
+                                        font.family: Config.StaticData.loadedFont.font.family
+                                        font.pixelSize: 11
+                                        color: (modelData.isAdmin === true)
+                                            ? Config.StaticData.chartColor(3, true)
+                                            : Config.StaticData.palette.secondary.col200
+                                        font.bold: modelData.isAdmin === true
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -854,15 +1251,34 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
-            Label {
-                text: qsTr("<a href='https://www.pokerth.net'>PokerTH.net</a>")
+            Text {
+                text: qsTr("PokerTH.net")
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 12
-                textFormat: Text.RichText
-                linkColor: (Config.StaticData.palette.primary && Config.StaticData.palette.primary.col400)
-                           ? Config.StaticData.palette.primary.col400
-                           : Config.StaticData.palette.secondary.col300
-                onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                color: (Config.StaticData.palette.primary && Config.StaticData.palette.primary.col400)
+                       ? Config.StaticData.palette.primary.col400
+                       : Config.StaticData.palette.secondary.col300
+                font.underline: true
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        var url = "https://www.pokerth.net"
+                        var opened = false
+                        if (Lobby) {
+                            opened = Lobby.openExternalUrl(url)
+                        } else {
+                            opened = Qt.openUrlExternally(url)
+                        }
+
+                        if (!opened) {
+                            console.warn("Failed to open footer URL:", url)
+                        }
+                    }
+                }
+
                 HoverHandler {
                     cursorShape: Qt.PointingHandCursor
                 }

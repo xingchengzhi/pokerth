@@ -160,11 +160,15 @@ void ServerConnectionHandler::onNetClientError(int errorID, int osErrorID)
     // Error 11 is often a TLS handshake issue that succeeds on retry
     if (errorID == 11 && m_retryCount < 1 && !m_pendingUsername.isEmpty()) {
         m_retryCount++;
+        const int scheduledRetryCount = m_retryCount;
         updateProgress(15, tr("Connection failed, retrying..."));
         
         // Wait a moment before retrying
-        QTimer::singleShot(2000, this, [this]() {
-            if (!m_session) return;
+        QTimer::singleShot(2000, this, [this, scheduledRetryCount]() {
+            // Ignore stale retry timers after a successful connection or a new connect attempt.
+            if (!m_session || !m_isConnecting || m_retryCount != scheduledRetryCount) {
+                return;
+            }
             
             updateProgress(20, tr("Retrying connection..."));
             

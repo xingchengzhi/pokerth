@@ -7,8 +7,13 @@
 #include "session.h"
 #include "configfile.h"
 #include "gamedata.h"
+#include "core/appimage_utils.h"
 
 #include <QRegularExpression>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QUrl>
+#include <QStringList>
 
 class PlayerNickListSortFilterProxyModel : public QSortFilterProxyModel
 {
@@ -96,6 +101,86 @@ private:
     int m_filterState;
     bool m_lastFilterStateCountry;
     bool m_lastFilterStateAlpha;
+    Session *m_session;
+};
+
+class GameListSortFilterProxyModel : public QSortFilterProxyModel
+{
+public:
+    explicit GameListSortFilterProxyModel(QObject *parent = nullptr)
+        : QSortFilterProxyModel(parent)
+        , m_filterMode(0)
+        , m_session(nullptr)
+    {
+    }
+
+    void setSession(Session *session)
+    {
+        m_session = session;
+        invalidateFilter();
+    }
+
+    void setFilterMode(int mode)
+    {
+        if (mode < 0 || mode > 5)
+            mode = 0;
+
+        if (m_filterMode == mode)
+            return;
+
+        m_filterMode = mode;
+        invalidateFilter();
+    }
+
+    QHash<int, QByteArray> roleNames() const override
+    {
+        return sourceModel() ? sourceModel()->roleNames() : QHash<int, QByteArray>();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override
+    {
+        if (!QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent))
+            return false;
+
+        QModelIndex idx = sourceModel()->index(sourceRow, 0, sourceParent);
+        if (!idx.isValid())
+            return false;
+
+        const unsigned gameId = sourceModel()->data(idx, GameListModel::GameIdRole).toUInt();
+        const int gameMode = sourceModel()->data(idx, GameListModel::GameModeRole).toInt();
+        const int playerCount = sourceModel()->data(idx, GameListModel::PlayerCountRole).toInt();
+        const int maxPlayers = sourceModel()->data(idx, GameListModel::MaxPlayersRole).toInt();
+        const bool isPrivate = sourceModel()->data(idx, GameListModel::IsPrivateRole).toBool();
+        const int gameType = sourceModel()->data(idx, GameListModel::GameTypeRole).toInt();
+
+        if (m_session && gameId != 0 && m_session->getClientCurrentGameId() == gameId)
+            return true;
+
+        const bool isOpen = (gameMode == GAME_MODE_CREATED);
+        const bool isNonFull = (playerCount < maxPlayers);
+        const bool isRanking = (gameType == GAME_TYPE_RANKING);
+
+        switch (m_filterMode) {
+        case 0:
+            return true;
+        case 1:
+            return isOpen;
+        case 2:
+            return isOpen && isNonFull;
+        case 3:
+            return isOpen && isNonFull && !isPrivate;
+        case 4:
+            return isOpen && isNonFull && isPrivate;
+        case 5:
+            return isOpen && isNonFull && isRanking;
+        default:
+            return true;
+        }
+    }
+
+private:
+    int m_filterMode;
     Session *m_session;
 };
 
@@ -247,7 +332,7 @@ QVariant GameListModel::data(const QModelIndex &index, int role) const
     if (!index.isValid() || index.row() >= m_games.count())
         return QVariant();
 
-    const GameInfo &game = m_games.at(index.row());
+    const GameEntry &game = m_games.at(index.row());
     
     switch (role) {
     case GameIdRole:
@@ -262,6 +347,26 @@ QVariant GameListModel::data(const QModelIndex &index, int role) const
         return game.gameMode;
     case IsPrivateRole:
         return game.isPrivate;
+    case GameTypeRole:
+        return game.gameType;
+    case FirstSmallBlindRole:
+        return game.firstSmallBlind;
+    case StartMoneyRole:
+        return game.startMoney;
+    case RaiseIntervalModeRole:
+        return game.raiseIntervalMode;
+    case RaiseEveryHandsRole:
+        return game.raiseEveryHands;
+    case RaiseEveryMinutesRole:
+        return game.raiseEveryMinutes;
+    case RaiseModeRole:
+        return game.raiseMode;
+    case ManualBlindsTextRole:
+        return game.manualBlindsText;
+    case PlayerActionTimeoutRole:
+        return game.playerActionTimeoutSec;
+    case DelayBetweenHandsRole:
+        return game.delayBetweenHandsSec;
     default:
         return QVariant();
     }
@@ -276,6 +381,16 @@ QHash<int, QByteArray> GameListModel::roleNames() const
     roles[MaxPlayersRole] = "maxPlayers";
     roles[GameModeRole] = "gameMode";
     roles[IsPrivateRole] = "isPrivate";
+    roles[GameTypeRole] = "gameType";
+    roles[FirstSmallBlindRole] = "firstSmallBlind";
+    roles[StartMoneyRole] = "startMoney";
+    roles[RaiseIntervalModeRole] = "raiseIntervalMode";
+    roles[RaiseEveryHandsRole] = "raiseEveryHands";
+    roles[RaiseEveryMinutesRole] = "raiseEveryMinutes";
+    roles[RaiseModeRole] = "raiseMode";
+    roles[ManualBlindsTextRole] = "manualBlindsText";
+    roles[PlayerActionTimeoutRole] = "playerActionTimeoutSec";
+    roles[DelayBetweenHandsRole] = "delayBetweenHandsSec";
     return roles;
 }
 
@@ -289,20 +404,28 @@ void GameListModel::addGame(unsigned gameId, const QString &gameName)
     int newRow = m_games.count();
     beginInsertRows(QModelIndex(), newRow, newRow);
     
-    GameInfo game;
+    GameEntry game;
     game.id = gameId;
     game.name = gameName.isEmpty() ? QString("Game #%1").arg(gameId) : gameName;
     game.playerCount = 0;
     game.maxPlayers = 10;
-    game.gameMode = 1; // netGameCreated
+    game.gameMode = GAME_MODE_CREATED;
     game.isPrivate = false;
+    game.gameType = GAME_TYPE_NORMAL;
+    game.firstSmallBlind = 10;
+    game.startMoney = 1000;
+    game.raiseIntervalMode = RAISE_ON_HANDNUMBER;
+    game.raiseEveryHands = 8;
+    game.raiseEveryMinutes = 1;
+    game.raiseMode = DOUBLE_BLINDS;
+    game.manualBlindsText.clear();
+    game.playerActionTimeoutSec = 20;
+    game.delayBetweenHandsSec = 6;
     m_games.append(game);
     m_gameIndexMap[gameId] = newRow;
     
     endInsertRows();
-
-    ++m_openCount;
-    emit openCountChanged();
+    recomputeCounts();
 }
 
 void GameListModel::removeGame(unsigned gameId)
@@ -313,7 +436,6 @@ void GameListModel::removeGame(unsigned gameId)
     }
     
     int row = m_gameIndexMap[gameId];
-    int oldMode = m_games[row].gameMode;
     beginRemoveRows(QModelIndex(), row, row);
     
     m_games.removeAt(row);
@@ -325,12 +447,7 @@ void GameListModel::removeGame(unsigned gameId)
     }
     
     endRemoveRows();
-
-    if (oldMode == 1) { // netGameCreated
-        if (m_openCount > 0) { --m_openCount; emit openCountChanged(); }
-    } else if (oldMode == 2) { // netGameStarted
-        if (m_runningCount > 0) { --m_runningCount; emit runningCountChanged(); }
-    }
+    recomputeCounts();
 }
 
 void GameListModel::updateGameMode(unsigned gameId, int mode)
@@ -345,18 +462,66 @@ void GameListModel::updateGameMode(unsigned gameId, int mode)
     QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {GameModeRole});
 
-    // Update counters
-    bool oldOpen    = (oldMode == 1);
-    bool oldRunning = (oldMode == 2);
-    bool newOpen    = (mode == 1);
-    bool newRunning = (mode == 2);
+    recomputeCounts();
+}
 
-    if (oldOpen != newOpen) {
-        m_openCount += newOpen ? 1 : -1;
+void GameListModel::updateGameInfo(unsigned gameId, const ::GameInfo &info)
+{
+    if (!m_gameIndexMap.contains(gameId))
+        return;
+
+    const int row = m_gameIndexMap[gameId];
+    GameEntry &entry = m_games[row];
+
+    const QString nameFromSession = QString::fromStdString(info.name);
+    if (!nameFromSession.isEmpty())
+        entry.name = nameFromSession;
+
+    entry.playerCount = static_cast<int>(info.players.size());
+    entry.maxPlayers = info.data.maxNumberOfPlayers > 0 ? info.data.maxNumberOfPlayers : 10;
+    entry.gameMode = static_cast<int>(info.mode);
+    entry.isPrivate = info.isPasswordProtected;
+    entry.gameType = static_cast<int>(info.data.gameType);
+    entry.firstSmallBlind = info.data.firstSmallBlind > 0 ? info.data.firstSmallBlind : 10;
+    entry.startMoney = info.data.startMoney > 0 ? info.data.startMoney : 1000;
+    entry.raiseIntervalMode = static_cast<int>(info.data.raiseIntervalMode);
+    entry.raiseEveryHands = info.data.raiseSmallBlindEveryHandsValue;
+    entry.raiseEveryMinutes = info.data.raiseSmallBlindEveryMinutesValue;
+    entry.raiseMode = static_cast<int>(info.data.raiseMode);
+    entry.playerActionTimeoutSec = info.data.playerActionTimeoutSec;
+    entry.delayBetweenHandsSec = info.data.delayBetweenHandsSec;
+
+    QStringList manualBlinds;
+    for (std::list<int>::const_iterator it = info.data.manualBlindsList.begin(); it != info.data.manualBlindsList.end(); ++it) {
+        manualBlinds << QString::number(*it);
+    }
+    entry.manualBlindsText = manualBlinds.join(QStringLiteral(", "));
+
+    QModelIndex idx = index(row);
+    emit dataChanged(idx, idx);
+    recomputeCounts();
+}
+
+void GameListModel::recomputeCounts()
+{
+    int newOpenCount = 0;
+    int newRunningCount = 0;
+
+    for (const GameEntry &entry : m_games) {
+        if (entry.gameMode == GAME_MODE_CREATED) {
+            ++newOpenCount;
+        } else if (entry.gameMode == GAME_MODE_STARTED) {
+            ++newRunningCount;
+        }
+    }
+
+    if (m_openCount != newOpenCount) {
+        m_openCount = newOpenCount;
         emit openCountChanged();
     }
-    if (oldRunning != newRunning) {
-        m_runningCount += newRunning ? 1 : -1;
+
+    if (m_runningCount != newRunningCount) {
+        m_runningCount = newRunningCount;
         emit runningCountChanged();
     }
 }
@@ -367,9 +532,7 @@ void GameListModel::clear()
     m_games.clear();
     m_gameIndexMap.clear();
     endResetModel();
-
-    if (m_runningCount != 0) { m_runningCount = 0; emit runningCountChanged(); }
-    if (m_openCount != 0) { m_openCount = 0; emit openCountChanged(); }
+    recomputeCounts();
 }
 
 // LobbyHandler implementation
@@ -380,15 +543,23 @@ LobbyHandler::LobbyHandler(QObject *parent)
     , m_playerListModel(this)
     , m_playerListProxyModel(nullptr)
     , m_gameListModel(this)
+    , m_gameListProxyModel(nullptr)
     , m_myPlayerId(0)
     , m_playerListFilterMode(0)
+    , m_gameListFilterMode(0)
     , m_playerListRevision(0)
+    , m_gameListRevision(0)
 {
     auto *proxy = new PlayerNickListSortFilterProxyModel(this);
     proxy->setSourceModel(&m_playerListModel);
     proxy->setDynamicSortFilter(true);
     proxy->sort(0, Qt::AscendingOrder);
     m_playerListProxyModel = proxy;
+
+    auto *gameProxy = new GameListSortFilterProxyModel(this);
+    gameProxy->setSourceModel(&m_gameListModel);
+    gameProxy->setDynamicSortFilter(true);
+    m_gameListProxyModel = gameProxy;
 }
 
 LobbyHandler::~LobbyHandler()
@@ -398,10 +569,19 @@ LobbyHandler::~LobbyHandler()
 void LobbyHandler::setSession(boost::shared_ptr<Session> session)
 {
     m_session = session;
+
+    // Always reset lobby models on session assignment to avoid stale rows
+    // when reconnect/resubscribe happens without pointer change.
+    m_gameListModel.clear();
+    m_playerListModel.clear();
+
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->setSession(m_session.get());
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
+    static_cast<GameListSortFilterProxyModel *>(m_gameListProxyModel)->setSession(m_session.get());
     ++m_playerListRevision;
     emit playerListRevisionChanged();
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
 }
 
 void LobbyHandler::setConfig(ConfigFile *config)
@@ -416,6 +596,12 @@ void LobbyHandler::setConfig(ConfigFile *config)
         storedMode = 0;
 
     setPlayerListFilterMode(storedMode);
+
+    int storedGameListMode = m_config->readConfigInt("DlgGameLobbyGameListFilterIndex");
+    if (storedGameListMode < 0 || storedGameListMode > 5)
+        storedGameListMode = 0;
+
+    setGameListFilterMode(storedGameListMode);
 }
 
 void LobbyHandler::onLobbyPlayerJoined(unsigned playerId, const QString &playerName)
@@ -431,6 +617,8 @@ void LobbyHandler::onLobbyPlayerJoined(unsigned playerId, const QString &playerN
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     ++m_playerListRevision;
     emit playerListRevisionChanged();
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
 }
 
 void LobbyHandler::onLobbyPlayerLeft(unsigned playerId)
@@ -439,6 +627,8 @@ void LobbyHandler::onLobbyPlayerLeft(unsigned playerId)
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     ++m_playerListRevision;
     emit playerListRevisionChanged();
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
 }
 
 void LobbyHandler::updatePlayerName(unsigned playerId, const QString &playerName, bool isAdmin)
@@ -456,6 +646,8 @@ void LobbyHandler::updatePlayerName(unsigned playerId, const QString &playerName
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     ++m_playerListRevision;
     emit playerListRevisionChanged();
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
     
     // Check if this is our own player by comparing with session's unique player ID
     if (m_session) {
@@ -474,6 +666,9 @@ void LobbyHandler::updatePlayerName(unsigned playerId, const QString &playerName
 void LobbyHandler::onGameListNew(unsigned gameId, const QString &gameName)
 {
     m_gameListModel.addGame(gameId, gameName.isEmpty() ? QString("Game #%1").arg(gameId) : gameName);
+    refreshGameInfo(gameId);
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     emit gameContextChanged();
 }
@@ -481,6 +676,8 @@ void LobbyHandler::onGameListNew(unsigned gameId, const QString &gameName)
 void LobbyHandler::onGameListRemove(unsigned gameId)
 {
     m_gameListModel.removeGame(gameId);
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     emit gameContextChanged();
 }
@@ -488,7 +685,18 @@ void LobbyHandler::onGameListRemove(unsigned gameId)
 void LobbyHandler::onGameListUpdateMode(unsigned gameId, int mode)
 {
     m_gameListModel.updateGameMode(gameId, mode);
+    refreshGameInfo(gameId);
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
+    emit gameContextChanged();
+}
+
+void LobbyHandler::onGameListChanged(unsigned gameId)
+{
+    refreshGameInfo(gameId);
+    ++m_gameListRevision;
+    emit gameListRevisionChanged();
     emit gameContextChanged();
 }
 
@@ -541,6 +749,34 @@ void LobbyHandler::setPlayerListFilterMode(int mode)
     emit playerListFilterModeChanged();
 }
 
+void LobbyHandler::setGameListFilterMode(int mode)
+{
+    if (mode < 0 || mode > 5)
+        mode = 0;
+
+    if (m_gameListFilterMode == mode)
+        return;
+
+    m_gameListFilterMode = mode;
+    static_cast<GameListSortFilterProxyModel *>(m_gameListProxyModel)->setFilterMode(mode);
+
+    if (m_config) {
+        m_config->writeConfigInt("DlgGameLobbyGameListFilterIndex", mode);
+        m_config->writeBuffer();
+    }
+
+    emit gameListFilterModeChanged();
+}
+
+void LobbyHandler::refreshGameInfo(unsigned gameId)
+{
+    if (!m_session)
+        return;
+
+    const ::GameInfo info = m_session->getClientGameInfo(gameId);
+    m_gameListModel.updateGameInfo(gameId, info);
+}
+
 QVariantMap LobbyHandler::playerListEntry(int row) const
 {
     QVariantMap entry;
@@ -583,6 +819,90 @@ QVariantMap LobbyHandler::playerListEntry(int row) const
     entry.insert("countryCode", countryCode);
     entry.insert("isGuest", isGuest);
     return entry;
+}
+
+QVariantList LobbyHandler::gamePlayersInGame(unsigned gameId) const
+{
+    QVariantList players;
+
+    if (!m_session || gameId == 0)
+        return players;
+
+    const ::GameInfo gameInfo = m_session->getClientGameInfo(gameId);
+    for (PlayerIdList::const_iterator it = gameInfo.players.begin(); it != gameInfo.players.end(); ++it) {
+        const unsigned playerId = *it;
+        if (playerId == 0)
+            continue;
+
+        const PlayerInfo info = m_session->getClientPlayerInfo(playerId);
+
+        QVariantMap entry;
+        entry.insert("playerId", playerId);
+        entry.insert("playerName", QString::fromStdString(info.playerName));
+        entry.insert("countryCode", QString::fromStdString(info.countryCode).toLower());
+        entry.insert("isAdmin", info.isAdmin);
+        entry.insert("isGuest", info.isGuest);
+
+        QString avatarUrl;
+        if (info.hasAvatar) {
+            std::string avatarFile;
+            if (m_session->getAvatarFile(info.avatar, avatarFile) && !avatarFile.empty()) {
+                avatarUrl = QUrl::fromLocalFile(QString::fromStdString(avatarFile)).toString();
+            }
+        }
+        entry.insert("avatarUrl", avatarUrl);
+
+        players.append(entry);
+    }
+
+    return players;
+}
+
+bool LobbyHandler::openExternalUrl(const QString &url) const
+{
+    if (url.trimmed().isEmpty())
+        return false;
+
+    const QUrl target = QUrl::fromUserInput(url.trimmed());
+    if (!target.isValid())
+        return false;
+
+#ifdef Q_OS_LINUX
+    const QString targetString = target.toString();
+
+    // External host tools must not inherit bundled Qt libraries.
+    auto startDetachedHostTool = [](const QString &program, const QStringList &args) {
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+        const QString origLdLibraryPath = QString::fromLocal8Bit(qgetenv("POKERTH_ORIG_LD_LIBRARY_PATH"));
+        if (origLdLibraryPath.isEmpty()) {
+            env.remove(QStringLiteral("LD_LIBRARY_PATH"));
+        } else {
+            env.insert(QStringLiteral("LD_LIBRARY_PATH"), origLdLibraryPath);
+        }
+        env.remove(QStringLiteral("LD_PRELOAD"));
+
+        QProcess process;
+        process.setProcessEnvironment(env);
+        process.setProgram(program);
+        process.setArguments(args);
+        return process.startDetached();
+    };
+
+    if (startDetachedHostTool(QStringLiteral("xdg-open"), {targetString}))
+        return true;
+
+    if (startDetachedHostTool(QStringLiteral("gio"), {QStringLiteral("open"), targetString}))
+        return true;
+
+    if (startDetachedHostTool(QStringLiteral("kde-open"), {targetString}))
+        return true;
+#endif
+
+    if (AppImageUtils::openUrlSafe(target))
+        return true;
+
+    return false;
 }
 
 void LobbyHandler::sendChatMessage(const QString &message)

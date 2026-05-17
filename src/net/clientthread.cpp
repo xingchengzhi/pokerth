@@ -43,6 +43,7 @@
 #include <net/asioreceivebuffer.h>
 #include <core/avatarmanager.h>
 #include <core/loghelper.h>
+#include <vector>
 #include <clientenginefactory.h>
 #include <game.h>
 #include <log.h>
@@ -1591,8 +1592,19 @@ ClientThread::ModifyGameInfoRemoveSpectatorDuringGame(unsigned playerId, int rem
 void
 ClientThread::ClearGameInfoMap()
 {
-	boost::mutex::scoped_lock lock(m_gameInfoMapMutex);
-	m_gameInfoMap.clear();
+	std::vector<unsigned> removedGameIds;
+	{
+		boost::mutex::scoped_lock lock(m_gameInfoMapMutex);
+		removedGameIds.reserve(m_gameInfoMap.size());
+		for (GameInfoMap::const_iterator it = m_gameInfoMap.begin(); it != m_gameInfoMap.end(); ++it) {
+			removedGameIds.push_back(it->first);
+		}
+		m_gameInfoMap.clear();
+	}
+
+	for (size_t i = 0; i < removedGameIds.size(); ++i) {
+		GetCallback().SignalNetClientGameListRemove(removedGameIds[i]);
+	}
 }
 
 void

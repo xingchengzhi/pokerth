@@ -141,10 +141,15 @@ if [ -f "$DEPLOY_DIR/bin/pokerth_qml-client" ]; then
     cat > "$DEPLOY_DIR/pokerth-qml" << 'EOF'
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+unset QT_PLUGIN_PATH
+unset QT_QPA_PLATFORM_PLUGIN_PATH
+unset QML_IMPORT_PATH
+unset QML2_IMPORT_PATH
 export LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"
 export QT_PLUGIN_PATH="$SCRIPT_DIR/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$SCRIPT_DIR/plugins/platforms"
 export QML2_IMPORT_PATH="$SCRIPT_DIR/qml"
+export QML_DISABLE_DISK_CACHE=1
 export QT_MEDIA_BACKEND=ffmpeg
 cd "$SCRIPT_DIR"
 exec "$SCRIPT_DIR/bin/pokerth_qml-client" "$@"

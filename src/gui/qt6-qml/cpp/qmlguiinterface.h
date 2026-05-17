@@ -111,11 +111,11 @@ public:
     virtual void SignalNetClientGameListNew(unsigned gameId) override;
     virtual void SignalNetClientGameListRemove(unsigned gameId) override;
     virtual void SignalNetClientGameListUpdateMode(unsigned gameId, GameMode mode) override;
-    virtual void SignalNetClientGameListUpdateAdmin(unsigned gameId, unsigned adminPlayerId) override {}
-    virtual void SignalNetClientGameListPlayerJoined(unsigned gameId, unsigned playerId) override {}
-    virtual void SignalNetClientGameListPlayerLeft(unsigned gameId, unsigned playerId) override {}
-    virtual void SignalNetClientGameListSpectatorJoined(unsigned gameId, unsigned playerId) override {}
-    virtual void SignalNetClientGameListSpectatorLeft(unsigned gameId, unsigned playerId) override {}
+    virtual void SignalNetClientGameListUpdateAdmin(unsigned gameId, unsigned adminPlayerId) override;
+    virtual void SignalNetClientGameListPlayerJoined(unsigned gameId, unsigned playerId) override;
+    virtual void SignalNetClientGameListPlayerLeft(unsigned gameId, unsigned playerId) override;
+    virtual void SignalNetClientGameListSpectatorJoined(unsigned gameId, unsigned playerId) override;
+    virtual void SignalNetClientGameListSpectatorLeft(unsigned gameId, unsigned playerId) override;
     
     virtual void SignalNetClientGameStart(boost::shared_ptr<Game> game) override {}
     virtual void SignalNetClientPlayerJoined(unsigned playerId, const std::string &playerName, bool isGameAdmin) override;

@@ -171,6 +171,10 @@ ItemDelegate {
                 Layout.preferredHeight: 24
                 font.pixelSize: 10
                 
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
+                
                 background: Rectangle {
                     color: parent.pressed ? Qt.darker(playerItem.inviteColor, 1.35)
                            : parent.hovered ? playerItem.inviteColor
@@ -203,6 +207,10 @@ ItemDelegate {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 24
                 font.pixelSize: 10
+
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
 
                 background: Rectangle {
                       color: parent.pressed ? Qt.darker(playerItem.ignoreColor, 1.35)
@@ -237,6 +245,10 @@ ItemDelegate {
                 Layout.preferredHeight: 24
                 font.pixelSize: 10
 
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
+
                 background: Rectangle {
                       color: parent.pressed ? Qt.darker(playerItem.ignoreColor, 1.35)
                           : parent.hovered ? playerItem.ignoreColor
@@ -270,6 +282,10 @@ ItemDelegate {
                 Layout.preferredHeight: 24
                 font.pixelSize: 10
 
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
+
                 background: Rectangle {
                       color: parent.pressed ? Qt.darker(playerItem.statsColor, 1.35)
                           : parent.hovered ? playerItem.statsColor
@@ -290,8 +306,19 @@ ItemDelegate {
                 }
 
                 onClicked: {
-                    Qt.openUrlExternally("https://www.pokerth.net/redirect_user_profile.php?nick=" + encodeURIComponent(displayName))
-                    playerItem.expanded = false
+                    var url = "https://www.pokerth.net/redirect_user_profile.php?nick=" + encodeURIComponent(displayName)
+                    var opened = false
+                    if (Lobby) {
+                        opened = Lobby.openExternalUrl(url)
+                    } else {
+                        opened = Qt.openUrlExternally(url)
+                    }
+
+                    if (opened) {
+                        playerItem.expanded = false
+                    } else {
+                        console.warn("Failed to open player stats URL:", url)
+                    }
                 }
             }
             
@@ -302,6 +329,10 @@ ItemDelegate {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 24
                 font.pixelSize: 10
+                
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
                 
                 background: Rectangle {
                     color: parent.pressed ? Qt.darker(playerItem.banColor, 1.35)

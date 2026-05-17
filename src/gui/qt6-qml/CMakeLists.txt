@@ -25,6 +25,7 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     cpp/qmlguiinterface.cpp)
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
+qt_add_resources(POKERTH_QML_CLIENT_SRC cflags.qrc)
 
 set(QML_FILES
     pokerth.qml

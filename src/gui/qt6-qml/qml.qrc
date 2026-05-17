@@ -10,6 +10,7 @@
         <file>components/CustomToggle.qml</file>
         <file>components/GamePlayerBox.qml</file>
         <file>components/GamePlayerSelfBox.qml</file>
+        <file>components/PlayerListItem.qml</file>
         <file>components/GuiSettings.qml</file>
         <file>components/InternetGameSettings.qml</file>
         <file>components/LocalGameSettings.qml</file>
@@ -47,6 +48,7 @@
         <file>resources/chip.svg</file>
         <file>resources/chipStack.svg</file>
         <file>resources/close.svg</file>
+        <file>resources/doorExit.svg</file>
         <file>resources/dotsThree.svg</file>
         <file>resources/dotsThreeVertical.svg</file>
         <file>resources/download.svg</file>

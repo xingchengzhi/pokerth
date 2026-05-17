@@ -167,13 +167,17 @@ ApplicationWindow {
                 }
             }
 
-            onDepthChanged: {
-                if (mainStackView.depth > 1) {
-                    topBarSettingsIcon.visible = false;
-                    topBarMenuIcon.source = "resources/caretLeft.svg";
-                } else {
+            onCurrentItemChanged: {
+                var isLobby = (currentItem && currentItem.objectName === "lobbyPage");
+                if (depth <= 1) {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
+                } else if (isLobby) {
+                    topBarSettingsIcon.visible = true;
+                    topBarMenuIcon.source = "resources/doorExit.svg";
+                } else {
+                    topBarSettingsIcon.visible = false;
+                    topBarMenuIcon.source = "resources/caretLeft.svg";
                 }
             }
         }

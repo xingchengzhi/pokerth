@@ -9,20 +9,54 @@ import "../components"
 
 Rectangle {
     id: lobbyPage
+    objectName: "lobbyPage"
     Layout.fillWidth: true
     Layout.fillHeight: true
     clip: true
     color: Config.StaticData.palette.secondary.col700
 
     // Mock data for development
-    property int connectedPlayers: 42
-    property int runningGames: 7
-    property int openGames: 3
+    property int connectedPlayers: Lobby ? Lobby.playerListModel.count : 0
+    property int runningGames: Lobby ? Lobby.gameListModel.runningCount : 0
+    property int openGames: Lobby ? Lobby.gameListModel.openCount : 0
 
     // Portrait-mode overlay state
     property bool showingPlayerList: false
     property bool showingGameInfo: false
     property var selectedGame: null
+    property int playerListCollapseResetCounter: 0
+
+    function resetPlayerListDelegates() {
+        playerListCollapseResetCounter += 1
+        playerPanelList.currentIndex = -1
+        playerListView.currentIndex = -1
+    }
+
+    function applyPlayerListFilter(mode) {
+        if (!Lobby) {
+            return
+        }
+
+        if (Lobby.playerListFilterMode !== mode) {
+            Lobby.playerListFilterMode = mode
+        }
+
+        resetPlayerListDelegates()
+    }
+
+    Connections {
+        target: Lobby
+
+        function onPlayerListFilterModeChanged() {
+            if (playerListFilterCompact.currentIndex !== Lobby.playerListFilterMode) {
+                playerListFilterCompact.currentIndex = Lobby.playerListFilterMode
+            }
+            if (playerListFilterWide.currentIndex !== Lobby.playerListFilterMode) {
+                playerListFilterWide.currentIndex = Lobby.playerListFilterMode
+            }
+            lobbyPage.resetPlayerListDelegates()
+        }
+    }
 
     // ── Compact: Player list panel (slides in from left) ───────────────────
     Rectangle {
@@ -120,29 +154,28 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                model: Lobby ? Lobby.playerListModel : null
+                model: Lobby ? Lobby.playerListProxyModel : null
 
-                delegate: ItemDelegate {
-                    width: playerPanelList.width
-                    height: (playerSearchField.text.length === 0 ||
-                             model.playerName.toLowerCase().includes(playerSearchField.text.toLowerCase())) ? 34 : 0
-                    visible: height > 0
+                delegate: PlayerListItem {
+                    collapseResetCounter: lobbyPage.playerListCollapseResetCounter
+                    listView: playerPanelList
+                    visible: (playerSearchField.text.length === 0 ||
+                             displayName.toLowerCase().includes(playerSearchField.text.toLowerCase()))
+                }
+            }
 
-                    contentItem: Text {
-                        text: model.playerName
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 13
-                        color: model.isAdmin ? "#FFD700" : Config.StaticData.palette.secondary.col200
-                        font.bold: model.isAdmin
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    background: Rectangle {
-                        color: parent.hovered
-                               ? Qt.lighter(Config.StaticData.palette.secondary.col700, 1.2)
-                               : "transparent"
-                        radius: 3
-                    }
+            ComboBox {
+                id: playerListFilterCompact
+                Layout.fillWidth: true
+                font.family: Config.StaticData.loadedFont.font.family
+                model: [
+                    qsTr("Sort alphabetically"),
+                    qsTr("Sort by country"),
+                    qsTr("Display idle players")
+                ]
+                currentIndex: Lobby ? Lobby.playerListFilterMode : 0
+                onCurrentIndexChanged: {
+                    lobbyPage.applyPlayerListFilter(currentIndex)
                 }
             }
         }
@@ -405,27 +438,26 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        model: Lobby ? Lobby.playerListModel : null
+                        model: Lobby ? Lobby.playerListProxyModel : null
 
-                        delegate: ItemDelegate {
-                            width: playerListView.width
-                            height: 30
+                        delegate: PlayerListItem {
+                            collapseResetCounter: lobbyPage.playerListCollapseResetCounter
+                            listView: playerListView
+                        }
+                    }
 
-                            contentItem: Text {
-                                text: model.playerName
-                                font.family: Config.StaticData.loadedFont.font.family
-                                font.pixelSize: 12
-                                color: model.isAdmin ? "#FFD700" : Config.StaticData.palette.secondary.col200
-                                font.bold: model.isAdmin
-                                verticalAlignment: Text.AlignVCenter
-                            }
-
-                            background: Rectangle {
-                                color: parent.hovered
-                                       ? Qt.lighter(Config.StaticData.palette.secondary.col700, 1.2)
-                                       : "transparent"
-                                radius: 3
-                            }
+                    ComboBox {
+                        id: playerListFilterWide
+                        Layout.fillWidth: true
+                        font.family: Config.StaticData.loadedFont.font.family
+                        model: [
+                            qsTr("Sort alphabetically"),
+                            qsTr("Sort by country"),
+                            qsTr("Display idle players")
+                        ]
+                        currentIndex: Lobby ? Lobby.playerListFilterMode : 0
+                        onCurrentIndexChanged: {
+                            lobbyPage.applyPlayerListFilter(currentIndex)
                         }
                     }
                 }
@@ -826,9 +858,14 @@ Rectangle {
                 text: qsTr("<a href='https://www.pokerth.net'>PokerTH.net</a>")
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 12
-                color: Config.StaticData.palette.secondary.col300
                 textFormat: Text.RichText
-                onLinkActivated: Qt.openUrlExternally(link)
+                linkColor: (Config.StaticData.palette.primary && Config.StaticData.palette.primary.col400)
+                           ? Config.StaticData.palette.primary.col400
+                           : Config.StaticData.palette.secondary.col300
+                onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
             }
         }
     }

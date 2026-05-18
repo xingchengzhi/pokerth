@@ -131,31 +131,6 @@ Drawer {
     ListModel {
         id: sideMenuListItems
         ListElement {
-            name: qsTr("Internetspiel")
-            icon: "globe"
-            source: "InternetGame"
-        }
-        ListElement {
-            name: qsTr("Lokales Spiel starten")
-            icon: "spade"
-            source: "LocalGame"
-        }
-        ListElement {
-            name: qsTr("Netzwerkspiel erstellen")
-            icon: "network"
-            source: "NetworkGameCreate"
-        }
-        ListElement {
-            name: qsTr("Netzwerkspiel beitreten")
-            icon: "plugsConnected"
-            source: "NetworkGameEnter"
-        }
-        ListElement {
-            name: qsTr("Einstellungen")
-            icon: "settings"
-            source: "Settings"
-        }
-        ListElement {
             name: qsTr("Über PokerTH")
             icon: "user"
             source: "About"

@@ -1185,33 +1185,109 @@ unsigned LobbyHandler::parsePrivateMessageTarget(QString &chatText) const
     return 0;
 }
 
-void LobbyHandler::createGame()
+void LobbyHandler::createGame(const QString &name, const QString &password,
+                              int gameType, bool allowSpectators, int maxPlayers,
+                              int startCash, int firstSmallBlind,
+                              int raiseIntervalMode, int raiseEveryHands,
+                              int raiseEveryMinutes, int raiseMode,
+                              int playerActionTimeout, int delayBetweenHands)
 {
     if (!m_session) {
         emit errorOccurred(tr("Not connected to server"));
         return;
     }
-    
-    // TODO: Implement game creation via session
+
+    GameData gameData;
+    gameData.gameType                     = static_cast<GameType>(gameType);
+    gameData.allowSpectators              = allowSpectators;
+    gameData.maxNumberOfPlayers           = maxPlayers;
+    gameData.startMoney                   = startCash;
+    gameData.firstSmallBlind              = firstSmallBlind;
+    gameData.raiseIntervalMode            = static_cast<RaiseIntervalMode>(raiseIntervalMode);
+    gameData.raiseSmallBlindEveryHandsValue   = raiseEveryHands;
+    gameData.raiseSmallBlindEveryMinutesValue = raiseEveryMinutes;
+    gameData.raiseMode                    = static_cast<RaiseMode>(raiseMode);
+    gameData.afterManualBlindsMode        = AFTERMB_DOUBLE_BLINDS;
+    gameData.afterMBAlwaysRaiseValue      = 0;
+    gameData.guiSpeed                     = 4;
+    gameData.delayBetweenHandsSec         = delayBetweenHands;
+    gameData.playerActionTimeoutSec       = playerActionTimeout;
+
+    m_session->clientCreateGame(gameData, name.toStdString(), password.toStdString());
 }
 
-void LobbyHandler::joinGame(unsigned gameId)
+void LobbyHandler::joinGame(unsigned gameId, const QString &password)
 {
     if (!m_session) {
         emit errorOccurred(tr("Not connected to server"));
         return;
     }
-    
-    // TODO: Implement game join via session
-    emit gameJoined(gameId);
+    m_session->clientJoinGame(gameId, password.toStdString());
 }
 
 void LobbyHandler::leaveGame()
 {
     if (!m_session)
         return;
-    
-    // TODO: Implement game leave via session
+    m_session->sendLeaveCurrentGame();
+}
+
+void LobbyHandler::onSelfJoinedGame()
+{
+    m_currentGameId = m_session ? m_session->getClientCurrentGameId() : 0;
+    if (!m_isInGame) {
+        m_isInGame = true;
+        emit isInGameChanged();
+        emit currentGameIdChanged();
+    }
+    emit selfJoinedGame();
+}
+
+void LobbyHandler::onRemovedFromGame()
+{
+    m_isInGame = false;
+    m_currentGameId = 0;
+    emit isInGameChanged();
+    emit currentGameIdChanged();
+    emit removedFromGame();
+}
+
+QString LobbyHandler::currentGameName() const
+{
+    if (!m_session || m_currentGameId == 0)
+        return QString();
+    const GameInfo info = m_session->getClientGameInfo(m_currentGameId);
+    return QString::fromStdString(info.name);
+}
+
+void LobbyHandler::startGame(bool fillWithCpu)
+{
+    if (!m_session)
+        return;
+    m_session->sendStartEvent(fillWithCpu);
+}
+
+QVariantMap LobbyHandler::currentGameInfo() const
+{
+    QVariantMap result;
+    if (!m_session || m_currentGameId == 0)
+        return result;
+    const GameInfo info = m_session->getClientGameInfo(m_currentGameId);
+    result.insert("name",               QString::fromStdString(info.name));
+    result.insert("gameType",           static_cast<int>(info.data.gameType));
+    result.insert("maxPlayers",         info.data.maxNumberOfPlayers);
+    result.insert("startMoney",         info.data.startMoney);
+    result.insert("firstSmallBlind",    info.data.firstSmallBlind);
+    result.insert("raiseIntervalMode",  static_cast<int>(info.data.raiseIntervalMode));
+    result.insert("raiseEveryHands",    info.data.raiseSmallBlindEveryHandsValue);
+    result.insert("raiseEveryMinutes",  info.data.raiseSmallBlindEveryMinutesValue);
+    result.insert("raiseMode",          static_cast<int>(info.data.raiseMode));
+    result.insert("playerActionTimeoutSec", info.data.playerActionTimeoutSec);
+    result.insert("delayBetweenHandsSec",   info.data.delayBetweenHandsSec);
+    result.insert("allowSpectators",    info.data.allowSpectators);
+    result.insert("playerCount",        static_cast<int>(info.players.size()));
+    result.insert("adminPlayerId",      static_cast<int>(info.adminPlayerId));
+    return result;
 }
 
 void LobbyHandler::kickPlayer(unsigned playerId)

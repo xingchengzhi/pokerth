@@ -50,7 +50,7 @@ Rectangle {
         }
 
         function onShowLobby() {
-            console.log("Showing lobby...")
+            console.log("[NAV] onShowLobby → replace currentItem with LobbyPage.qml | depth before:", mainStackView.depth)
             mainStackView.replace(mainStackView.currentItem, "LobbyPage.qml")
         }
     }

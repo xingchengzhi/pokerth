@@ -106,7 +106,7 @@ public:
     virtual void SignalNetClientStatsUpdate(const ServerStats &stats) override {}
     virtual void SignalNetClientPingUpdate(unsigned minPing, unsigned avgPing, unsigned maxPing) override {}
     virtual void SignalNetClientShowTimeoutDialog(NetTimeoutReason reason, unsigned remainingSec) override {}
-    virtual void SignalNetClientRemovedFromGame(int notificationId) override {}
+    virtual void SignalNetClientRemovedFromGame(int notificationId) override;
     
     virtual void SignalNetClientGameListNew(unsigned gameId) override;
     virtual void SignalNetClientGameListRemove(unsigned gameId) override;

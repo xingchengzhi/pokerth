@@ -168,6 +168,7 @@ ApplicationWindow {
             }
 
             onCurrentItemChanged: {
+                console.log("[NAV] Stack depth:", depth, "| currentItem:", currentItem ? (currentItem.objectName || currentItem.toString()) : "null")
                 var isLobby = (currentItem && currentItem.objectName === "lobbyPage");
                 if (depth <= 1) {
                     topBarSettingsIcon.visible = true;

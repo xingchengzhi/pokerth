@@ -189,6 +189,17 @@ void QmlGuiInterface::SignalNetClientSelfJoined(unsigned playerId, const std::st
         const QString qPlayerName = QString::fromStdString(playerName);
         QMetaObject::invokeMethod(m_lobbyHandler, [this, playerId, qPlayerName]() {
             m_lobbyHandler->setMyPlayerInfo(playerId, qPlayerName);
+            m_lobbyHandler->onSelfJoinedGame();
+        }, Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
+{
+    Q_UNUSED(notificationId)
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, [this]() {
+            m_lobbyHandler->onRemovedFromGame();
         }, Qt::QueuedConnection);
     }
 }

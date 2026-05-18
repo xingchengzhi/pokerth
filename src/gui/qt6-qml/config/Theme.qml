@@ -64,6 +64,9 @@ QtObject {
     readonly property color colorDanger:        "#e05050"
     readonly property color colorSuccess:       "#50c878"
 
+    // Chat send action (spectral green, readable on both themes)
+    readonly property color colorChatSend:      isDark ? "#4ade80" : "#16a34a"
+
     // Game status (game list)
     readonly property color colorStatusRunning: isDark ? "#FF6D00" : "#BF360C"
     readonly property color colorStatusClosed:  isDark ? "#EF5350" : "#C62828"

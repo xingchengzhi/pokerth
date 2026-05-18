@@ -87,6 +87,14 @@ Rectangle {
                 gameListFilter.currentIndex = Lobby.gameListFilterMode
             }
         }
+
+        function onSelfJoinedGame() {
+            console.log("[NAV] onSelfJoinedGame | depth before:", mainStackView.depth, "| currentItem:", mainStackView.currentItem ? (mainStackView.currentItem.objectName || mainStackView.currentItem.toString()) : "null")
+            // pop(lobbyPage) entfernt alles ÜBER lobbyPage; ist lobbyPage schon oben, passiert nichts
+            mainStackView.pop(lobbyPage, StackView.Immediate)
+            console.log("[NAV]   pushing GameWaitPage | depth now:", mainStackView.depth)
+            mainStackView.push("GameWaitPage.qml")
+        }
     }
 
     // ── Compact: Player list panel (slides in from left) ───────────────────
@@ -137,15 +145,16 @@ Rectangle {
                            ? Config.StaticData.palette.secondary.col600
                            : "transparent"
 
-                    VectorImage {
-                        id: closePlayerIcon
+                    Image {
                         anchors.centerIn: parent
                         width: 14
                         height: 14
                         source: "../resources/close.svg"
-                        MultiEffect {
-                            source: closePlayerIcon
-                            anchors.fill: closePlayerIcon
+                        sourceSize: Qt.size(28, 28)
+                        smooth: true
+                        antialiasing: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
                             colorization: 1.0
                             colorizationColor: Config.Theme.colorTextSecondary
                         }
@@ -248,15 +257,16 @@ Rectangle {
                     border.color: Config.StaticData.palette.secondary.col500
                     border.width: 1
 
-                    VectorImage {
-                        id: backIcon
+                    Image {
                         anchors.centerIn: parent
                         width: 18
                         height: 18
                         source: "../resources/caretLeft.svg"
-                        MultiEffect {
-                            source: backIcon
-                            anchors.fill: backIcon
+                        sourceSize: Qt.size(36, 36)
+                        smooth: true
+                        antialiasing: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
                             colorization: 1.0
                             colorizationColor: Config.StaticData.palette.secondary.col200
                         }
@@ -346,15 +356,15 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 6
 
-                        VectorImage {
-                            id: compactGameTypeIcon
+                        Image {
                             Layout.preferredWidth: 14
                             Layout.preferredHeight: 14
                             source: lobbyPage.gameTypeIconSource((lobbyPage.selectedGame && lobbyPage.selectedGame.gameType) || 1)
-
-                            MultiEffect {
-                                source: compactGameTypeIcon
-                                anchors.fill: compactGameTypeIcon
+                            sourceSize: Qt.size(28, 28)
+                            smooth: true
+                            antialiasing: true
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
                                 colorization: 1.0
                                 colorizationColor: Config.StaticData.palette.secondary.col300
                             }
@@ -526,13 +536,20 @@ Rectangle {
 
             // Join button
             CustomButton {
-                text: qsTr("Join Game")
+                text: (Lobby && Lobby.isInGame) ? qsTr("Leave Game") : qsTr("Join Game")
                 Layout.fillWidth: true
-                visible: lobbyPage.selectedGameJoinable
-                enabled: lobbyPage.selectedGameJoinable
+                visible: (Lobby && Lobby.isInGame) || lobbyPage.selectedGameJoinable
+                enabled: (Lobby && Lobby.isInGame) || lobbyPage.selectedGameJoinable
                 onClicked: {
-                    if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
-                        Lobby.joinGame(lobbyPage.selectedGame.gameId)
+                    if (Lobby && Lobby.isInGame) {
+                        Lobby.leaveGame()
+                    } else if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
+                        if (lobbyPage.selectedGame.isPrivate) {
+                            joinPasswordPopup.pendingGameId = lobbyPage.selectedGame.gameId
+                            joinPasswordPopup.open()
+                        } else {
+                            Lobby.joinGame(lobbyPage.selectedGame.gameId, "")
+                        }
                         lobbyPage.showingGameInfo = false
                     }
                 }
@@ -563,16 +580,16 @@ Rectangle {
                 border.color: Config.StaticData.palette.secondary.col500
                 border.width: 1
 
-                VectorImage {
-                    id: usersIcon
+                Image {
                     anchors.centerIn: parent
                     width: 24
                     height: 24
                     source: "../resources/users.svg"
-
-                    MultiEffect {
-                        source: usersIcon
-                        anchors.fill: usersIcon
+                    sourceSize: Qt.size(48, 48)
+                    smooth: true
+                    antialiasing: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
                         colorization: 1.0
                         colorizationColor: Config.StaticData.palette.secondary.col200
                     }
@@ -700,6 +717,13 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: 5
                         spacing: 5
+
+                        Label {
+                            text: qsTr("Game List")
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.bold: true
+                            color: Config.StaticData.palette.secondary.col200
+                        }
 
                         // Game list
                         ListView {
@@ -907,17 +931,20 @@ Rectangle {
                                 Layout.maximumHeight: 44
                                 enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 onClicked: sendChatMessage()
-                                contentItem: VectorImage {
-                                    id: sendIconCompact
+                                background: Item {}
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                contentItem: Image {
                                     width: 18
                                     height: 18
                                     anchors.centerIn: parent
                                     source: "../resources/send.svg"
-                                    MultiEffect {
-                                        source: sendIconCompact
-                                        anchors.fill: sendIconCompact
+                                    sourceSize: Qt.size(36, 36)
+                                    smooth: true
+                                    antialiasing: true
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
                                         colorization: 1.0
-                                        colorizationColor: Config.StaticData.palette.secondary.col200
+                                        colorizationColor: Config.Theme.colorChatSend
                                     }
                                 }
                             }
@@ -943,18 +970,25 @@ Rectangle {
                         text: qsTr("Create Game")
                         font.family: Config.StaticData.loadedFont.font.family
                         Layout.fillWidth: true
-                        onClicked: Lobby.createGame()
+                        onClicked: mainStackView.push("LobbyCreateGamePage.qml")
                     }
 
                     Button {
-                        text: qsTr("Join Game")
+                        text: (Lobby && Lobby.isInGame) ? qsTr("Leave Game") : qsTr("Join Game")
                         font.family: Config.StaticData.loadedFont.font.family
                         Layout.fillWidth: true
-                        visible: !Config.Responsive.compact && lobbyPage.selectedGameJoinable
-                        enabled: lobbyPage.selectedGameJoinable
+                        visible: !Config.Responsive.compact && ((Lobby && Lobby.isInGame) || lobbyPage.selectedGameJoinable)
+                        enabled: (Lobby && Lobby.isInGame) || lobbyPage.selectedGameJoinable
                         onClicked: {
-                            if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
-                                Lobby.joinGame(lobbyPage.selectedGame.gameId)
+                            if (Lobby && Lobby.isInGame) {
+                                Lobby.leaveGame()
+                            } else if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
+                                if (lobbyPage.selectedGame.isPrivate) {
+                                    joinPasswordPopup.pendingGameId = lobbyPage.selectedGame.gameId
+                                    joinPasswordPopup.open()
+                                } else {
+                                    Lobby.joinGame(lobbyPage.selectedGame.gameId, "")
+                                }
                             }
                         }
                     }
@@ -992,16 +1026,16 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: 6
 
-                            VectorImage {
-                                id: wideGameTypeIcon
+                            Image {
                                 visible: lobbyPage.selectedGame !== null
                                 Layout.preferredWidth: 14
                                 Layout.preferredHeight: 14
                                 source: lobbyPage.gameTypeIconSource((lobbyPage.selectedGame && lobbyPage.selectedGame.gameType) || 1)
-
-                                MultiEffect {
-                                    source: wideGameTypeIcon
-                                    anchors.fill: wideGameTypeIcon
+                                sourceSize: Qt.size(28, 28)
+                                smooth: true
+                                antialiasing: true
+                                layer.enabled: true
+                                layer.effect: MultiEffect {
                                     colorization: 1.0
                                     colorizationColor: Config.StaticData.palette.secondary.col300
                                 }
@@ -1182,17 +1216,20 @@ Rectangle {
                                 Layout.maximumHeight: 44
                                 enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 onClicked: sendChatMessage()
-                                contentItem: VectorImage {
-                                    id: sendIconWide
+                                background: Item {}
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                contentItem: Image {
                                     width: 18
                                     height: 18
                                     anchors.centerIn: parent
                                     source: "../resources/send.svg"
-                                    MultiEffect {
-                                        source: sendIconWide
-                                        anchors.fill: sendIconWide
+                                    sourceSize: Qt.size(36, 36)
+                                    smooth: true
+                                    antialiasing: true
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
                                         colorization: 1.0
-                                        colorizationColor: Config.StaticData.palette.secondary.col200
+                                        colorizationColor: Config.Theme.colorChatSend
                                     }
                                 }
                             }
@@ -1352,6 +1389,90 @@ Rectangle {
 
         // 6. CUT — zurück zur vorherigen Seite
         ScriptAction { script: StackView.view.pop() }
+    }
+
+    // ── Passwort-Popup für private Spiele ────────────────────────────────────
+    Popup {
+        id: joinPasswordPopup
+        anchors.centerIn: parent
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        property int pendingGameId: 0
+
+        background: Rectangle {
+            color: Config.StaticData.palette.secondary.col700
+            border.color: Config.StaticData.palette.secondary.col400
+            border.width: 1
+            radius: 8
+        }
+
+        ColumnLayout {
+            spacing: 12
+            width: Math.min(lobbyPage.width * 0.85, 360)
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Privates Spiel")
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Bitte das Passwort eingeben, um beizutreten.")
+                color: Config.StaticData.palette.secondary.col300
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+            }
+
+            TextField {
+                id: joinPasswordField
+                Layout.fillWidth: true
+                echoMode: TextInput.Password
+                placeholderText: qsTr("Passwort …")
+                font.family: Config.StaticData.loadedFont.font.family
+                color: Config.StaticData.palette.secondary.col100
+                background: Rectangle {
+                    radius: 6
+                    color: Config.StaticData.palette.secondary.col600
+                    border.color: joinPasswordField.activeFocus
+                        ? Config.StaticData.palette.secondary.col200
+                        : Config.StaticData.palette.secondary.col400
+                    border.width: 1
+                }
+                placeholderTextColor: Config.StaticData.palette.secondary.col400
+                Keys.onReturnPressed: joinPasswordPopup.doJoin()
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                CustomButton {
+                    text: qsTr("Abbrechen")
+                    Layout.fillWidth: true
+                    onClicked: joinPasswordPopup.close()
+                }
+                CustomButton {
+                    text: qsTr("Beitreten")
+                    Layout.fillWidth: true
+                    onClicked: joinPasswordPopup.doJoin()
+                }
+            }
+        }
+
+        function doJoin() {
+            Lobby.joinGame(pendingGameId, joinPasswordField.text)
+            joinPasswordField.clear()
+            close()
+        }
+        onOpened: {
+            joinPasswordField.clear()
+            joinPasswordField.forceActiveFocus()
+        }
     }
 
     Component.onCompleted: {

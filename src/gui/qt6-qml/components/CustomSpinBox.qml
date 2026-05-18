@@ -35,7 +35,7 @@ SpinBox {
         font.pointSize: 11
         color:               Config.StaticData.palette.secondary.col100
         selectionColor:      Config.StaticData.chartColors[0]
-        selectedTextColor:   "#ffffff"
+        selectedTextColor:   Config.Theme.colorOnAccent
         horizontalAlignment: Qt.AlignHCenter
         verticalAlignment:   Qt.AlignVCenter
         readOnly:            !control.editable
@@ -74,7 +74,7 @@ SpinBox {
                 anchors.fill: minusIcon
                 colorization: 1.0
                 colorizationColor: control.down.pressed
-                    ? "#ffffff"
+                    ? Config.Theme.colorOnAccent
                     : control.down.hovered
                         ? Config.StaticData.chartColor(5, true)
                         : Config.StaticData.palette.secondary.col300
@@ -113,7 +113,7 @@ SpinBox {
                 anchors.fill: plusIcon
                 colorization: 1.0
                 colorizationColor: control.up.pressed
-                    ? "#ffffff"
+                    ? Config.Theme.colorOnAccent
                     : control.up.hovered
                         ? Config.StaticData.chartColor(0, true)
                         : Config.StaticData.palette.secondary.col300

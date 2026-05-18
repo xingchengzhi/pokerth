@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.VectorImage
+import QtQuick.Effects
 
 import "../config" as Config
 
@@ -27,7 +28,10 @@ ItemDelegate {
     height: visible ? ((expanded && hasActions) ? expandedHeight : rowHeight) : 0
 
     property bool expanded: false
-    property bool playerIgnored: false
+    readonly property bool playerIgnored: {
+        var _rev = Lobby ? Lobby.playerIgnoreListRevision : 0
+        return Lobby ? Lobby.isPlayerIgnored(targetPlayerId) : false
+    }
     readonly property int rowHeight: 30
     readonly property int actionButtonHeight: 24
     readonly property int actionSpacing: 3
@@ -40,7 +44,6 @@ ItemDelegate {
                                         + (actionCount * actionButtonHeight)
                                         + (Math.max(0, actionCount - 1) * actionSpacing)
 
-    readonly property bool hasSettingsManager: typeof SettingsManager !== "undefined" && !!SettingsManager
     readonly property bool isSelf: Lobby && targetPlayerId === Lobby.myPlayerId
     readonly property bool canInvite: Lobby && Lobby.canInviteFromCurrentGame && !isSelf && !guestPlayer
     readonly property bool canAdminModerate: Lobby && Lobby.isCurrentPlayerAdmin && !isSelf
@@ -54,43 +57,18 @@ ItemDelegate {
     readonly property color statsColor: Config.StaticData.chartColor(9, true)
     readonly property color banColor: Config.StaticData.chartColor(5, true)
 
-    function refreshIgnoreState() {
-        if (!hasSettingsManager) {
-            playerIgnored = false
-            return
-        }
-        var ignoreList = SettingsManager.readConfigStringList("PlayerIgnoreList")
-        playerIgnored = ignoreList.indexOf(displayName) !== -1
+    onCollapseResetCounterChanged: {
+        expanded = false
+        listView.expandedPlayerIndex = -1
     }
 
-    function addToIgnoreList() {
-        if (!hasSettingsManager) {
-            return
+    Connections {
+        target: listView
+        function onExpandedPlayerIndexChanged() {
+            if (listView.expandedPlayerIndex !== playerItem.index)
+                playerItem.expanded = false
         }
-        var ignoreList = SettingsManager.readConfigStringList("PlayerIgnoreList")
-        if (ignoreList.indexOf(displayName) === -1) {
-            ignoreList.push(displayName)
-            SettingsManager.writeConfigStringList("PlayerIgnoreList", ignoreList)
-        }
-        refreshIgnoreState()
     }
-
-    function removeFromIgnoreList() {
-        if (!hasSettingsManager) {
-            return
-        }
-        var ignoreList = SettingsManager.readConfigStringList("PlayerIgnoreList")
-        var idx = ignoreList.indexOf(displayName)
-        if (idx !== -1) {
-            ignoreList.splice(idx, 1)
-            SettingsManager.writeConfigStringList("PlayerIgnoreList", ignoreList)
-        }
-        refreshIgnoreState()
-    }
-
-    Component.onCompleted: refreshIgnoreState()
-    onDisplayNameChanged: refreshIgnoreState()
-    onCollapseResetCounterChanged: expanded = false
     
     Behavior on height {
         NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
@@ -134,6 +112,7 @@ ItemDelegate {
 
             // Expander caret
             VectorImage {
+                id: expanderCaret
                 source: "qrc:/resources/caretLeft.svg"
                 rotation: expanded ? -180 : -90
                 Behavior on rotation { NumberAnimation { duration: 150 } }
@@ -141,14 +120,22 @@ ItemDelegate {
                 Layout.preferredHeight: 16
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 fillMode: VectorImage.PreserveAspectFit
-                opacity: 0.6
                 visible: hasActions
+
+                MultiEffect {
+                    source: expanderCaret
+                    anchors.fill: expanderCaret
+                    colorization: 1.0
+                    colorizationColor: Config.Theme.colorTextMuted
+                }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
                         if (playerItem.hasActions) {
-                            playerItem.expanded = !playerItem.expanded
+                            const opening = !playerItem.expanded
+                            playerItem.listView.expandedPlayerIndex = opening ? playerItem.index : -1
+                            playerItem.expanded = opening
                         }
                     }
                     cursorShape: Qt.PointingHandCursor
@@ -186,7 +173,7 @@ ItemDelegate {
                 
                 contentItem: Text {
                     text: parent.text
-                    color: Config.StaticData.palette.secondary.col100
+                    color: "white"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: parent.font.pixelSize
                     font.bold: true
@@ -223,7 +210,7 @@ ItemDelegate {
 
                 contentItem: Text {
                     text: parent.text
-                    color: Config.StaticData.palette.secondary.col100
+                    color: "white"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: parent.font.pixelSize
                     font.bold: true
@@ -232,7 +219,7 @@ ItemDelegate {
                 }
 
                 onClicked: {
-                    playerItem.addToIgnoreList()
+                    if (Lobby) Lobby.ignorePlayer(targetPlayerId)
                     playerItem.expanded = false
                 }
             }
@@ -260,7 +247,7 @@ ItemDelegate {
 
                 contentItem: Text {
                     text: parent.text
-                    color: Config.StaticData.palette.secondary.col100
+                    color: "white"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: parent.font.pixelSize
                     font.bold: true
@@ -269,7 +256,7 @@ ItemDelegate {
                 }
 
                 onClicked: {
-                    playerItem.removeFromIgnoreList()
+                    if (Lobby) Lobby.unignorePlayer(targetPlayerId)
                     playerItem.expanded = false
                 }
             }
@@ -297,7 +284,7 @@ ItemDelegate {
 
                 contentItem: Text {
                     text: parent.text
-                    color: Config.StaticData.palette.secondary.col100
+                    color: "white"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: parent.font.pixelSize
                     font.bold: true
@@ -306,19 +293,8 @@ ItemDelegate {
                 }
 
                 onClicked: {
-                    var url = "https://www.pokerth.net/redirect_user_profile.php?nick=" + encodeURIComponent(displayName)
-                    var opened = false
-                    if (Lobby) {
-                        opened = Lobby.openExternalUrl(url)
-                    } else {
-                        opened = Qt.openUrlExternally(url)
-                    }
-
-                    if (opened) {
-                        playerItem.expanded = false
-                    } else {
-                        console.warn("Failed to open player stats URL:", url)
-                    }
+                    if (Lobby) Lobby.showPlayerStats(targetPlayerId)
+                    playerItem.expanded = false
                 }
             }
             
@@ -345,7 +321,7 @@ ItemDelegate {
                 
                 contentItem: Text {
                     text: parent.text
-                    color: Config.StaticData.palette.secondary.col100
+                    color: "white"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: parent.font.pixelSize
                     font.bold: true

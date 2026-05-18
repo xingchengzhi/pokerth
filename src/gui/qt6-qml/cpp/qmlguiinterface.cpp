@@ -136,6 +136,15 @@ void QmlGuiInterface::SignalNetClientLobbyChatMsg(const std::string &playerName,
     }
 }
 
+void QmlGuiInterface::SignalNetClientPrivateChatMsg(const std::string &playerName, const std::string &msg)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, "onPrivateChatMessage", Qt::QueuedConnection,
+                                  Q_ARG(QString, QString::fromStdString(playerName)),
+                                  Q_ARG(QString, QString::fromStdString(msg)));
+    }
+}
+
 void QmlGuiInterface::SignalLobbyPlayerJoined(unsigned playerId, const std::string &nickName)
 {
     if (m_lobbyHandler) {
@@ -166,8 +175,10 @@ void QmlGuiInterface::SignalNetClientPlayerChanged(unsigned playerId, const std:
 {
     if (m_lobbyHandler) {
         const QString qPlayerName = QString::fromStdString(newPlayerName);
+        // Read isAdmin from session — same as Qt widgets GUI does on demand
+        const bool isAdmin = m_session ? m_session->getClientPlayerInfo(playerId).isAdmin : false;
         QMetaObject::invokeMethod(m_lobbyHandler, "updatePlayerName", Qt::QueuedConnection,
-                                  Q_ARG(unsigned, playerId), Q_ARG(QString, qPlayerName), Q_ARG(bool, false));
+                                  Q_ARG(unsigned, playerId), Q_ARG(QString, qPlayerName), Q_ARG(bool, isAdmin));
     }
 }
 

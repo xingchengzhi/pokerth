@@ -9,7 +9,6 @@ import "../config" as Config
 Rectangle {
     id: root
 
-    property string yellow: "#E3C800"
     property bool up: false
 
     color: "transparent"
@@ -130,7 +129,7 @@ Rectangle {
             width: parent.width / 2
             horizontalAlignment: Text.AlignRight
             rightPadding: 6
-            color: root.yellow
+            color: Config.Theme.colorAccent
             font.bold: true
             font.pointSize: 13
             Component.onCompleted: {

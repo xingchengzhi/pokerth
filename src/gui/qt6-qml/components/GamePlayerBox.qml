@@ -172,7 +172,7 @@ GridLayout {
                 width: parent.width / 2
                 horizontalAlignment: Text.AlignRight
                 rightPadding: 6
-                color: root.yellow
+                color: Config.Theme.colorAccent
                 font.bold: true
                 Component.onCompleted: {
                     text = "$10000";

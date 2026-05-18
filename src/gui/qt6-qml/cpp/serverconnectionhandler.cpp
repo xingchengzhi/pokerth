@@ -1,7 +1,10 @@
 #include "serverconnectionhandler.h"
 #include "session.h"
 #include "configfile.h"
+#include "core/appimage_utils.h"
 #include <QByteArray>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QTimer>
 #include <QDebug>
 
@@ -48,8 +51,10 @@ void ServerConnectionHandler::connectToServer(const QString &username, const QSt
         return;
     }
     
-    // Save credentials
-    saveCredentials(username, password, rememberPassword);
+    // Guest login must not overwrite persisted user credentials.
+    if (!isGuest) {
+        saveCredentials(username, password, rememberPassword);
+    }
     
     // Store pending credentials for retry/reuse
     m_pendingUsername = username;
@@ -80,6 +85,43 @@ void ServerConnectionHandler::cancelConnection()
     updateProgress(0, tr("Connection canceled"));
     
     // TODO: Implement actual cancellation logic with Session
+}
+
+bool ServerConnectionHandler::openExternalUrl(const QUrl &url) const
+{
+    if (!url.isValid())
+        return false;
+
+#ifdef Q_OS_LINUX
+    const QString targetString = url.toString();
+
+    // External host tools must not inherit bundled Qt libraries.
+    // Restore the original LD_LIBRARY_PATH (saved by the launcher) or strip it
+    // entirely so system tools like xdg-open / kde-open work correctly.
+    auto startDetachedHostTool = [](const QString &program, const QStringList &args) {
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        const QString origLdLibraryPath = QString::fromLocal8Bit(qgetenv("POKERTH_ORIG_LD_LIBRARY_PATH"));
+        if (origLdLibraryPath.isEmpty())
+            env.remove(QStringLiteral("LD_LIBRARY_PATH"));
+        else
+            env.insert(QStringLiteral("LD_LIBRARY_PATH"), origLdLibraryPath);
+        env.remove(QStringLiteral("LD_PRELOAD"));
+        QProcess process;
+        process.setProcessEnvironment(env);
+        process.setProgram(program);
+        process.setArguments(args);
+        return process.startDetached();
+    };
+
+    if (startDetachedHostTool(QStringLiteral("xdg-open"), {targetString}))
+        return true;
+    if (startDetachedHostTool(QStringLiteral("gio"), {QStringLiteral("open"), targetString}))
+        return true;
+    if (startDetachedHostTool(QStringLiteral("kde-open"), {targetString}))
+        return true;
+#endif
+
+    return AppImageUtils::openUrlSafe(url);
 }
 
 void ServerConnectionHandler::updateProgress(int progress, const QString &message)

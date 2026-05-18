@@ -64,6 +64,26 @@ QtObject {
     readonly property color colorDanger:        "#e05050"
     readonly property color colorSuccess:       "#50c878"
 
+    // Game status (game list)
+    readonly property color colorStatusRunning: isDark ? "#FF6D00" : "#BF360C"
+    readonly property color colorStatusClosed:  isDark ? "#EF5350" : "#C62828"
+    readonly property color colorStatusOpen:    isDark ? "#4CAF50" : "#2E7D32"
+    readonly property color colorStatusFull:    isDark ? "#FFC107" : "#E65100"
+
+    // Error / feedback text
+    readonly property color colorError:          isDark ? "#FF5252" : "#C62828"
+    readonly property color colorSuccessMessage: isDark ? "#2ecc71" : "#27ae60"
+
+    // Danger button states (destructive actions e.g. reset settings)
+    readonly property color colorButtonDangerNormal:      isDark ? "#922b21" : "#c0392b"
+    readonly property color colorButtonDangerHover:       isDark ? "#c0392b" : "#e74c3c"
+    readonly property color colorButtonDangerPress:       isDark ? "#7f1010" : "#922b21"
+    readonly property color colorButtonDangerBorder:      isDark ? "#e74c3c" : "#ff6b6b"
+    readonly property color colorButtonDangerBorderHover: isDark ? "#ff6b6b" : "#c0392b"
+
+    // Text / icon on a colored (accent / chart) background — always light
+    readonly property color colorOnAccent: "#ffffff"
+
     // ── Opacity helpers ──────────────────────────────────────────────────────
     readonly property real overlayOpacity: 0.80
     readonly property real dimmedOpacity:  0.40

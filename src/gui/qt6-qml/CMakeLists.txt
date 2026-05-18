@@ -26,6 +26,7 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
 qt_add_resources(POKERTH_QML_CLIENT_SRC cflags.qrc)
+qt_add_resources(POKERTH_QML_CLIENT_SRC emotes.qrc)
 
 set(QML_FILES
     pokerth.qml

@@ -14,6 +14,62 @@
 #include <QProcessEnvironment>
 #include <QUrl>
 #include <QStringList>
+#include <QDateTime>
+
+// ---------------------------------------------------------------------------
+// Emoji substitution helper (Twemoji SVG, used by onLobbyChatMessage)
+// Input must already be HTML-escaped (< → &lt;, > → &gt;).
+// ASCII smileys: longer/more-specific patterns first.
+// Unicode emojis: variation-selector (U+FE0F) variant before plain codepoint.
+// ---------------------------------------------------------------------------
+static QString checkForEmotes(const QString &input)
+{
+    QString result = input;
+
+    // Convert ASCII smileys to their Unicode emoji equivalents.
+    // QML TextArea (RichText) renders Unicode emoji via the system font,
+    // which is simpler and more reliable than <img> tags.
+    // Note: input is HTML-escaped, so '>' appears as "&gt;".
+    auto emo = [](char32_t cp) -> QString { return QString::fromUcs4(&cp, 1); };
+
+    result.replace(QLatin1String("0:-)"),    emo(0x1F607)); // 😇 angel
+    result.replace(QLatin1String("X-("),     emo(0x1F620)); // 😠 angry
+    result.replace(QLatin1String("B-)"),     emo(0x1F60E)); // 😎 cool
+    result.replace(QLatin1String("8-)"),     emo(0x1F60E)); // 😎 cool
+    result.replace(QLatin1String(":'("),     emo(0x1F622)); // 😢 crying
+    result.replace(QLatin1String("&gt;:-)"), emo(0x1F608)); // 😈 devilish (HTML-escaped >)
+    result.replace(QLatin1String(":-["),     emo(0x1F633)); // 😳 embarrassed
+    result.replace(QLatin1String(":-*"),     emo(0x1F617)); // 😗 kiss
+    result.replace(QLatin1String(":-))" ),   emo(0x1F602)); // 😂 laugh
+    result.replace(QLatin1String(":))" ),    emo(0x1F602)); // 😂 laugh
+    result.replace(QLatin1String(":-|"),     emo(0x1F610)); // 😐 neutral
+    result.replace(QLatin1String(":-P"),     emo(0x1F61B)); // 😛 tongue
+    result.replace(QLatin1String(":-p"),     emo(0x1F61B)); // 😛 tongue
+    result.replace(QLatin1String(":-("),     emo(0x1F61E)); // 😞 sad
+    result.replace(QLatin1String(":("),      emo(0x1F61E)); // 😞 sad
+    result.replace(QLatin1String(":-&"),     emo(0x1F912)); // 🤒 sick
+    result.replace(QLatin1String(":-D"),     emo(0x1F603)); // 😃 big smile
+    result.replace(QLatin1String(":D"),      emo(0x1F603)); // 😃 big smile
+    result.replace(QLatin1String(":-!"),     emo(0x1F60F)); // 😏 smirk
+    result.replace(QLatin1String(":-0"),     emo(0x1F62E)); // 😮 surprise
+    result.replace(QLatin1String(":-O"),     emo(0x1F62E)); // 😮 surprise
+    result.replace(QLatin1String(":-o"),     emo(0x1F62E)); // 😮 surprise
+    result.replace(QLatin1String(":-/"),     emo(0x1F615)); // 😕 uncertain
+    // ":/" only when no URL present
+    if (!result.contains(QLatin1String("http://")) && !result.contains(QLatin1String("https://")))
+        result.replace(QLatin1String(":/"), emo(0x1F615));  // 😕
+    result.replace(QLatin1String(";-)"),     emo(0x1F609)); // 😉 wink
+    result.replace(QLatin1String(";)"),      emo(0x1F609)); // 😉 wink
+    result.replace(QLatin1String(":-S"),     emo(0x1F61F)); // 😟 worried
+    result.replace(QLatin1String(":-s"),     emo(0x1F61F)); // 😟 worried
+    result.replace(QLatin1String(":-)"),     emo(0x1F60A)); // 😊 smile
+    result.replace(QLatin1String(":)"),      emo(0x1F60A)); // 😊 smile
+
+    // Unicode emoji in the input are already valid HTML text content and are
+    // rendered directly by QML via the system emoji font — no substitution needed.
+    return result;
+}
+
 
 class PlayerNickListSortFilterProxyModel : public QSortFilterProxyModel
 {
@@ -549,6 +605,7 @@ LobbyHandler::LobbyHandler(QObject *parent)
     , m_gameListFilterMode(0)
     , m_playerListRevision(0)
     , m_gameListRevision(0)
+    , m_playerIgnoreListRevision(0)
 {
     auto *proxy = new PlayerNickListSortFilterProxyModel(this);
     proxy->setSourceModel(&m_playerListModel);
@@ -613,12 +670,21 @@ void LobbyHandler::onLobbyPlayerJoined(unsigned playerId, const QString &playerN
         countryCode = QString::fromStdString(info.countryCode).toLower();
         isGuest = info.isGuest;
     }
-    m_playerListModel.addPlayer(playerId, playerName, false, countryCode, isGuest);
+    const bool isAdmin = m_session ? m_session->getClientPlayerInfo(playerId).isAdmin : false;
+    m_playerListModel.addPlayer(playerId, playerName, isAdmin, countryCode, isGuest);
     static_cast<PlayerNickListSortFilterProxyModel *>(m_playerListProxyModel)->refresh();
     ++m_playerListRevision;
     emit playerListRevisionChanged();
     ++m_gameListRevision;
     emit gameListRevisionChanged();
+
+    // Track admin status for our own player
+    if (m_session && playerId == m_session->getClientUniquePlayerId()) {
+        if (m_isCurrentPlayerAdmin != isAdmin) {
+            m_isCurrentPlayerAdmin = isAdmin;
+            emit isCurrentPlayerAdminChanged();
+        }
+    }
 }
 
 void LobbyHandler::onLobbyPlayerLeft(unsigned playerId)
@@ -726,6 +792,46 @@ bool LobbyHandler::canInviteFromCurrentGame() const
 
     const GameInfo currentGame = m_session->getClientGameInfo(gameId);
     return currentGame.data.gameType == GAME_TYPE_INVITE_ONLY;
+}
+
+bool LobbyHandler::isMyPlayerGuest() const
+{
+    if (!m_session || m_myPlayerId == 0)
+        return false;
+
+    const PlayerInfo info = m_session->getClientPlayerInfo(m_myPlayerId);
+    return info.isGuest;
+}
+
+bool LobbyHandler::canJoinGame(unsigned gameId) const
+{
+    if (!m_session || gameId == 0)
+        return false;
+
+    const GameInfo info = m_session->getClientGameInfo(gameId);
+
+    const int mode = static_cast<int>(info.mode);
+    if (mode == GAME_MODE_STARTED || mode == GAME_MODE_CLOSED)
+        return false;
+
+    const int maxPlayers = info.data.maxNumberOfPlayers > 0 ? info.data.maxNumberOfPlayers : 10;
+    const int playerCount = static_cast<int>(info.players.size());
+    if (playerCount >= maxPlayers)
+        return false;
+
+    if (info.isPasswordProtected)
+        return false;
+
+    const int gameType = static_cast<int>(info.data.gameType);
+    if (gameType == GAME_TYPE_INVITE_ONLY || gameType == GAME_TYPE_REGISTERED_ONLY)
+        return false;
+
+    if (gameType == GAME_TYPE_RANKING) {
+        if (isMyPlayerGuest())
+            return false;
+    }
+
+    return gameType == GAME_TYPE_NORMAL || gameType == GAME_TYPE_RANKING;
 }
 
 void LobbyHandler::setPlayerListFilterMode(int mode)
@@ -909,9 +1015,36 @@ void LobbyHandler::sendChatMessage(const QString &message)
 {
     if (!m_session || message.trimmed().isEmpty())
         return;
-    
+
+    // Guests cannot send chat messages
+    if (isMyPlayerGuest()) {
+        emit errorOccurred(tr("Guests cannot send chat messages"));
+        return;
+    }
+
+    QString text = message;
+
     try {
-        m_session->sendLobbyChatMessage(message.toStdString());
+        if (text.startsWith(QLatin1String("/msg "), Qt::CaseInsensitive)) {
+            // Private message: /msg <nick> <text>  or  /msg "<nick with spaces>" <text>
+            text.remove(0, 5);
+            const unsigned targetId = parsePrivateMessageTarget(text);
+            if (targetId == 0) {
+                emit errorOccurred(tr("Player not found"));
+                return;
+            }
+            // Truncate to 128 bytes UTF-8 at character boundary
+            while (!text.isEmpty() && text.toUtf8().size() > 128)
+                text.chop(1);
+            if (text.isEmpty()) return;
+            m_session->sendPrivateChatMessage(targetId, text.toStdString());
+        } else {
+            // Lobby chat (includes /me actions — server echoes them back)
+            while (!text.isEmpty() && text.toUtf8().size() > 128)
+                text.chop(1);
+            if (text.isEmpty()) return;
+            m_session->sendLobbyChatMessage(text.toStdString());
+        }
     } catch (const std::exception &e) {
         qWarning() << "Failed to send chat message:" << e.what();
         emit errorOccurred(tr("Failed to send chat message"));
@@ -920,7 +1053,136 @@ void LobbyHandler::sendChatMessage(const QString &message)
 
 void LobbyHandler::onLobbyChatMessage(const QString &playerName, const QString &message)
 {
-    emit chatMessageReceived(playerName, message);
+    // Reload ignore list fresh on every message (matches chattools.cpp refreshIgnoreList pattern)
+    std::list<std::string> ignoreList;
+    if (m_config)
+        ignoreList = m_config->readConfigStringList("PlayerIgnoreList");
+
+    const QString myNick      = m_myPlayerName;
+    const bool    isChatBot   = (playerName == QLatin1String("(chat bot)"));
+
+    // Drop messages from ignored players; also drop chatbot messages that
+    // start with an ignored player's name (same logic as chattools.cpp)
+    bool chatBotWarnIgnored = false;
+    for (const auto &entry : ignoreList) {
+        const QString ignoredName = QString::fromUtf8(entry.c_str());
+        if (playerName == ignoredName)
+            return;
+        if (isChatBot && message.startsWith(ignoredName))
+            chatBotWarnIgnored = true;
+    }
+    if (chatBotWarnIgnored)
+        return;
+
+    // Determine theme-aware colours (matches Qt-widget palette.link / palette.text)
+    const bool isDark       = !m_config || (m_config->readConfigInt("DarkMode") != 0);
+    const QString colorAccent = QLatin1String("#E3C800");                                    // accent gold
+    const QString colorText   = isDark ? QLatin1String("#cdd3e0") : QLatin1String("#394150"); // secondary text
+    const QString colorDanger = QLatin1String("#e05050");                                    // chatbot warn
+
+    // Detect /me action before escaping
+    const bool isAction = message.startsWith(QLatin1String("/me "));
+    const QString rawDisplay = isAction ? message.mid(4) : message;
+
+    // HTML-escape user-supplied content (prevents tag injection)
+    QString escapedMsg = rawDisplay.toHtmlEscaped();
+
+    // URL linkification
+    static const QRegularExpression urlRe(QLatin1String("(https?://\\S+)"));
+    escapedMsg.replace(urlRe, QLatin1String("<a href=\"\\1\">\\1</a>"));
+
+    // Determine message style based on content
+    bool isMention = false;
+    QString styledMsg;
+
+    if (isChatBot && !myNick.isEmpty() && rawDisplay.startsWith(myNick)) {
+        // Chatbot addressing me: bold red
+        styledMsg = QLatin1String("<span style=\"font-weight:bold; color:") + colorDanger
+                    + QLatin1String(";\">") + escapedMsg + QLatin1String("</span>");
+    } else if (!myNick.isEmpty() && rawDisplay.contains(myNick, Qt::CaseInsensitive)) {
+        // Mention: bold accent
+        isMention = true;
+        styledMsg = QLatin1String("<span style=\"font-weight:bold; color:") + colorAccent
+                    + QLatin1String(";\">") + escapedMsg + QLatin1String("</span>");
+    } else {
+        // All other messages (including own): normal text colour
+        styledMsg = QLatin1String("<span style=\"font-weight:normal; color:") + colorText
+                    + QLatin1String(";\">") + escapedMsg + QLatin1String("</span>");
+    }
+
+    // Emoji substitution (respects DisableChatEmoticons setting)
+    if (!m_config || !m_config->readConfigInt("DisableChatEmoticons"))
+        styledMsg = checkForEmotes(styledMsg);
+
+    // Sound notification on mention (signal to QML)
+    if (isMention && playerName != myNick) {
+        if (!m_config || m_config->readConfigInt("PlayLobbyChatNotification"))
+            emit lobbyChatMentionDetected();
+    }
+
+    // Build final line
+    const QString ts          = QDateTime::currentDateTime().toString("HH:mm:ss");
+    const QString escapedName = playerName.toHtmlEscaped();
+    QString line;
+    if (isAction) {
+        line = QLatin1String("[") + ts + QLatin1String("] <i>*")
+               + escapedName + QLatin1String(" ") + styledMsg + QLatin1String("*</i>");
+    } else {
+        line = QLatin1String("[") + ts + QLatin1String("] <b>")
+               + escapedName + QLatin1String(":</b> ") + styledMsg;
+    }
+
+    emit chatLineReady(line);
+}
+
+void LobbyHandler::onPrivateChatMessage(const QString &playerName, const QString &message)
+{
+    // Colour for PMs: muted text (similar to chattools.cpp italic PM style)
+    const bool isDark      = !m_config || (m_config->readConfigInt("DarkMode") != 0);
+    const QString colorPM  = isDark ? QLatin1String("#a0acc4") : QLatin1String("#576378");
+
+    QString escapedMsg  = message.toHtmlEscaped();
+    if (!m_config || !m_config->readConfigInt("DisableChatEmoticons"))
+        escapedMsg = checkForEmotes(escapedMsg);
+
+    const QString ts   = QDateTime::currentDateTime().toString("HH:mm:ss");
+    const QString line = QLatin1String("[") + ts + QLatin1String("] <i><span style=\"color:")
+                         + colorPM + QLatin1String(";\">")
+                         + playerName.toHtmlEscaped()
+                         + QLatin1String("(pm): ") + escapedMsg
+                         + QLatin1String("</span></i>");
+    emit chatLineReady(line);
+}
+
+unsigned LobbyHandler::parsePrivateMessageTarget(QString &chatText) const
+{
+    QString targetName;
+    int endPos = -1;
+    // Support quoted names: /msg "player name" text
+    if (chatText.startsWith(QLatin1Char('"'))) {
+        chatText.remove(0, 1);
+        endPos = chatText.indexOf(QLatin1Char('"'));
+    } else {
+        endPos = chatText.indexOf(QLatin1Char(' '));
+    }
+    if (endPos > 0) {
+        targetName = chatText.left(endPos);
+        chatText.remove(0, endPos + 1);
+    }
+    chatText = chatText.trimmed();
+
+    if (targetName.isEmpty() || chatText.isEmpty())
+        return 0;
+
+    // Look up playerId by name in the player list model
+    const int count = m_playerListModel.rowCount();
+    for (int i = 0; i < count; ++i) {
+        const QModelIndex idx  = m_playerListModel.index(i);
+        const QString     name = m_playerListModel.data(idx, PlayerListModel::PlayerNameRole).toString();
+        if (name == targetName)
+            return m_playerListModel.data(idx, PlayerListModel::PlayerIdRole).toUInt();
+    }
+    return 0;
 }
 
 void LobbyHandler::createGame()
@@ -986,4 +1248,107 @@ void LobbyHandler::sendPrivateMessage(unsigned targetPlayerId, const QString &me
         return;
     }
     m_session->sendPrivateChatMessage(targetPlayerId, message.toStdString());
+}
+
+// ── Player name helper ─────────────────────────────────────────────────────
+
+QString LobbyHandler::resolvedPlayerName(unsigned playerId) const
+{
+    // Check model first
+    const int count = m_playerListModel.rowCount();
+    for (int i = 0; i < count; ++i) {
+        const QModelIndex idx = m_playerListModel.index(i, 0);
+        if (m_playerListModel.data(idx, PlayerListModel::PlayerIdRole).toUInt() == playerId) {
+            const QString name = m_playerListModel.data(idx, PlayerListModel::PlayerNameRole).toString();
+            if (!name.isEmpty()) return name;
+            break;
+        }
+    }
+    // Fall back to session cache
+    if (m_session) {
+        const QString name = QString::fromStdString(m_session->getClientPlayerInfo(playerId).playerName);
+        if (!name.isEmpty()) return name;
+    }
+    return QString();
+}
+
+// ── Ignore list ────────────────────────────────────────────────────────────
+
+bool LobbyHandler::isPlayerIgnored(unsigned playerId) const
+{
+    if (!m_config || playerId == 0) return false;
+    const QString playerName = resolvedPlayerName(playerId);
+    if (playerName.isEmpty()) return false;
+
+    const std::list<std::string> ignoreList = m_config->readConfigStringList("PlayerIgnoreList");
+    for (const auto &entry : ignoreList) {
+        if (playerName == QString::fromUtf8(entry.c_str()))
+            return true;
+    }
+    return false;
+}
+
+void LobbyHandler::ignorePlayer(unsigned playerId)
+{
+    if (!m_config || playerId == 0) return;
+    const QString playerName = resolvedPlayerName(playerId);
+    if (playerName.isEmpty()) return;
+
+    std::list<std::string> ignoreList = m_config->readConfigStringList("PlayerIgnoreList");
+    const std::string nameStd = playerName.toStdString();
+    if (std::find(ignoreList.begin(), ignoreList.end(), nameStd) == ignoreList.end()) {
+        ignoreList.push_back(nameStd);
+        m_config->writeConfigStringList("PlayerIgnoreList", ignoreList);
+        ++m_playerIgnoreListRevision;
+        emit playerIgnoreListChanged();
+    }
+}
+
+void LobbyHandler::unignorePlayer(unsigned playerId)
+{
+    if (!m_config || playerId == 0) return;
+    const QString playerName = resolvedPlayerName(playerId);
+    if (playerName.isEmpty()) return;
+
+    std::list<std::string> ignoreList = m_config->readConfigStringList("PlayerIgnoreList");
+    const std::string nameStd = playerName.toStdString();
+    const size_t sizeBefore = ignoreList.size();
+    ignoreList.remove(nameStd);
+    if (ignoreList.size() != sizeBefore) {
+        m_config->writeConfigStringList("PlayerIgnoreList", ignoreList);
+        ++m_playerIgnoreListRevision;
+        emit playerIgnoreListChanged();
+    }
+}
+
+// ── Player stats ───────────────────────────────────────────────────────────
+
+void LobbyHandler::showPlayerStats(unsigned playerId)
+{
+    if (playerId == 0) return;
+    const QString playerName = resolvedPlayerName(playerId);
+    if (playerName.isEmpty()) return;
+
+    const QString url = QString("https://www.pokerth.net/redirect_user_profile.php?nick=%1")
+        .arg(QString::fromUtf8(QUrl::toPercentEncoding(playerName)));
+    openExternalUrl(url);
+}
+
+// ── Domain text helpers ────────────────────────────────────────────────────
+
+QString LobbyHandler::gameTypeText(int gameType) const
+{
+    switch (gameType) {
+    case 2: return tr("Registered players only");
+    case 3: return tr("Invited players only");
+    case 4: return tr("Ranking game");
+    default: return tr("Standard");
+    }
+}
+
+QString LobbyHandler::gameStatusText(int gameMode, int playerCount, int maxPlayers) const
+{
+    if (gameMode == 2) return tr("Running");
+    if (gameMode == 3) return tr("Closed");
+    return playerCount < maxPlayers ? tr("Open") : tr("Full");
 }

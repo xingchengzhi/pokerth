@@ -148,12 +148,14 @@ class LobbyHandler : public QObject
     Q_PROPERTY(QAbstractItemModel* gameListProxyModel READ gameListProxyModel CONSTANT)
     Q_PROPERTY(QString myPlayerName READ myPlayerName NOTIFY myPlayerNameChanged)
     Q_PROPERTY(unsigned myPlayerId READ myPlayerId NOTIFY myPlayerIdChanged)
+    Q_PROPERTY(bool isMyPlayerGuest READ isMyPlayerGuest NOTIFY gameContextChanged)
     Q_PROPERTY(bool isCurrentPlayerAdmin READ isCurrentPlayerAdmin NOTIFY isCurrentPlayerAdminChanged)
     Q_PROPERTY(bool canInviteFromCurrentGame READ canInviteFromCurrentGame NOTIFY gameContextChanged)
     Q_PROPERTY(int playerListFilterMode READ playerListFilterMode WRITE setPlayerListFilterMode NOTIFY playerListFilterModeChanged)
     Q_PROPERTY(int gameListFilterMode READ gameListFilterMode WRITE setGameListFilterMode NOTIFY gameListFilterModeChanged)
     Q_PROPERTY(int playerListRevision READ playerListRevision NOTIFY playerListRevisionChanged)
     Q_PROPERTY(int gameListRevision READ gameListRevision NOTIFY gameListRevisionChanged)
+    Q_PROPERTY(int playerIgnoreListRevision READ playerIgnoreListRevision NOTIFY playerIgnoreListChanged)
 
 public:
     explicit LobbyHandler(QObject *parent = nullptr);
@@ -169,12 +171,14 @@ public:
     
     QString myPlayerName() const { return m_myPlayerName; }
     unsigned myPlayerId() const { return m_myPlayerId; }
+    bool isMyPlayerGuest() const;
     bool isCurrentPlayerAdmin() const { return m_isCurrentPlayerAdmin; }
     bool canInviteFromCurrentGame() const;
     int playerListFilterMode() const { return m_playerListFilterMode; }
     int gameListFilterMode() const { return m_gameListFilterMode; }
     int playerListRevision() const { return m_playerListRevision; }
     int gameListRevision() const { return m_gameListRevision; }
+    int playerIgnoreListRevision() const { return m_playerIgnoreListRevision; }
     void setPlayerListFilterMode(int mode);
     void setGameListFilterMode(int mode);
     
@@ -195,6 +199,7 @@ public slots:
     // Chat
     void sendChatMessage(const QString &message);
     void onLobbyChatMessage(const QString &playerName, const QString &message);
+    void onPrivateChatMessage(const QString &playerName, const QString &message);
     
     // Actions from QML
     void createGame();
@@ -208,10 +213,18 @@ public slots:
     Q_INVOKABLE void sendPrivateMessage(unsigned targetPlayerId, const QString &message);
     Q_INVOKABLE QVariantMap playerListEntry(int row) const;
     Q_INVOKABLE QVariantList gamePlayersInGame(unsigned gameId) const;
+    Q_INVOKABLE bool canJoinGame(unsigned gameId) const;
     Q_INVOKABLE bool openExternalUrl(const QString &url) const;
+    Q_INVOKABLE bool isPlayerIgnored(unsigned playerId) const;
+    Q_INVOKABLE void ignorePlayer(unsigned playerId);
+    Q_INVOKABLE void unignorePlayer(unsigned playerId);
+    Q_INVOKABLE void showPlayerStats(unsigned playerId);
+    Q_INVOKABLE QString gameTypeText(int gameType) const;
+    Q_INVOKABLE QString gameStatusText(int gameMode, int playerCount, int maxPlayers) const;
 
 signals:
-    void chatMessageReceived(const QString &playerName, const QString &message);
+    void chatLineReady(const QString &formattedLine);
+    void lobbyChatMentionDetected();
     void gameCreated(unsigned gameId);
     void gameJoined(unsigned gameId);
     void errorOccurred(const QString &errorMessage);
@@ -223,6 +236,7 @@ signals:
     void gameListFilterModeChanged();
     void playerListRevisionChanged();
     void gameListRevisionChanged();
+    void playerIgnoreListChanged();
 
 private:
     boost::shared_ptr<Session> m_session;
@@ -240,8 +254,11 @@ private:
     int m_gameListFilterMode;
     int m_playerListRevision;
     int m_gameListRevision;
+    int m_playerIgnoreListRevision;
 
     void refreshGameInfo(unsigned gameId);
+    QString resolvedPlayerName(unsigned playerId) const;
+    unsigned parsePrivateMessageTarget(QString &chatText) const;
 };
 
 #endif // LOBBYHANDLER_H

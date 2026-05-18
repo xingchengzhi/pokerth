@@ -23,7 +23,7 @@ Rectangle {
         // Load saved credentials from config
         usernameInput.text = ServerConnection.savedUsername
         passwordInput.text = ServerConnection.savedPassword
-        rememberMeCheckbox.isChecked = ServerConnection.rememberPassword
+        rememberMeCheckbox.checked = ServerConnection.rememberPassword
     }
 
     // Connections to backend signals
@@ -45,7 +45,7 @@ Rectangle {
         function onConnectionFailed(errorMessage) {
             console.log("Connection failed:", errorMessage)
             statusText.text = errorMessage
-            statusText.color = "#FF5252"
+            statusText.color = Config.Theme.colorError
             errorResetTimer.restart()
         }
 
@@ -106,7 +106,7 @@ Rectangle {
                     CustomButton {
                         text: qsTr("Register")
                         Layout.fillWidth: true
-                        onClicked: Qt.openUrlExternally("https://www.pokerth.net/ucp.php?mode=register")
+                        onClicked: ServerConnection.openExternalUrl(ServerConnection.registerUrl)
                     }
 
                     CustomButton {
@@ -179,11 +179,10 @@ Rectangle {
                         }
                     }
 
-                    CustomCheckBox {
+                    CheckBox {
                         id: rememberMeCheckbox
-                        objectName: "loginRememberMe"
-                        label: qsTr("Remember me")
-                        defaultValue: false
+                        text: qsTr("Remember me")
+                        checked: false
                     }
 
                     RowLayout {
@@ -200,11 +199,11 @@ Rectangle {
                             text: qsTr("Login")
                             Layout.fillWidth: true
                             onClicked: {
-                                console.log("Login clicked. Username:", usernameInput.text, "Remember me:", rememberMeCheckbox.isChecked)
+                                console.log("Login clicked. Username:", usernameInput.text, "Remember me:", rememberMeCheckbox.checked)
                                 usernameLabel.text = usernameInput.text
                                 connectionProgress.value = 0
                                 mainStack.currentIndex = 2
-                                ServerConnection.connectToServer(usernameInput.text, passwordInput.text, false, rememberMeCheckbox.isChecked)
+                                ServerConnection.connectToServer(usernameInput.text, passwordInput.text, false, rememberMeCheckbox.checked)
                             }
                         }
                     }

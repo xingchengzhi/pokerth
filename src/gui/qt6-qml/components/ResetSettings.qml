@@ -78,13 +78,13 @@ Rectangle {
                         radius: Config.Theme.radiusSmall
                         color: resetButton.enabled
                                ? (resetButton.pressed
-                                  ? "#7f1010"
+                                  ? Config.Theme.colorButtonDangerPress
                                   : resetButton.hovered
-                                    ? "#c0392b"
-                                    : "#922b21")
+                                    ? Config.Theme.colorButtonDangerHover
+                                    : Config.Theme.colorButtonDangerNormal)
                                : Config.StaticData.palette.secondary.col600
                         border.color: resetButton.enabled
-                                      ? (resetButton.hovered || resetButton.pressed ? "#ff6b6b" : "#e74c3c")
+                                      ? (resetButton.hovered || resetButton.pressed ? Config.Theme.colorButtonDangerBorderHover : Config.Theme.colorButtonDangerBorder)
                                       : Config.StaticData.palette.secondary.col500
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: 100 } }
@@ -103,7 +103,7 @@ Rectangle {
                     Layout.fillWidth: true
                     text: qsTr("Einstellungen wurden zurückgesetzt. Bitte starte PokerTH neu, damit alle Änderungen wirksam werden.")
                     wrapMode: Text.Wrap
-                    color: "#2ecc71"
+                    color: Config.Theme.colorSuccessMessage
                     font.pointSize: 11
                 }
             }

@@ -27,18 +27,15 @@ Rectangle {
     property int playerListCollapseResetCounter: 0
 
     readonly property int gameListRevision: Lobby ? Lobby.gameListRevision : 0
+    readonly property bool selectedGameJoinable: {
+        var _gameRev = gameListRevision
+        return (Lobby && selectedGame) ? Lobby.canJoinGame(selectedGame.gameId || 0) : false
+    }
     readonly property var selectedGamePlayers: {
         var _playerRev = Lobby ? Lobby.playerListRevision : 0
         var _gameRev = gameListRevision
         var gid = selectedGame ? selectedGame.gameId : 0
         return (Lobby && gid) ? Lobby.gamePlayersInGame(gid) : []
-    }
-
-    function gameTypeText(gameType) {
-        if (gameType === 2) return qsTr("Registered players only")
-        if (gameType === 3) return qsTr("Invited players only")
-        if (gameType === 4) return qsTr("Ranking game")
-        return qsTr("Standard")
     }
 
     function gameTypeIconSource(gameType) {
@@ -48,16 +45,10 @@ Rectangle {
         return "../resources/user.svg"
     }
 
-    function gameStatusText(mode, count, maxPlayers) {
-        if (mode === 2) return qsTr("Running")
-        if (mode === 3) return qsTr("Closed")
-        return count < maxPlayers ? qsTr("Open") : qsTr("Full")
-    }
-
     function gameStatusColor(mode, count, maxPlayers) {
-        if (mode === 2) return "#FF9800"
-        if (mode === 3) return "#EF5350"
-        return count < maxPlayers ? "#4CAF50" : "#FFC107"
+        if (mode === 2) return Config.Theme.colorStatusRunning
+        if (mode === 3) return Config.Theme.colorStatusClosed
+        return count < maxPlayers ? Config.Theme.colorStatusOpen : Config.Theme.colorStatusFull
     }
 
     function resetPlayerListDelegates() {
@@ -156,7 +147,7 @@ Rectangle {
                             source: closePlayerIcon
                             anchors.fill: closePlayerIcon
                             colorization: 1.0
-                            colorizationColor: Config.StaticData.palette.secondary.col300
+                            colorizationColor: Config.Theme.colorTextSecondary
                         }
                     }
 
@@ -194,6 +185,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                property int expandedPlayerIndex: -1
                 model: Lobby ? Lobby.playerListProxyModel : null
 
                 delegate: PlayerListItem {
@@ -336,7 +328,7 @@ Rectangle {
                             var mode = lobbyPage.selectedGame.gameMode || 1
                             var cnt = lobbyPage.selectedGame.playerCount || 0
                             var max = lobbyPage.selectedGame.maxPlayers || 10
-                            return qsTr("Status: %1").arg(lobbyPage.gameStatusText(mode, cnt, max))
+                            return qsTr("Status: %1").arg(Lobby ? Lobby.gameStatusText(mode, cnt, max) : "")
                         }
                         font.family: Config.StaticData.loadedFont.font.family
                         font.pixelSize: 13
@@ -370,7 +362,7 @@ Rectangle {
 
                         Label {
                             text: lobbyPage.selectedGame
-                                  ? qsTr("Type: %1").arg(lobbyPage.gameTypeText(lobbyPage.selectedGame.gameType || 1))
+                                  ? qsTr("Type: %1").arg(Lobby ? Lobby.gameTypeText(lobbyPage.selectedGame.gameType || 1) : "")
                                   : ""
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 13
@@ -485,9 +477,7 @@ Rectangle {
                                     Layout.preferredWidth: 22
                                     Layout.preferredHeight: 22
                                     radius: 11
-                                    color: Qt.darker(Config.StaticData.palette.secondary.col600, 1.2)
-                                    border.width: 1
-                                    border.color: Config.StaticData.palette.secondary.col500
+                                    color: "transparent"
                                     clip: true
 
                                     Image {
@@ -500,10 +490,8 @@ Rectangle {
 
                                     VectorImage {
                                         visible: !((modelData.avatarUrl || "").length > 0)
-                                        anchors.centerIn: parent
-                                        width: 12
-                                        height: 12
-                                        source: "../resources/user.svg"
+                                        anchors.fill: parent
+                                        source: "../resources/pokerth.svg"
                                     }
                                 }
 
@@ -540,9 +528,10 @@ Rectangle {
             CustomButton {
                 text: qsTr("Join Game")
                 Layout.fillWidth: true
-                enabled: lobbyPage.selectedGame !== null
+                visible: lobbyPage.selectedGameJoinable
+                enabled: lobbyPage.selectedGameJoinable
                 onClicked: {
-                    if (lobbyPage.selectedGame) {
+                    if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
                         Lobby.joinGame(lobbyPage.selectedGame.gameId)
                         lobbyPage.showingGameInfo = false
                     }
@@ -667,6 +656,7 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
+                        property int expandedPlayerIndex: -1
                         model: Lobby ? Lobby.playerListProxyModel : null
 
                         delegate: PlayerListItem {
@@ -698,11 +688,11 @@ Rectangle {
                 Layout.fillHeight: true
                 spacing: 5
 
-                // Game list: 2/3 in compact, full height in wide
+                // Game list: same height as chat in compact
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.verticalStretchFactor: Config.Responsive.compact ? 2 : 1
+                    Layout.verticalStretchFactor: 1
                     color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
                     radius: 5
 
@@ -760,17 +750,13 @@ Rectangle {
                                             readonly property int gm: (model.gameMode || 1)
                                             readonly property int cnt: (model.playerCount || 0)
                                             readonly property int max: (model.maxPlayers || 10)
-                                            text: {
-                                                if (gm === 2) return qsTr("Running")
-                                                if (gm === 3) return qsTr("Closed")
-                                                return cnt < max ? qsTr("Open") : qsTr("Full")
-                                            }
+                                            text: Lobby ? Lobby.gameStatusText(gm, cnt, max) : ""
                                             font.family: Config.StaticData.loadedFont.font.family
                                             font.pixelSize: 12
                                             color: {
-                                                if (gm === 2) return "#FF9800"
-                                                if (gm === 3) return "#EF5350"
-                                                return cnt < max ? "#4CAF50" : "#FFC107"
+                                                if (gm === 2) return Config.Theme.colorStatusRunning
+                                                if (gm === 3) return Config.Theme.colorStatusClosed
+                                                return cnt < max ? Config.Theme.colorStatusOpen : Config.Theme.colorStatusFull
                                             }
                                         }
                                         Text {
@@ -779,8 +765,9 @@ Rectangle {
                                             color: Config.StaticData.palette.secondary.col500
                                         }
                                         Text {
-                                            readonly property int sb: model.firstSmallBlind > 0 ? model.firstSmallBlind : 10
-                                            text: qsTr("Blind: %1/%2").arg(sb).arg(sb * 2)
+                                            readonly property int actionSec: model.playerActionTimeoutSec > 0 ? model.playerActionTimeoutSec : 0
+                                            readonly property int handDelaySec: model.delayBetweenHandsSec > 0 ? model.delayBetweenHandsSec : 0
+                                            text: qsTr("Time: %1s/%2s").arg(actionSec).arg(handDelaySec)
                                             font.family: Config.StaticData.loadedFont.font.family
                                             font.pixelSize: 12
                                             color: Config.StaticData.palette.secondary.col300
@@ -880,11 +867,12 @@ Rectangle {
                                 id: chatAreaCompact
                                 readOnly: true
                                 wrapMode: TextEdit.Wrap
+                                textFormat: TextEdit.RichText
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 12
                                 color: Config.StaticData.palette.secondary.col200
                                 background: Rectangle { color: "transparent" }
-                                text: qsTr("Welcome to PokerTH Lobby!\nChat messages will appear here...")
+                                text: qsTr("Welcome to PokerTH Lobby!<br/>Chat messages will appear here...")
                             }
                         }
 
@@ -896,7 +884,10 @@ Rectangle {
                                 id: chatInputCompact
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                placeholderText: qsTr("Type your message...")
+                                placeholderText: (Lobby && Lobby.isMyPlayerGuest)
+                                                 ? qsTr("Guests cannot chat")
+                                                 : qsTr("Type your message...")
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 font.family: Config.StaticData.loadedFont.font.family
                                 color: Config.StaticData.palette.secondary.col200
                                 background: Rectangle {
@@ -914,6 +905,7 @@ Rectangle {
                                 Layout.maximumWidth: 44
                                 Layout.preferredHeight: 36
                                 Layout.maximumHeight: 44
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 onClicked: sendChatMessage()
                                 contentItem: VectorImage {
                                     id: sendIconCompact
@@ -958,10 +950,10 @@ Rectangle {
                         text: qsTr("Join Game")
                         font.family: Config.StaticData.loadedFont.font.family
                         Layout.fillWidth: true
-                        visible: !Config.Responsive.compact
-                        enabled: lobbyPage.selectedGame !== null
+                        visible: !Config.Responsive.compact && lobbyPage.selectedGameJoinable
+                        enabled: lobbyPage.selectedGameJoinable
                         onClicked: {
-                            if (lobbyPage.selectedGame) {
+                            if (lobbyPage.selectedGame && lobbyPage.selectedGameJoinable) {
                                 Lobby.joinGame(lobbyPage.selectedGame.gameId)
                             }
                         }
@@ -1017,7 +1009,7 @@ Rectangle {
 
                             Label {
                                 text: lobbyPage.selectedGame
-                                      ? qsTr("Type: %1").arg(lobbyPage.gameTypeText(lobbyPage.selectedGame.gameType || 1))
+                                      ? qsTr("Type: %1").arg(Lobby ? Lobby.gameTypeText(lobbyPage.selectedGame.gameType || 1) : "")
                                       : qsTr("Select a game to see details")
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 12
@@ -1075,9 +1067,7 @@ Rectangle {
                                         Layout.preferredWidth: 20
                                         Layout.preferredHeight: 20
                                         radius: 10
-                                        color: Qt.darker(Config.StaticData.palette.secondary.col600, 1.2)
-                                        border.width: 1
-                                        border.color: Config.StaticData.palette.secondary.col500
+                                        color: "transparent"
                                         clip: true
 
                                         Image {
@@ -1090,10 +1080,8 @@ Rectangle {
 
                                         VectorImage {
                                             visible: !((modelData.avatarUrl || "").length > 0)
-                                            anchors.centerIn: parent
-                                            width: 10
-                                            height: 10
-                                            source: "../resources/user.svg"
+                                            anchors.fill: parent
+                                            source: "../resources/pokerth.svg"
                                         }
                                     }
 
@@ -1153,11 +1141,12 @@ Rectangle {
                                 id: chatArea
                                 readOnly: true
                                 wrapMode: TextEdit.Wrap
+                                textFormat: TextEdit.RichText
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 12
                                 color: Config.StaticData.palette.secondary.col200
                                 background: Rectangle { color: "transparent" }
-                                text: qsTr("Welcome to PokerTH Lobby!\nChat messages will appear here...")
+                                text: qsTr("Welcome to PokerTH Lobby!<br/>Chat messages will appear here...")
                             }
                         }
 
@@ -1169,7 +1158,10 @@ Rectangle {
                                 id: chatInput
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                placeholderText: qsTr("Type your message...")
+                                placeholderText: (Lobby && Lobby.isMyPlayerGuest)
+                                                 ? qsTr("Guests cannot chat")
+                                                 : qsTr("Type your message...")
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 font.family: Config.StaticData.loadedFont.font.family
                                 color: Config.StaticData.palette.secondary.col200
                                 background: Rectangle {
@@ -1188,6 +1180,7 @@ Rectangle {
                                 Layout.maximumWidth: 44
                                 Layout.preferredHeight: 36
                                 Layout.maximumHeight: 44
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 onClicked: sendChatMessage()
                                 contentItem: VectorImage {
                                     id: sendIconWide
@@ -1286,14 +1279,22 @@ Rectangle {
         }
     }
 
+    // Accumulated HTML for the chat areas (avoids full-document reassignment)
+    property string _chatHtml: ""
+
     // Chat handler: append to both wide and compact chat areas
     Connections {
         target: Lobby
-        function onChatMessageReceived(playerName, message) {
-            var ts = new Date().toLocaleTimeString(Qt.locale(), "HH:mm:ss")
-            var line = "\n[" + ts + "] " + playerName + ": " + message
-            chatArea.text += line
-            chatAreaCompact.text += line
+        function onChatLineReady(line) {
+            _chatHtml += (_chatHtml.length > 0 ? "<br/>" : "") + line
+            chatArea.text = _chatHtml
+            chatAreaCompact.text = _chatHtml
+            // Auto-scroll to bottom
+            chatArea.cursorPosition = chatArea.length
+            chatAreaCompact.cursorPosition = chatAreaCompact.length
+        }
+        function onLobbyChatMentionDetected() {
+            // TODO: play lobbychatnotify sound (requires SoundEffect + runtime path)
         }
     }
 

@@ -44,6 +44,10 @@ Rectangle {
             mainStackView.pop()
             console.log("[NAV] GameWaitPage.onRemovedFromGame | depth after:", mainStackView.depth)
         }
+        function onGameStarted() {
+            console.log("[NAV] GameWaitPage.onGameStarted → pushing GamePage")
+            mainStackView.push("GamePage.qml")
+        }
     }
 
     ColumnLayout {

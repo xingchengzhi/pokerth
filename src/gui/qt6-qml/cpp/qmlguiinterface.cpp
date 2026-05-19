@@ -6,11 +6,15 @@
 #include "qmlguiinterface.h"
 #include "serverconnectionhandler.h"
 #include "lobbyhandler.h"
+#include "gamehandler.h"
 #include "configfile.h"
 #include <session.h>
+#include <game.h>
 #include <gamedata.h>
+#include <game_defs.h>
 #include <QString>
 #include <QMetaObject>
+#include <QTimer>
 
 QmlGuiInterface::QmlGuiInterface(ConfigFile *config, ServerConnectionHandler *handler, LobbyHandler *lobbyHandler)
     : m_config(config), m_session(), m_handler(handler), m_lobbyHandler(lobbyHandler)
@@ -202,4 +206,217 @@ void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
             m_lobbyHandler->onRemovedFromGame();
         }, Qt::QueuedConnection);
     }
+}
+
+void QmlGuiInterface::SignalNetClientGameStart(boost::shared_ptr<Game> game)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, [this]() {
+            m_lobbyHandler->onGameStarted();
+        }, Qt::QueuedConnection);
+    }
+    if (m_gameHandler && game) {
+        QMetaObject::invokeMethod(m_gameHandler, [this, game]() {
+            m_gameHandler->setGame(game);
+        }, Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshSet() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshCash() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshCash", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshPlayerName() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshPlayerName", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshPot() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshPot", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshGameLabels(GameState state) const
+{
+    if (m_gameHandler) {
+        int stateInt = static_cast<int>(state);
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshGameLabels", Qt::QueuedConnection,
+                                  Q_ARG(int, stateInt));
+    }
+}
+
+void QmlGuiInterface::meInAction()
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onMeInAction", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::disableMyButtons()
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onDisableMyButtons", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::nextRoundCleanGui()
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onNextRoundCleanGui", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshAll() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshPlayerName", Qt::QueuedConnection);
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshCash",       Qt::QueuedConnection);
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet",        Qt::QueuedConnection);
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshPot",        Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::dealFlopCards()
+{
+    if (m_gameHandler) QMetaObject::invokeMethod(m_gameHandler, "onDealFlopCards", Qt::QueuedConnection);
+}
+
+void QmlGuiInterface::dealTurnCard()
+{
+    if (m_gameHandler) QMetaObject::invokeMethod(m_gameHandler, "onDealTurnCard", Qt::QueuedConnection);
+}
+
+void QmlGuiInterface::dealRiverCard()
+{
+    if (m_gameHandler) QMetaObject::invokeMethod(m_gameHandler, "onDealRiverCard", Qt::QueuedConnection);
+}
+
+// ─── Local game-loop animation callbacks ─────────────────────────────────────
+// These replicate the timer-driven animation chain in the Qt5 gametableimpl.
+// Each "Animation1" starts a new betting round (calls BeRo::run()).
+// "beRoAnimation2" advances to the next CPU player (calls BeRo::nextPlayer()).
+// "nextPlayerAnimation" processes the end of an action (calls switchRounds()).
+// "postRiverAnimation1" distributes the pot; "postRiverRunAnimation1" starts the next hand.
+
+void QmlGuiInterface::nextPlayerAnimation()
+{
+    // After a player acts: trigger switchRounds() with a short delay
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onSwitchRounds", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::beRoAnimation2(int /*myBeRoID*/)
+{
+    // CPU player's turn: advance to nextPlayer() with a short delay
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onNextPlayerBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::preflopAnimation1()
+{
+    // Start of preflop betting: call BeRo::run()
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::flopAnimation1()
+{
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::turnAnimation1()
+{
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::riverAnimation1()
+{
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::postRiverAnimation1()
+{
+    // Show-down: call BeRo::postRiverRun() which distributes the pot
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    QTimer::singleShot(500, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onPostRiverRunBeRo", Qt::DirectConnection);
+    });
+}
+
+void QmlGuiInterface::postRiverRunAnimation1()
+{
+    // After pot distribution: start the next hand after a pause
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+    boost::shared_ptr<Session> session = m_session;
+    QTimer::singleShot(2500, gh, [gh, session]() {
+        // Reset GUI for the new hand
+        QMetaObject::invokeMethod(gh, "onNextRoundCleanGui", Qt::DirectConnection);
+        // Start the next hand
+        if (session) {
+            auto game = session->getCurrentGame();
+            if (game) {
+                game->initHand();
+                game->startHand();
+            }
+        }
+    });
+}
+
+void QmlGuiInterface::dealBeRoCards(int beRoID)
+{
+    // Called by BeRo::run() on its first invocation to "show" dealing.
+    // Reveal board cards for Flop/Turn/River, then trigger the second BeRo::run().
+    if (!m_gameHandler) return;
+    GameHandler *gh = m_gameHandler;
+
+    // Reveal the appropriate board cards
+    if (beRoID == GAME_STATE_FLOP) {
+        QMetaObject::invokeMethod(gh, "onDealFlopCards", Qt::QueuedConnection);
+    } else if (beRoID == GAME_STATE_TURN) {
+        QMetaObject::invokeMethod(gh, "onDealTurnCard", Qt::QueuedConnection);
+    } else if (beRoID == GAME_STATE_RIVER) {
+        QMetaObject::invokeMethod(gh, "onDealRiverCard", Qt::QueuedConnection);
+    }
+
+    // Schedule the second BeRo::run() call after the card reveal
+    QTimer::singleShot(300, gh, [gh]() {
+        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+    });
 }

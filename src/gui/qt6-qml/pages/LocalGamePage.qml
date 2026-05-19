@@ -13,25 +13,35 @@ Rectangle {
     color: Config.StaticData.palette.secondary.col700
 
     ColumnLayout {
-        id: localGamePagePageRows
         anchors.fill: parent
+        anchors.margins: Config.Theme.margin
+        spacing: Config.Theme.spacing
+
+        Label {
+            text: qsTr("Lokales Spiel")
+            font.family: Config.StaticData.loadedFont.font.family
+            font.bold: true
+            font.pixelSize: 16
+            color: Config.StaticData.palette.secondary.col200
+        }
 
         Rectangle {
-            id: localGamePagePageContent
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignTop
-            Layout.margins: 16
-            color: Config.StaticData.palette.secondary.col700
+            height: 1
+            color: Config.StaticData.palette.secondary.col500
+        }
 
-            Label {
-                id: localGamePagePageLabel
-                color: Config.StaticData.palette.secondary.col200
-                text: qsTr("Lokales Spiel")
-                font.family: Config.StaticData.loadedFont.font.family
-                font.pointSize: 14
-                font.bold: true
+        Item { Layout.fillHeight: true }
+
+        CustomButton {
+            text: qsTr("Spiel starten")
+            Layout.fillWidth: true
+            onClicked: {
+                GameTable.startLocalGame()
+                mainStackView.push("GamePage.qml")
             }
         }
+
+        Item { Layout.fillHeight: true }
     }
 }

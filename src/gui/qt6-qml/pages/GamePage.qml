@@ -19,18 +19,6 @@ Rectangle {
     property int currentWidth: mainWindow.width
     property int currentHeight: mainWindow.height
 
-    signal topBarToggle(real opacity)
-    onTopBarToggle: function (opacity) {
-        console.log(opacity);
-        topBar.opacity = opacity;
-    }
-    Component.onCompleted: {
-        gamePage.topBarToggle(0);
-    }
-    Component.onDestruction: {
-        gamePage.topBarToggle(1);
-    }
-
     onCurrentWidthChanged: {
         hScaleFactor = currentWidth / initialWidth;
     }
@@ -396,124 +384,246 @@ Rectangle {
     }
 
     // ── Portrait / compact layout ────────────────────────────────────────────
-    // Shown when window width < 600 (phone portrait). Uses a vertical stack:
-    // Status strip → Opponent grid → Community cards → Self box → Action bar
+    // Optimiert für Hochformat (Smartphones). Aufbau:
+    //   Status-Leiste (mit Tür-Icon) → Großer Tisch (alle Spieler überlagert) → Action-Leiste
     ColumnLayout {
         id: portraitLayout
         anchors.fill: parent
         visible: Config.Responsive.compact
         spacing: 0
 
-        // 1. Status strip: Round | Pot | Hand
+        // 1. Status-Leiste: Spielphase | Pott | Hand-Nummer
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            color: Qt.rgba(0.11, 0.13, 0.17, 0.92)
+            color: Qt.rgba(0, 0, 0, 0.78)
 
             RowLayout {
-                anchors { fill: parent; leftMargin: Config.Theme.margin; rightMargin: Config.Theme.margin }
+                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                 spacing: 0
 
                 Text {
-                    text: qsTr("Preflop")
-                    color: Config.Theme.colorTextSecondary
+                    text: GameTable ? GameTable.phaseText : qsTr("Preflop")
+                    color: "#FFFFFF"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: Config.Theme.fontSizeBody
+                    font.pixelSize: 12
                     font.bold: true
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: qsTr("Pot: $0")
-                    color: Config.Theme.colorAccent
+                    text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
+                    color: "#99D500"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: Config.Theme.fontSizeBody
+                    font.pixelSize: 13
                     font.bold: true
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: qsTr("Hand 1")
-                    color: Config.Theme.colorTextMuted
+                    text: GameTable ? qsTr("Hand ") + GameTable.handNumber : qsTr("Hand 1")
+                    color: "#aaaaaa"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: Config.Theme.fontSizeCaption
+                    font.pixelSize: 11
                 }
             }
         }
 
-        // 2. Opponent grid — 2 rows × 3 columns = 6 opponents
-        GridLayout {
+        // 2. Tischzone: grüne Tischgrafik füllt gesamten Platz, alle Spieler überlagert
+        Item {
+            id: tableZone
             Layout.fillWidth: true
-            Layout.leftMargin:  Config.Theme.spacing / 2
-            Layout.rightMargin: Config.Theme.spacing / 2
-            Layout.topMargin:   Config.Theme.spacing / 2
-            columns: 3
-            columnSpacing: Config.Theme.spacing / 2
-            rowSpacing:    Config.Theme.spacing / 2
+            Layout.fillHeight: true
 
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-            GamePlayerBox { Layout.fillWidth: true; up: false }
-        }
+            // Grüne Tischgrafik füllt die gesamte Zone
+            Image {
+                anchors.fill: parent
+                source: "../resources/tableGreen.png"
+                fillMode: Image.PreserveAspectCrop
+                smooth: true
+            }
 
-        // 3. Community cards — 5 face-down card slots
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin:  Config.Theme.spacing
-            Layout.rightMargin: Config.Theme.spacing
-            Layout.topMargin:   Config.Theme.spacing
-            Layout.preferredHeight: 66
-            spacing: Config.Theme.spacing / 2
+            // Obere Gegner-Reihe (Sitze 4, 5, 6 = P5, P6, P7) – oben angeheftet
+            RowLayout {
+                id: topPlayerRow
+                anchors.top: parent.top
+                anchors.topMargin: 4
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                spacing: 4
+                height: 76
 
-            Repeater {
-                model: 5
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 66
-                    color: "transparent"
-                    border.color: Config.StaticData.palette.secondary.col300
-                    border.width: 1
-                    radius: Config.Theme.radiusSmall
+                GamePlayerBox { Layout.fillWidth: true; height: parent.height; up: true; seatIndex: 4 }
+                GamePlayerBox { Layout.fillWidth: true; height: parent.height; up: true; seatIndex: 5 }
+                GamePlayerBox { Layout.fillWidth: true; height: parent.height; up: true; seatIndex: 6 }
+            }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        color: Config.StaticData.palette.secondary.col300
-                        opacity: Config.Theme.dimmedOpacity
-                        radius: parent.radius
+            // Linke Spieler-Spalte (Sitz 3 oben, Sitz 2 unten = P4, P3)
+            Column {
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+                width: 112
+
+                GamePlayerBox { width: parent.width; up: false; seatIndex: 3 }
+                GamePlayerBox { width: parent.width; up: false; seatIndex: 2 }
+            }
+
+            // Rechte Spieler-Spalte (Sitz 7 oben, Sitz 8 unten = P8, P9)
+            Column {
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+                width: 112
+
+                GamePlayerBox { width: parent.width; up: false; seatIndex: 7 }
+                GamePlayerBox { width: parent.width; up: false; seatIndex: 8 }
+            }
+
+            // Gemeinschaftskarten direkt unter der oberen Spielerreihe
+            Column {
+                anchors.top: topPlayerRow.bottom
+                anchors.topMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 10
+
+                // 5 Gemeinschaftskarten
+                Row {
+                    spacing: 3
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    Repeater {
+                        model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCardCount : 0
+
+                        Rectangle {
+                            width: 52
+                            height: 78
+                            color: "transparent"
+                            radius: 4
+
+                            VectorImage {
+                                anchors.fill: parent
+                                source: {
+                                    var cards = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
+                                    var cardIdx = (cards && index < cards.length) ? cards[index] : -1
+                                    return Config.StaticData.cardSource(cardIdx)
+                                }
+                                fillMode: VectorImage.PreserveAspectFit
+                            }
+                        }
                     }
+                }
+
+                // Pott-Anzeige mit Dealer-Puck
+                Row {
+                    spacing: 8
+                    anchors.horizontalCenter: parent.horizontalCenter
 
                     VectorImage {
-                        anchors.fill: parent
-                        source: "../resources/cardBackground.svg"
-                        fillMode: VectorImage.Stretch
+                        source: "../resources/tableDealerPuck.svg"
+                        width: 26
+                        height: 26
+                        fillMode: VectorImage.PreserveAspectFit
+                        anchors.verticalCenter: parent.verticalCenter
                     }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
+                        color: "#FFFF00"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
+                }
+            }
+
+            // Untere Reihe: P2 (links, Sitz 1) + eigener Sitz (Mitte, Sitz 0) + P10 (rechts, Sitz 9)
+            RowLayout {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 12
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                height: 88
+                spacing: 4
+
+                GamePlayerBox {
+                    width: 112
+                    height: parent.height
+                    up: false
+                    seatIndex: 1
+                }
+
+                GamePlayerSelfBox {
+                    Layout.fillWidth: true
+                    height: parent.height
+                }
+
+                GamePlayerBox {
+                    width: 112
+                    height: parent.height
+                    up: false
+                    seatIndex: 9
                 }
             }
         }
 
-        // Flexible spacer — pushes self box and action bar to screen bottom
-        Item { Layout.fillHeight: true }
-
-        // 4. Own cards + chip info
-        GamePlayerSelfBox {
-            Layout.alignment:   Qt.AlignHCenter
-            Layout.bottomMargin: Config.Theme.spacing
-        }
-
-        // 5. Action bar — Fold / Check / Raise
-        Rectangle {
+        // 3. Action-Leiste: Fold / Call / Raise mit Tischstil-Buttons
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: Config.Theme.touchTarget + Config.Theme.spacing * 2
-            color: Qt.rgba(0.11, 0.13, 0.17, 0.95)
+            Layout.preferredHeight: 54
+
+            Rectangle {
+                anchors.fill: parent
+                color: Qt.rgba(0, 0, 0, 0.82)
+            }
 
             RowLayout {
-                anchors { fill: parent; margins: Config.Theme.spacing }
-                spacing: Config.Theme.spacing
+                anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5; bottomMargin: 5 }
+                spacing: 8
 
-                CustomButton { text: qsTr("Fold");  Layout.fillWidth: true }
-                CustomButton { text: qsTr("Check"); Layout.fillWidth: true }
-                CustomButton { text: qsTr("Raise"); Layout.fillWidth: true }
+                VectorImage {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    source: "../resources/tableActionFold.svg"
+                    fillMode: VectorImage.PreserveAspectFit
+                    opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (GameTable && GameTable.myTurn) GameTable.fold()
+                    }
+                }
+
+                VectorImage {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    source: "../resources/tableActionCall.svg"
+                    fillMode: VectorImage.PreserveAspectFit
+                    opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (GameTable && GameTable.myTurn) GameTable.call()
+                    }
+                }
+
+                VectorImage {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    source: "../resources/tableActionRaise.svg"
+                    fillMode: VectorImage.PreserveAspectFit
+                    opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (GameTable && GameTable.myTurn) GameTable.raise(0)
+                    }
+                }
             }
         }
     }

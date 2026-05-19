@@ -14,6 +14,19 @@ GridLayout {
 
     property bool up: false
     property string yellow: "#E3C800"
+    property int seatIndex: 0
+
+    // Spielerdaten aus GameTable
+    readonly property var seatData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > seatIndex)
+        ? GameTable.players[seatIndex] : null
+
+    // Loch-Karten (face-up nur wenn vom Engine aufgedeckt, sonst Rückseite -1)
+    readonly property int card0: seatData && seatData.card0 !== undefined ? seatData.card0 : -1
+    readonly property int card1: seatData && seatData.card1 !== undefined ? seatData.card1 : -1
+
+    // Am Zug?
+    readonly property bool isMyTurn: seatData ? seatData.myTurn : false
+    readonly property bool isActive: seatData ? seatData.active : false
 
     RowLayout {
         id: playerActions
@@ -25,12 +38,13 @@ GridLayout {
         RowLayout {
             Layout.alignment: root.up ? Qt.AlignBottom : Qt.AlignTop
 
-            VectorImage {
+            Image {
                 Layout.maximumWidth: 26
                 Layout.preferredWidth: 18 * gamePage.vScaleFactor
                 Layout.preferredHeight: 18 * gamePage.vScaleFactor
                 Layout.maximumHeight: 26
-                source: "../resources/chipStack.svg"
+                source: "qrc:resources/chipStack.svg"
+                fillMode: Image.PreserveAspectFit
             }
 
             Text {
@@ -41,9 +55,7 @@ GridLayout {
                 Layout.preferredHeight: 22
                 color: Config.StaticData.palette.secondary.col100
                 font.bold: true
-                Component.onCompleted: {
-                    text = "$333";
-                }
+                text: root.seatData ? "$" + root.seatData.bet : "$0"
             }
         }
     }
@@ -66,6 +78,26 @@ GridLayout {
             radius: 5
         }
 
+        // Highlight-Rahmen: leuchtet gelb wenn dieser Spieler am Zug ist
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            radius: 6
+            border.color: root.isMyTurn ? "#FFD700" : "transparent"
+            border.width: root.isMyTurn ? 2 : 0
+            z: 10
+
+            layer.enabled: root.isMyTurn
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#FFD700"
+                shadowOpacity: 0.9
+                shadowBlur: 0.8
+                shadowVerticalOffset: 0
+                shadowHorizontalOffset: 0
+            }
+        }
+
         Row {
             id: topRow
             width: parent.width - 6
@@ -85,28 +117,35 @@ GridLayout {
                     opacity: 0.5
                 }
 
-                VectorImage {
+                Image {
                     id: avatar
                     width: parent.width
-                    fillMode: VectorImage.PreserveAspectFit
-                    source: "../resources/pokerth.svg"
+                    fillMode: Image.PreserveAspectFit
+                    source: "qrc:resources/pokerth.svg"
                 }
             }
 
-            Row {
+            // Karten: zwei überlappende Items mit fester Größe
+            Item {
                 id: cardsRow
-                width: parent.width / 12 * 4
+                width: 56
+                height: 36
+
                 Rectangle {
                     id: card1Item
-                    x: avatarRow.width + 12
-                    rotation: -6
-                    width: parent.width - 2
+                    x: 0
                     y: 0
+                    rotation: -6
+                    width: 28
+                    height: 36
+                    color: "transparent"
+
                     VectorImage {
                         id: card1
-                        width: parent.width
+                        anchors.fill: parent
                         fillMode: VectorImage.PreserveAspectFit
-                        source: "../resources/cardBackground.svg"
+                        // Gegner: Rückseite (-1) solange nicht aufgedeckt; bei Showdown: face-up
+                        source: Config.StaticData.cardSource(root.card0)
                     }
 
                     MultiEffect {
@@ -123,16 +162,18 @@ GridLayout {
 
                 Rectangle {
                     id: card2Item
-                    x: avatarRow.width + card1.width / 3 * 2
-                    width: parent.width - 2
-                    rotation: 6
-                    color: "transparent"
+                    x: 20
                     y: 1
+                    rotation: 6
+                    width: 28
+                    height: 36
+                    color: "transparent"
+
                     VectorImage {
                         id: card2
+                        anchors.fill: parent
                         fillMode: VectorImage.PreserveAspectFit
-                        width: parent.width
-                        source: "../resources/cardBackground.svg"
+                        source: Config.StaticData.cardSource(root.card1)
                     }
 
                     MultiEffect {
@@ -162,9 +203,7 @@ GridLayout {
                 horizontalAlignment: Text.AlignLeft
                 color: Config.StaticData.palette.secondary.col100
                 font.bold: true
-                Component.onCompleted: {
-                    text = "Player";
-                }
+                text: root.seatData && root.seatData.name !== "" ? root.seatData.name : "---"
             }
 
             Text {
@@ -174,9 +213,7 @@ GridLayout {
                 rightPadding: 6
                 color: Config.Theme.colorAccent
                 font.bold: true
-                Component.onCompleted: {
-                    text = "$10000";
-                }
+                text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }
         }
 

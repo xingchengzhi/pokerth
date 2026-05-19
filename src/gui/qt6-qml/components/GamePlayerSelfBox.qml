@@ -11,17 +11,49 @@ Rectangle {
 
     property bool up: false
 
+    // Eigene Spielerdaten aus GameTable (Sitz 0 = Human Player)
+    readonly property var selfData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > 0)
+        ? GameTable.players[0] : null
+
+    // Loch-Karten des menschlichen Spielers
+    readonly property int card0: selfData && selfData.card0 !== undefined ? selfData.card0 : -1
+    readonly property int card1: selfData && selfData.card1 !== undefined ? selfData.card1 : -1
+
+    // Am Zug?
+    readonly property bool isMyTurn: selfData ? selfData.myTurn : false
+
     color: "transparent"
     Layout.minimumWidth: 140
     Layout.maximumWidth: 196
     Layout.minimumHeight: 104
     Layout.maximumHeight: 132
 
+    // Hintergrund
     Rectangle {
         anchors.fill: parent
         color: Config.StaticData.palette.secondary.col600
         opacity: 0.8
         radius: 5
+    }
+
+    // Highlight-Rahmen: leuchtet gelb wenn ich am Zug bin
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        radius: 6
+        border.color: root.isMyTurn ? "#FFD700" : "transparent"
+        border.width: root.isMyTurn ? 2 : 0
+        z: 10
+
+        layer.enabled: root.isMyTurn
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowColor: "#FFD700"
+            shadowOpacity: 0.9
+            shadowBlur: 0.8
+            shadowVerticalOffset: 0
+            shadowHorizontalOffset: 0
+        }
     }
 
     Row {
@@ -30,6 +62,7 @@ Rectangle {
         height: parent.height / 2 - 6
         x: 6
         y: 6
+
         Rectangle {
             id: avatarRow
             width: parent.width / 12 * 5.1
@@ -43,28 +76,34 @@ Rectangle {
                 opacity: 0.5
             }
 
-            VectorImage {
+            Image {
                 id: avatar
                 width: parent.width
-                fillMode: VectorImage.PreserveAspectFit
-                source: "../resources/pokerth.svg"
+                fillMode: Image.PreserveAspectFit
+                source: "qrc:resources/pokerth.svg"
             }
         }
 
-        Row {
+        // Eigene Karten: größer und überlappend für bessere Lesbarkeit
+        Item {
             id: cardsRow
-            width: parent.width / 12 * 4
+            width: 88
+            height: 72
+
             Rectangle {
                 id: card1Item
-                x: avatarRow.width + 12
-                rotation: -6
-                width: parent.width - 2
+                x: 0
                 y: 0
+                rotation: -6
+                width: 46
+                height: 69
+                color: "transparent"
+
                 VectorImage {
                     id: card1
-                    width: parent.width
+                    anchors.fill: parent
                     fillMode: VectorImage.PreserveAspectFit
-                    source: "../resources/cardBackground.svg"
+                    source: Config.StaticData.cardSource(root.card0)
                 }
 
                 MultiEffect {
@@ -81,16 +120,18 @@ Rectangle {
 
             Rectangle {
                 id: card2Item
-                x: avatarRow.width + card1.width / 3 * 2
-                width: parent.width - 2
+                x: 34
+                y: 2
                 rotation: 6
+                width: 46
+                height: 69
                 color: "transparent"
-                y: 1
+
                 VectorImage {
                     id: card2
+                    anchors.fill: parent
                     fillMode: VectorImage.PreserveAspectFit
-                    width: parent.width
-                    source: "../resources/cardBackground.svg"
+                    source: Config.StaticData.cardSource(root.card1)
                 }
 
                 MultiEffect {
@@ -113,6 +154,7 @@ Rectangle {
         height: parent.height / 2 - 8
         x: 6
         y: parent.height - 26
+
         Text {
             id: playerName
             width: parent.width / 2
@@ -120,10 +162,9 @@ Rectangle {
             color: Config.StaticData.palette.secondary.col100
             font.bold: true
             font.pointSize: 13
-            Component.onCompleted: {
-                text = "Player";
-            }
+            text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
         }
+
         Text {
             id: playerStack
             width: parent.width / 2
@@ -132,9 +173,7 @@ Rectangle {
             color: Config.Theme.colorAccent
             font.bold: true
             font.pointSize: 13
-            Component.onCompleted: {
-                text = "$10000";
-            }
+            text: root.selfData ? "$" + root.selfData.stack : "$0"
         }
     }
 

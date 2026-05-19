@@ -14,6 +14,8 @@ class Session;
 class Game;
 class ServerConnectionHandler;
 class LobbyHandler;
+class GameHandler;
+class GameHandler;
 
 class QmlGuiInterface : public GuiInterface
 {
@@ -23,6 +25,7 @@ public:
     
     void setConnectionHandler(ServerConnectionHandler *handler) { m_handler = handler; }
     void setLobbyHandler(LobbyHandler *lobbyHandler) { m_lobbyHandler = lobbyHandler; }
+    void setGameHandler(GameHandler *gameHandler) { m_gameHandler = gameHandler; }
 
     // Session management
     virtual boost::shared_ptr<Session> getSession() override { return m_session; }
@@ -34,43 +37,43 @@ public:
     virtual guiLog* getMyGuiLog() const override { return nullptr; }
 
     // Refresh functions
-    virtual void refreshSet() const override {}
-    virtual void refreshCash() const override {}
+    virtual void refreshSet() const override;
+    virtual void refreshCash() const override;
     virtual void refreshAction(int = -1, int = -1) const override {}
     virtual void refreshChangePlayer() const override {}
-    virtual void refreshPot() const override {}
+    virtual void refreshPot() const override;
     virtual void refreshGroupbox(int = -1, int = -1) const override {}
-    virtual void refreshAll() const override {}
-    virtual void refreshPlayerName() const override {}
+    virtual void refreshAll() const override;
+    virtual void refreshPlayerName() const override;
     virtual void refreshButton() const override {}
-    virtual void refreshGameLabels(GameState state) const override {}
+    virtual void refreshGameLabels(GameState state) const override;
     
     virtual void setPlayerAvatar(int myUniqueID, const std::string &myAvatar) const override {}
     virtual void waitForGuiUpdateDone() const override {}
     
     // Card functions
-    virtual void dealBeRoCards(int) override {}
+    virtual void dealBeRoCards(int beRoID) override;
     virtual void dealHoleCards() override {}
-    virtual void dealFlopCards() override {}
-    virtual void dealTurnCard() override {}
-    virtual void dealRiverCard() override {}
-    virtual void nextPlayerAnimation() override {}
-    virtual void beRoAnimation2(int) override {}
-    virtual void preflopAnimation1() override {}
+    virtual void dealFlopCards() override;
+    virtual void dealTurnCard() override;
+    virtual void dealRiverCard() override;
+    virtual void nextPlayerAnimation() override;
+    virtual void beRoAnimation2(int myBeRoID) override;
+    virtual void preflopAnimation1() override;
     virtual void preflopAnimation2() override {}
-    virtual void flopAnimation1() override {}
+    virtual void flopAnimation1() override;
     virtual void flopAnimation2() override {}
-    virtual void turnAnimation1() override {}
+    virtual void turnAnimation1() override;
     virtual void turnAnimation2() override {}
-    virtual void riverAnimation1() override {}
+    virtual void riverAnimation1() override;
     virtual void riverAnimation2() override {}
-    virtual void postRiverAnimation1() override {}
-    virtual void postRiverRunAnimation1() override {}
+    virtual void postRiverAnimation1() override;
+    virtual void postRiverRunAnimation1() override;
     virtual void flipHolecardsAllIn() override {}
-    virtual void nextRoundCleanGui() override {}
-    virtual void meInAction() override {}
+    virtual void nextRoundCleanGui() override;
+    virtual void meInAction() override;
     virtual void updateMyButtonsState() override {}
-    virtual void disableMyButtons() override {}
+    virtual void disableMyButtons() override;
     virtual void startTimeoutAnimation(int playerNum, int timeoutSec) override {}
     virtual void stopTimeoutAnimation(int playerNum) override {}
     
@@ -117,7 +120,7 @@ public:
     virtual void SignalNetClientGameListSpectatorJoined(unsigned gameId, unsigned playerId) override;
     virtual void SignalNetClientGameListSpectatorLeft(unsigned gameId, unsigned playerId) override;
     
-    virtual void SignalNetClientGameStart(boost::shared_ptr<Game> game) override {}
+    virtual void SignalNetClientGameStart(boost::shared_ptr<Game> game) override;
     virtual void SignalNetClientPlayerJoined(unsigned playerId, const std::string &playerName, bool isGameAdmin) override;
     virtual void SignalNetClientPlayerChanged(unsigned playerId, const std::string &newPlayerName) override;
     virtual void SignalNetClientPlayerLeft(unsigned playerId, const std::string &playerName, int removeReason) override {}
@@ -152,6 +155,7 @@ private:
     boost::shared_ptr<Session> m_session;
     ServerConnectionHandler *m_handler;
     LobbyHandler *m_lobbyHandler;
+    GameHandler *m_gameHandler = nullptr;
 };
 
 #endif // QMLGUIINTERFACE_H

@@ -76,6 +76,14 @@
         <file>resources/speaker.svg</file>
         <file>resources/square.svg</file>
         <file>resources/startWindowBackground.png</file>
+        <file>resources/tableGreen.png</file>
+        <file>resources/tableDealerPuck.svg</file>
+        <file>resources/tableSmallBlind.svg</file>
+        <file>resources/tableBigBlind.svg</file>
+        <file>resources/tableActionFold.svg</file>
+        <file>resources/tableActionCall.svg</file>
+        <file>resources/tableActionRaise.svg</file>
+        <file>resources/tableActionAllIn.svg</file>
         <file>resources/terminal.svg</file>
         <file>resources/terminalWindow.svg</file>
         <file>resources/threeLines.svg</file>
@@ -84,5 +92,57 @@
         <file>resources/user.svg</file>
         <file>resources/users.svg</file>
         <file>resources/userSquare.svg</file>
+        <file>resources/cards/0.svg</file>
+        <file>resources/cards/1.svg</file>
+        <file>resources/cards/2.svg</file>
+        <file>resources/cards/3.svg</file>
+        <file>resources/cards/4.svg</file>
+        <file>resources/cards/5.svg</file>
+        <file>resources/cards/6.svg</file>
+        <file>resources/cards/7.svg</file>
+        <file>resources/cards/8.svg</file>
+        <file>resources/cards/9.svg</file>
+        <file>resources/cards/10.svg</file>
+        <file>resources/cards/11.svg</file>
+        <file>resources/cards/12.svg</file>
+        <file>resources/cards/13.svg</file>
+        <file>resources/cards/14.svg</file>
+        <file>resources/cards/15.svg</file>
+        <file>resources/cards/16.svg</file>
+        <file>resources/cards/17.svg</file>
+        <file>resources/cards/18.svg</file>
+        <file>resources/cards/19.svg</file>
+        <file>resources/cards/20.svg</file>
+        <file>resources/cards/21.svg</file>
+        <file>resources/cards/22.svg</file>
+        <file>resources/cards/23.svg</file>
+        <file>resources/cards/24.svg</file>
+        <file>resources/cards/25.svg</file>
+        <file>resources/cards/26.svg</file>
+        <file>resources/cards/27.svg</file>
+        <file>resources/cards/28.svg</file>
+        <file>resources/cards/29.svg</file>
+        <file>resources/cards/30.svg</file>
+        <file>resources/cards/31.svg</file>
+        <file>resources/cards/32.svg</file>
+        <file>resources/cards/33.svg</file>
+        <file>resources/cards/34.svg</file>
+        <file>resources/cards/35.svg</file>
+        <file>resources/cards/36.svg</file>
+        <file>resources/cards/37.svg</file>
+        <file>resources/cards/38.svg</file>
+        <file>resources/cards/39.svg</file>
+        <file>resources/cards/40.svg</file>
+        <file>resources/cards/41.svg</file>
+        <file>resources/cards/42.svg</file>
+        <file>resources/cards/43.svg</file>
+        <file>resources/cards/44.svg</file>
+        <file>resources/cards/45.svg</file>
+        <file>resources/cards/46.svg</file>
+        <file>resources/cards/47.svg</file>
+        <file>resources/cards/48.svg</file>
+        <file>resources/cards/49.svg</file>
+        <file>resources/cards/50.svg</file>
+        <file>resources/cards/51.svg</file>
     </qresource>
 </RCC>

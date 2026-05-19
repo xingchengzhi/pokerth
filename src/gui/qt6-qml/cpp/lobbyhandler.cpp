@@ -1243,6 +1243,11 @@ void LobbyHandler::onSelfJoinedGame()
     emit selfJoinedGame();
 }
 
+void LobbyHandler::onGameStarted()
+{
+    emit gameStarted();
+}
+
 void LobbyHandler::onRemovedFromGame()
 {
     m_isInGame = false;

@@ -210,6 +210,7 @@ public slots:
     Q_INVOKABLE void joinGame(unsigned gameId, const QString &password);
     Q_INVOKABLE void leaveGame();
     void onSelfJoinedGame();
+    void onGameStarted();
     void onRemovedFromGame();
     
     // Player actions (QML-invokable)
@@ -242,6 +243,7 @@ signals:
     void gameCreated(unsigned gameId);
     void gameJoined(unsigned gameId);
     void selfJoinedGame();
+    void gameStarted();
     void removedFromGame();
     void errorOccurred(const QString &errorMessage);
     void myPlayerNameChanged();

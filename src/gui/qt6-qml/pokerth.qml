@@ -177,8 +177,8 @@ ApplicationWindow {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = "resources/doorExit.svg";
                 } else {
-                    topBarSettingsIcon.visible = false;
-                    topBarMenuIcon.source = "resources/caretLeft.svg";
+                    topBarSettingsIcon.visible = true;
+                    topBarMenuIcon.source = "resources/doorExit.svg";
                 }
             }
         }
@@ -219,6 +219,6 @@ ApplicationWindow {
 
     Connections {
         target: mainStackView
-        Component.onDestruction: topBarMenuIcon.source = mainStackView.depth === 1 ? "resources/threeLines.svg" : "resources/caretLeft.svg"
+        Component.onDestruction: topBarMenuIcon.source = mainStackView.depth === 1 ? "resources/threeLines.svg" : "resources/doorExit.svg"
     }
 }

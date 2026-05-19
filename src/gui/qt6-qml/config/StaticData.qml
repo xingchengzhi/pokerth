@@ -66,6 +66,14 @@ QtObject {
         "#4060e0"   // 10 – Blau
     ]
 
+    // Gibt den Pfad zur Karten-Grafik zurück.
+    // Glyph-path SVGs (kein <text>, Qt6 VectorImage-kompatibel)
+    // cardIndex: 0-51 (Engine-Kodierung: 0-12=Karo, 13-25=Herz, 26-38=Pik, 39-51=Kreuz)
+    function cardSource(cardIndex) {
+        if (cardIndex < 0 || cardIndex > 51) return "qrc:resources/cardBackground.svg"
+        return "qrc:resources/cards/" + cardIndex + ".svg"
+    }
+
     // Gibt eine kontrastgerechte Chart-Farbe zurück (hell in Dark-Mode, dunkel in Light-Mode)
     function chartColor(index, highlighted) {
         var c = Qt.color(chartColors[index % chartColors.length])

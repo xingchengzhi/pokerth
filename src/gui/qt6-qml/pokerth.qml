@@ -49,6 +49,26 @@ ApplicationWindow {
         Config.StaticData.darkMode = dm
         Config.Theme.darkMode = dm
     }
+
+    function navigateBackFromTopBar() {
+        if (mainStackView.depth <= 1)
+            return false
+
+        var current = mainStackView.currentItem
+        var isGamePage = current && current.objectName === "gamePage"
+        var localGame = isGamePage
+                        && (typeof GameTable !== "undefined")
+                        && GameTable
+                        && GameTable.isLocalGameRunning()
+
+        if (localGame)
+            GameTable.endLocalGame()
+
+        mainStackView.pop()
+        if (localGame && mainStackView.depth > 1)
+            mainStackView.pop()
+        return true
+    }
     
     Rectangle {
         anchors.fill: parent
@@ -95,9 +115,7 @@ ApplicationWindow {
                         hoverEnabled: true
 
                         onClicked: {
-                            if (mainStackView.depth > 1)
-                                mainStackView.pop();
-                            else {
+                            if (!navigateBackFromTopBar()) {
                                 topBarMenuIcon.source = !sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
                                 sideMenu.visible = !sideMenu.visible;
                             }
@@ -168,7 +186,7 @@ ApplicationWindow {
             }
 
             onCurrentItemChanged: {
-                console.log("[NAV] Stack depth:", depth, "| currentItem:", currentItem ? (currentItem.objectName || currentItem.toString()) : "null")
+                // console.log("[NAV] Stack depth:", depth, "| currentItem:", currentItem ? (currentItem.objectName || currentItem.toString()) : "null")
                 var isLobby = (currentItem && currentItem.objectName === "lobbyPage");
                 var isGame  = (currentItem && currentItem.objectName === "gamePage");
                 if (depth <= 1) {
@@ -189,9 +207,7 @@ ApplicationWindow {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (mainStackView.depth > 1) {
-                mainStackView.pop()
-            } else if (sideMenu.visible) {
+            if (!navigateBackFromTopBar() && sideMenu.visible) {
                 sideMenu.visible = false
                 topBarMenuIcon.source = "resources/threeLines.svg"
             }
@@ -201,8 +217,7 @@ ApplicationWindow {
     Shortcut {
         sequence: StandardKey.Back
         onActivated: {
-            if (mainStackView.depth > 1)
-                mainStackView.pop()
+            navigateBackFromTopBar()
         }
     }
 

@@ -45,6 +45,7 @@ void GameHandler::setSession(boost::shared_ptr<Session> session)
 
 void GameHandler::setGame(boost::shared_ptr<Game> game)
 {
+    m_localGameExitRequested = false;
     m_game = game;
     // Reset state for new game
     m_pot = 0;
@@ -71,6 +72,13 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
 
 // ─── private helpers ────────────────────────────────────────────────────────
 
+bool GameHandler::localGameCallbacksBlocked() const
+{
+    if (!m_localGameExitRequested) return false;
+    if (!m_session) return true;
+    return !m_session->isNetworkClientRunning();
+}
+
 void GameHandler::refreshPlayerData()
 {
     // Build a fresh 10-slot list
@@ -83,11 +91,13 @@ void GameHandler::refreshPlayerData()
         p["active"] = false;
         p["myTurn"] = false;
         p["seatId"] = i;
+        p["card0"]  = -1;
+        p["card1"]  = -1;
         newPlayers.append(p);
     }
 
     // Lazy-init m_game for local games: session creates the game internally
-    if (!m_game && m_session) {
+    if (!m_game && m_session && !m_localGameExitRequested) {
         auto g = m_session->getCurrentGame();
         if (g) m_game = g;
     }
@@ -111,8 +121,8 @@ void GameHandler::refreshPlayerData()
                 p["card0"]  = faceUp ? cards[0] : -1;
                 p["card1"]  = faceUp ? cards[1] : -1;
                 if (id == 0) {
-                    qDebug() << "[DBG] seat0 cards:" << cards[0] << cards[1]
-                             << "faceUp:" << faceUp;
+                    // qDebug() << "[DBG] seat0 cards:" << cards[0] << cards[1]
+                    //          << "faceUp:" << faceUp;
                 }
                 newPlayers[id] = p;
             }
@@ -188,6 +198,7 @@ void GameHandler::computeCallAndRaiseAmounts()
 void GameHandler::doActionDone()
 {
     if (!m_session) return;
+    if (localGameCallbacksBlocked()) return;
 
     if (m_myTurn) {
         m_myTurn = false;
@@ -211,27 +222,32 @@ void GameHandler::doActionDone()
 
 void GameHandler::onRefreshSet()
 {
+    if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
 }
 
 void GameHandler::onRefreshCash()
 {
+    if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
 }
 
 void GameHandler::onRefreshPlayerName()
 {
+    if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
 }
 
 void GameHandler::onRefreshPot()
 {
+    if (localGameCallbacksBlocked()) return;
     refreshPotData();
     refreshPlayerData();
 }
 
 void GameHandler::onRefreshGameLabels(int gameState)
 {
+    if (localGameCallbacksBlocked()) return;
     QString newPhase;
     switch (gameState) {
     case 0:  newPhase = "Preflop"; break;
@@ -260,6 +276,7 @@ void GameHandler::onRefreshGameLabels(int gameState)
 
 void GameHandler::onMeInAction()
 {
+    if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
     if (!m_myTurn) {
@@ -270,6 +287,7 @@ void GameHandler::onMeInAction()
 
 void GameHandler::onDisableMyButtons()
 {
+    if (localGameCallbacksBlocked()) return;
     if (m_myTurn) {
         m_myTurn = false;
         emit myTurnChanged();
@@ -299,6 +317,7 @@ void GameHandler::refreshBoardCards()
 
 void GameHandler::onNextRoundCleanGui()
 {
+    if (localGameCallbacksBlocked()) return;
     onDisableMyButtons();
     m_pot = 0;
     m_totalPot = 0;
@@ -317,6 +336,7 @@ void GameHandler::onNextRoundCleanGui()
 
 void GameHandler::onDealFlopCards()
 {
+    if (localGameCallbacksBlocked()) return;
     m_boardCardCount = 3;
     emit boardCardCountChanged();
     refreshBoardCards();
@@ -324,6 +344,7 @@ void GameHandler::onDealFlopCards()
 
 void GameHandler::onDealTurnCard()
 {
+    if (localGameCallbacksBlocked()) return;
     m_boardCardCount = 4;
     emit boardCardCountChanged();
     refreshBoardCards();
@@ -331,6 +352,7 @@ void GameHandler::onDealTurnCard()
 
 void GameHandler::onDealRiverCard()
 {
+    if (localGameCallbacksBlocked()) return;
     m_boardCardCount = 5;
     emit boardCardCountChanged();
     refreshBoardCards();
@@ -478,6 +500,7 @@ void GameHandler::allIn()
 void GameHandler::startLocalGame()
 {
     if (!m_session) return;
+    m_localGameExitRequested = false;
 
     GameData gameData;
     if (m_config) {
@@ -508,10 +531,36 @@ void GameHandler::startLocalGame()
     if (game) setGame(game);
 }
 
+void GameHandler::endLocalGame()
+{
+    if (!m_session) return;
+    if (m_session->isNetworkClientRunning()) return;
+
+    m_localGameExitRequested = true;
+    m_game.reset();
+
+    if (m_myTurn) {
+        m_myTurn = false;
+        emit myTurnChanged();
+    }
+
+    refreshPlayerData();
+}
+
+bool GameHandler::isLocalGameRunning() const
+{
+    if (m_localGameExitRequested) return false;
+    if (!m_session) return false;
+    if (m_session->isNetworkClientRunning()) return false;
+    if (m_game) return true;
+    return static_cast<bool>(m_session->getCurrentGame());
+}
+
 // ─── Game-loop advance slots (called via QMetaObject from QmlGuiInterface) ───
 
 void GameHandler::onRunBeRo()
 {
+    if (localGameCallbacksBlocked()) return;
     if (!m_game) return;
     auto hand = m_game->getCurrentHand();
     if (hand && hand->getCurrentBeRo())
@@ -520,6 +569,7 @@ void GameHandler::onRunBeRo()
 
 void GameHandler::onNextPlayerBeRo()
 {
+    if (localGameCallbacksBlocked()) return;
     if (!m_game) return;
     auto hand = m_game->getCurrentHand();
     if (hand && hand->getCurrentBeRo())
@@ -528,6 +578,7 @@ void GameHandler::onNextPlayerBeRo()
 
 void GameHandler::onSwitchRounds()
 {
+    if (localGameCallbacksBlocked()) return;
     if (!m_game) return;
     auto hand = m_game->getCurrentHand();
     if (hand) hand->switchRounds();
@@ -535,6 +586,7 @@ void GameHandler::onSwitchRounds()
 
 void GameHandler::onPostRiverRunBeRo()
 {
+    if (localGameCallbacksBlocked()) return;
     if (!m_game) return;
     auto hand = m_game->getCurrentHand();
     if (hand && hand->getCurrentBeRo())

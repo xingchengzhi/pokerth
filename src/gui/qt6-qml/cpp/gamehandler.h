@@ -39,6 +39,8 @@ public:
 
     // Called from QML to start a local game
     Q_INVOKABLE void startLocalGame();
+    Q_INVOKABLE void endLocalGame();
+    Q_INVOKABLE bool isLocalGameRunning() const;
     QVariantList players() const { return m_players; }
     int pot() const { return m_pot; }
     QString phaseText() const { return m_phaseText; }
@@ -90,6 +92,7 @@ signals:
     void boardCardsChanged();
 
 private:
+    bool localGameCallbacksBlocked() const;
     void refreshPlayerData();
     void refreshBoardCards();
     void refreshPotData();
@@ -111,6 +114,7 @@ private:
     int m_totalPot = 0;
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
+    bool m_localGameExitRequested = false;
 };
 
 #endif // GAMEHANDLER_H

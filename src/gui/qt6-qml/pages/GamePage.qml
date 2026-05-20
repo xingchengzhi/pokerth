@@ -10,7 +10,8 @@ import "../config" as Config
 Rectangle {
     id: gamePage
     objectName: "gamePage"
-    anchors.fill: parent
+    width: parent ? parent.width : 0
+    height: parent ? parent.height : 0
     color: "transparent"
 
     property real hScaleFactor: 1

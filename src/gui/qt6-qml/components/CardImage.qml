@@ -25,14 +25,15 @@ Item {
     readonly property var _ranks:       [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1]
     readonly property var _rankLabels:  ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
 
-    readonly property bool   isBack:     cardIndex < 0 || cardIndex > 51
-    readonly property int    si:         isBack ? -1 : Math.floor(cardIndex / 13)
-    readonly property int    ri:         isBack ? -1 : cardIndex % 13
-    readonly property string suitChar:   isBack ? "" : _suits[si]
-    readonly property string suitSymbol: isBack ? "" : _suitSymbols[si]
-    readonly property color  suitColor:  isBack ? "black" : Qt.color(_suitColors[si])
-    readonly property string rankLabel:  isBack ? "" : _rankLabels[ri]
-    readonly property int    rankNum:    isBack ? -1 : _ranks[ri]
+    readonly property bool   isFrontCard: Number.isInteger(cardIndex) && cardIndex >= 0 && cardIndex <= 51
+    readonly property bool   isBack:      !isFrontCard
+    readonly property int    si:          isFrontCard ? Math.floor(cardIndex / 13) : 0
+    readonly property int    ri:          isFrontCard ? (cardIndex % 13) : 0
+    readonly property string suitChar:    isFrontCard && si >= 0 && si < _suits.length ? String(_suits[si]) : ""
+    readonly property string suitSymbol:  isFrontCard && si >= 0 && si < _suitSymbols.length ? String(_suitSymbols[si]) : ""
+    readonly property color  suitColor:   isFrontCard && si >= 0 && si < _suitColors.length ? _suitColors[si] : "black"
+    readonly property string rankLabel:   isFrontCard && ri >= 0 && ri < _rankLabels.length ? String(_rankLabels[ri]) : ""
+    readonly property int    rankNum:     isFrontCard && ri >= 0 && ri < _ranks.length ? _ranks[ri] : -1
 
     // ── Kartenrückseite ────────────────────────────────────────────────────────
     VectorImage {

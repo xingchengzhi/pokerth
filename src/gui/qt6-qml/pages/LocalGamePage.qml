@@ -281,7 +281,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Config.Theme.spacing
 
-            Button {
+            CustomButton {
                 text: qsTr("Abbrechen")
                 Layout.fillWidth: true
                 onClicked: mainStackView.pop()

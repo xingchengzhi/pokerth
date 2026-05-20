@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import QtQuick.VectorImage
 
 import "../config" as Config
 
@@ -30,13 +29,13 @@ GridLayout {
 
     RowLayout {
         id: playerActions
-        Layout.alignment: root.up ? Qt.AlignBottom : Qt.AlignTop
-        Layout.row: root.up ? 1 : 2
+        Layout.alignment: root.up ? Qt.AlignTop : Qt.AlignBottom
+        Layout.row: root.up ? 2 : 1
         Layout.preferredHeight: 18 * gamePage.vScaleFactor
         Layout.maximumHeight: 26
 
         RowLayout {
-            Layout.alignment: root.up ? Qt.AlignBottom : Qt.AlignTop
+            Layout.alignment: root.up ? Qt.AlignTop : Qt.AlignBottom
 
             Image {
                 Layout.maximumWidth: 26
@@ -62,7 +61,7 @@ GridLayout {
 
     Rectangle {
         id: playerBox
-        Layout.row: root.up ? 2 : 1
+        Layout.row: root.up ? 1 : 2
 
         color: "transparent"
         Layout.minimumWidth: 112
@@ -144,11 +143,10 @@ GridLayout {
                     height: cardsRow.cardH
                     color: "transparent"
 
-                    VectorImage {
+                    CardImage {
                         id: card1
                         anchors.fill: parent
-                        fillMode: VectorImage.Stretch
-                        source: Config.StaticData.cardSource(root.card0)
+                        cardIndex: root.card0
                     }
 
                     MultiEffect {
@@ -172,11 +170,10 @@ GridLayout {
                     height: cardsRow.cardH
                     color: "transparent"
 
-                    VectorImage {
+                    CardImage {
                         id: card2
                         anchors.fill: parent
-                        fillMode: VectorImage.Stretch
-                        source: Config.StaticData.cardSource(root.card1)
+                        cardIndex: root.card1
                     }
 
                     MultiEffect {

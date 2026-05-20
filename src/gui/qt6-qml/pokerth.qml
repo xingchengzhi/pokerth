@@ -170,15 +170,16 @@ ApplicationWindow {
             onCurrentItemChanged: {
                 console.log("[NAV] Stack depth:", depth, "| currentItem:", currentItem ? (currentItem.objectName || currentItem.toString()) : "null")
                 var isLobby = (currentItem && currentItem.objectName === "lobbyPage");
+                var isGame  = (currentItem && currentItem.objectName === "gamePage");
                 if (depth <= 1) {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
-                } else if (isLobby) {
+                } else if (isLobby || isGame) {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = "resources/doorExit.svg";
                 } else {
                     topBarSettingsIcon.visible = true;
-                    topBarMenuIcon.source = "resources/doorExit.svg";
+                    topBarMenuIcon.source = "resources/caretLeft.svg";
                 }
             }
         }
@@ -219,6 +220,6 @@ ApplicationWindow {
 
     Connections {
         target: mainStackView
-        Component.onDestruction: topBarMenuIcon.source = mainStackView.depth === 1 ? "resources/threeLines.svg" : "resources/doorExit.svg"
+        Component.onDestruction: topBarMenuIcon.source = mainStackView.depth === 1 ? "resources/threeLines.svg" : "resources/caretLeft.svg"
     }
 }

@@ -66,12 +66,15 @@ QtObject {
         "#4060e0"   // 10 – Blau
     ]
 
-    // Gibt den Pfad zur Karten-Grafik zurück.
-    // Glyph-path SVGs (kein <text>, Qt6 VectorImage-kompatibel)
-    // cardIndex: 0-51 (Engine-Kodierung: 0-12=Karo, 13-25=Herz, 26-38=Pik, 39-51=Kreuz)
-    function cardSource(cardIndex) {
+    // Responsiver Kartenpfad: {rank}{suit}.svg (responsive-playing-cards Namenskonvention)
+    // rank: 1=Ass, 2-10, 11=Bube, 12=Dame, 13=König  |  suit: d=Karo, h=Herz, s=Pik, c=Kreuz
+    function cardSourceResponsive(cardIndex) {
         if (cardIndex < 0 || cardIndex > 51) return "qrc:resources/cardBackground.svg"
-        return "qrc:resources/cards/" + cardIndex + ".svg"
+        var suits  = ["d", "h", "s", "c"]
+        var ranks  = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1]
+        var si = Math.floor(cardIndex / 13)
+        var ri = cardIndex % 13
+        return "qrc:resources/responsive-cards/" + ranks[ri] + suits[si] + ".svg"
     }
 
     // Gibt eine kontrastgerechte Chart-Farbe zurück (hell in Dark-Mode, dunkel in Light-Mode)

@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import QtQuick.VectorImage
 
 import "../config" as Config
 
@@ -23,10 +22,10 @@ Rectangle {
     readonly property bool isMyTurn: selfData ? selfData.myTurn : false
 
     color: "transparent"
-    Layout.minimumWidth: 140
-    Layout.maximumWidth: 196
-    Layout.minimumHeight: 104
-    Layout.maximumHeight: 132
+    Layout.minimumWidth: 100
+    Layout.maximumWidth: 160
+    Layout.minimumHeight: 80
+    Layout.maximumHeight: 104
 
     // Hintergrund
     Rectangle {
@@ -56,129 +55,120 @@ Rectangle {
         }
     }
 
-    Row {
-        id: topRow
-        width: parent.width - 6
-        height: parent.height / 2 - 6
-        x: 6
-        y: 6
+    // ── Karten – zentriert über dem Avatar ───────────────────────────────────
+    Item {
+        id: cardsArea
+        anchors.top: parent.top
+        anchors.topMargin: 4
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: parent.height - 26
+
+        readonly property int cardW: 40
+        readonly property int cardH: Math.min(58, height - 2)
+        readonly property int overlap: 14
+        readonly property int totalW: cardW * 2 - overlap
+        readonly property int sx: (width - totalW) / 2
 
         Rectangle {
-            id: avatarRow
-            width: parent.width / 12 * 5.1
-            height: parent.width / 12 * 5.1
+            id: card1Item
+            x: cardsArea.sx
+            y: (parent.height - height) / 2
+            rotation: -6
+            width: cardsArea.cardW
+            height: cardsArea.cardH
+            color: "transparent"
 
-            Rectangle {
+            CardImage {
+                id: card1
                 anchors.fill: parent
-                border.width: 1
-                border.color: Config.StaticData.palette.secondary.col200
-                color: Config.StaticData.palette.secondary.col600
-                opacity: 0.5
+                cardIndex: root.card0
             }
 
-            Image {
-                id: avatar
-                width: parent.width
-                fillMode: Image.PreserveAspectFit
-                source: "qrc:resources/pokerth.svg"
+            MultiEffect {
+                source: card1
+                anchors.fill: card1
+                shadowEnabled: true
+                shadowOpacity: 1
+                shadowVerticalOffset: 2
+                shadowHorizontalOffset: -1
+                shadowBlur: 1
+                autoPaddingEnabled: true
             }
         }
 
-        // Eigene Karten: größer und überlappend für bessere Lesbarkeit
-        Item {
-            id: cardsRow
-            width: 88
-            height: 72
+        Rectangle {
+            id: card2Item
+            x: cardsArea.sx + cardsArea.cardW - cardsArea.overlap
+            y: (parent.height - height) / 2 + 2
+            rotation: 6
+            width: cardsArea.cardW
+            height: cardsArea.cardH
+            color: "transparent"
 
-            Rectangle {
-                id: card1Item
-                x: 0
-                y: 0
-                rotation: -6
-                width: 46
-                height: 69
-                color: "transparent"
-
-                VectorImage {
-                    id: card1
-                    anchors.fill: parent
-                    fillMode: VectorImage.PreserveAspectFit
-                    source: Config.StaticData.cardSource(root.card0)
-                }
-
-                MultiEffect {
-                    source: card1
-                    anchors.fill: card1
-                    shadowEnabled: true
-                    shadowOpacity: 1
-                    shadowVerticalOffset: 1
-                    shadowHorizontalOffset: -1
-                    shadowBlur: 1
-                    autoPaddingEnabled: true
-                }
+            CardImage {
+                id: card2
+                anchors.fill: parent
+                cardIndex: root.card1
             }
 
-            Rectangle {
-                id: card2Item
-                x: 34
-                y: 2
-                rotation: 6
-                width: 46
-                height: 69
-                color: "transparent"
-
-                VectorImage {
-                    id: card2
-                    anchors.fill: parent
-                    fillMode: VectorImage.PreserveAspectFit
-                    source: Config.StaticData.cardSource(root.card1)
-                }
-
-                MultiEffect {
-                    source: card2
-                    anchors.fill: card2
-                    shadowEnabled: true
-                    shadowOpacity: 0.5
-                    shadowVerticalOffset: 1
-                    shadowHorizontalOffset: -1
-                    shadowBlur: 1
-                    autoPaddingEnabled: true
-                }
+            MultiEffect {
+                source: card2
+                anchors.fill: card2
+                shadowEnabled: true
+                shadowOpacity: 0.5
+                shadowVerticalOffset: 2
+                shadowHorizontalOffset: -1
+                shadowBlur: 1
+                autoPaddingEnabled: true
             }
         }
     }
 
+    // ── Avatar + Name + Stack ─────────────────────────────────────────────────
     Row {
-        id: playerNameRow
-        width: parent.width - 8
-        height: parent.height / 2 - 8
-        x: 6
-        y: parent.height - 26
+        id: bottomBar
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 3
+        anchors.left: parent.left
+        anchors.leftMargin: 5
+        anchors.right: parent.right
+        anchors.rightMargin: 5
+        height: 20
+        spacing: 4
+
+        Image {
+            id: avatar
+            width: 20
+            height: 20
+            anchors.verticalCenter: parent.verticalCenter
+            fillMode: Image.PreserveAspectFit
+            source: "qrc:resources/pokerth.svg"
+        }
 
         Text {
             id: playerName
-            width: parent.width / 2
+            width: (parent.width - 20 - 4) / 2
+            anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignLeft
             color: Config.StaticData.palette.secondary.col100
+            font.family: Config.StaticData.loadedFont.font.family
+            font.pixelSize: 11
             font.bold: true
-            font.pointSize: 13
+            elide: Text.ElideRight
             text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
         }
 
         Text {
             id: playerStack
-            width: parent.width / 2
+            width: (parent.width - 20 - 4) / 2
+            anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignRight
-            rightPadding: 6
             color: Config.Theme.colorAccent
+            font.family: Config.StaticData.loadedFont.font.family
+            font.pixelSize: 11
             font.bold: true
-            font.pointSize: 13
             text: root.selfData ? "$" + root.selfData.stack : "$0"
         }
-    }
-
-    RowLayout {
-        width: parent.width
-        height: parent.height / 2
     }
 }

@@ -158,15 +158,26 @@ int main(int argc, char *argv[])
 
     // Cleanup order matters:
     // 1. Stop network thread first (before any owned objects are freed).
-    // 2. Destroy session explicitly – ~Session() deletes myLog (= log) and
-    //    myQtToolsInterface, so we must NOT delete log manually.
-    // 3. Only then delete guiInterface (session no longer holds a raw ptr to it).
-    // lobbyHandler / connectionHandler are parented to &app – Qt handles them.
+    // 2. Release session references held by all handlers BEFORE session.reset().
+    //    gameHandler/lobbyHandler/connectionHandler are parented to &app, so
+    //    their destructors run inside ~QApplication – at that point
+    //    QCoreApplication::instance() is already nullptr.  If they still hold a
+    //    shared_ptr<Session> when they are destroyed, ~Session() → ~Log() would
+    //    execute SQL cleanup after QCoreApplication is gone → crash.
+    //    Clearing the refs here ensures ~Session() runs while QCoreApplication
+    //    is still fully alive.
+    // 3. Then destroy session explicitly – ~Session() deletes myLog and
+    //    myQtToolsInterface.  Do NOT delete log manually.
+    // 4. Only then delete guiInterface (session no longer holds a raw ptr to it).
     if (session) {
         session->terminateNetworkClient();
     }
-    session.reset(); // ~Session() runs here: deletes myLog, myQtToolsInterface
-    delete guiInterface;
+    // Drop shared_ptr<Session> copies held by QObject-parented handlers.
+    connectionHandler->setSession(boost::shared_ptr<Session>());
+    lobbyHandler->setSession(boost::shared_ptr<Session>());
+    gameHandler->setSession(boost::shared_ptr<Session>());
+    delete guiInterface; // releases guiInterface's session ref too
+    session.reset(); // refcount now 0 → ~Session() → ~Log() SQL cleanup runs here safely
 
     return result;
 }

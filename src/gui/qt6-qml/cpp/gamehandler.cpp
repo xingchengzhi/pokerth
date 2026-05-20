@@ -136,6 +136,12 @@ void GameHandler::refreshPotData()
         m_pot = newPot;
         emit potChanged();
     }
+
+    int newTotalPot = board->getPot() + board->getSets();
+    if (newTotalPot != m_totalPot) {
+        m_totalPot = newTotalPot;
+        emit totalPotChanged();
+    }
 }
 
 void GameHandler::computeCallAndRaiseAmounts()
@@ -169,6 +175,13 @@ void GameHandler::computeCallAndRaiseAmounts()
     if (newMinRaise != m_minRaiseAmount) {
         m_minRaiseAmount = newMinRaise;
         emit minRaiseAmountChanged();
+    }
+
+    // Max raise amount: player's full remaining stack
+    int newMaxRaise = humanPlayer->getMyCash();
+    if (newMaxRaise != m_maxRaiseAmount) {
+        m_maxRaiseAmount = newMaxRaise;
+        emit maxRaiseAmountChanged();
     }
 }
 
@@ -288,7 +301,13 @@ void GameHandler::onNextRoundCleanGui()
 {
     onDisableMyButtons();
     m_pot = 0;
+    m_totalPot = 0;
     emit potChanged();
+    emit totalPotChanged();
+    m_minRaiseAmount = 0;
+    m_maxRaiseAmount = 0;
+    emit minRaiseAmountChanged();
+    emit maxRaiseAmountChanged();
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     emit boardCardCountChanged();

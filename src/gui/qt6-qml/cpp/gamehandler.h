@@ -25,6 +25,8 @@ class GameHandler : public QObject
     Q_PROPERTY(bool myTurn READ myTurn NOTIFY myTurnChanged)
     Q_PROPERTY(int callAmount READ callAmount NOTIFY callAmountChanged)
     Q_PROPERTY(int minRaiseAmount READ minRaiseAmount NOTIFY minRaiseAmountChanged)
+    Q_PROPERTY(int maxRaiseAmount READ maxRaiseAmount NOTIFY maxRaiseAmountChanged)
+    Q_PROPERTY(int totalPot READ totalPot NOTIFY totalPotChanged)
     Q_PROPERTY(int boardCardCount READ boardCardCount NOTIFY boardCardCountChanged)
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
 
@@ -44,6 +46,8 @@ public:
     bool myTurn() const { return m_myTurn; }
     int callAmount() const { return m_callAmount; }
     int minRaiseAmount() const { return m_minRaiseAmount; }
+    int maxRaiseAmount() const { return m_maxRaiseAmount; }
+    int totalPot() const { return m_totalPot; }
 
     int boardCardCount() const { return m_boardCardCount; }
     QVariantList boardCards() const { return m_boardCards; }
@@ -80,6 +84,8 @@ signals:
     void myTurnChanged();
     void callAmountChanged();
     void minRaiseAmountChanged();
+    void maxRaiseAmountChanged();
+    void totalPotChanged();
     void boardCardCountChanged();
     void boardCardsChanged();
 
@@ -101,6 +107,8 @@ private:
     bool m_myTurn = false;
     int m_callAmount = 0;
     int m_minRaiseAmount = 0;
+    int m_maxRaiseAmount = 0;
+    int m_totalPot = 0;
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
 };

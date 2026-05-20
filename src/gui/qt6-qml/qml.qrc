@@ -21,6 +21,7 @@
         <file>components/SideMenu.qml</file>
         <file>components/SoundSettings.qml</file>
         <file>components/StyleSettings.qml</file>
+        <file>components/CardImage.qml</file>
         <file>config/qmldir</file>
         <file>config/Parameters.qml</file>
         <file>config/Responsive.qml</file>
@@ -92,57 +93,57 @@
         <file>resources/user.svg</file>
         <file>resources/users.svg</file>
         <file>resources/userSquare.svg</file>
-        <file>resources/cards/0.svg</file>
-        <file>resources/cards/1.svg</file>
-        <file>resources/cards/2.svg</file>
-        <file>resources/cards/3.svg</file>
-        <file>resources/cards/4.svg</file>
-        <file>resources/cards/5.svg</file>
-        <file>resources/cards/6.svg</file>
-        <file>resources/cards/7.svg</file>
-        <file>resources/cards/8.svg</file>
-        <file>resources/cards/9.svg</file>
-        <file>resources/cards/10.svg</file>
-        <file>resources/cards/11.svg</file>
-        <file>resources/cards/12.svg</file>
-        <file>resources/cards/13.svg</file>
-        <file>resources/cards/14.svg</file>
-        <file>resources/cards/15.svg</file>
-        <file>resources/cards/16.svg</file>
-        <file>resources/cards/17.svg</file>
-        <file>resources/cards/18.svg</file>
-        <file>resources/cards/19.svg</file>
-        <file>resources/cards/20.svg</file>
-        <file>resources/cards/21.svg</file>
-        <file>resources/cards/22.svg</file>
-        <file>resources/cards/23.svg</file>
-        <file>resources/cards/24.svg</file>
-        <file>resources/cards/25.svg</file>
-        <file>resources/cards/26.svg</file>
-        <file>resources/cards/27.svg</file>
-        <file>resources/cards/28.svg</file>
-        <file>resources/cards/29.svg</file>
-        <file>resources/cards/30.svg</file>
-        <file>resources/cards/31.svg</file>
-        <file>resources/cards/32.svg</file>
-        <file>resources/cards/33.svg</file>
-        <file>resources/cards/34.svg</file>
-        <file>resources/cards/35.svg</file>
-        <file>resources/cards/36.svg</file>
-        <file>resources/cards/37.svg</file>
-        <file>resources/cards/38.svg</file>
-        <file>resources/cards/39.svg</file>
-        <file>resources/cards/40.svg</file>
-        <file>resources/cards/41.svg</file>
-        <file>resources/cards/42.svg</file>
-        <file>resources/cards/43.svg</file>
-        <file>resources/cards/44.svg</file>
-        <file>resources/cards/45.svg</file>
-        <file>resources/cards/46.svg</file>
-        <file>resources/cards/47.svg</file>
-        <file>resources/cards/48.svg</file>
-        <file>resources/cards/49.svg</file>
-        <file>resources/cards/50.svg</file>
-        <file>resources/cards/51.svg</file>
+        <file>resources/responsive-cards/1c.svg</file>
+        <file>resources/responsive-cards/2c.svg</file>
+        <file>resources/responsive-cards/3c.svg</file>
+        <file>resources/responsive-cards/4c.svg</file>
+        <file>resources/responsive-cards/5c.svg</file>
+        <file>resources/responsive-cards/6c.svg</file>
+        <file>resources/responsive-cards/7c.svg</file>
+        <file>resources/responsive-cards/8c.svg</file>
+        <file>resources/responsive-cards/9c.svg</file>
+        <file>resources/responsive-cards/10c.svg</file>
+        <file>resources/responsive-cards/11c.svg</file>
+        <file>resources/responsive-cards/12c.svg</file>
+        <file>resources/responsive-cards/13c.svg</file>
+        <file>resources/responsive-cards/1d.svg</file>
+        <file>resources/responsive-cards/2d.svg</file>
+        <file>resources/responsive-cards/3d.svg</file>
+        <file>resources/responsive-cards/4d.svg</file>
+        <file>resources/responsive-cards/5d.svg</file>
+        <file>resources/responsive-cards/6d.svg</file>
+        <file>resources/responsive-cards/7d.svg</file>
+        <file>resources/responsive-cards/8d.svg</file>
+        <file>resources/responsive-cards/9d.svg</file>
+        <file>resources/responsive-cards/10d.svg</file>
+        <file>resources/responsive-cards/11d.svg</file>
+        <file>resources/responsive-cards/12d.svg</file>
+        <file>resources/responsive-cards/13d.svg</file>
+        <file>resources/responsive-cards/1h.svg</file>
+        <file>resources/responsive-cards/2h.svg</file>
+        <file>resources/responsive-cards/3h.svg</file>
+        <file>resources/responsive-cards/4h.svg</file>
+        <file>resources/responsive-cards/5h.svg</file>
+        <file>resources/responsive-cards/6h.svg</file>
+        <file>resources/responsive-cards/7h.svg</file>
+        <file>resources/responsive-cards/8h.svg</file>
+        <file>resources/responsive-cards/9h.svg</file>
+        <file>resources/responsive-cards/10h.svg</file>
+        <file>resources/responsive-cards/11h.svg</file>
+        <file>resources/responsive-cards/12h.svg</file>
+        <file>resources/responsive-cards/13h.svg</file>
+        <file>resources/responsive-cards/1s.svg</file>
+        <file>resources/responsive-cards/2s.svg</file>
+        <file>resources/responsive-cards/3s.svg</file>
+        <file>resources/responsive-cards/4s.svg</file>
+        <file>resources/responsive-cards/5s.svg</file>
+        <file>resources/responsive-cards/6s.svg</file>
+        <file>resources/responsive-cards/7s.svg</file>
+        <file>resources/responsive-cards/8s.svg</file>
+        <file>resources/responsive-cards/9s.svg</file>
+        <file>resources/responsive-cards/10s.svg</file>
+        <file>resources/responsive-cards/11s.svg</file>
+        <file>resources/responsive-cards/12s.svg</file>
+        <file>resources/responsive-cards/13s.svg</file>
     </qresource>
 </RCC>

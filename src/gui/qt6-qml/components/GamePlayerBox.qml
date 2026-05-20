@@ -101,13 +101,13 @@ GridLayout {
         Row {
             id: topRow
             width: parent.width - 6
-            height: parent.height / 2 - 6
+            height: parent.height - 26
             x: 6
-            y: 6
+            y: 4
             Rectangle {
                 id: avatarRow
                 width: parent.width / 12 * 5.1
-                height: parent.width / 12 * 5.1
+                height: Math.min(parent.width / 12 * 5.1, topRow.height)
 
                 Rectangle {
                     anchors.fill: parent
@@ -125,26 +125,29 @@ GridLayout {
                 }
             }
 
-            // Karten: zwei überlappende Items mit fester Größe
+            // Karten: zentriert im verbleibenden Platz
             Item {
                 id: cardsRow
-                width: 56
-                height: 36
+                width: parent.width - avatarRow.width
+                height: parent.height
+
+                readonly property int cardW: 32
+                readonly property int cardH: 46
+                readonly property int cx: (width - cardW) / 2
 
                 Rectangle {
                     id: card1Item
-                    x: 0
-                    y: 0
+                    x: cardsRow.cx - 10
+                    y: (parent.height - height) / 2
                     rotation: -6
-                    width: 28
-                    height: 36
+                    width: cardsRow.cardW
+                    height: cardsRow.cardH
                     color: "transparent"
 
                     VectorImage {
                         id: card1
                         anchors.fill: parent
-                        fillMode: VectorImage.PreserveAspectFit
-                        // Gegner: Rückseite (-1) solange nicht aufgedeckt; bei Showdown: face-up
+                        fillMode: VectorImage.Stretch
                         source: Config.StaticData.cardSource(root.card0)
                     }
 
@@ -162,17 +165,17 @@ GridLayout {
 
                 Rectangle {
                     id: card2Item
-                    x: 20
-                    y: 1
+                    x: cardsRow.cx + 8
+                    y: (parent.height - height) / 2 + 2
                     rotation: 6
-                    width: 28
-                    height: 36
+                    width: cardsRow.cardW
+                    height: cardsRow.cardH
                     color: "transparent"
 
                     VectorImage {
                         id: card2
                         anchors.fill: parent
-                        fillMode: VectorImage.PreserveAspectFit
+                        fillMode: VectorImage.Stretch
                         source: Config.StaticData.cardSource(root.card1)
                     }
 

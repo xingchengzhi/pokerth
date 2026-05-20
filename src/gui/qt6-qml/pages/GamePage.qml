@@ -482,38 +482,61 @@ Rectangle {
                 GamePlayerBox { width: parent.width; up: false; seatIndex: 8 }
             }
 
-            // Gemeinschaftskarten direkt unter der oberen Spielerreihe
+            // Gemeinschaftskarten + Pot – immer 5 Slots sichtbar (Platzhalter)
             Column {
                 anchors.top: topPlayerRow.bottom
-                anchors.topMargin: 6
+                anchors.topMargin: 10
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 10
+                spacing: 6
 
-                // 5 Gemeinschaftskarten
-                Row {
-                    spacing: 3
-                    anchors.horizontalCenter: parent.horizontalCenter
+                // Inline-Komponente für einen einzelnen Board-Card-Slot
+                component CommunitySlot: Item {
+                    property int boardIndex: 0
+                    width: 44; height: 66
 
-                    Repeater {
-                        model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCardCount : 0
-
-                        Rectangle {
-                            width: 52
-                            height: 78
-                            color: "transparent"
-                            radius: 4
-
-                            VectorImage {
-                                anchors.fill: parent
-                                source: {
-                                    var cards = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                                    var cardIdx = (cards && index < cards.length) ? cards[index] : -1
-                                    return Config.StaticData.cardSource(cardIdx)
-                                }
-                                fillMode: VectorImage.PreserveAspectFit
-                            }
-                        }
+                    // Platzhalter-Rahmen (immer sichtbar)
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 4
+                        color: Qt.rgba(0, 0, 0, 0.30)
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.38)
                     }
+
+                    // Aufgedeckte Karte
+                    VectorImage {
+                        anchors.fill: parent
+                        visible: {
+                            var cnt = (typeof GameTable !== "undefined" && GameTable)
+                                      ? GameTable.boardCardCount : 0
+                            return boardIndex < cnt
+                        }
+                        source: {
+                            var cards = (typeof GameTable !== "undefined" && GameTable)
+                                        ? GameTable.boardCards : null
+                            var ci = (cards && boardIndex < cards.length) ? cards[boardIndex] : -1
+                            return Config.StaticData.cardSource(ci)
+                        }
+                        fillMode: VectorImage.Stretch
+                    }
+                }
+
+                // 5 Slots: Flop (0-2) | Turn (3) | River (4)
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 3
+
+                    CommunitySlot { boardIndex: 0 }
+                    CommunitySlot { boardIndex: 1 }
+                    CommunitySlot { boardIndex: 2 }
+
+                    Item { width: 8; height: 1 }   // Flop–Turn-Trennlücke
+
+                    CommunitySlot { boardIndex: 3 }
+
+                    Item { width: 8; height: 1 }   // Turn–River-Trennlücke
+
+                    CommunitySlot { boardIndex: 4 }
                 }
 
                 // Pott-Anzeige mit Dealer-Puck

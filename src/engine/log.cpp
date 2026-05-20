@@ -35,9 +35,28 @@ Log::~Log()
     if (!sql.empty()) {
         exec_transaction();
     }
-    // Qt will automatically clean up QSqlDatabase connections on application exit
-    // Attempting to manually close/remove here can cause crashes during shutdown
-    // when Qt's SQL driver manager is already being destroyed
+    // Explicitly close and remove ALL database connections that belong to this
+    // Log instance. This must happen while QCoreApplication still exists.
+    // Leaving them open causes "QSqlDatabase requires a QCoreApplication"
+    // warnings (and a crash) when Qt's SQL subsystem tears down during
+    // ~QApplication because QCoreApplication::instance() is already nullptr
+    // at that point.
+    if (!myConnectionName.isEmpty()) {
+        const QString prefix = myConnectionName;
+        const QStringList allConns = QSqlDatabase::connectionNames();
+        for (const QString &name : allConns) {
+            if (name == prefix || name.startsWith(prefix + "_thread_")) {
+                // Must destroy any QSqlDatabase handle before calling
+                // removeDatabase(), otherwise Qt warns about an open connection.
+                {
+                    QSqlDatabase db = QSqlDatabase::database(name, false);
+                    if (db.isOpen())
+                        db.close();
+                }
+                QSqlDatabase::removeDatabase(name);
+            }
+        }
+    }
 }
 
 QSqlDatabase

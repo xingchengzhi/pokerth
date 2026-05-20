@@ -148,6 +148,21 @@ void SettingsManager::writeConfigStringList(const QString &key, const QStringLis
     m_config->writeBuffer();
 }
 
+QList<int> SettingsManager::readConfigIntList(const QString &key) const
+{
+    QList<int> result;
+    for (int v : m_config->readConfigIntList(key.toStdString()))
+        result << v;
+    return result;
+}
+
+void SettingsManager::writeConfigIntList(const QString &key, const QList<int> &list)
+{
+    std::list<int> stdList(list.begin(), list.end());
+    m_config->writeConfigIntList(key.toStdString(), stdList);
+    m_config->writeBuffer();
+}
+
 void SettingsManager::saveConfig()
 {
     m_config->writeBuffer();

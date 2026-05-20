@@ -62,6 +62,8 @@ public:
     Q_INVOKABLE void writeConfigInt(const QString &key, int value);
     Q_INVOKABLE QStringList readConfigStringList(const QString &key) const;
     Q_INVOKABLE void writeConfigStringList(const QString &key, const QStringList &list);
+    Q_INVOKABLE QList<int> readConfigIntList(const QString &key) const;
+    Q_INVOKABLE void writeConfigIntList(const QString &key, const QList<int> &list);
     Q_INVOKABLE void saveConfig();
     Q_INVOKABLE void resetToDefaults();
     Q_INVOKABLE QString pickImageFile(const QString &title);

@@ -483,7 +483,7 @@ Rectangle {
                 "L_lower":  [0.18, 0.59],
                 "L_upper":  [0.18, 0.32],
                 "TL":       [0.18, 0.19],
-                "TC":       [0.50, 0.07],
+                "TC":       [0.50, 0.055],
                 "TR":       [0.82, 0.19],
                 "R_upper":  [0.82, 0.32],
                 "R_lower":  [0.82, 0.59],
@@ -509,7 +509,7 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -tableZone.height * 0.075
+                anchors.verticalCenterOffset: -tableZone.height * 0.05
                 spacing: 6
                 z: 0
 

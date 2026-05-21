@@ -627,9 +627,9 @@ Rectangle {
                     GamePlayerBox {
                         anchors.fill: parent
                         seatIndex: seatSlot.index
-                        // Einsatz/Button zur Tischmitte zeigen lassen
-                        betSide: seatSlot.index === 4 || seatSlot.index === 6 ? "bottom"
-                               : seatSlot.slot[0] < 0.45 ? "right"
+                        // Einsatz/Button zur Tischmitte zeigen lassen:
+                        // linke Sitze rechts, rechte Sitze links, oben/unten-Mitte unten.
+                        betSide: seatSlot.slot[0] < 0.45 ? "right"
                                : seatSlot.slot[0] > 0.55 ? "left"
                                : "bottom"
                     }

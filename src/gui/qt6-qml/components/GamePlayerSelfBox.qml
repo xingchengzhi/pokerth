@@ -153,46 +153,62 @@ Rectangle {
         }
     }
 
-    // Dealer / Small-Blind / Big-Blind Chip – linke obere Außenecke
-    Image {
-        visible: root.button > 0
-        width: 20
-        height: 20
+    // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – oberhalb der Box.
+    // Button rechts neben dem Einsatz, beides zusammen zentriert.
+    Item {
+        id: betGroup
+        visible: root.bet > 0 || root.button > 0
         z: 25
-        anchors.horizontalCenter: parent.left
-        anchors.verticalCenter: parent.top
-        anchors.verticalCenterOffset: parent.height / 2
-        fillMode: Image.PreserveAspectFit
-        source: root.button === 1 ? "../resources/tableDealerPuck.svg"
-              : root.button === 2 ? "../resources/tableSmallBlind.svg"
-              : root.button === 3 ? "../resources/tableBigBlind.svg"
-              : ""
-    }
 
-    // Einsatz (Chip + Betrag) – oberhalb der Box (Richtung Tischmitte)
-    Row {
-        id: betRow
-        visible: root.bet > 0
-        spacing: 2
-        z: 5
+        readonly property int gap: 4
+        readonly property real betW: root.bet > 0 ? betRow.width : 0
+        readonly property real betH: root.bet > 0 ? betRow.height : 0
+        readonly property real btnW: root.button > 0 ? buttonImg.width : 0
+        readonly property real btnH: root.button > 0 ? buttonImg.height : 0
+        readonly property real bothGap: (root.bet > 0 && root.button > 0) ? gap : 0
+
+        width: betW + bothGap + btnW
+        height: Math.max(betH, btnH)
         x: (parent.width - width) / 2
         y: -height - 2
 
-        Image {
-            width: 16
-            height: 16
-            anchors.verticalCenter: parent.verticalCenter
-            source: "qrc:resources/chipStack.svg"
-            fillMode: Image.PreserveAspectFit
+        Row {
+            id: betRow
+            visible: root.bet > 0
+            spacing: 2
+            x: 0
+            y: (betGroup.height - height) / 2
+
+            Image {
+                width: 16
+                height: 16
+                anchors.verticalCenter: parent.verticalCenter
+                source: "qrc:resources/chipStack.svg"
+                fillMode: Image.PreserveAspectFit
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 12
+                font.bold: true
+                text: "$" + root.bet
+            }
         }
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            color: Config.StaticData.palette.secondary.col100
-            font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 12
-            font.bold: true
-            text: "$" + root.bet
+        Image {
+            id: buttonImg
+            visible: root.button > 0
+            width: 26
+            height: 26
+            fillMode: Image.PreserveAspectFit
+            x: betGroup.betW + betGroup.bothGap
+            y: (betGroup.height - height) / 2
+            source: root.button === 1 ? "../resources/tableDealerPuck.svg"
+                  : root.button === 2 ? "../resources/tableSmallBlind.svg"
+                  : root.button === 3 ? "../resources/tableBigBlind.svg"
+                  : ""
         }
     }
 

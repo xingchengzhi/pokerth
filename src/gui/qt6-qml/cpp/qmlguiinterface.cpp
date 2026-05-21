@@ -417,8 +417,9 @@ void QmlGuiInterface::dealBeRoCards(int beRoID)
         QMetaObject::invokeMethod(gh, "onDealRiverCard", Qt::QueuedConnection);
     }
 
-    // Schedule the second BeRo::run() call after the card reveal
+    // After the reveal, continue the round. In an all-in condition this advances
+    // to the next street/showdown (no betting); otherwise it starts the betting.
     QTimer::singleShot(300, gh, [gh]() {
-        QMetaObject::invokeMethod(gh, "onRunBeRo", Qt::DirectConnection);
+        QMetaObject::invokeMethod(gh, "onAfterDealCards", Qt::DirectConnection);
     });
 }

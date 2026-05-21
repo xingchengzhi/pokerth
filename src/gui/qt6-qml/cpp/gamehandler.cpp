@@ -587,6 +587,25 @@ void GameHandler::onNextPlayerBeRo()
         hand->getCurrentBeRo()->nextPlayer();
 }
 
+// Called after the board cards of a street have been dealt. In an all-in
+// condition there is no more betting (the running-player list is empty), so
+// calling BeRo::run() would throw ERR_RUNNING_PLAYER_NOT_FOUND. Instead we
+// advance straight to the next street/showdown via switchRounds(). In a normal
+// (non-all-in) round we start the betting via BeRo::run().
+void GameHandler::onAfterDealCards()
+{
+    if (localGameCallbacksBlocked()) return;
+    if (!m_game) return;
+    auto hand = m_game->getCurrentHand();
+    if (!hand) return;
+
+    if (hand->getAllInCondition()) {
+        hand->switchRounds();
+    } else if (hand->getCurrentBeRo()) {
+        hand->getCurrentBeRo()->run();
+    }
+}
+
 void GameHandler::onSwitchRounds()
 {
     if (localGameCallbacksBlocked()) return;

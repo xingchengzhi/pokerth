@@ -17,16 +17,17 @@ Item {
 
     property int cardIndex: -1
 
-    // ── Mapping-Tabellen ──────────────────────────────────────────────────────
-    readonly property var _suits: ["d", "h", "s", "c"]
-    readonly property var _ranks: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1]
+    readonly property bool isBack: !(Number.isInteger(cardIndex) && cardIndex >= 0 && cardIndex <= 51)
 
-    readonly property bool   isFrontCard: Number.isInteger(cardIndex) && cardIndex >= 0 && cardIndex <= 51
-    readonly property bool   isBack:      !isFrontCard
-    readonly property int    si:          isFrontCard ? Math.floor(cardIndex / 13) : 0
-    readonly property int    ri:          isFrontCard ? (cardIndex % 13) : 0
-    readonly property string suitChar:    isFrontCard && si >= 0 && si < _suits.length ? String(_suits[si]) : ""
-    readonly property int    rankNum:     isFrontCard && ri >= 0 && ri < _ranks.length ? _ranks[ri] : -1
+    // Vorderseiten-Quelle in EINER Bindung berechnen (nur von cardIndex abhängig),
+    // damit beim Wechsel keine ungültigen Zwischenpfade wie "-1s.svg" entstehen.
+    readonly property string frontSource: {
+        if (isBack)
+            return ""
+        var suits = ["d", "h", "s", "c"]
+        var ranks = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1]
+        return "qrc:resources/cards-simple/" + ranks[cardIndex % 13] + suits[Math.floor(cardIndex / 13)] + ".svg"
+    }
 
     // ── Kartenrückseite ────────────────────────────────────────────────────────
     Image {
@@ -39,7 +40,7 @@ Item {
         source: root.isBack ? "qrc:resources/cardBackground.svg" : ""
     }
 
-    // ── Vorderseite (responsive-cards SVG, via Image-Rasterizer) ────────────────
+    // ── Vorderseite (cards-simple SVG, via Image-Rasterizer) ────────────────────
     Image {
         visible: !root.isBack
         anchors.fill: parent
@@ -47,8 +48,6 @@ Item {
         smooth: true
         sourceSize.width: 120
         sourceSize.height: 168
-        source: !root.isBack
-                ? "qrc:resources/cards-simple/" + root.rankNum + root.suitChar + ".svg"
-                : ""
+        source: root.frontSource
     }
 }

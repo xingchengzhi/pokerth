@@ -70,6 +70,7 @@ public:
     Q_INVOKABLE void onDealRiverCard();
     // Game-loop advance callbacks (called via QMetaObject from QmlGuiInterface)
     Q_INVOKABLE void onRunBeRo();
+    Q_INVOKABLE void onAfterDealCards();
     Q_INVOKABLE void onNextPlayerBeRo();
     Q_INVOKABLE void onSwitchRounds();
     Q_INVOKABLE void onPostRiverRunBeRo();

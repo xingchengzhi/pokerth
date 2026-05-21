@@ -55,24 +55,25 @@ Rectangle {
         GamePlayerBox {
             id: player5
             Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: true
         }
 
         GamePlayerBox {
             id: player6
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: true
+            betSide: "bottom"
         }
 
         GamePlayerBox {
             id: player7
             Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: true
         }
     }
@@ -86,16 +87,17 @@ Rectangle {
         GamePlayerBox {
             id: player4
             Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: true
+            betSide: "bottom"
         }
 
         GamePlayerBox {
             id: player8
             Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: true
         }
     }
@@ -109,38 +111,38 @@ Rectangle {
         GamePlayerBox {
             id: player3
             Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: false
         }
 
         GamePlayerBox {
             id: player9
             Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: false
         }
     }
 
     RowLayout {
         visible: !Config.Responsive.compact
-        width: parent.width / 12 * 6
-        x: parent.width / 24 * 6
+        width: parent.width / 12 * 7
+        x: parent.width / 24 * 5
         y: parent.height / 24 * 21 - 64
 
         GamePlayerBox {
             id: player10
             Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: false
         }
 
         GamePlayerSelfBox {
             id: player1
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 140 * gamePage.hScaleFactor
+            Layout.preferredWidth: 176 * gamePage.hScaleFactor
             Layout.preferredHeight: 104 * gamePage.vScaleFactor
             up: false
         }
@@ -148,8 +150,8 @@ Rectangle {
         GamePlayerBox {
             id: player2
             Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 112 * gamePage.hScaleFactor
-            Layout.preferredHeight: 78 * gamePage.vScaleFactor
+            Layout.preferredWidth: 132 * gamePage.hScaleFactor
+            Layout.preferredHeight: 70 * gamePage.vScaleFactor
             up: false
         }
     }
@@ -477,15 +479,15 @@ Rectangle {
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
             // 3 oben, je 2-3 an den Seiten – passt auch auf schmale Hochformate.
             readonly property var slotPos: ({
-                "L_bottom": [0.20, 0.74],
-                "L_lower":  [0.15, 0.52],
-                "L_upper":  [0.15, 0.30],
-                "TL":       [0.20, 0.13],
-                "TC":       [0.50, 0.10],
-                "TR":       [0.80, 0.13],
-                "R_upper":  [0.85, 0.30],
-                "R_lower":  [0.85, 0.52],
-                "R_bottom": [0.80, 0.74]
+                "L_bottom": [0.18, 0.72],
+                "L_lower":  [0.18, 0.59],
+                "L_upper":  [0.18, 0.32],
+                "TL":       [0.18, 0.19],
+                "TC":       [0.50, 0.07],
+                "TR":       [0.82, 0.19],
+                "R_upper":  [0.82, 0.32],
+                "R_lower":  [0.82, 0.59],
+                "R_bottom": [0.82, 0.72]
             })
 
             // Slot-Reihenfolge je nach Gegnerzahl M – symmetrisch links/rechts verteilt,
@@ -507,7 +509,7 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -tableZone.height * 0.09
+                anchors.verticalCenterOffset: -tableZone.height * 0.075
                 spacing: 6
                 z: 0
 
@@ -617,8 +619,8 @@ Rectangle {
 
                     visible: occupied && index !== 0 && slotName !== ""
 
-                    width: 104
-                    height: 72
+                    width: 120
+                    height: 64
                     x: tableZone.width * slot[0] - width / 2
                     y: tableZone.height * slot[1] - height / 2
 
@@ -626,7 +628,8 @@ Rectangle {
                         anchors.fill: parent
                         seatIndex: seatSlot.index
                         // Einsatz/Button zur Tischmitte zeigen lassen
-                        betSide: seatSlot.slot[0] < 0.45 ? "right"
+                        betSide: seatSlot.index === 4 || seatSlot.index === 6 ? "bottom"
+                               : seatSlot.slot[0] < 0.45 ? "right"
                                : seatSlot.slot[0] > 0.55 ? "left"
                                : "bottom"
                     }
@@ -640,8 +643,9 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 10
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.min(168, tableZone.width / 2.6)
+                width: Math.min(184, tableZone.width / 2.2)
                 height: 92
+                maxAvatarSize: 54
             }
         }
 
@@ -652,22 +656,57 @@ Rectangle {
             // Höhe wächst dynamisch mit dem Inhalt
             Layout.preferredHeight: actionBarCol.implicitHeight
 
-            // Aktuell gewählter Raise-Betrag; wird zurückgesetzt wenn der Zug beginnt
+            // Aktuell vorbereiteter Raise-Betrag; kann auch vor dem eigenen Zug gesetzt werden
             property int raiseAmount: 0
 
-            // Setzt raiseAmount auf das Minimum wenn der Spieler an der Reihe ist
+            readonly property bool raiseAvailable: GameTable !== null
+                                                   && GameTable.maxRaiseAmount > 0
+                                                   && GameTable.minRaiseAmount > 0
+            readonly property int raiseMinAmount: raiseAvailable ? GameTable.minRaiseAmount : 0
+            readonly property int raiseMaxAmount: raiseAvailable ? GameTable.maxRaiseAmount : 0
+
+            function raiseStepFor(maximum) {
+                if (maximum <= 1000)
+                    return 10
+                if (maximum <= 10000)
+                    return 50
+                if (maximum <= 100000)
+                    return 500
+                return 5000
+            }
+
+            function roundedRaiseAmount(amount) {
+                if (!raiseAvailable)
+                    return 0
+                if (amount >= raiseMaxAmount)
+                    return raiseMaxAmount
+                var step = raiseStepFor(raiseMaxAmount)
+                return Math.floor(amount / step) * step
+            }
+
+            function clampRaiseAmount(amount) {
+                if (!raiseAvailable)
+                    return 0
+                return Math.max(raiseMinAmount, Math.min(raiseMaxAmount, amount))
+            }
+
+            function syncRaiseAmount() {
+                if (!raiseAvailable) {
+                    raiseAmount = 0
+                    return
+                }
+                if (raiseAmount <= 0)
+                    raiseAmount = raiseMinAmount
+                else
+                    raiseAmount = clampRaiseAmount(roundedRaiseAmount(raiseAmount))
+            }
+
+            // Raise-Wert vorbereiten und bei Spielstandsanderungen im erlaubten Bereich halten
             Connections {
                 target: GameTable
-                function onMyTurnChanged() {
-                    if (GameTable && GameTable.myTurn)
-                        actionBar.raiseAmount = GameTable.minRaiseAmount
-                }
-                function onMinRaiseAmountChanged() {
-                    if (GameTable && actionBar.raiseAmount < GameTable.minRaiseAmount)
-                        actionBar.raiseAmount = GameTable.minRaiseAmount
-                    else if (GameTable && actionBar.raiseAmount > GameTable.maxRaiseAmount)
-                        actionBar.raiseAmount = GameTable.maxRaiseAmount
-                }
+                function onMyTurnChanged() { actionBar.syncRaiseAmount() }
+                function onMinRaiseAmountChanged() { actionBar.syncRaiseAmount() }
+                function onMaxRaiseAmountChanged() { actionBar.syncRaiseAmount() }
             }
 
             Rectangle {
@@ -680,7 +719,7 @@ Rectangle {
                 width: parent.width
                 spacing: 0
 
-                // ── Raise-Bereich (nur sichtbar wenn an der Reihe & Raise möglich) ──
+                // ── Raise-Bereich: dauerhaft vorbereitbar, Aktion erst beim eigenen Zug ──
                 Column {
                     id: raiseSection
                     width: parent.width
@@ -689,7 +728,7 @@ Rectangle {
                     bottomPadding: 3
                     leftPadding: 8
                     rightPadding: 8
-                    visible: GameTable !== null && GameTable.myTurn && GameTable.maxRaiseAmount > 0
+                    visible: GameTable !== null
                     height: visible ? implicitHeight : 0
                     clip: true
 
@@ -698,11 +737,13 @@ Rectangle {
                         id: raiseSlider
                         width: parent.width - 16
                         height: 26
-                        from: GameTable ? GameTable.minRaiseAmount : 0
-                        to:   GameTable ? GameTable.maxRaiseAmount : 1
-                        stepSize: 10
+                        enabled: actionBar.raiseAvailable
+                        opacity: enabled ? 1.0 : 0.45
+                        from: actionBar.raiseMinAmount
+                        to: actionBar.raiseAvailable ? Math.max(actionBar.raiseMinAmount, actionBar.raiseMaxAmount) : 1
+                        stepSize: actionBar.raiseStepFor(actionBar.raiseMaxAmount)
                         value: actionBar.raiseAmount
-                        onMoved: actionBar.raiseAmount = Math.round(value / 10) * 10
+                        onMoved: actionBar.raiseAmount = actionBar.clampRaiseAmount(actionBar.roundedRaiseAmount(value))
 
                         background: Rectangle {
                             x: raiseSlider.leftPadding
@@ -738,14 +779,15 @@ Rectangle {
                             Layout.preferredWidth: 78
                             height: 28
                             radius: 5
-                            color: "#1a2a1a"
-                            border.color: "#4CAF50"
+                            color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
+                            border.color: actionBar.raiseAvailable ? "#4CAF50" : "#3a3a3a"
                             border.width: 1
                             TextInput {
                                 id: raiseAmountInput
                                 anchors { fill: parent; leftMargin: 6; rightMargin: 6 }
+                                enabled: actionBar.raiseAvailable
                                 text: actionBar.raiseAmount.toString()
-                                color: "#FFFFFF"
+                                color: enabled ? "#FFFFFF" : "#8a8a8a"
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 13
                                 font.bold: true
@@ -756,8 +798,7 @@ Rectangle {
                                 onAccepted: {
                                     var v = parseInt(text)
                                     if (!isNaN(v) && GameTable) {
-                                        actionBar.raiseAmount = Math.max(GameTable.minRaiseAmount,
-                                                                         Math.min(GameTable.maxRaiseAmount, v))
+                                        actionBar.raiseAmount = actionBar.clampRaiseAmount(v)
                                     }
                                 }
                                 // Text bleibt synchron mit raiseAmount (von Slider/%-Buttons)
@@ -791,13 +832,14 @@ Rectangle {
                                 Layout.preferredWidth: visible ? 38 : 0
                                 height: 28
                                 radius: 5
-                                color: potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
-                                border.color: "#4CAF50"
+                                enabled: actionBar.raiseAvailable
+                                color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
+                                border.color: enabled ? "#4CAF50" : "#3a3a3a"
                                 border.width: 1
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.label
-                                    color: "#FFFFFF"
+                                    color: parent.enabled ? "#FFFFFF" : "#8a8a8a"
                                     font.family: Config.StaticData.loadedFont.font.family
                                     font.pixelSize: 11
                                     font.bold: true
@@ -805,14 +847,14 @@ Rectangle {
                                 MouseArea {
                                     id: potBtnArea
                                     anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    hoverEnabled: true
+                                    cursorShape: parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    hoverEnabled: parent.enabled
+                                    enabled: parent.enabled
                                     onClicked: {
-                                        if (!GameTable) return
-                                        var tp  = GameTable.totalPot
-                                        var tgt = Math.round(tp * modelData.frac / 10) * 10
-                                        actionBar.raiseAmount = Math.max(GameTable.minRaiseAmount,
-                                                                         Math.min(GameTable.maxRaiseAmount, tgt))
+                                        if (!GameTable || !actionBar.raiseAvailable) return
+                                        var tp = GameTable.totalPot
+                                        var tgt = Math.round(tp * modelData.frac)
+                                        actionBar.raiseAmount = actionBar.clampRaiseAmount(tgt)
                                     }
                                 }
                             }

@@ -14,8 +14,8 @@ Item {
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
 
-    implicitWidth: 104
-    implicitHeight: 72
+    implicitWidth: 120
+    implicitHeight: 64
 
     // Spielerdaten aus GameTable
     readonly property var seatData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > seatIndex)
@@ -99,14 +99,15 @@ Item {
                 width: parent.width - avatarBox.width - 2
                 height: parent.height
 
-                readonly property int cardW: 30
-                readonly property int cardH: Math.min(44, height)
-                readonly property int cx: (width - cardW) / 2
+                readonly property int cardSpacing: 3
+                readonly property int cardH: height
+                readonly property int cardW: Math.round(cardH * 48 / 76)
+                readonly property int totalW: cardW * 2 + cardSpacing
+                readonly property int sx: (width - totalW) / 2
 
                 Rectangle {
-                    x: parent.cx - 8
-                    y: (parent.height - height) / 2
-                    rotation: -6
+                    x: parent.sx
+                    y: 0
                     width: parent.cardW
                     height: parent.cardH
                     color: "transparent"
@@ -114,9 +115,8 @@ Item {
                 }
 
                 Rectangle {
-                    x: parent.cx + 8
-                    y: (parent.height - height) / 2 + 2
-                    rotation: 6
+                    x: parent.sx + parent.cardW + parent.cardSpacing
+                    y: 0
                     width: parent.cardW
                     height: parent.cardH
                     color: "transparent"

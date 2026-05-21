@@ -9,6 +9,7 @@ Rectangle {
     id: root
 
     property bool up: false
+    property int maxAvatarSize: 60
 
     // Eigene Spielerdaten aus GameTable (Sitz 0 = Human Player)
     readonly property var selfData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > 0)
@@ -57,53 +58,26 @@ Rectangle {
         anchors.top: parent.top
         anchors.topMargin: 4
         anchors.left: parent.left
-        anchors.right: parent.right
-        height: parent.height - 30
-
-        readonly property int cardW: 42
-        readonly property int cardH: Math.min(60, height - 2)
-        readonly property int overlap: 14
-        readonly property int totalW: cardW * 2 - overlap
-        readonly property int sx: (width - totalW) / 2
-
-        Rectangle {
-            x: cardsArea.sx
-            y: (parent.height - height) / 2
-            rotation: -6
-            width: cardsArea.cardW
-            height: cardsArea.cardH
-            color: "transparent"
-            CardImage { anchors.fill: parent; cardIndex: root.card0 }
-        }
-
-        Rectangle {
-            x: cardsArea.sx + cardsArea.cardW - cardsArea.overlap
-            y: (parent.height - height) / 2 + 2
-            rotation: 6
-            width: cardsArea.cardW
-            height: cardsArea.cardH
-            color: "transparent"
-            CardImage { anchors.fill: parent; cardIndex: root.card1 }
-        }
-    }
-
-    // ── Avatar + Name + Stack ─────────────────────────────────────────────────
-    Row {
-        id: bottomBar
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 4
-        anchors.left: parent.left
         anchors.leftMargin: 5
         anchors.right: parent.right
         anchors.rightMargin: 5
-        height: 30
-        spacing: 5
+        height: parent.height - 30
+
+        readonly property int avatarSize: Math.min(root.maxAvatarSize, height - 2)
+        readonly property int cardW: 42
+        readonly property int cardH: Math.min(60, height - 2)
+        readonly property int spacing: 4
+        readonly property int gap: 6
+        readonly property int cardsW: cardW * 2 + spacing
+        readonly property int totalW: avatarSize + gap + cardsW
+        readonly property int sx: (width - totalW) / 2
 
         Rectangle {
-            id: avatarBox
-            width: 30
-            height: 30
-            anchors.verticalCenter: parent.verticalCenter
+            id: selfAvatarBox
+            x: cardsArea.sx
+            y: (parent.height - height) / 2
+            width: cardsArea.avatarSize
+            height: cardsArea.avatarSize
 
             Rectangle {
                 anchors.fill: parent
@@ -122,9 +96,40 @@ Rectangle {
             }
         }
 
+        Rectangle {
+            x: cardsArea.sx + cardsArea.avatarSize + cardsArea.gap
+            y: (parent.height - height) / 2
+            width: cardsArea.cardW
+            height: cardsArea.cardH
+            color: "transparent"
+            CardImage { anchors.fill: parent; cardIndex: root.card0 }
+        }
+
+        Rectangle {
+            x: cardsArea.sx + cardsArea.avatarSize + cardsArea.gap + cardsArea.cardW + cardsArea.spacing
+            y: (parent.height - height) / 2
+            width: cardsArea.cardW
+            height: cardsArea.cardH
+            color: "transparent"
+            CardImage { anchors.fill: parent; cardIndex: root.card1 }
+        }
+    }
+
+    // ── Name + Stack ─────────────────────────────────────────────────
+    Row {
+        id: bottomBar
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 4
+        anchors.left: parent.left
+        anchors.leftMargin: 5
+        anchors.right: parent.right
+        anchors.rightMargin: 5
+        height: 30
+        spacing: 5
+
         Text {
             id: playerName
-            width: (parent.width - 30 - 5) / 2
+            width: (parent.width - parent.spacing) / 2
             anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignLeft
             color: Config.StaticData.palette.secondary.col100
@@ -137,7 +142,7 @@ Rectangle {
 
         Text {
             id: playerStack
-            width: (parent.width - 30 - 5) / 2
+            width: (parent.width - parent.spacing) / 2
             anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignRight
             color: Config.Theme.colorAccent

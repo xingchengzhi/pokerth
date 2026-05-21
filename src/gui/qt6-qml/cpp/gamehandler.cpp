@@ -57,6 +57,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_myTurn = false;
     m_callAmount = 0;
     m_minRaiseAmount = 0;
+    m_maxRaiseAmount = 0;
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     m_winnerSeatId = -1;
@@ -70,6 +71,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     emit myTurnChanged();
     emit callAmountChanged();
     emit minRaiseAmountChanged();
+    emit maxRaiseAmountChanged();
     emit boardCardCountChanged();
     emit boardCardsChanged();
 }
@@ -163,39 +165,76 @@ void GameHandler::refreshPotData()
 
 void GameHandler::computeCallAndRaiseAmounts()
 {
-    if (!m_game) return;
-    auto hand = m_game->getCurrentHand();
-    if (!hand) return;
-    auto bero = hand->getCurrentBeRo();
-    if (!bero) return;
-    auto seats = hand->getSeatsList();
-    if (!seats || seats->empty()) return;
-    auto humanPlayer = seats->front();
+    int newCallAmount = 0;
+    int newMinRaise = 0;
+    int newMaxRaise = 0;
 
-    int highestSet = bero->getHighestSet();
+    if (m_game) {
+        auto hand = m_game->getCurrentHand();
+        if (hand) {
+            auto bero = hand->getCurrentBeRo();
+            auto seats = hand->getSeatsList();
+            if (bero && seats && !seats->empty()) {
+                auto humanPlayer = seats->front();
+                const int highestSet = bero->getHighestSet();
+                const int humanSet = humanPlayer->getMySet();
+                const int humanCash = humanPlayer->getMyCash();
 
-    // Call amount: additional chips needed to match the highest set
-    int newCallAmount;
-    if (humanPlayer->getMyCash() + humanPlayer->getMySet() <= highestSet) {
-        newCallAmount = humanPlayer->getMyCash(); // all-in case
-    } else {
-        newCallAmount = highestSet - humanPlayer->getMySet();
+                if (humanCash + humanSet <= highestSet) {
+                    newCallAmount = humanCash;
+                } else {
+                    newCallAmount = highestSet - humanSet;
+                }
+                if (newCallAmount < 0) {
+                    newCallAmount = 0;
+                }
+
+                const bool buttonsDisabled =
+                    humanPlayer->getMyAction() == PLAYER_ACTION_ALLIN ||
+                    humanPlayer->getMyAction() == PLAYER_ACTION_FOLD ||
+                    humanCash == 0 ||
+                    (humanSet == highestSet && humanPlayer->getMyAction() != PLAYER_ACTION_NONE) ||
+                    !humanPlayer->isSessionActive();
+
+                if (!buttonsDisabled && !bero->getFullBetRule()) {
+                    int minimum = 0;
+                    bool canBetRaise = false;
+
+                    if (hand->getCurrentRound() == 0) {
+                        if (humanCash + humanSet > highestSet) {
+                            minimum = highestSet - humanSet + bero->getMinimumRaise();
+                            canBetRaise = true;
+                        }
+                    } else {
+                        if (highestSet == 0) {
+                            minimum = hand->getSmallBlind() * 2;
+                            canBetRaise = true;
+                        } else if (highestSet > humanSet && humanCash + humanSet > highestSet) {
+                            minimum = highestSet - humanSet + bero->getMinimumRaise();
+                            canBetRaise = true;
+                        }
+                    }
+
+                    if (canBetRaise) {
+                        if (minimum < 0) {
+                            minimum = 0;
+                        }
+                        newMaxRaise = humanCash;
+                        newMinRaise = std::min(minimum, newMaxRaise);
+                    }
+                }
+            }
+        }
     }
+
     if (newCallAmount != m_callAmount) {
         m_callAmount = newCallAmount;
         emit callAmountChanged();
     }
-
-    // Min raise amount: additional chips needed for the minimum legal raise
-    int newMinRaise = highestSet - humanPlayer->getMySet() + bero->getMinimumRaise();
-    if (newMinRaise < 0) newMinRaise = 0;
     if (newMinRaise != m_minRaiseAmount) {
         m_minRaiseAmount = newMinRaise;
         emit minRaiseAmountChanged();
     }
-
-    // Max raise amount: player's full remaining stack
-    int newMaxRaise = humanPlayer->getMyCash();
     if (newMaxRaise != m_maxRaiseAmount) {
         m_maxRaiseAmount = newMaxRaise;
         emit maxRaiseAmountChanged();
@@ -231,12 +270,14 @@ void GameHandler::onRefreshSet()
 {
     if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
+    computeCallAndRaiseAmounts();
 }
 
 void GameHandler::onRefreshCash()
 {
     if (localGameCallbacksBlocked()) return;
     refreshPlayerData();
+    computeCallAndRaiseAmounts();
 }
 
 void GameHandler::onRefreshPlayerName()
@@ -250,6 +291,7 @@ void GameHandler::onRefreshPot()
     if (localGameCallbacksBlocked()) return;
     refreshPotData();
     refreshPlayerData();
+    computeCallAndRaiseAmounts();
 }
 
 void GameHandler::onRefreshGameLabels(int gameState)
@@ -279,6 +321,8 @@ void GameHandler::onRefreshGameLabels(int gameState)
             }
         }
     }
+
+    computeCallAndRaiseAmounts();
 }
 
 void GameHandler::onMeInAction()

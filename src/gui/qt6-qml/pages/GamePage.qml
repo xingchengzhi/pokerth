@@ -509,7 +509,7 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -tableZone.height * 0.047
+                anchors.verticalCenterOffset: -tableZone.height * 0.045
                 spacing: 6
                 z: 0
 
@@ -641,7 +641,7 @@ Rectangle {
                 id: selfBox
                 z: 1
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 10
+                anchors.bottomMargin: 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(184, tableZone.width / 2.2)
                 height: 92

@@ -5,70 +5,38 @@ import QtQuick.Layouts
 
 import "../config" as Config
 
-GridLayout {
+Item {
     id: root
-    columns: 1
-    rows: 2
-    Layout.maximumHeight: 102
 
     property bool up: false
-    property string yellow: "#E3C800"
     property int seatIndex: 0
+    // Seite, auf der Einsatz-Chip + Dealer/Blind-Button angezeigt werden:
+    // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
+    property string betSide: up ? "bottom" : "top"
+
+    implicitWidth: 104
+    implicitHeight: 72
 
     // Spielerdaten aus GameTable
     readonly property var seatData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > seatIndex)
         ? GameTable.players[seatIndex] : null
 
-    // Loch-Karten (face-up nur wenn vom Engine aufgedeckt, sonst Rückseite -1)
     readonly property int card0: seatData && seatData.card0 !== undefined ? seatData.card0 : -1
     readonly property int card1: seatData && seatData.card1 !== undefined ? seatData.card1 : -1
-
-    // Am Zug?
     readonly property bool isMyTurn: seatData ? seatData.myTurn : false
     readonly property bool isActive: seatData ? seatData.active : false
+    readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === root.seatIndex
+    readonly property int button: seatData && seatData.button !== undefined ? seatData.button : 0
+    readonly property int bet: seatData && seatData.bet !== undefined ? seatData.bet : 0
 
-    RowLayout {
-        id: playerActions
-        Layout.alignment: root.up ? Qt.AlignTop : Qt.AlignBottom
-        Layout.row: root.up ? 2 : 1
-        Layout.preferredHeight: 18 * gamePage.vScaleFactor
-        Layout.maximumHeight: 26
+    // Nur anzeigen wenn der Sitz besetzt ist
+    visible: root.seatData !== null && root.seatData.name !== ""
 
-        RowLayout {
-            Layout.alignment: root.up ? Qt.AlignTop : Qt.AlignBottom
-
-            Image {
-                Layout.maximumWidth: 26
-                Layout.preferredWidth: 18 * gamePage.vScaleFactor
-                Layout.preferredHeight: 18 * gamePage.vScaleFactor
-                Layout.maximumHeight: 26
-                source: "qrc:resources/chipStack.svg"
-                fillMode: Image.PreserveAspectFit
-            }
-
-            Text {
-                id: playerBet
-                horizontalAlignment: Text.AlignLeft
-                leftPadding: 4
-                bottomPadding: 3
-                Layout.preferredHeight: 22
-                color: Config.StaticData.palette.secondary.col100
-                font.bold: true
-                text: root.seatData ? "$" + root.seatData.bet : "$0"
-            }
-        }
-    }
-
+    // ── Hauptbox ────────────────────────────────────────────────────────────────
     Rectangle {
         id: playerBox
-        Layout.row: root.up ? 1 : 2
-
+        anchors.fill: parent
         color: "transparent"
-        Layout.minimumWidth: 112
-        Layout.maximumWidth: 168
-        Layout.minimumHeight: 76
-        Layout.maximumHeight: 104
-        Layout.preferredHeight: 76
 
         Rectangle {
             anchors.fill: parent
@@ -97,16 +65,19 @@ GridLayout {
             }
         }
 
+        // Avatar + Karten
         Row {
             id: topRow
             width: parent.width - 6
-            height: parent.height - 26
-            x: 6
-            y: 4
+            height: parent.height - 18
+            x: 4
+            y: 3
+            spacing: 2
+
             Rectangle {
-                id: avatarRow
-                width: parent.width / 12 * 5.1
-                height: Math.min(parent.width / 12 * 5.1, topRow.height)
+                id: avatarBox
+                width: parent.height
+                height: parent.height
 
                 Rectangle {
                     anchors.fill: parent
@@ -117,109 +88,163 @@ GridLayout {
                 }
 
                 Image {
-                    id: avatar
-                    width: parent.width
+                    anchors.fill: parent
+                    anchors.margins: 1
                     fillMode: Image.PreserveAspectFit
                     source: "qrc:resources/pokerth.svg"
                 }
             }
 
-            // Karten: zentriert im verbleibenden Platz
             Item {
-                id: cardsRow
-                width: parent.width - avatarRow.width
+                width: parent.width - avatarBox.width - 2
                 height: parent.height
 
-                readonly property int cardW: 32
-                readonly property int cardH: 46
+                readonly property int cardW: 30
+                readonly property int cardH: Math.min(44, height)
                 readonly property int cx: (width - cardW) / 2
 
                 Rectangle {
-                    id: card1Item
-                    x: cardsRow.cx - 10
+                    x: parent.cx - 8
                     y: (parent.height - height) / 2
                     rotation: -6
-                    width: cardsRow.cardW
-                    height: cardsRow.cardH
+                    width: parent.cardW
+                    height: parent.cardH
                     color: "transparent"
-
-                    CardImage {
-                        id: card1
-                        anchors.fill: parent
-                        cardIndex: root.card0
-                    }
-
-                    MultiEffect {
-                        source: card1
-                        anchors.fill: card1
-                        shadowEnabled: true
-                        shadowOpacity: 1
-                        shadowVerticalOffset: 1
-                        shadowHorizontalOffset: -1
-                        shadowBlur: 1
-                        autoPaddingEnabled: true
-                    }
+                    CardImage { anchors.fill: parent; cardIndex: root.card0 }
                 }
 
                 Rectangle {
-                    id: card2Item
-                    x: cardsRow.cx + 8
+                    x: parent.cx + 8
                     y: (parent.height - height) / 2 + 2
                     rotation: 6
-                    width: cardsRow.cardW
-                    height: cardsRow.cardH
+                    width: parent.cardW
+                    height: parent.cardH
                     color: "transparent"
-
-                    CardImage {
-                        id: card2
-                        anchors.fill: parent
-                        cardIndex: root.card1
-                    }
-
-                    MultiEffect {
-                        source: card2
-                        anchors.fill: card2
-                        shadowEnabled: true
-                        shadowOpacity: 0.5
-                        shadowVerticalOffset: 1
-                        shadowHorizontalOffset: -1
-                        shadowBlur: 1
-                        autoPaddingEnabled: true
-                    }
+                    CardImage { anchors.fill: parent; cardIndex: root.card1 }
                 }
             }
         }
 
+        // Name + Stack
         Row {
-            id: playerNameRow
             width: parent.width - 8
-            height: parent.height / 2 - 8
-            x: 6
-            y: parent.height - 22
+            height: 15
+            x: 4
+            y: parent.height - 16
 
             Text {
-                id: playerName
                 width: parent.width / 2
                 horizontalAlignment: Text.AlignLeft
                 color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 10
                 font.bold: true
+                elide: Text.ElideRight
                 text: root.seatData && root.seatData.name !== "" ? root.seatData.name : "---"
             }
 
             Text {
-                id: playerStack
                 width: parent.width / 2
                 horizontalAlignment: Text.AlignRight
-                rightPadding: 6
                 color: Config.Theme.colorAccent
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 10
                 font.bold: true
                 text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }
         }
 
-        RowLayout {
-            width: parent.width
-            height: parent.height / 2
+        // Winner-Hervorhebung: goldener Rahmen – verdeckt die Karten NICHT
+        Rectangle {
+            anchors.fill: parent
+            visible: root.isWinner
+            color: "transparent"
+            radius: 6
+            border.color: "#FFD700"
+            border.width: 3
+            z: 19
+
+            layer.enabled: root.isWinner
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#FFD700"
+                shadowOpacity: 1.0
+                shadowBlur: 1.0
+                shadowVerticalOffset: 0
+                shadowHorizontalOffset: 0
+            }
+        }
+    }
+
+    // WINNER-Badge oberhalb der Box
+    Rectangle {
+        visible: root.isWinner
+        anchors.horizontalCenter: playerBox.horizontalCenter
+        anchors.bottom: playerBox.top
+        anchors.bottomMargin: 1
+        width: winnerLabel.width + 12
+        height: 16
+        radius: 8
+        color: "#0d3d0d"
+        border.color: "#FFD700"
+        border.width: 1
+        z: 30
+
+        Text {
+            id: winnerLabel
+            anchors.centerIn: parent
+            text: qsTr("WINNER")
+            color: "#FFD700"
+            font.family: Config.StaticData.loadedFont.font.family
+            font.pixelSize: 9
+            font.bold: true
+        }
+    }
+
+    // Dealer / Small-Blind / Big-Blind Chip – an der unteren Außenecke
+    Image {
+        visible: root.button > 0
+        width: 18
+        height: 18
+        z: 25
+        anchors.horizontalCenter: root.betSide === "right" ? playerBox.right : playerBox.left
+        anchors.verticalCenter: playerBox.bottom
+        fillMode: Image.PreserveAspectFit
+        source: root.button === 1 ? "../resources/tableDealerPuck.svg"
+              : root.button === 2 ? "../resources/tableSmallBlind.svg"
+              : root.button === 3 ? "../resources/tableBigBlind.svg"
+              : ""
+    }
+
+    // Einsatz (Chip + Betrag) – auf der zur Tischmitte zeigenden Seite
+    Row {
+        id: betRow
+        visible: root.bet > 0
+        spacing: 2
+        z: 5
+
+        x: root.betSide === "right" ? playerBox.width + 3
+         : root.betSide === "left"  ? -width - 3
+         : (playerBox.width - width) / 2
+        y: root.betSide === "bottom" ? playerBox.height + 2
+         : root.betSide === "top"    ? -height - 2
+         : (playerBox.height - height) / 2
+
+        Image {
+            width: 16
+            height: 16
+            anchors.verticalCenter: parent.verticalCenter
+            source: "qrc:resources/chipStack.svg"
+            fillMode: Image.PreserveAspectFit
+        }
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            color: Config.StaticData.palette.secondary.col100
+            font.family: Config.StaticData.loadedFont.font.family
+            font.pixelSize: 11
+            font.bold: true
+            text: "$" + root.bet
         }
     }
 }

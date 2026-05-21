@@ -29,6 +29,7 @@ class GameHandler : public QObject
     Q_PROPERTY(int totalPot READ totalPot NOTIFY totalPotChanged)
     Q_PROPERTY(int boardCardCount READ boardCardCount NOTIFY boardCardCountChanged)
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
+    Q_PROPERTY(int winnerSeatId READ winnerSeatId NOTIFY winnerSeatIdChanged)
 
 public:
     explicit GameHandler(QObject *parent = nullptr);
@@ -53,6 +54,7 @@ public:
 
     int boardCardCount() const { return m_boardCardCount; }
     QVariantList boardCards() const { return m_boardCards; }
+    int winnerSeatId() const { return m_winnerSeatId; }
 
     // Called from QmlGuiInterface callbacks (must be Q_INVOKABLE for invokeMethod)
     Q_INVOKABLE void onRefreshSet();
@@ -71,6 +73,7 @@ public:
     Q_INVOKABLE void onNextPlayerBeRo();
     Q_INVOKABLE void onSwitchRounds();
     Q_INVOKABLE void onPostRiverRunBeRo();
+    Q_INVOKABLE void onShowdown();
 
     // Called from QML
     Q_INVOKABLE void fold();
@@ -90,6 +93,7 @@ signals:
     void totalPotChanged();
     void boardCardCountChanged();
     void boardCardsChanged();
+    void winnerSeatIdChanged();
 
 private:
     bool localGameCallbacksBlocked() const;
@@ -114,6 +118,7 @@ private:
     int m_totalPot = 0;
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
+    int m_winnerSeatId = -1;
     bool m_localGameExitRequested = false;
 };
 

@@ -16,6 +16,8 @@
 #include <QString>
 #include <QTimer>
 #include <QDebug>
+#include <algorithm>
+#include <list>
 
 GameHandler::GameHandler(QObject *parent)
     : QObject(parent), m_phaseText("Preflop")
@@ -29,6 +31,7 @@ GameHandler::GameHandler(QObject *parent)
         p["active"]  = false;
         p["myTurn"]  = false;
         p["seatId"]  = i;
+        p["button"]  = 0;
         p["card0"]   = -1;
         p["card1"]   = -1;
         m_players.append(p);
@@ -56,6 +59,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_minRaiseAmount = 0;
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
+    m_winnerSeatId = -1;
 
     // Re-build player list (seats may differ between games)
     refreshPlayerData();
@@ -91,6 +95,7 @@ void GameHandler::refreshPlayerData()
         p["active"] = false;
         p["myTurn"] = false;
         p["seatId"] = i;
+        p["button"] = 0;
         p["card0"]  = -1;
         p["card1"]  = -1;
         newPlayers.append(p);
@@ -109,8 +114,9 @@ void GameHandler::refreshPlayerData()
             if (id >= 0 && id < 10) {
                 int cards[2] = {-1, -1};
                 (*it)->getMyCards(cards);
-                // Show face-up cards for: human player (id==0) OR flipped at showdown
-                bool faceUp = (id == 0) || (*it)->getMyCardsFlip();
+                // Show face-up cards for: human player (id==0), explicitly flipped,
+                // or required to show at showdown (winner / called player).
+                bool faceUp = (id == 0) || (*it)->getMyCardsFlip() || (*it)->checkIfINeedToShowCards();
                 QVariantMap p;
                 p["name"]   = QString::fromStdString((*it)->getMyName());
                 p["stack"]  = (*it)->getMyCash();
@@ -118,6 +124,7 @@ void GameHandler::refreshPlayerData()
                 p["active"] = (*it)->getMyActiveStatus();
                 p["myTurn"] = (*it)->getMyTurn();
                 p["seatId"] = id;
+                p["button"] = (*it)->getMyButton();
                 p["card0"]  = faceUp ? cards[0] : -1;
                 p["card1"]  = faceUp ? cards[1] : -1;
                 if (id == 0) {
@@ -331,6 +338,10 @@ void GameHandler::onNextRoundCleanGui()
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     emit boardCardCountChanged();
     emit boardCardsChanged();
+    if (m_winnerSeatId != -1) {
+        m_winnerSeatId = -1;
+        emit winnerSeatIdChanged();
+    }
     refreshPlayerData();
 }
 
@@ -591,4 +602,37 @@ void GameHandler::onPostRiverRunBeRo()
     auto hand = m_game->getCurrentHand();
     if (hand && hand->getCurrentBeRo())
         hand->getCurrentBeRo()->postRiverRun();
+}
+
+void GameHandler::onShowdown()
+{
+    if (localGameCallbacksBlocked()) return;
+
+    // Reveal showdown cards (getMyCardsFlip() is set after determinePlayerNeedToShowCards)
+    refreshPlayerData();
+
+    // Find the winner seat ID from the board (pot is already distributed)
+    if (!m_game) return;
+    auto hand = m_game->getCurrentHand();
+    if (!hand) return;
+    auto board = hand->getBoard();
+    if (!board) return;
+
+    std::list<unsigned> winners = board->getWinners();
+    int newWinner = -1;
+
+    auto seats = hand->getSeatsList();
+    for (auto it = seats->begin(); it != seats->end(); ++it) {
+        unsigned uid = (*it)->getMyUniqueID();
+        bool isWinner = std::find(winners.begin(), winners.end(), uid) != winners.end();
+        if (isWinner && (*it)->getLastMoneyWon() > 0) {
+            newWinner = (*it)->getMyID();
+            break;
+        }
+    }
+
+    if (newWinner != m_winnerSeatId) {
+        m_winnerSeatId = newWinner;
+        emit winnerSeatIdChanged();
+    }
 }

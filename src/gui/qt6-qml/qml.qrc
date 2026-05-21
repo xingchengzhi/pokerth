@@ -145,5 +145,57 @@
         <file>resources/responsive-cards/11s.svg</file>
         <file>resources/responsive-cards/12s.svg</file>
         <file>resources/responsive-cards/13s.svg</file>
+        <file>resources/cards-simple/10c.svg</file>
+        <file>resources/cards-simple/10d.svg</file>
+        <file>resources/cards-simple/10h.svg</file>
+        <file>resources/cards-simple/10s.svg</file>
+        <file>resources/cards-simple/11c.svg</file>
+        <file>resources/cards-simple/11d.svg</file>
+        <file>resources/cards-simple/11h.svg</file>
+        <file>resources/cards-simple/11s.svg</file>
+        <file>resources/cards-simple/12c.svg</file>
+        <file>resources/cards-simple/12d.svg</file>
+        <file>resources/cards-simple/12h.svg</file>
+        <file>resources/cards-simple/12s.svg</file>
+        <file>resources/cards-simple/13c.svg</file>
+        <file>resources/cards-simple/13d.svg</file>
+        <file>resources/cards-simple/13h.svg</file>
+        <file>resources/cards-simple/13s.svg</file>
+        <file>resources/cards-simple/1c.svg</file>
+        <file>resources/cards-simple/1d.svg</file>
+        <file>resources/cards-simple/1h.svg</file>
+        <file>resources/cards-simple/1s.svg</file>
+        <file>resources/cards-simple/2c.svg</file>
+        <file>resources/cards-simple/2d.svg</file>
+        <file>resources/cards-simple/2h.svg</file>
+        <file>resources/cards-simple/2s.svg</file>
+        <file>resources/cards-simple/3c.svg</file>
+        <file>resources/cards-simple/3d.svg</file>
+        <file>resources/cards-simple/3h.svg</file>
+        <file>resources/cards-simple/3s.svg</file>
+        <file>resources/cards-simple/4c.svg</file>
+        <file>resources/cards-simple/4d.svg</file>
+        <file>resources/cards-simple/4h.svg</file>
+        <file>resources/cards-simple/4s.svg</file>
+        <file>resources/cards-simple/5c.svg</file>
+        <file>resources/cards-simple/5d.svg</file>
+        <file>resources/cards-simple/5h.svg</file>
+        <file>resources/cards-simple/5s.svg</file>
+        <file>resources/cards-simple/6c.svg</file>
+        <file>resources/cards-simple/6d.svg</file>
+        <file>resources/cards-simple/6h.svg</file>
+        <file>resources/cards-simple/6s.svg</file>
+        <file>resources/cards-simple/7c.svg</file>
+        <file>resources/cards-simple/7d.svg</file>
+        <file>resources/cards-simple/7h.svg</file>
+        <file>resources/cards-simple/7s.svg</file>
+        <file>resources/cards-simple/8c.svg</file>
+        <file>resources/cards-simple/8d.svg</file>
+        <file>resources/cards-simple/8h.svg</file>
+        <file>resources/cards-simple/8s.svg</file>
+        <file>resources/cards-simple/9c.svg</file>
+        <file>resources/cards-simple/9d.svg</file>
+        <file>resources/cards-simple/9h.svg</file>
+        <file>resources/cards-simple/9s.svg</file>
     </qresource>
 </RCC>

@@ -381,14 +381,16 @@ void QmlGuiInterface::postRiverAnimation1()
 
 void QmlGuiInterface::postRiverRunAnimation1()
 {
-    // After pot distribution: start the next hand after a pause
+    // Pot already distributed. Show showdown: reveal cards + mark winner.
     if (!m_gameHandler) return;
     GameHandler *gh = m_gameHandler;
     boost::shared_ptr<Session> session = m_session;
-    QTimer::singleShot(2500, gh, [gh, session]() {
-        // Reset GUI for the new hand
+
+    QMetaObject::invokeMethod(gh, "onShowdown", Qt::QueuedConnection);
+
+    // Start the next hand after a pause so the user can see the result
+    QTimer::singleShot(3000, gh, [gh, session]() {
         QMetaObject::invokeMethod(gh, "onNextRoundCleanGui", Qt::DirectConnection);
-        // Start the next hand
         if (session) {
             auto game = session->getCurrentGame();
             if (game) {

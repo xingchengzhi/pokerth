@@ -422,12 +422,24 @@ Rectangle {
                     font.bold: true
                 }
                 Item { Layout.fillWidth: true }
-                Text {
-                    text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
-                    color: "#99D500"
-                    font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 13
-                    font.bold: true
+                Column {
+                    spacing: -1
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
+                        color: "#99D500"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: GameTable ? qsTr("Total: $") + GameTable.totalPot : qsTr("Total: $0")
+                        color: "#7aa800"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
                 }
                 Item { Layout.fillWidth: true }
                 Text {
@@ -453,57 +465,63 @@ Rectangle {
                 smooth: true
             }
 
-            // Obere Gegner-Reihe (Sitze 4, 5, 6 = P5, P6, P7) – oben angeheftet
-            RowLayout {
-                id: topPlayerRow
-                anchors.top: parent.top
-                anchors.topMargin: 4
-                anchors.left: parent.left
-                anchors.leftMargin: 4
-                anchors.right: parent.right
-                anchors.rightMargin: 4
-                spacing: 4
-
-                GamePlayerBox { Layout.fillWidth: true; up: true; seatIndex: 4 }
-                GamePlayerBox { Layout.fillWidth: true; up: true; seatIndex: 5 }
-                GamePlayerBox { Layout.fillWidth: true; up: true; seatIndex: 6 }
+            // Anzahl der besetzten Sitze
+            readonly property int seatCount: {
+                if (typeof GameTable === "undefined" || !GameTable) return 1
+                var c = 0
+                for (var i = 0; i < GameTable.players.length; i++)
+                    if (GameTable.players[i].name !== "") c++
+                return Math.max(c, 1)
             }
 
-            // Linke Spieler-Spalte (Sitz 3 oben, Sitz 2 unten = P4, P3)
+            // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
+            // 3 oben, je 2-3 an den Seiten – passt auch auf schmale Hochformate.
+            readonly property var slotPos: ({
+                "L_bottom": [0.20, 0.74],
+                "L_lower":  [0.15, 0.52],
+                "L_upper":  [0.15, 0.30],
+                "TL":       [0.20, 0.13],
+                "TC":       [0.50, 0.10],
+                "TR":       [0.80, 0.13],
+                "R_upper":  [0.85, 0.30],
+                "R_lower":  [0.85, 0.52],
+                "R_bottom": [0.80, 0.74]
+            })
+
+            // Slot-Reihenfolge je nach Gegnerzahl M – symmetrisch links/rechts verteilt,
+            // damit unabhängig von der Spielerzahl Kreis-Symmetrie entsteht.
+            readonly property var slotSeq: ({
+                1: ["TC"],
+                2: ["TL", "TR"],
+                3: ["TL", "TC", "TR"],
+                4: ["L_upper", "TL", "TR", "R_upper"],
+                5: ["L_upper", "TL", "TC", "TR", "R_upper"],
+                6: ["L_lower", "L_upper", "TL", "TR", "R_upper", "R_lower"],
+                7: ["L_lower", "L_upper", "TL", "TC", "TR", "R_upper", "R_lower"],
+                8: ["L_bottom", "L_lower", "L_upper", "TL", "TR", "R_upper", "R_lower", "R_bottom"],
+                9: ["L_bottom", "L_lower", "L_upper", "TL", "TC", "TR", "R_upper", "R_lower", "R_bottom"]
+            })
+
+            // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Column {
-                anchors.left: parent.left
-                anchors.leftMargin: 4
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
-                width: 112
-
-                GamePlayerBox { width: parent.width; up: false; seatIndex: 3 }
-                GamePlayerBox { width: parent.width; up: false; seatIndex: 2 }
-            }
-
-            // Rechte Spieler-Spalte (Sitz 7 oben, Sitz 8 unten = P8, P9)
-            Column {
-                anchors.right: parent.right
-                anchors.rightMargin: 4
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
-                width: 112
-
-                GamePlayerBox { width: parent.width; up: false; seatIndex: 7 }
-                GamePlayerBox { width: parent.width; up: false; seatIndex: 8 }
-            }
-
-            // Gemeinschaftskarten + Pot – immer 5 Slots sichtbar (Platzhalter)
-            Column {
-                anchors.top: topPlayerRow.bottom
-                anchors.topMargin: 10
+                id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -tableZone.height * 0.09
                 spacing: 6
+                z: 0
 
                 // Inline-Komponente für einen einzelnen Board-Card-Slot
+                // Karten-Seitenverhältnis 120:168 (≈0,714) – Karte = Platzhalter (1:1)
                 component CommunitySlot: Item {
                     property int boardIndex: 0
-                    width: 44; height: 66
+                    width: 46; height: 64
+
+                    readonly property bool isDealt: {
+                        var cnt = (typeof GameTable !== "undefined" && GameTable)
+                                  ? GameTable.boardCardCount : 0
+                        return boardIndex < cnt
+                    }
 
                     // Platzhalter-Rahmen (immer sichtbar)
                     Rectangle {
@@ -514,18 +532,36 @@ Rectangle {
                         border.color: Qt.rgba(1, 1, 1, 0.38)
                     }
 
-                    // Aufgedeckte Karte
+                    // Aufgedeckte Karte – mit Einblend-Animation
                     CardImage {
+                        id: faceCard
                         anchors.fill: parent
-                        visible: {
-                            var cnt = (typeof GameTable !== "undefined" && GameTable)
-                                      ? GameTable.boardCardCount : 0
-                            return boardIndex < cnt
-                        }
+                        opacity: 0
                         cardIndex: {
                             var cards = (typeof GameTable !== "undefined" && GameTable)
                                         ? GameTable.boardCards : null
                             return (cards && boardIndex < cards.length) ? cards[boardIndex] : -1
+                        }
+                    }
+
+                    onIsDealtChanged: {
+                        if (isDealt) {
+                            cardReveal.start()
+                        } else {
+                            faceCard.opacity = 0
+                        }
+                    }
+
+                    SequentialAnimation {
+                        id: cardReveal
+                        // Flop-Karten staffeln (0 ms, 120 ms, 240 ms); Turn/River sofort
+                        PauseAnimation { duration: boardIndex < 3 ? boardIndex * 120 : 0 }
+                        NumberAnimation {
+                            target: faceCard
+                            property: "opacity"
+                            from: 0; to: 1
+                            duration: 260
+                            easing.type: Easing.OutQuad
                         }
                     }
                 }
@@ -539,68 +575,73 @@ Rectangle {
                     CommunitySlot { boardIndex: 1 }
                     CommunitySlot { boardIndex: 2 }
 
-                    Item { width: 8; height: 1 }   // Flop–Turn-Trennlücke
+                    Item { width: 8; height: 1 }
 
                     CommunitySlot { boardIndex: 3 }
 
-                    Item { width: 8; height: 1 }   // Turn–River-Trennlücke
+                    Item { width: 8; height: 1 }
 
                     CommunitySlot { boardIndex: 4 }
                 }
+            }
 
-                // Pott-Anzeige mit Dealer-Puck
-                Row {
-                    spacing: 8
-                    anchors.horizontalCenter: parent.horizontalCenter
+            // ── Gegner-Boxen: auf symmetrische Slots verteilt ────────────────────
+            // Sitz 0 (Mensch) sitzt unten in der Mitte; die übrigen besetzten Sitze
+            // werden gemäß slotSeq links/rechts ausgewogen verteilt.
+            Repeater {
+                model: 10
+                delegate: Item {
+                    id: seatSlot
+                    required property int index
+                    z: 1
 
-                    VectorImage {
-                        source: "../resources/tableDealerPuck.svg"
-                        width: 26
-                        height: 26
-                        fillMode: VectorImage.PreserveAspectFit
-                        anchors.verticalCenter: parent.verticalCenter
+                    readonly property var pdata: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > index)
+                        ? GameTable.players[index] : null
+                    readonly property bool occupied: pdata !== null && pdata.name !== ""
+
+                    // Position dieses Sitzes unter den Gegnern (1-basiert; Sitz 0 = Mensch)
+                    readonly property int oppOrder: {
+                        if (typeof GameTable === "undefined" || !GameTable) return 0
+                        var c = 0
+                        for (var i = 1; i <= index && i < GameTable.players.length; i++)
+                            if (GameTable.players[i].name !== "") c++
+                        return c
                     }
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
-                        color: "#FFFF00"
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 13
-                        font.bold: true
+                    readonly property int oppCount: tableZone.seatCount - 1
+                    readonly property var seq: tableZone.slotSeq[oppCount] || []
+                    readonly property string slotName:
+                        (occupied && oppOrder >= 1 && oppOrder <= seq.length) ? seq[oppOrder - 1] : ""
+                    readonly property var slot:
+                        slotName !== "" ? tableZone.slotPos[slotName] : [0.5, 0.5]
+
+                    visible: occupied && index !== 0 && slotName !== ""
+
+                    width: 104
+                    height: 72
+                    x: tableZone.width * slot[0] - width / 2
+                    y: tableZone.height * slot[1] - height / 2
+
+                    GamePlayerBox {
+                        anchors.fill: parent
+                        seatIndex: seatSlot.index
+                        // Einsatz/Button zur Tischmitte zeigen lassen
+                        betSide: seatSlot.slot[0] < 0.45 ? "right"
+                               : seatSlot.slot[0] > 0.55 ? "left"
+                               : "bottom"
                     }
                 }
             }
 
-            // Untere Reihe: P2 (links, Sitz 1) + eigener Sitz (Mitte, Sitz 0) + P10 (rechts, Sitz 9)
-            RowLayout {
+            // ── Eigene Box (Sitz 0): unten in der Mitte verankert ────────────────
+            GamePlayerSelfBox {
+                id: selfBox
+                z: 1
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 28
-                anchors.left: parent.left
-                anchors.leftMargin: 4
-                anchors.right: parent.right
-                anchors.rightMargin: 4
-                height: 88
-                spacing: 4
-
-                GamePlayerBox {
-                    width: 112
-                    height: parent.height
-                    up: false
-                    seatIndex: 1
-                }
-
-                GamePlayerSelfBox {
-                    Layout.fillWidth: true
-                    height: parent.height
-                }
-
-                GamePlayerBox {
-                    width: 112
-                    height: parent.height
-                    up: false
-                    seatIndex: 9
-                }
+                anchors.bottomMargin: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(168, tableZone.width / 2.6)
+                height: 92
             }
         }
 

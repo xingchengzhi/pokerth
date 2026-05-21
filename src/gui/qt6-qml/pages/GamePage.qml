@@ -509,7 +509,7 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -tableZone.height * 0.05
+                anchors.verticalCenterOffset: -tableZone.height * 0.047
                 spacing: 6
                 z: 0
 

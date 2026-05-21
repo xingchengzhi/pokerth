@@ -69,9 +69,9 @@ Item {
         Row {
             id: topRow
             width: parent.width - 6
-            height: parent.height - 18
+            height: parent.height - 26
             x: 4
-            y: 3
+            y: 4
             spacing: 2
 
             Rectangle {
@@ -83,8 +83,8 @@ Item {
                     anchors.fill: parent
                     border.width: 1
                     border.color: Config.StaticData.palette.secondary.col200
-                    color: Config.StaticData.palette.secondary.col600
-                    opacity: 0.5
+                    color: Config.StaticData.palette.secondary.col700
+                    opacity: 0.9
                 }
 
                 Image {
@@ -128,9 +128,9 @@ Item {
         // Name + Stack
         Row {
             width: parent.width - 8
-            height: 15
+            height: 13
             x: 4
-            y: parent.height - 16
+            y: parent.height - 18
 
             Text {
                 width: parent.width / 2

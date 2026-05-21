@@ -61,11 +61,11 @@ Rectangle {
         anchors.leftMargin: 5
         anchors.right: parent.right
         anchors.rightMargin: 5
-        height: parent.height - 30
+        height: parent.height - 36
 
-        readonly property int avatarSize: Math.min(root.maxAvatarSize, height - 2)
         readonly property int cardW: 42
         readonly property int cardH: Math.min(60, height - 2)
+        readonly property int avatarSize: cardH
         readonly property int spacing: 4
         readonly property int gap: 6
         readonly property int cardsW: cardW * 2 + spacing
@@ -83,8 +83,8 @@ Rectangle {
                 anchors.fill: parent
                 border.width: 1
                 border.color: Config.StaticData.palette.secondary.col200
-                color: Config.StaticData.palette.secondary.col600
-                opacity: 0.5
+                color: Config.StaticData.palette.secondary.col700
+                opacity: 0.9
                 radius: 2
             }
 

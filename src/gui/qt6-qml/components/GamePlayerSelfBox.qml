@@ -21,6 +21,8 @@ Rectangle {
     readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === 0
     readonly property int button: selfData && selfData.button !== undefined ? selfData.button : 0
     readonly property int bet: selfData && selfData.bet !== undefined ? selfData.bet : 0
+    // Ich habe gefoldet → eigene Karten durchscheinend (wie im Qt-Widgets-Client)
+    readonly property bool folded: selfData && selfData.folded !== undefined ? selfData.folded : false
 
     color: "transparent"
 
@@ -103,6 +105,8 @@ Rectangle {
             width: cardsArea.cardW
             height: cardsArea.cardH
             color: "transparent"
+            opacity: root.folded ? 0.3 : 1.0
+            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
             CardImage { anchors.fill: parent; cardIndex: root.card0 }
         }
 
@@ -112,6 +116,8 @@ Rectangle {
             width: cardsArea.cardW
             height: cardsArea.cardH
             color: "transparent"
+            opacity: root.folded ? 0.3 : 1.0
+            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
             CardImage { anchors.fill: parent; cardIndex: root.card1 }
         }
     }

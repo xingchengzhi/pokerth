@@ -10,6 +10,7 @@
 #include <playerinterface.h>
 #include <boardinterface.h>
 #include <berointerface.h>
+#include <cardsvalue.h>
 #include <game_defs.h>
 #include <gamedata.h>
 #include <configfile.h>
@@ -85,6 +86,8 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     m_winnerSeatId = -1;
+    m_winningHandText.clear();
+    m_showdownActive = false;
     for (int i = 0; i < 10; ++i) {
         m_lastSeenAction[i] = 0;
         m_actionToken[i] = -1;
@@ -102,6 +105,8 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     emit maxRaiseAmountChanged();
     emit boardCardCountChanged();
     emit boardCardsChanged();
+    emit winnerSeatIdChanged();
+    emit winningHandTextChanged();
 }
 
 // ─── private helpers ────────────────────────────────────────────────────────
@@ -169,12 +174,14 @@ void GameHandler::refreshPlayerData()
                 int cards[2] = {-1, -1};
                 (*it)->getMyCards(cards);
                 const bool cardsKnown = cards[0] >= 0 && cards[1] >= 0;
-                // Gegnerkarten nur im Showdown-Kontext anzeigen. So verhindern wir,
-                // dass aufgedeckte Karten aus der vorherigen Hand kurz in der neuen
-                // Hand sichtbar bleiben.
-                const bool showdownReveal = m_boardCardCount >= 5
-                                            && ((*it)->getMyCardsFlip()
-                                                || (*it)->checkIfINeedToShowCards());
+                // Gegnerkarten nur im echten Showdown anzeigen – und nur für die
+                // Spieler, die laut Engine aufdecken müssen (wie im Widgets-Client:
+                // nicht gefoldet UND checkIfINeedToShowCards()). Das Showdown-Flag
+                // verhindert, dass die noch veraltete playerNeedToShowCards-Liste
+                // während der River-Setzrunde der nächsten Hand fälschlich aufdeckt.
+                const bool showdownReveal = m_showdownActive
+                                            && (*it)->getMyAction() != PLAYER_ACTION_FOLD
+                                            && (*it)->checkIfINeedToShowCards();
                 const bool faceUp = cardsKnown && (id == 0 || showdownReveal);
 
                 // Aktion nur in ihrer eigenen Runde anzeigen
@@ -194,6 +201,9 @@ void GameHandler::refreshPlayerData()
                 p["seatId"] = id;
                 p["button"] = (*it)->getMyButton();
                 p["action"] = displayAction;
+                // Gefoldete Spieler bleiben die ganze Hand über gefoldet → Karten
+                // durchscheinend darstellen (wie im Qt-Widgets-Client).
+                p["folded"] = ((*it)->getMyAction() == PLAYER_ACTION_FOLD);
                 p["card0"]  = faceUp ? cards[0] : -1;
                 p["card1"]  = faceUp ? cards[1] : -1;
                 if (id == 0) {
@@ -510,6 +520,12 @@ void GameHandler::onNextRoundCleanGui()
         m_winnerSeatId = -1;
         emit winnerSeatIdChanged();
     }
+    if (!m_winningHandText.isEmpty()) {
+        m_winningHandText.clear();
+        emit winningHandTextChanged();
+    }
+    // Showdown beenden, bevor die Spielerdaten neu gebaut werden → Karten zu.
+    m_showdownActive = false;
     refreshPlayerData();
 }
 
@@ -794,17 +810,18 @@ void GameHandler::onPostRiverRunBeRo()
 void GameHandler::onShowdown()
 {
     if (localGameCallbacksBlocked()) return;
-
-    // Reveal showdown cards (getMyCardsFlip() is set after determinePlayerNeedToShowCards)
-    refreshPlayerData();
-
-    // Find the winner seat ID from the board (pot is already distributed)
     if (!m_game) return;
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
     auto board = hand->getBoard();
     if (!board) return;
 
+    // Showdown ist jetzt aktiv → Gegnerkarten dürfen aufgedeckt werden
+    // (determinePlayerNeedToShowCards() wurde in postRiverRun() bereits aufgerufen).
+    m_showdownActive = true;
+    refreshPlayerData();
+
+    // Find the winner seat ID from the board (pot is already distributed)
     std::list<unsigned> winners = board->getWinners();
     int newWinner = -1;
 
@@ -821,5 +838,27 @@ void GameHandler::onShowdown()
     if (newWinner != m_winnerSeatId) {
         m_winnerSeatId = newWinner;
         emit winnerSeatIdChanged();
+    }
+
+    // Name der Gewinner-Hand ermitteln (wie label_WinningCombination im Widgets-
+    // Client). Nur sinnvoll, wenn es einen echten Showdown gibt (mehr als ein
+    // nicht gefoldeter Spieler) – andernfalls bleibt der Text leer.
+    QString newHandText;
+    auto activeList = hand->getActivePlayerList();
+    auto bero = hand->getCurrentBeRo();
+    if (activeList && bero) {
+        int nonFold = 0;
+        for (auto it = activeList->begin(); it != activeList->end(); ++it)
+            if ((*it)->getMyAction() != PLAYER_ACTION_FOLD) ++nonFold;
+
+        if (nonFold > 1) {
+            std::string name = CardsValue::determineHandName(bero->getHighestCardsValue(), activeList);
+            newHandText = QString::fromStdString(name);
+        }
+    }
+
+    if (newHandText != m_winningHandText) {
+        m_winningHandText = newHandText;
+        emit winningHandTextChanged();
     }
 }

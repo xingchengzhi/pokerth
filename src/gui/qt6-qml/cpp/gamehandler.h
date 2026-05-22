@@ -33,6 +33,7 @@ class GameHandler : public QObject
     Q_PROPERTY(int boardCardCount READ boardCardCount NOTIFY boardCardCountChanged)
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
     Q_PROPERTY(int winnerSeatId READ winnerSeatId NOTIFY winnerSeatIdChanged)
+    Q_PROPERTY(QString winningHandText READ winningHandText NOTIFY winningHandTextChanged)
 
 public:
     explicit GameHandler(QObject *parent = nullptr);
@@ -60,6 +61,7 @@ public:
     int boardCardCount() const { return m_boardCardCount; }
     QVariantList boardCards() const { return m_boardCards; }
     int winnerSeatId() const { return m_winnerSeatId; }
+    QString winningHandText() const { return m_winningHandText; }
 
     // Called from QmlGuiInterface callbacks (must be Q_INVOKABLE for invokeMethod)
     Q_INVOKABLE void onRefreshSet();
@@ -105,6 +107,7 @@ signals:
     void boardCardCountChanged();
     void boardCardsChanged();
     void winnerSeatIdChanged();
+    void winningHandTextChanged();
 
 private:
     bool localGameCallbacksBlocked() const;
@@ -135,6 +138,11 @@ private:
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
     int m_winnerSeatId = -1;
+    QString m_winningHandText;  // Name der Gewinner-Hand (nur während des Showdowns)
+    // Showdown aktiv: erst dann dürfen Gegnerkarten aufgedeckt werden. Verhindert,
+    // dass die (noch veraltete) playerNeedToShowCards-Liste während der River-
+    // Setzrunde der nächsten Hand fälschlich Karten aufdeckt.
+    bool m_showdownActive = false;
     // Aktions-Anzeige: pro Sitz die zuletzt gesehene Aktion + das Runden-Token,
     // in dem sie gesetzt wurde. So wird die Aktion nur in ihrer eigenen Runde
     // angezeigt und zu Rundenbeginn überall automatisch entfernt.

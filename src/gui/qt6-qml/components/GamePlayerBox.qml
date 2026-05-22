@@ -28,6 +28,8 @@ Item {
     readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === root.seatIndex
     readonly property int button: seatData && seatData.button !== undefined ? seatData.button : 0
     readonly property int bet: seatData && seatData.bet !== undefined ? seatData.bet : 0
+    // Spieler hat gefoldet → Karten durchscheinend (wie im Qt-Widgets-Client)
+    readonly property bool folded: seatData && seatData.folded !== undefined ? seatData.folded : false
 
     // Letzte Aktion dieses Spielers (0=keine,1=Fold,2=Check,3=Call,4=Bet,5=Raise,6=All-In)
     readonly property int action: seatData && seatData.action !== undefined ? seatData.action : 0
@@ -114,6 +116,10 @@ Item {
                 id: cardsLane
                 width: parent.width - avatarBox.width - 2
                 height: parent.height
+
+                // Karten gefoldeter Spieler durchscheinend einblenden
+                opacity: root.folded ? 0.3 : 1.0
+                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
 
                 readonly property int cardSpacing: 3
                 readonly property int cardH: height

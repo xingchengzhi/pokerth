@@ -448,7 +448,8 @@ void QmlGuiInterface::postRiverRunAnimation1()
     QMetaObject::invokeMethod(gh, "onShowdown", Qt::QueuedConnection);
 
     // Start the next hand after a pause so the user can see the result
-    QTimer::singleShot(3000, gh, [gh, session]() {
+    // (Gewinner + aufgedeckte Karten + Gewinner-Hand etwas länger zeigen).
+    QTimer::singleShot(5500, gh, [gh, session]() {
         QMetaObject::invokeMethod(gh, "onNextRoundCleanGui", Qt::DirectConnection);
         if (session) {
             auto game = session->getCurrentGame();

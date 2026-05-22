@@ -585,6 +585,31 @@ Rectangle {
 
                     CommunitySlot { boardIndex: 4 }
                 }
+
+                // Gewinner-Hand (z.B. "Full House") – nur während des Showdowns,
+                // unterhalb der Gemeinschaftskarten (wie im Qt-Widgets-Client).
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: (typeof GameTable !== "undefined" && GameTable)
+                             ? GameTable.winningHandText !== "" : false
+                    width: winHandLabel.implicitWidth + 22
+                    height: 22
+                    radius: 11
+                    color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
+                    border.color: "#FFD700"
+                    border.width: 1
+
+                    Text {
+                        id: winHandLabel
+                        anchors.centerIn: parent
+                        text: (typeof GameTable !== "undefined" && GameTable)
+                              ? GameTable.winningHandText : ""
+                        color: "#FFD700"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                }
             }
 
             // ── Gegner-Boxen: auf symmetrische Slots verteilt ────────────────────

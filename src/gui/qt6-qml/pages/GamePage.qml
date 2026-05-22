@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.VectorImage
 import QtQuick.Effects
 
 import "../components"
@@ -14,21 +13,6 @@ Rectangle {
     height: parent ? parent.height : 0
     color: "transparent"
 
-    property real hScaleFactor: 1
-    property real vScaleFactor: 1
-    property int initialWidth: 854
-    property int initialHeight: 480
-    property int currentWidth: mainWindow.width
-    property int currentHeight: mainWindow.height
-
-    onCurrentWidthChanged: {
-        hScaleFactor = currentWidth / initialWidth;
-    }
-
-    onCurrentHeightChanged: {
-        vScaleFactor = currentHeight / initialHeight;
-    }
-
     Image {
         id: gameBackground
         source: "../resources/gameBackground.svg"
@@ -37,373 +21,15 @@ Rectangle {
         height: parent.height
     }
 
-    Image {
-        id: gameTable
-        visible: !Config.Responsive.compact
-        anchors.centerIn: parent
-        source: parent.width > 1920 ? "../resources/gameTableUHD.png" : "../resources/gameTableHD.png"
-        fillMode: Image.PreserveAspectFit
-        width: parent.width / 3 * 2
-    }
 
-    RowLayout {
-        visible: !Config.Responsive.compact
-        width: gamePage.width / 12 * 8
-        x: gamePage.width / 12 * 2
-        y: gamePage.height / 12
-
-        GamePlayerBox {
-            id: player5
-            Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: true
-        }
-
-        GamePlayerBox {
-            id: player6
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: true
-            betSide: "bottom"
-        }
-
-        GamePlayerBox {
-            id: player7
-            Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: true
-        }
-    }
-
-    RowLayout {
-        visible: !Config.Responsive.compact
-        width: parent.width / 24 * 20
-        x: parent.width / 24 * 2
-        y: parent.height / 24 * 6
-
-        GamePlayerBox {
-            id: player4
-            Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: true
-            betSide: "bottom"
-        }
-
-        GamePlayerBox {
-            id: player8
-            Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: true
-        }
-    }
-
-    RowLayout {
-        visible: !Config.Responsive.compact
-        width: parent.width / 24 * 20
-        x: parent.width / 24 * 2
-        y: parent.height / 24 * 17 - 48
-
-        GamePlayerBox {
-            id: player3
-            Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: false
-        }
-
-        GamePlayerBox {
-            id: player9
-            Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: false
-        }
-    }
-
-    RowLayout {
-        visible: !Config.Responsive.compact
-        width: parent.width / 12 * 7
-        x: parent.width / 24 * 5
-        y: parent.height / 24 * 21 - 64
-
-        GamePlayerBox {
-            id: player10
-            Layout.alignment: Qt.AlignLeft
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: false
-        }
-
-        GamePlayerSelfBox {
-            id: player1
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 176 * gamePage.hScaleFactor
-            Layout.preferredHeight: 104 * gamePage.vScaleFactor
-            up: false
-        }
-
-        GamePlayerBox {
-            id: player2
-            Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: 132 * gamePage.hScaleFactor
-            Layout.preferredHeight: 70 * gamePage.vScaleFactor
-            up: false
-        }
-    }
-
-    RowLayout {
-        id: gameDataBox
-        visible: !Config.Responsive.compact
-        width: gamePage.width / 12 * 4
-        x: gamePage.width / 24 * 8
-        y: gamePage.height / 12 * 4 + 8
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignCenter
-            Layout.margins: 0
-            spacing: 0
-            Text {
-                id: gamePot
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 12 * gamePage.vScaleFactor
-                text: qsTr("Pot")
-            }
-
-            Text {
-                id: gamePotTotal
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 10 * gamePage.vScaleFactor
-                text: qsTr("Total: $0")
-            }
-
-            Text {
-                id: gamePotBets
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 10 * gamePage.vScaleFactor
-                text: qsTr("Bets: $90")
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.horizontalStretchFactor: 2
-            color: "transparent"
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignCenter
-            spacing: 0
-            Text {
-                id: gamePreflop
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 12 * gamePage.vScaleFactor
-                text: qsTr("Preflop")
-            }
-
-            Text {
-                id: gamePreflopGame
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 10 * gamePage.vScaleFactor
-                text: qsTr("Game: 1")
-            }
-
-            Text {
-                id: gamePreflopHand
-                Layout.preferredWidth: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                color: Config.StaticData.palette.secondary.col200
-                font.bold: true
-                font.pointSize: 10 * gamePage.vScaleFactor
-                text: qsTr("Hand: 1")
-            }
-        }
-    }
-
-    RowLayout {
-        id: cardHolderBox
-        visible: !Config.Responsive.compact
-        width: gamePage.width / 12 * 4
-        x: gamePage.width / 24 * 8
-        anchors.top: gameDataBox.bottom
-
-        Rectangle {
-            Layout.topMargin: 6 * gamePage.hScaleFactor
-            Layout.preferredWidth: 52 * gamePage.hScaleFactor
-            Layout.preferredHeight: 72 * gamePage.hScaleFactor
-            color: "transparent"
-            border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
-            radius: 8
-
-            Rectangle {
-                anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
-                opacity: 0.4
-            }
-
-            CardImage {
-                id: tableCard1
-                x: -2 * gamePage.hScaleFactor
-                y: 0
-                width: (52 + 4) * gamePage.hScaleFactor
-                height: (72) * gamePage.hScaleFactor
-                cardIndex: {
-                    var c = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                    return (c && c.length > 0) ? c[0] : -1
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.topMargin: 6 * gamePage.hScaleFactor
-            Layout.preferredWidth: 52 * gamePage.hScaleFactor
-            Layout.preferredHeight: 72 * gamePage.hScaleFactor
-            Layout.fillHeight: true
-            color: "transparent"
-            border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
-            radius: 8
-
-            Rectangle {
-                anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
-                opacity: 0.4
-            }
-
-            CardImage {
-                id: tableCard2
-                x: -2 * gamePage.hScaleFactor
-                y: 0
-                width: (52 + 4) * gamePage.hScaleFactor
-                height: 72 * gamePage.hScaleFactor
-                cardIndex: {
-                    var c = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                    return (c && c.length > 1) ? c[1] : -1
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.topMargin: 6 * gamePage.hScaleFactor
-            Layout.preferredWidth: 52 * gamePage.hScaleFactor
-            Layout.preferredHeight: 72 * gamePage.hScaleFactor
-            Layout.fillHeight: true
-            color: "transparent"
-            border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
-            radius: 8
-
-            Rectangle {
-                anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
-                opacity: 0.4
-            }
-
-            CardImage {
-                id: tableCard3
-                x: -2 * gamePage.hScaleFactor
-                y: 0
-                width: (52 + 4) * gamePage.hScaleFactor
-                height: 72 * gamePage.hScaleFactor
-                cardIndex: {
-                    var c = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                    return (c && c.length > 2) ? c[2] : -1
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.topMargin: 6 * gamePage.hScaleFactor
-            Layout.preferredWidth: 52 * gamePage.hScaleFactor
-            Layout.preferredHeight: 72 * gamePage.hScaleFactor
-            Layout.fillHeight: true
-            color: "transparent"
-            border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
-            radius: 8
-
-            Rectangle {
-                anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
-                opacity: 0.4
-            }
-
-            CardImage {
-                id: tableCard4
-                visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCardCount >= 4 : false
-                x: -2 * gamePage.hScaleFactor
-                y: 0
-                width: (52 + 4) * gamePage.hScaleFactor
-                height: 72 * gamePage.hScaleFactor
-                cardIndex: {
-                    var c = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                    return (c && c.length > 3) ? c[3] : -1
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.topMargin: 6 * gamePage.hScaleFactor
-            Layout.preferredWidth: 52 * gamePage.hScaleFactor
-            Layout.preferredHeight: 72 * gamePage.hScaleFactor
-            Layout.fillHeight: true
-            color: "transparent"
-            border.width: 2
-            border.color: Config.StaticData.palette.secondary.col200
-            radius: 8
-
-            Rectangle {
-                anchors.fill: parent
-                color: Config.StaticData.palette.secondary.col300
-                opacity: 0.4
-            }
-
-            CardImage {
-                id: tableCard5
-                visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCardCount >= 5 : false
-                x: -2 * gamePage.hScaleFactor
-                y: 0
-                width: (52 + 4) * gamePage.hScaleFactor
-                height: 72 * gamePage.hScaleFactor
-                cardIndex: {
-                    var c = (typeof GameTable !== "undefined" && GameTable) ? GameTable.boardCards : null
-                    return (c && c.length > 4) ? c[4] : -1
-                }
-            }
-        }
-    }
-
-    // ── Portrait / compact layout ────────────────────────────────────────────
-    // Optimiert für Hochformat (Smartphones). Aufbau:
-    //   Status-Leiste (mit Tür-Icon) → Großer Tisch (alle Spieler überlagert) → Action-Leiste
+    // ── Tisch-Layout (Hoch- & Querformat) ─────────────────────────────────────
+    // Einheitlicher Aufbau für alle Fenstergrößen:
+    //   Status-Leiste → großer Tisch (alle Spieler überlagert) → Action-Leiste.
+    // Die Spieler-Slots ordnen sich je nach Tisch-Seitenverhältnis (hoch/breit)
+    // automatisch um – kein separates Desktop-Layout mehr.
     ColumnLayout {
         id: portraitLayout
         anchors.fill: parent
-        visible: Config.Responsive.compact
         spacing: 0
 
         // 1. Status-Leiste: Spielphase | Pott | Hand-Nummer
@@ -476,9 +102,13 @@ Rectangle {
                 return Math.max(c, 1)
             }
 
+            // Breiter Tisch (Querformat) vs. hoher Tisch (Hochformat) – die
+            // Spieler-Slots ordnen sich je nach Seitenverhältnis automatisch um.
+            readonly property bool wide: width >= height
+
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
-            // 3 oben, je 2-3 an den Seiten – passt auch auf schmale Hochformate.
-            readonly property var slotPos: ({
+            // Hochformat: 3 oben, Rest an den Seiten nach unten.
+            readonly property var slotPosPortrait: ({
                 "L_bottom": [0.18, 0.72],
                 "L_lower":  [0.18, 0.59],
                 "L_upper":  [0.18, 0.32],
@@ -489,10 +119,24 @@ Rectangle {
                 "R_lower":  [0.82, 0.59],
                 "R_bottom": [0.82, 0.72]
             })
+            // Querformat: breiter Oval-Tisch – Gegner bogenförmig oben + an den
+            // Seiten verteilt, eigene Box unten in der Mitte.
+            readonly property var slotPosLandscape: ({
+                "BL":  [0.16, 0.70],
+                "L":   [0.10, 0.44],
+                "TLo": [0.19, 0.19],
+                "TL":  [0.35, 0.15],
+                "TC":  [0.50, 0.13],
+                "TR":  [0.65, 0.15],
+                "TRo": [0.81, 0.19],
+                "R":   [0.90, 0.44],
+                "BR":  [0.84, 0.70]
+            })
+            readonly property var slotPos: wide ? slotPosLandscape : slotPosPortrait
 
             // Slot-Reihenfolge je nach Gegnerzahl M – symmetrisch links/rechts verteilt,
             // damit unabhängig von der Spielerzahl Kreis-Symmetrie entsteht.
-            readonly property var slotSeq: ({
+            readonly property var slotSeqPortrait: ({
                 1: ["TC"],
                 2: ["TL", "TR"],
                 3: ["TL", "TC", "TR"],
@@ -503,6 +147,18 @@ Rectangle {
                 8: ["L_bottom", "L_lower", "L_upper", "TL", "TR", "R_upper", "R_lower", "R_bottom"],
                 9: ["L_bottom", "L_lower", "L_upper", "TL", "TC", "TR", "R_upper", "R_lower", "R_bottom"]
             })
+            readonly property var slotSeqLandscape: ({
+                1: ["TC"],
+                2: ["TL", "TR"],
+                3: ["TL", "TC", "TR"],
+                4: ["TLo", "TL", "TR", "TRo"],
+                5: ["TLo", "TL", "TC", "TR", "TRo"],
+                6: ["L", "TLo", "TL", "TR", "TRo", "R"],
+                7: ["L", "TLo", "TL", "TC", "TR", "TRo", "R"],
+                8: ["BL", "L", "TLo", "TL", "TR", "TRo", "R", "BR"],
+                9: ["BL", "L", "TLo", "TL", "TC", "TR", "TRo", "R", "BR"]
+            })
+            readonly property var slotSeq: wide ? slotSeqLandscape : slotSeqPortrait
 
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Column {

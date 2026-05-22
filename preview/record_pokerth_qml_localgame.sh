@@ -18,7 +18,21 @@ DESKTOP_H=900
 DISPLAY_RES="${DESKTOP_W}x${DESKTOP_H}"
 PORTRAIT_W=390
 PORTRAIT_H=844
-MODE_TOGGLE_INTERVAL=20
+MODE_TOGGLE_INTERVAL=15
+ACTION_GUARD_SEC=10
+ACTION_BLOCK_FILE="${SCRIPT_DIR}/.preview_action_block"
+VIEW_MODE_STATE_FILE="${SCRIPT_DIR}/.preview_view_mode"
+VIEW_MODE_CYCLE_STOP_FILE="${SCRIPT_DIR}/.preview_view_mode_stop"
+
+# Kalibrierte Action-Koordinaten fuer 1440x900 Fullscreen.
+# Diese Punkte sind absichtlich separat gepflegt, da reine Portrait-Skalierung
+# im Fullscreen-Layout zu schleichenden Offsets fuehren kann.
+FS_CALL_X=721
+FS_ACTION_Y=861
+FS_RAISE_X=1189
+FS_RAISE_ACTIVE_Y=864
+FS_HALF_POT_X=558
+FS_HALF_POT_Y=817
 BINARY="/opt/pokerth_env/repos/pokerth-test/build/bin/pokerth_qml-client"
 OUTPUT_DIR="${SCRIPT_DIR}/screenshots_localgame"
 VIDEO_FILE="${SCRIPT_DIR}/pokerth_qml_localgame_demo.mp4"
@@ -28,9 +42,7 @@ AUDIO_ENABLED=0
 AUDIO_SOURCE=""
 AUDIO_RUNTIME_DIR=""
 AUDIO_SYNC_DELAY_MS=1200
-GAME_MODE_TOGGLE_ACTIVE=0
 CURRENT_VIEW_MODE="portrait"
-NEXT_MODE_SWITCH_AT=0
 WX=0
 WY=0
 WW=0
@@ -69,33 +81,42 @@ click_at() {
     DISPLAY=":${DISPLAY_NUM}" xdotool click --clearmodifiers 1
 }
 
+fast_click_at() {
+    local x="$1" y="$2" desc="${3:-}"
+    echo "      Klick (${x}, ${y}) ${desc}"
+    DISPLAY=":${DISPLAY_NUM}" xdotool mousemove --sync "$x" "$y"
+    DISPLAY=":${DISPLAY_NUM}" xdotool click --clearmodifiers 1
+}
+
 wait_preview() {
     local seconds="$1"
-    local remaining=$seconds
-
     echo "      Warte ${seconds}s ..."
-    while [ "$remaining" -gt 0 ]; do
-        if [ "$GAME_MODE_TOGGLE_ACTIVE" -eq 1 ] && [ "$SECONDS" -ge "$NEXT_MODE_SWITCH_AT" ]; then
-            toggle_view_mode
-            NEXT_MODE_SWITCH_AT=$((SECONDS + MODE_TOGGLE_INTERVAL))
-            continue
-        fi
+    sleep "$seconds"
+}
 
-        local chunk=$remaining
-        if [ "$GAME_MODE_TOGGLE_ACTIVE" -eq 1 ]; then
-            local until_switch=$((NEXT_MODE_SWITCH_AT - SECONDS))
-            if [ "$until_switch" -lt "$chunk" ]; then
-                chunk=$until_switch
-            fi
-        fi
+quick_call_action() {
+    local label="$1"
+    touch "$ACTION_BLOCK_FILE"
+    update_click_coords
+    fast_click_at "$CALL_X" "$ACTION_Y" "(${label})"
+    rm -f "$ACTION_BLOCK_FILE"
+}
 
-        if [ "$chunk" -le 0 ]; then
-            chunk=1
-        fi
+quick_halfpot_raise_action() {
+    local label="$1"
+    touch "$ACTION_BLOCK_FILE"
+    update_click_coords
+    fast_click_at "$HALF_POT_X" "$HALF_POT_Y" "(${label} 1/2-Pot)"
+    sleep 0.04
+    update_click_coords
+    fast_click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(${label} Raise)"
+    rm -f "$ACTION_BLOCK_FILE"
+}
 
-        sleep "$chunk"
-        remaining=$((remaining - chunk))
-    done
+sync_view_mode_state() {
+    if [ -f "$VIEW_MODE_STATE_FILE" ]; then
+        CURRENT_VIEW_MODE=$(cat "$VIEW_MODE_STATE_FILE" 2>/dev/null || echo portrait)
+    fi
 }
 
 refresh_window_geometry() {
@@ -110,24 +131,35 @@ refresh_window_geometry() {
 
 update_click_coords() {
     refresh_window_geometry
+    sync_view_mode_state
 
+    # Start-/Navigationskoordinaten bleiben auf Portrait-Layout kalibriert.
     LOKALGAME_X=$(( WX + (WW * 195 / 390) ))
     LOKALGAME_Y=$(( WY + (WH * 405 / 844) ))
-
     SPIELSTART_X=$(( WX + (WW * 288 / 390) ))
     SPIELSTART_Y=$(( WY + (WH * 671 / 844) ))
-
     DOOR_X=$(( WX + (WW * 19 / 390) ))
     DOOR_Y=$(( WY + (WH * 19 / 844) ))
 
-    FOLD_X=$(( WX + (WW * 68 / 390) ))
-    CALL_X=$(( WX + (WW * 195 / 390) ))
-    RAISE_X=$(( WX + (WW * 322 / 390) ))
-    ACTION_Y=$(( WY + (WH * 789 / 844) ))
-
-    HALF_POT_X=$(( WX + (WW * 151 / 390) ))
-    HALF_POT_Y=$(( WY + (WH * 748 / 844) ))
-    RAISE_ACTIVE_Y=$(( WY + (WH * 792 / 844) ))
+    if [ "$CURRENT_VIEW_MODE" = "fullscreen" ] && [ "$DESKTOP_W" -eq 1440 ] && [ "$DESKTOP_H" -eq 900 ]; then
+        # Expliziter Fullscreen-Koordinatensatz fuer Action-Bar.
+        FOLD_X=$(( FS_CALL_X - 163 ))
+        CALL_X=$FS_CALL_X
+        RAISE_X=$FS_RAISE_X
+        ACTION_Y=$FS_ACTION_Y
+        HALF_POT_X=$FS_HALF_POT_X
+        HALF_POT_Y=$FS_HALF_POT_Y
+        RAISE_ACTIVE_Y=$FS_RAISE_ACTIVE_Y
+    else
+        # Portrait (und Fallback) via proportionale Skalierung.
+        FOLD_X=$(( WX + (WW * 68 / 390) ))
+        CALL_X=$(( WX + (WW * 195 / 390) ))
+        RAISE_X=$(( WX + (WW * 322 / 390) ))
+        ACTION_Y=$(( WY + (WH * 789 / 844) ))
+        HALF_POT_X=$(( WX + (WW * 151 / 390) ))
+        HALF_POT_Y=$(( WY + (WH * 748 / 844) ))
+        RAISE_ACTIVE_Y=$(( WY + (WH * 792 / 844) ))
+    fi
 }
 
 apply_portrait_mode() {
@@ -138,6 +170,7 @@ apply_portrait_mode() {
     DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" "$px" "$py"
     DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
     CURRENT_VIEW_MODE="portrait"
+    printf '%s\n' "$CURRENT_VIEW_MODE" > "$VIEW_MODE_STATE_FILE"
     update_click_coords
 }
 
@@ -146,6 +179,7 @@ apply_fullscreen_mode() {
     DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" 0 0
     DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
     CURRENT_VIEW_MODE="fullscreen"
+    printf '%s\n' "$CURRENT_VIEW_MODE" > "$VIEW_MODE_STATE_FILE"
     update_click_coords
 }
 
@@ -156,6 +190,32 @@ toggle_view_mode() {
     else
         echo "      ViewMode-Wechsel: fullscreen -> portrait"
         apply_portrait_mode
+    fi
+}
+
+guard_action_window() {
+    :
+}
+
+start_view_mode_cycle() {
+    stop_view_mode_cycle
+    rm -f "$VIEW_MODE_CYCLE_STOP_FILE"
+    (
+        while [ ! -f "$VIEW_MODE_CYCLE_STOP_FILE" ]; do
+            sleep "$MODE_TOGGLE_INTERVAL"
+            [ -f "$VIEW_MODE_CYCLE_STOP_FILE" ] && break
+            toggle_view_mode
+        done
+    ) &
+    VIEW_MODE_CYCLE_PID=$!
+}
+
+stop_view_mode_cycle() {
+    if [ -n "${VIEW_MODE_CYCLE_PID:-}" ]; then
+        touch "$VIEW_MODE_CYCLE_STOP_FILE" 2>/dev/null || true
+        kill "$VIEW_MODE_CYCLE_PID" 2>/dev/null || true
+        wait "$VIEW_MODE_CYCLE_PID" 2>/dev/null || true
+        unset VIEW_MODE_CYCLE_PID
     fi
 }
 
@@ -210,6 +270,9 @@ setup_virtual_audio() {
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
     echo "[cleanup] Beende alle Prozesse ..."
+    touch "$VIEW_MODE_CYCLE_STOP_FILE" 2>/dev/null || true
+    rm -f "$ACTION_BLOCK_FILE" 2>/dev/null || true
+    stop_view_mode_cycle
     kill "${POKERTH_PID:-}" 2>/dev/null || true
     sleep 1
     if [ -n "${FFMPEG_PID:-}" ]; then
@@ -350,7 +413,7 @@ echo "             1/2-Pot=(${HALF_POT_X},${HALF_POT_Y})  RAISE-aktiv=(${RAISE_X
 echo ""
 echo "[6/6] Demo-Flow ..."
 
-PLAYER_ACTION_DELAY=2
+PLAYER_ACTION_DELAY=0
 HAND_SWITCH_DELAY=7
 HAND3_EXIT_DELAY=4
 
@@ -379,62 +442,57 @@ echo "      ViewMode-Toggle aktiv: alle ${MODE_TOGGLE_INTERVAL}s"
 echo "      Hand 1 – Spielverlauf ..."
 
 # Runde 1 – CALL
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
-update_click_coords
-click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 1)"
+quick_call_action "CALL Runde 1"
 shot "04_hand1_runde1.png"
 
 # Runde 2 – CALL
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
-update_click_coords
-click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 2)"
+quick_call_action "CALL Runde 2"
 shot "04_hand1_runde2.png"
 
 # Runde 3 – 1/2-Pot setzen, dann RAISE
 #   Wenn Spieler gerade an der Reihe ist und Raise-Controls sichtbar:
 #     1/2-Klick → setzt raiseAmount auf halben Pot → RAISE klicken
 #   Sonst: Klicks landen auf Spieltisch (kein Effekt)
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
 echo "      Runde 3: 1/2-Pot + RAISE versuchen ..."
-update_click_coords
-click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button)"
-sleep 0.5
-update_click_coords
-click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE)"
+quick_halfpot_raise_action "Runde 3"
 shot "04_hand1_runde3.png"
 
 # Runde 4 – CALL
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
-update_click_coords
-click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 4)"
+quick_call_action "CALL Runde 4"
 shot "04_hand1_runde4.png"
 
 # 5. Hand 2 – kompakt durchspielen und dann in Hand 3 überleiten
 echo "      Hand 2 – Spielverlauf ..."
 
+start_view_mode_cycle
 wait_preview "$HAND_SWITCH_DELAY"
 shot "05_hand2_preflop.png"
 
 # Runde 1 – CALL
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
-update_click_coords
-click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 1)"
+quick_call_action "CALL Hand 2 Runde 1"
 shot "05_hand2_runde1.png"
 
 # Runde 2 – CALL
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
-update_click_coords
-click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 2)"
+quick_call_action "CALL Hand 2 Runde 2"
 shot "05_hand2_runde2.png"
 
 # Runde 3 – 1/2-Pot + RAISE
+start_view_mode_cycle
 wait_preview "$PLAYER_ACTION_DELAY"
 echo "      Hand 2 Runde 3: 1/2-Pot + RAISE versuchen ..."
-update_click_coords
-click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button Hand 2)"
-sleep 0.5
-update_click_coords
-click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE Hand 2)"
+quick_halfpot_raise_action "Hand 2 Runde 3"
 shot "05_hand2_runde3.png"
 
 # Hand 2 entspannt auslaufen lassen; es reicht, wenn der Ablauf sichtbar in die
@@ -448,7 +506,9 @@ shot "05_hand3_start.png"
 #    2. Escape → mainStackView.pop() → LocalGamePage verlassen → StartPage
 echo "      Zurück zur Startseite ..."
 wait_preview "$HAND3_EXIT_DELAY"
-GAME_MODE_TOGGLE_ACTIVE=0
+
+stop_view_mode_cycle
+
 
 if [ "$CURRENT_VIEW_MODE" != "portrait" ]; then
     echo "      Wechsel zurück in Portrait vor dem Exit ..."

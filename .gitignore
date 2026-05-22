@@ -61,3 +61,6 @@ docker/windows/*.exe
 docker/windows/pokerth.ico
 docker/linux/pokerth-linux-binary/  
 preview/pulse-runtime.Njmy3E/pulse/pid
+preview/pulse-runtime.KXoFsO/pulse/pid
+preview/.preview_view_mode
+preview/.preview_view_mode_stop

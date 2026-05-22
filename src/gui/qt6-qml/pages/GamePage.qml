@@ -644,7 +644,10 @@ Rectangle {
 
                     visible: occupied && index !== 0 && slotName !== ""
 
-                    width: 120
+                    // Inhalt füllt die Box ohne überschüssige Ränder; Karten im
+                    // Original-Seitenverhältnis (2×27+3=57)
+                    // (4 + Avatar 38 + 4 + Karten 57 + 4 = 107)
+                    width: 107
                     height: 64
                     x: tableZone.width * slot[0] - width / 2
                     y: tableZone.height * slot[1] - height / 2
@@ -668,8 +671,12 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 20
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.min(184, tableZone.width / 2.2)
-                height: 92
+                // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
+                // (6 + Avatar 54 + 6 + Karten [2×39+4=82] + 6 = 154)
+                width: 154
+                // Kompakter: keine überschüssige Höhe
+                // (4 + Avatar/Karten 54 + 4 + Text 16 + 4 = 82)
+                height: 82
                 maxAvatarSize: 54
             }
         }

@@ -56,21 +56,31 @@ Rectangle {
     }
 
     // ── Karten – zentriert über der Infozeile ────────────────────────────────
+    // Horizontale Abstände einheitlich: linker Außenrand = Abstand Avatar↔Karten
+    // = rechter Außenrand = hMargin.
+    readonly property int hMargin: 6
+    // Vertikale Abstände einheitlich: oberer Außenrand = Abstand Karten↔Text
+    // = unterer Außenrand = vMargin.
+    readonly property int vMargin: 4
+
     Item {
         id: cardsArea
         anchors.top: parent.top
-        anchors.topMargin: 4
+        anchors.topMargin: root.vMargin
+        anchors.bottom: bottomBar.top
+        anchors.bottomMargin: root.vMargin
         anchors.left: parent.left
-        anchors.leftMargin: 5
+        anchors.leftMargin: root.hMargin
         anchors.right: parent.right
-        anchors.rightMargin: 5
-        height: parent.height - 36
+        anchors.rightMargin: root.hMargin
 
-        readonly property int cardW: 42
-        readonly property int cardH: Math.min(60, height - 2)
-        readonly property int avatarSize: cardH
+        readonly property int cardH: height
+        // Original-Seitenverhältnis der Karten (SVG-viewBox 120×168, wie der
+        // Community-Cards-Bereich) → Höhe beibehalten, Breite ergibt sich daraus.
+        readonly property int cardW: Math.round(cardH * 120 / 168)
+        readonly property int avatarSize: Math.min(cardH, root.maxAvatarSize)
         readonly property int spacing: 4
-        readonly property int gap: 6
+        readonly property int gap: root.hMargin
         readonly property int cardsW: cardW * 2 + spacing
         readonly property int totalW: avatarSize + gap + cardsW
         readonly property int sx: (width - totalW) / 2
@@ -122,16 +132,16 @@ Rectangle {
         }
     }
 
-    // ── Name + Stack ─────────────────────────────────────────────────
+    // ── Name + Stack – unterer Außenrand = oberer Außenrand (cardsArea.topMargin) ──
     Row {
         id: bottomBar
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 4
+        anchors.bottomMargin: root.vMargin
         anchors.left: parent.left
-        anchors.leftMargin: 5
+        anchors.leftMargin: root.hMargin
         anchors.right: parent.right
-        anchors.rightMargin: 5
-        height: 30
+        anchors.rightMargin: root.hMargin
+        height: 16
         spacing: 5
 
         Text {

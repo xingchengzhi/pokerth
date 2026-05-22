@@ -82,14 +82,17 @@ Item {
             }
         }
 
-        // Avatar + Karten
+        // Avatar + Karten – horizontale Abstände einheitlich (linker Außenrand =
+        // Abstand Avatar↔Karten = rechter Außenrand = hMargin)
+        readonly property int hMargin: 4
+
         Row {
             id: topRow
-            width: parent.width - 6
+            width: parent.width - 2 * playerBox.hMargin
             height: parent.height - 26
-            x: 4
+            x: playerBox.hMargin
             y: 4
-            spacing: 2
+            spacing: playerBox.hMargin
 
             Rectangle {
                 id: avatarBox
@@ -114,7 +117,7 @@ Item {
 
             Item {
                 id: cardsLane
-                width: parent.width - avatarBox.width - 2
+                width: topRow.width - avatarBox.width - topRow.spacing
                 height: parent.height
 
                 // Karten gefoldeter Spieler durchscheinend einblenden
@@ -123,7 +126,9 @@ Item {
 
                 readonly property int cardSpacing: 3
                 readonly property int cardH: height
-                readonly property int cardW: Math.round(cardH * 48 / 76)
+                // Original-Seitenverhältnis der Karten (SVG-viewBox 120×168, wie der
+                // Community-Cards-Bereich) → Höhe beibehalten, Breite ergibt sich daraus.
+                readonly property int cardW: Math.round(cardH * 120 / 168)
                 readonly property int totalW: cardW * 2 + cardSpacing
                 readonly property int sx: (width - totalW) / 2
 
@@ -147,12 +152,12 @@ Item {
             }
         }
 
-        // Name + Stack
+        // Name + Stack – unterer Außenrand = oberer Außenrand (topRow.y)
         Row {
-            width: parent.width - 8
+            width: parent.width - 2 * playerBox.hMargin
             height: 13
-            x: 4
-            y: parent.height - 18
+            x: playerBox.hMargin
+            y: parent.height - height - topRow.y
 
             Text {
                 width: parent.width / 2

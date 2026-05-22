@@ -13,6 +13,8 @@
 class ConfigFile;
 class Session;
 class Game;
+class SoundEvents;
+class QTimer;
 
 class GameHandler : public QObject
 {
@@ -34,10 +36,11 @@ class GameHandler : public QObject
 
 public:
     explicit GameHandler(QObject *parent = nullptr);
+    ~GameHandler() override;
 
     void setSession(boost::shared_ptr<Session> session);
     void setGame(boost::shared_ptr<Game> game);
-    void setConfig(ConfigFile *config) { m_config = config; }
+    void setConfig(ConfigFile *config);
 
     // Called from QML to start a local game
     Q_INVOKABLE void startLocalGame();
@@ -60,12 +63,16 @@ public:
 
     // Called from QmlGuiInterface callbacks (must be Q_INVOKABLE for invokeMethod)
     Q_INVOKABLE void onRefreshSet();
+    Q_INVOKABLE void onRefreshAction(int playerId, int playerAction);
     Q_INVOKABLE void onRefreshCash();
     Q_INVOKABLE void onRefreshPlayerName();
     Q_INVOKABLE void onRefreshPot();
     Q_INVOKABLE void onRefreshGameLabels(int gameState);
     Q_INVOKABLE void onMeInAction();
     Q_INVOKABLE void onDisableMyButtons();
+    Q_INVOKABLE void onStartTimeoutAnimation(int playerNum, int timeoutSec);
+    Q_INVOKABLE void onStopTimeoutAnimation(int playerNum);
+    Q_INVOKABLE void onBlindsSet(int smallBlind);
     Q_INVOKABLE void onNextRoundCleanGui();
     Q_INVOKABLE void onDealFlopCards();
     Q_INVOKABLE void onDealTurnCard();
@@ -101,6 +108,8 @@ signals:
 
 private:
     bool localGameCallbacksBlocked() const;
+    void ensureSoundEventHandler();
+    void playYourTurnTimeoutSound();
     void refreshPlayerData();
     void refreshBoardCards();
     void refreshPotData();
@@ -110,6 +119,8 @@ private:
     boost::shared_ptr<Session> m_session;
     boost::shared_ptr<Game> m_game;
     ConfigFile *m_config = nullptr;
+    SoundEvents *m_soundEventHandler = nullptr;
+    QTimer *m_timeoutBeepTimer = nullptr;
 
     QVariantList m_players;
     int m_pot = 0;

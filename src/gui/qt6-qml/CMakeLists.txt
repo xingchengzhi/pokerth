@@ -23,7 +23,9 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     cpp/serverconnectionhandler.cpp
     cpp/lobbyhandler.cpp
     cpp/gamehandler.cpp
-    cpp/qmlguiinterface.cpp)
+    cpp/qmlguiinterface.cpp
+    ../qt/sound/soundevents.cpp
+    ../qt/sound/qtaudioplayer.cpp)
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
 qt_add_resources(POKERTH_QML_CLIENT_SRC cflags.qrc)
@@ -97,6 +99,7 @@ target_include_directories(pokerth_qml-client PUBLIC
     ../../engine/network_engine
     ../../net
     ../
+    ../qt/sound
     .
     cpp)
 
@@ -134,7 +137,7 @@ target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_db)
 
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
+target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets Qt6::Multimedia)
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 

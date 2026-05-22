@@ -1,9 +1,10 @@
 #!/bin/bash
 # PokerTH QML-Client – Lokales Spiel Preview
-# Flow: Startseite → Lokales Spiel starten → 1 Hand spielen (CALL/RAISE) → zurück zur Startseite
+# Flow: Startseite → Lokales Spiel starten → 2 Hände spielen
+#       → kurz in Hand 3 anlaufen lassen → zurück zur Startseite
 #
 # Benötigte apt-Pakete:
-#   sudo apt install xvfb openbox ffmpeg scrot xdotool
+#   sudo apt install xvfb openbox ffmpeg scrot xdotool pulseaudio pulseaudio-utils
 #
 # Alle Koordinaten kalibriert per Screenshot-Analyse auf Fenstergröße 390×844
 # (WM-Deko: top=20px → xdotool WY = Client-Content-Top)
@@ -17,6 +18,16 @@ BINARY="/opt/pokerth_env/repos/pokerth-test/build/bin/pokerth_qml-client"
 OUTPUT_DIR="${SCRIPT_DIR}/screenshots_localgame"
 VIDEO_FILE="${SCRIPT_DIR}/pokerth_qml_localgame_demo.mp4"
 export DISPLAY=":${DISPLAY_NUM}"
+
+AUDIO_ENABLED=0
+AUDIO_SOURCE=""
+AUDIO_RUNTIME_DIR=""
+AUDIO_SYNC_DELAY_MS=1200
+
+# Preview-Aufnahme soll möglichst nah an der UI-Aktion bleiben.
+# Der Pulse-Monitor der virtuellen Null-Sink hat sonst standardmäßig sehr hohe
+# Puffer/Latenz, was den Ton im Video sichtbar hinter die Aktion schiebt.
+export PULSE_LATENCY_MSEC=60
 
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*.png
@@ -46,6 +57,60 @@ click_at() {
     DISPLAY=":${DISPLAY_NUM}" xdotool click --clearmodifiers 1
 }
 
+wait_preview() {
+    local seconds="$1"
+    echo "      Warte ${seconds}s ..."
+    sleep "$seconds"
+}
+
+setup_virtual_audio() {
+    if ! command -v pulseaudio >/dev/null 2>&1; then
+        echo "      Hinweis: 'pulseaudio' fehlt – Preview wird ohne Audio aufgenommen."
+        return
+    fi
+    if ! command -v pactl >/dev/null 2>&1; then
+        echo "      Hinweis: 'pactl' fehlt – Preview wird ohne Audio aufgenommen."
+        return
+    fi
+
+    AUDIO_RUNTIME_DIR="$(mktemp -d "${SCRIPT_DIR}/pulse-runtime.XXXXXX")"
+    export XDG_RUNTIME_DIR="$AUDIO_RUNTIME_DIR"
+    export PULSE_RUNTIME_PATH="${AUDIO_RUNTIME_DIR}/pulse"
+    mkdir -p "$PULSE_RUNTIME_PATH"
+    export PULSE_SERVER="unix:${PULSE_RUNTIME_PATH}/native"
+
+    echo "      Starte virtuelle PulseAudio-Sink ..."
+    pulseaudio --daemonize=yes --exit-idle-time=-1 --disable-shm=true \
+        --log-target=file:"${SCRIPT_DIR}/pulseaudio_localgame.log" \
+        > /dev/null 2>&1 || {
+        echo "      Hinweis: PulseAudio konnte nicht gestartet werden – ohne Audio weitermachen."
+        return
+    }
+
+    for _ in $(seq 1 20); do
+        if pactl info >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.2
+    done
+
+    if ! pactl info >/dev/null 2>&1; then
+        echo "      Hinweis: PulseAudio antwortet nicht – ohne Audio weitermachen."
+        pulseaudio --kill >/dev/null 2>&1 || true
+        return
+    fi
+
+    pactl load-module module-null-sink \
+        sink_name=pokerth_preview \
+        sink_properties=device.description=PokerTHPreview \
+        > /dev/null
+    pactl set-default-sink pokerth_preview >/dev/null 2>&1 || true
+
+    AUDIO_SOURCE="pokerth_preview.monitor"
+    AUDIO_ENABLED=1
+    echo "      Audio aktiv: ${AUDIO_SOURCE}"
+}
+
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
     echo "[cleanup] Beende alle Prozesse ..."
@@ -57,6 +122,10 @@ cleanup() {
     fi
     kill "${WM_PID:-}" 2>/dev/null || true
     kill "${XVFB_PID:-}" 2>/dev/null || true
+    if [ "$AUDIO_ENABLED" -eq 1 ]; then
+        pulseaudio --kill >/dev/null 2>&1 || true
+    fi
+    rm -rf "${AUDIO_RUNTIME_DIR:-}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -72,23 +141,55 @@ DISPLAY=":${DISPLAY_NUM}" openbox &
 WM_PID=$!
 sleep 1
 
+# ── Virtuelles Audio ─────────────────────────────────────────────────────────
+echo "[3/6] Initialisiere Audio ..."
+setup_virtual_audio
+
 # ── ffmpeg-Aufnahme ───────────────────────────────────────────────────────────
-echo "[3/5] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
-ffmpeg -f x11grab \
-    -video_size "${DISPLAY_RES}" \
-    -framerate 15 \
-    -i ":${DISPLAY_NUM}" \
-    -c:v libx264 -preset fast -crf 23 \
-    -pix_fmt yuv420p \
-    -profile:v baseline -level 3.1 \
-    -movflags +faststart \
-    -y "${VIDEO_FILE}" \
-    > "${SCRIPT_DIR}/ffmpeg_localgame.log" 2>&1 &
+echo "[4/6] Starte ffmpeg-Aufnahme → ${VIDEO_FILE} ..."
+ffmpeg_args=(
+    -f x11grab
+    -video_size "${DISPLAY_RES}"
+    -framerate 15
+    -i ":${DISPLAY_NUM}"
+)
+
+if [ "$AUDIO_ENABLED" -eq 1 ]; then
+    ffmpeg_args+=(
+        -thread_queue_size 512
+        -sample_rate 44100
+        -channels 2
+        -fragment_size 8820
+        -f pulse
+        -i "$AUDIO_SOURCE"
+    )
+fi
+
+ffmpeg_args+=(
+    -c:v libx264 -preset fast -crf 23
+    -pix_fmt yuv420p
+    -profile:v baseline -level 3.1
+)
+
+if [ "$AUDIO_ENABLED" -eq 1 ]; then
+    ffmpeg_args+=(
+        -c:a aac -b:a 128k
+        -ar 44100
+        -af "adelay=${AUDIO_SYNC_DELAY_MS}|${AUDIO_SYNC_DELAY_MS}"
+    )
+fi
+
+ffmpeg_args+=(
+    -movflags +faststart
+    -y "${VIDEO_FILE}"
+)
+
+ffmpeg "${ffmpeg_args[@]}" > "${SCRIPT_DIR}/ffmpeg_localgame.log" 2>&1 &
 FFMPEG_PID=$!
 sleep 1
 
 # ── QML-Client starten ────────────────────────────────────────────────────────
-echo "[4/5] Starte QML-Client ..."
+echo "[5/6] Starte QML-Client ..."
 DISPLAY=":${DISPLAY_NUM}" "${BINARY}" > "${SCRIPT_DIR}/pokerth_localgame.log" 2>&1 &
 POKERTH_PID=$!
 
@@ -168,7 +269,11 @@ echo "             1/2-Pot=(${HALF_POT_X},${HALF_POT_Y})  RAISE-aktiv=(${RAISE_X
 
 # ── Demo-Flow ─────────────────────────────────────────────────────────────────
 echo ""
-echo "[5/5] Demo-Flow ..."
+echo "[6/6] Demo-Flow ..."
+
+PLAYER_ACTION_DELAY=2.1
+HAND_SWITCH_DELAY=7
+HAND3_EXIT_DELAY=4
 
 # 1. Startseite screenshotten
 shot "01_startseite.png"
@@ -190,12 +295,12 @@ shot "03_gamepage_preflop.png"
 echo "      Hand 1 – Spielverlauf ..."
 
 # Runde 1 – CALL
-sleep 10
+wait_preview "$PLAYER_ACTION_DELAY"
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 1)"
 shot "04_hand1_runde1.png"
 
 # Runde 2 – CALL
-sleep 10
+wait_preview "$PLAYER_ACTION_DELAY"
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 2)"
 shot "04_hand1_runde2.png"
 
@@ -203,7 +308,7 @@ shot "04_hand1_runde2.png"
 #   Wenn Spieler gerade an der Reihe ist und Raise-Controls sichtbar:
 #     1/2-Klick → setzt raiseAmount auf halben Pot → RAISE klicken
 #   Sonst: Klicks landen auf Spieltisch (kein Effekt)
-sleep 10
+wait_preview "$PLAYER_ACTION_DELAY"
 echo "      Runde 3: 1/2-Pot + RAISE versuchen ..."
 click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button)"
 sleep 0.5
@@ -211,15 +316,45 @@ click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE)"
 shot "04_hand1_runde3.png"
 
 # Runde 4 – CALL
-sleep 10
+wait_preview "$PLAYER_ACTION_DELAY"
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 4)"
 shot "04_hand1_runde4.png"
 
-# 5. Zurück zur Startseite:
+# 5. Hand 2 – kompakt durchspielen und dann in Hand 3 überleiten
+echo "      Hand 2 – Spielverlauf ..."
+
+wait_preview "$HAND_SWITCH_DELAY"
+shot "05_hand2_preflop.png"
+
+# Runde 1 – CALL
+wait_preview "$PLAYER_ACTION_DELAY"
+click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 1)"
+shot "05_hand2_runde1.png"
+
+# Runde 2 – CALL
+wait_preview "$PLAYER_ACTION_DELAY"
+click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 2)"
+shot "05_hand2_runde2.png"
+
+# Runde 3 – 1/2-Pot + RAISE
+wait_preview "$PLAYER_ACTION_DELAY"
+echo "      Hand 2 Runde 3: 1/2-Pot + RAISE versuchen ..."
+click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button Hand 2)"
+sleep 0.5
+click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE Hand 2)"
+shot "05_hand2_runde3.png"
+
+# Hand 2 entspannt auslaufen lassen; es reicht, wenn der Ablauf sichtbar in die
+# dritte Hand übergeht, bevor wir sauber zurück navigieren.
+echo "      Warte auf den Übergang in Hand 3 ..."
+wait_preview "$HAND_SWITCH_DELAY"
+shot "05_hand3_start.png"
+
+# 6. Zurück zur Startseite:
 #    1. Escape → mainStackView.pop() → GamePage verlassen → LocalGamePage
 #    2. Escape → mainStackView.pop() → LocalGamePage verlassen → StartPage
 echo "      Zurück zur Startseite ..."
-sleep 2
+wait_preview "$HAND3_EXIT_DELAY"
 echo "      Escape (GamePage verlassen) ..."
 DISPLAY=":${DISPLAY_NUM}" xdotool key Escape
 sleep 2

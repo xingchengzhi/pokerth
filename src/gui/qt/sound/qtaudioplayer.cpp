@@ -1,5 +1,6 @@
 #include "qtaudioplayer.h"
 #include "core/appimage_utils.h"
+#include <QDir>
 #include <QDebug>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -15,6 +16,43 @@ static const char* SOUND_FILES[] = {
     "blinds_raises_level3", "call", "check", "dealtwocards", "fold",
     "lobbychatnotify", "onlinegameready", "playerconnected", "raise", "yourturn"
 };
+
+static QString qmlResourceSoundPath(const QString& key)
+{
+    return QStringLiteral(":/resources/sounds/default/%1.wav").arg(key);
+}
+
+static QString appDataSoundPath(const QString& appDataPath, const QString& key)
+{
+    return QDir(appDataPath).filePath(QStringLiteral("sounds/default/%1.wav").arg(key));
+}
+
+static QString resolveSoundPath(const QString& appDataPath, const QString& key)
+{
+    const QString resourcePath = qmlResourceSoundPath(key);
+    if (QFileInfo::exists(resourcePath))
+        return resourcePath;
+
+    const QString diskPath = appDataSoundPath(appDataPath, key);
+    if (QFileInfo::exists(diskPath))
+        return diskPath;
+
+    return QString();
+}
+
+static QUrl resolveSoundUrl(const QString& appDataPath, const QString& key)
+{
+    const QString resourcePath = qmlResourceSoundPath(key);
+    if (QFileInfo::exists(resourcePath)) {
+        return QUrl(QStringLiteral("qrc:/resources/sounds/default/%1.wav").arg(key));
+    }
+
+    const QString diskPath = appDataSoundPath(appDataPath, key);
+    if (QFileInfo::exists(diskPath))
+        return QUrl::fromLocalFile(diskPath);
+
+    return QUrl();
+}
 
 // --- WavMixer implementation ---
 
@@ -321,11 +359,10 @@ void QtAudioPlayer::initQSoundEffectBackend(const QAudioDevice& device, float vo
     
     for (const char* soundName : SOUND_FILES) {
         QString key = QString::fromLatin1(soundName);
-        QString filePath = myAppDataPath + "sounds/default/" + key + ".wav";
-        
-        QFileInfo fileInfo(filePath);
-        if (!fileInfo.exists()) {
-            qWarning() << "[Audio] Sound file not found:" << filePath;
+        QUrl sourceUrl = resolveSoundUrl(myAppDataPath, key);
+
+        if (!sourceUrl.isValid()) {
+            qWarning() << "[Audio] Sound file not found for key:" << key;
             continue;
         }
         
@@ -334,7 +371,7 @@ void QtAudioPlayer::initQSoundEffectBackend(const QAudioDevice& device, float vo
         if (!selectedDevice.isNull() && !device.isNull()) {
             effect->setAudioDevice(device);
         }
-        effect->setSource(QUrl::fromLocalFile(filePath));
+        effect->setSource(sourceUrl);
         effect->setLoopCount(1);
         effect->setVolume(volume);
         
@@ -353,7 +390,7 @@ void QtAudioPlayer::initPaPlayBackend()
     
     for (const char* soundName : SOUND_FILES) {
         QString key = QString::fromLatin1(soundName);
-        QString filePath = myAppDataPath + "sounds/default/" + key + ".wav";
+        QString filePath = appDataSoundPath(myAppDataPath, key);
         
         QFileInfo fileInfo(filePath);
         if (!fileInfo.exists()) {
@@ -469,10 +506,10 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
 
     for (const char* soundName : SOUND_FILES) {
         QString key = QString::fromLatin1(soundName);
-        QString filePath = myAppDataPath + "sounds/default/" + key + ".wav";
+        QString filePath = resolveSoundPath(myAppDataPath, key);
 
-        if (!QFileInfo::exists(filePath)) {
-            qWarning() << "[Audio] Sound file not found:" << filePath;
+        if (filePath.isEmpty()) {
+            qWarning() << "[Audio] Sound file not found for key:" << key;
             continue;
         }
         if (!mixer->loadWav(key, filePath)) {

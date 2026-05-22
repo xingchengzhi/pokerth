@@ -245,10 +245,11 @@ void QmlGuiInterface::refreshGroupbox(int /*playerId*/, int /*state*/) const
     }
 }
 
-void QmlGuiInterface::refreshAction(int /*playerId*/, int /*action*/) const
+void QmlGuiInterface::refreshAction(int playerId, int action) const
 {
     if (m_gameHandler) {
-        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshAction", Qt::QueuedConnection,
+                                  Q_ARG(int, playerId), Q_ARG(int, action));
     }
 }
 
@@ -293,6 +294,41 @@ void QmlGuiInterface::disableMyButtons()
 {
     if (m_gameHandler) {
         QMetaObject::invokeMethod(m_gameHandler, "onDisableMyButtons", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::startTimeoutAnimation(int playerNum, int timeoutSec)
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onStartTimeoutAnimation", Qt::QueuedConnection,
+                                  Q_ARG(int, playerNum), Q_ARG(int, timeoutSec));
+    }
+}
+
+void QmlGuiInterface::stopTimeoutAnimation(int playerNum)
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onStopTimeoutAnimation", Qt::QueuedConnection,
+                                  Q_ARG(int, playerNum));
+    }
+}
+
+void QmlGuiInterface::logPlayerActionMsg(std::string playName, int action, int setValue)
+{
+    Q_UNUSED(playName)
+    Q_UNUSED(setValue)
+
+    if (m_gameHandler && action > 0) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshAction", Qt::QueuedConnection,
+                                  Q_ARG(int, 0), Q_ARG(int, action));
+    }
+}
+
+void QmlGuiInterface::logNewBlindsSetsMsg(int sbSet, int /*bbSet*/, std::string /*sbName*/, std::string /*bbName*/)
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onBlindsSet", Qt::QueuedConnection,
+                                  Q_ARG(int, sbSet));
     }
 }
 

@@ -75,6 +75,20 @@
         <file>resources/settings.svg</file>
         <file>resources/spade.svg</file>
         <file>resources/speaker.svg</file>
+        <file>resources/sounds/default/allin.wav</file>
+        <file>resources/sounds/default/bet.wav</file>
+        <file>resources/sounds/default/blinds_raises_level1.wav</file>
+        <file>resources/sounds/default/blinds_raises_level2.wav</file>
+        <file>resources/sounds/default/blinds_raises_level3.wav</file>
+        <file>resources/sounds/default/call.wav</file>
+        <file>resources/sounds/default/check.wav</file>
+        <file>resources/sounds/default/dealtwocards.wav</file>
+        <file>resources/sounds/default/fold.wav</file>
+        <file>resources/sounds/default/lobbychatnotify.wav</file>
+        <file>resources/sounds/default/onlinegameready.wav</file>
+        <file>resources/sounds/default/playerconnected.wav</file>
+        <file>resources/sounds/default/raise.wav</file>
+        <file>resources/sounds/default/yourturn.wav</file>
         <file>resources/square.svg</file>
         <file>resources/startWindowBackground.png</file>
         <file>resources/tableGreen.png</file>

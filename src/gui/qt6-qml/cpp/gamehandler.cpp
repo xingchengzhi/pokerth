@@ -13,6 +13,7 @@
 #include <game_defs.h>
 #include <gamedata.h>
 #include <configfile.h>
+#include <soundevents.h>
 #include <QString>
 #include <QTimer>
 #include <QDebug>
@@ -40,6 +41,24 @@ GameHandler::GameHandler(QObject *parent)
     // Initialize empty board cards (5 slots, -1 = not dealt)
     for (int i = 0; i < 5; ++i)
         m_boardCards.append(-1);
+
+    m_timeoutBeepTimer = new QTimer(this);
+    m_timeoutBeepTimer->setSingleShot(true);
+    connect(m_timeoutBeepTimer, &QTimer::timeout, this, [this]() {
+        playYourTurnTimeoutSound();
+    });
+}
+
+GameHandler::~GameHandler()
+{
+    delete m_soundEventHandler;
+    m_soundEventHandler = nullptr;
+}
+
+void GameHandler::setConfig(ConfigFile *config)
+{
+    m_config = config;
+    ensureSoundEventHandler();
 }
 
 void GameHandler::setSession(boost::shared_ptr<Session> session)
@@ -49,6 +68,10 @@ void GameHandler::setSession(boost::shared_ptr<Session> session)
 
 void GameHandler::setGame(boost::shared_ptr<Game> game)
 {
+    ensureSoundEventHandler();
+    if (m_soundEventHandler)
+        m_soundEventHandler->newGameStarts();
+
     m_localGameExitRequested = false;
     m_game = game;
     // Reset state for new game
@@ -82,6 +105,19 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
 }
 
 // ─── private helpers ────────────────────────────────────────────────────────
+
+void GameHandler::ensureSoundEventHandler()
+{
+    if (!m_soundEventHandler && m_config)
+        m_soundEventHandler = new SoundEvents(m_config);
+}
+
+void GameHandler::playYourTurnTimeoutSound()
+{
+    ensureSoundEventHandler();
+    if (m_soundEventHandler)
+        m_soundEventHandler->playSound("yourturn", 0);
+}
 
 bool GameHandler::localGameCallbacksBlocked() const
 {
@@ -315,6 +351,29 @@ void GameHandler::onRefreshSet()
     computeCallAndRaiseAmounts();
 }
 
+void GameHandler::onRefreshAction(int playerId, int playerAction)
+{
+    if (localGameCallbacksBlocked()) return;
+
+    refreshPlayerData();
+    computeCallAndRaiseAmounts();
+
+    // Entspricht gametableimpl::refreshAction: nur bei spezifischer Aktion
+    // (nicht bei globalem Refresh) den Aktionssound abspielen.
+    if (playerId < 0 || playerAction <= 0 || playerAction > 6)
+        return;
+    if (!m_config || m_config->readConfigInt("PlayGameActions") == 0)
+        return;
+
+    static const char *kActionSounds[] = {
+        "", "fold", "check", "call", "bet", "raise", "allin"
+    };
+
+    ensureSoundEventHandler();
+    if (m_soundEventHandler)
+        m_soundEventHandler->playSound(kActionSounds[playerAction], playerId);
+}
+
 void GameHandler::onRefreshCash()
 {
     if (localGameCallbacksBlocked()) return;
@@ -385,6 +444,29 @@ void GameHandler::onDisableMyButtons()
         m_myTurn = false;
         emit myTurnChanged();
     }
+}
+
+void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
+{
+    if (localGameCallbacksBlocked()) return;
+    if (playerNum != 0 || timeoutSec < 4) return;
+
+    // Wie im Widgets-Client: Ton erst nach 3 Sekunden Vorlauf.
+    m_timeoutBeepTimer->start((timeoutSec - 3) * 1000);
+}
+
+void GameHandler::onStopTimeoutAnimation(int playerNum)
+{
+    Q_UNUSED(playerNum)
+    m_timeoutBeepTimer->stop();
+}
+
+void GameHandler::onBlindsSet(int smallBlind)
+{
+    if (localGameCallbacksBlocked()) return;
+    ensureSoundEventHandler();
+    if (m_soundEventHandler)
+        m_soundEventHandler->blindsWereSet(smallBlind);
 }
 
 void GameHandler::refreshBoardCards()

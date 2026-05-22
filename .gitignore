@@ -60,3 +60,4 @@ tests/*
 docker/windows/*.exe
 docker/windows/pokerth.ico
 docker/linux/pokerth-linux-binary/  
+preview/pulse-runtime.Njmy3E/pulse/pid

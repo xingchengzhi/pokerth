@@ -74,8 +74,8 @@ public:
     virtual void meInAction() override;
     virtual void updateMyButtonsState() override {}
     virtual void disableMyButtons() override;
-    virtual void startTimeoutAnimation(int playerNum, int timeoutSec) override {}
-    virtual void stopTimeoutAnimation(int playerNum) override {}
+    virtual void startTimeoutAnimation(int playerNum, int timeoutSec) override;
+    virtual void stopTimeoutAnimation(int playerNum) override;
     
     virtual void startVoteOnKick(unsigned playerId, unsigned voteStarterPlayerId, int timeoutSec, int numVotesNeededToKick) override {}
     virtual void changeVoteOnKickButtonsState(bool showHide) override {}
@@ -83,11 +83,11 @@ public:
     virtual void endVoteOnKick() override {}
     
     // Log functions
-    virtual void logPlayerActionMsg(std::string playName, int action, int setValue) override {}
+    virtual void logPlayerActionMsg(std::string playName, int action, int setValue) override;
     virtual void logNewGameHandMsg(int gameID, int HandID) override {}
     virtual void logPlayerWinsMsg(std::string playerName, int pot, bool main) override {}
     virtual void logPlayerSitsOut(std::string playerName) override {}
-    virtual void logNewBlindsSetsMsg(int sbSet, int bbSet, std::string sbName, std::string bbName) override {}
+    virtual void logNewBlindsSetsMsg(int sbSet, int bbSet, std::string sbName, std::string bbName) override;
     virtual void logDealBoardCardsMsg(int roundID, int card1, int card2, int card3, int card4 = -1, int card5 = -1) override {}
     virtual void logFlipHoleCardsMsg(std::string playerName, int card1, int card2, int cardsValueInt = -1, std::string showHas = "shows") override {}
     virtual void logPlayerWinGame(std::string playerName, int gameID) override {}

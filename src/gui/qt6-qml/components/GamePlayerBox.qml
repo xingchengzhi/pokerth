@@ -59,21 +59,22 @@ Item {
             radius: 5
         }
 
-        // Highlight-Rahmen: leuchtet gelb wenn dieser Spieler am Zug ist
+        // Highlight: weicher Außen-Glow wenn dieser Spieler am Zug ist
         Rectangle {
             anchors.fill: parent
+            anchors.margins: -2
             color: "transparent"
             radius: 6
-            border.color: root.isMyTurn ? "#FFD700" : "transparent"
-            border.width: root.isMyTurn ? 2 : 0
+            border.color: root.isMyTurn ? "#99FFD54A" : "transparent"
+            border.width: root.isMyTurn ? 1 : 0
             z: 10
 
             layer.enabled: root.isMyTurn
             layer.effect: MultiEffect {
                 shadowEnabled: true
                 shadowColor: "#FFD700"
-                shadowOpacity: 0.9
-                shadowBlur: 0.8
+                shadowOpacity: 0.75
+                shadowBlur: 1.0
                 shadowVerticalOffset: 0
                 shadowHorizontalOffset: 0
             }

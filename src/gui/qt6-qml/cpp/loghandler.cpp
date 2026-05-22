@@ -17,9 +17,10 @@
 #include <QFileInfoList>
 #include <QTextStream>
 #include <QUrl>
-#include <QStandardPaths>
 #include <QtSql>
 #include <QVariantMap>
+#include <QFileDialog>
+#include <core/appimage_utils.h>
 
 #include <boost/lexical_cast.hpp>
 #include <cstring>
@@ -347,6 +348,39 @@ bool LogHandler::saveAs(const QString &path, const QString &destUrl)
     return QFile::copy(path, dest);
 }
 
+void LogHandler::exportHtmlDialog(const QString &path)
+{
+    if (path.isEmpty()) return;
+    const QString suggested = QDir::homePath() + "/" + baseName(path) + ".html";
+    const QString dest = QFileDialog::getSaveFileName(
+        nullptr, tr("Export PokerTH log file to HTML"), suggested,
+        tr("PokerTH HTML log (*.html)"));
+    if (!dest.isEmpty())
+        exportHtml(path, dest);
+}
+
+void LogHandler::exportTxtDialog(const QString &path)
+{
+    if (path.isEmpty()) return;
+    const QString suggested = QDir::homePath() + "/" + baseName(path) + ".txt";
+    const QString dest = QFileDialog::getSaveFileName(
+        nullptr, tr("Export PokerTH log file to plain text"), suggested,
+        tr("PokerTH plain text log (*.txt)"));
+    if (!dest.isEmpty())
+        exportTxt(path, dest);
+}
+
+void LogHandler::saveAsDialog(const QString &path)
+{
+    if (path.isEmpty()) return;
+    const QString suggested = QDir::homePath() + "/" + baseName(path) + ".pdb";
+    const QString dest = QFileDialog::getSaveFileName(
+        nullptr, tr("Save PokerTH log file"), suggested,
+        tr("PokerTH SQL log (*.pdb)"));
+    if (!dest.isEmpty())
+        saveAs(path, dest);
+}
+
 bool LogHandler::deleteFiles(const QStringList &paths)
 {
     const QString current = currentLogFileName();
@@ -421,7 +455,9 @@ void LogHandler::onUploadCompleted(const QString & /*filename*/, const QString &
     if (retStr == LOG_UPLOAD_OK_STR) {
         QString hash = returnMessage.mid(retStr.size()).trimmed();
         hash = hash.mid(0, hash.indexOf(' '));
-        emit analyseSucceeded("https://logfile-analysis.pokerth.net/?ID=" + hash);
+        const QString url = "https://logfile-analysis.pokerth.net/?ID=" + hash;
+        AppImageUtils::openUrlSafe(QUrl(url));   // sanitized env (xdg-open) when bundled
+        emit analyseSucceeded(url);
     } else {
         QString serverMsg(tr("Processing of the log file on the web server failed.\n"
                              "Please verify that you are uploading a valid PokerTH log file."));

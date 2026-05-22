@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 import "../config" as Config
 import "../components"
@@ -70,7 +69,7 @@ Rectangle {
 
     Connections {
         target: (typeof LogStore !== "undefined") ? LogStore : null
-        function onAnalyseSucceeded(url) { Qt.openUrlExternally(url) }
+        // Erfolg öffnet den Browser direkt in C++ (bereinigte Umgebung).
         function onAnalyseFailed(message) {
             messageLabel.text = message
             messageDialog.open()
@@ -226,19 +225,19 @@ Rectangle {
                 Layout.fillWidth: logsPage.compact
                 text: qsTr("Export as HTML")
                 enabled: logsPage.selectedPath !== ""
-                onClicked: { saveDialog.mode = "html"; saveDialog.openFor() }
+                onClicked: LogStore.exportHtmlDialog(logsPage.selectedPath)
             }
             CustomButton {
                 Layout.fillWidth: logsPage.compact
                 text: qsTr("Export as txt")
                 enabled: logsPage.selectedPath !== ""
-                onClicked: { saveDialog.mode = "txt"; saveDialog.openFor() }
+                onClicked: LogStore.exportTxtDialog(logsPage.selectedPath)
             }
             CustomButton {
                 Layout.fillWidth: logsPage.compact
                 text: qsTr("Save as ...")
                 enabled: logsPage.selectedPath !== ""
-                onClicked: { saveDialog.mode = "pdb"; saveDialog.openFor() }
+                onClicked: LogStore.saveAsDialog(logsPage.selectedPath)
             }
             CustomButton {
                 Layout.fillWidth: logsPage.compact
@@ -272,33 +271,6 @@ Rectangle {
     }
 
     // ── Dialoge ───────────────────────────────────────────────────────────────
-    FileDialog {
-        id: saveDialog
-        property string mode: "html"   // "html" | "txt" | "pdb"
-        fileMode: FileDialog.SaveFile
-        title: mode === "html" ? qsTr("Export PokerTH log file to HTML")
-             : mode === "txt"  ? qsTr("Export PokerTH log file to plain text")
-                               : qsTr("Save PokerTH log file")
-        nameFilters: mode === "html" ? [qsTr("PokerTH HTML log (*.html)")]
-                   : mode === "txt"  ? [qsTr("PokerTH plain text log (*.txt)")]
-                                     : [qsTr("PokerTH SQL log (*.pdb)")]
-
-        function openFor() {
-            if (logsPage.selectedPath === "" || typeof LogStore === "undefined") return
-            var ext = mode === "html" ? ".html" : (mode === "txt" ? ".txt" : ".pdb")
-            currentFolder = "file://" + LogStore.homePath()
-            selectedFile = "file://" + LogStore.homePath() + "/" + LogStore.baseName(logsPage.selectedPath) + ext
-            open()
-        }
-
-        onAccepted: {
-            if (typeof LogStore === "undefined") return
-            if (mode === "html")      LogStore.exportHtml(logsPage.selectedPath, selectedFile)
-            else if (mode === "txt")  LogStore.exportTxt(logsPage.selectedPath, selectedFile)
-            else                      LogStore.saveAs(logsPage.selectedPath, selectedFile)
-        }
-    }
-
     Dialog {
         id: deleteDialog
         anchors.centerIn: parent

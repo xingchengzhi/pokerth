@@ -48,7 +48,13 @@ public:
     Q_INVOKABLE QVariantList gameList(const QString &path);
     // Rendered rich-text (HTML) preview of one game in a log file.
     Q_INVOKABLE QString previewHtml(const QString &path, int uniqueGameID = 0);
-    // Export / save (destUrl may be a file:// URL from the QML FileDialog).
+    // Export / save: show a native (QtWidgets) save dialog and write the file.
+    // (QtQuick.Dialogs' FileDialog falls back to a QML implementation that needs
+    // Qt.labs.folderlistmodel, which is not shipped with the binary.)
+    Q_INVOKABLE void exportHtmlDialog(const QString &path);
+    Q_INVOKABLE void exportTxtDialog(const QString &path);
+    Q_INVOKABLE void saveAsDialog(const QString &path);
+    // Lower-level variants (dest may be a file:// URL or a local path).
     Q_INVOKABLE bool exportHtml(const QString &path, const QString &destUrl);
     Q_INVOKABLE bool exportTxt(const QString &path, const QString &destUrl);
     Q_INVOKABLE bool saveAs(const QString &path, const QString &destUrl);

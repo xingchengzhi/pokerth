@@ -110,6 +110,7 @@ Item {
             }
 
             Item {
+                id: cardsLane
                 width: parent.width - avatarBox.width - 2
                 height: parent.height
 
@@ -215,11 +216,8 @@ Item {
         }
     }
 
-    // Aktions-Anzeige (Fold/Check/Call/Bet/Raise/All-In). Verschwindet automatisch
-    // bei Rundenwechsel (Aktion=0).
-    //  • oben/unten-Mitte (betSide bottom/top): links neben dem Einsatz
-    //  • Seitenspieler: oberhalb des Einsatzes, an der zur Box zeigenden Innenkante
-    //    ausgerichtet → bleibt stabil, auch wenn kein Einsatz gesetzt ist.
+    // Aktions-Anzeige (Fold/Check/Call/Bet/Raise/All-In) – zentriert über den
+    // Hole-Cards in den normalen Player-Boxen.
     Rectangle {
         id: actionBadge
         visible: root.actionText !== "" && !root.isWinner
@@ -231,15 +229,16 @@ Item {
         border.width: 1
         z: 18
 
-        readonly property bool sideBet: root.betSide === "left" || root.betSide === "right"
-        // oben/unten-Mitte: linkes Element der zentrierten Gruppe [Action][Einsatz][Button]
-        // Seiten: oberhalb des Einsatzes, an der Innenkante ausgerichtet (stabil)
-        x: !sideBet ? betGroup.x
-           : (root.betSide === "right" ? betGroup.x
-                                       : betGroup.x + betGroup.width - width)
-        // Seiten: oberer der drei festen Slots (Action/Einsatz/Icon) auf Boxhöhe.
-        y: !sideBet ? (betGroup.y + (betGroup.height - height) / 2)
-                    : (betGroup.y + betGroup.height / 6 - height / 2)
+        readonly property real cardsCenterX: playerBox.x
+                            + topRow.x
+                            + cardsLane.x
+                            + cardsLane.sx
+                            + cardsLane.totalW / 2
+        readonly property real cardsCenterY: playerBox.y
+                            + topRow.y
+                            + topRow.height / 2
+        x: cardsCenterX - width / 2
+        y: cardsCenterY - height / 2
 
         Text {
             id: actionLabel
@@ -320,7 +319,7 @@ Item {
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
                ? (betGroup.actW + betGroup.actGap + betGroup.betW + betGroup.bothGap)
-               : (betGroup.width - width) / 2
+                    : (root.betSide === "right" ? 0 : (betGroup.width - width))
             // Seiten: unterer fester Slot; horizontal: in der Zeile zentriert.
             y: betGroup.horizontal
                ? (betGroup.height - height) / 2

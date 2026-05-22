@@ -665,6 +665,58 @@ Rectangle {
             readonly property int raiseMinAmount: raiseAvailable ? GameTable.minRaiseAmount : 0
             readonly property int raiseMaxAmount: raiseAvailable ? GameTable.maxRaiseAmount : 0
 
+            // Dynamische Button-Beschriftungen – analog zum Qt-Widgets-Client:
+            //  • nichts zu callen  → "Check"      sonst → "Call $X"
+            //  • Preflop oder schon gesetzt → "Raise $X"; postflop ohne Einsatz → "Bet $X"
+            readonly property bool canCheck: GameTable !== null && GameTable.callAmount === 0
+            readonly property bool isPreflop: GameTable !== null && GameTable.phaseText === "Preflop"
+            readonly property string checkCallText: GameTable === null ? qsTr("Call")
+                : (canCheck ? qsTr("Check") : qsTr("Call") + "\n$" + GameTable.callAmount)
+            readonly property string betRaiseText: {
+                if (GameTable === null) return qsTr("Raise")
+                var word = (!isPreflop && canCheck) ? qsTr("Bet") : qsTr("Raise")
+                return raiseAvailable ? (word + "\n$" + raiseAmount) : word
+            }
+
+            // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──
+            property string preAction: ""        // "", "fold", "call", "raise", "allin"
+            property int preCallAmount: -1        // callAmount zum Zeitpunkt der Vorwahl
+
+            readonly property bool canAct: GameTable !== null && GameTable.canAct
+            // Während der Vorwahl zeigt der Fold-Button bei freiem Check "Check / Fold"
+            readonly property string foldText: (GameTable !== null && !GameTable.myTurn && canCheck)
+                ? (qsTr("Check") + " / " + qsTr("Fold")) : qsTr("Fold")
+
+            function fireAction(which) {
+                if (GameTable === null) return
+                if (which === "fold")       GameTable.fold()
+                else if (which === "call")  GameTable.call()
+                else if (which === "raise") GameTable.raise(raiseAmount)
+                else if (which === "allin") GameTable.allIn()
+            }
+
+            // Vorgemerkte Aktion beim eigenen Zug ausführen.
+            // Vorgemerktes "Fold" wird zu "Check", falls ein Check gratis möglich ist.
+            function runPreAction(which) {
+                if (which === "fold" && canCheck) GameTable.call()
+                else fireAction(which)
+            }
+
+            function clickAction(which) {
+                if (GameTable === null) return
+                if (GameTable.myTurn) {
+                    preAction = ""
+                    fireAction(which)
+                } else if (canAct) {
+                    if (preAction === which) {
+                        preAction = ""
+                    } else {
+                        preAction = which
+                        preCallAmount = (which === "call") ? GameTable.callAmount : -1
+                    }
+                }
+            }
+
             function raiseStepFor(maximum) {
                 if (maximum <= 1000)
                     return 10
@@ -701,12 +753,39 @@ Rectangle {
                     raiseAmount = clampRaiseAmount(roundedRaiseAmount(raiseAmount))
             }
 
-            // Raise-Wert vorbereiten und bei Spielstandsanderungen im erlaubten Bereich halten
+            // Raise-Wert vorbereiten, Vorwahl ausführen bzw. bei Änderungen verwerfen
             Connections {
                 target: GameTable
-                function onMyTurnChanged() { actionBar.syncRaiseAmount() }
-                function onMinRaiseAmountChanged() { actionBar.syncRaiseAmount() }
-                function onMaxRaiseAmountChanged() { actionBar.syncRaiseAmount() }
+                function onMyTurnChanged() {
+                    actionBar.syncRaiseAmount()
+                    // Beim eigenen Zug die vorgemerkte Aktion ausführen
+                    if (GameTable.myTurn && actionBar.preAction !== "") {
+                        var a = actionBar.preAction
+                        actionBar.preAction = ""
+                        actionBar.runPreAction(a)
+                    }
+                }
+                function onCallAmountChanged() {
+                    // Sicherheit: vorgemerkter Call/Check verfällt, wenn sich der Call-Betrag ändert
+                    if (actionBar.preAction === "call" && GameTable.callAmount !== actionBar.preCallAmount)
+                        actionBar.preAction = ""
+                    actionBar.syncRaiseAmount()
+                }
+                function onMinRaiseAmountChanged() {
+                    if (actionBar.preAction === "raise" && !actionBar.raiseAvailable)
+                        actionBar.preAction = ""
+                    actionBar.syncRaiseAmount()
+                }
+                function onMaxRaiseAmountChanged() {
+                    if (actionBar.preAction === "raise" && !actionBar.raiseAvailable)
+                        actionBar.preAction = ""
+                    actionBar.syncRaiseAmount()
+                }
+                function onCanActChanged() {
+                    // Kann nicht mehr agieren (gefoldet/all-in) → Vorwahl löschen
+                    if (!GameTable.canAct)
+                        actionBar.preAction = ""
+                }
             }
 
             Rectangle {
@@ -862,14 +941,17 @@ Rectangle {
 
                         Item { Layout.fillWidth: true }
 
-                        // All-In-Button
+                        // All-In-Button (ebenfalls vorwählbar)
                         Rectangle {
+                            id: allInBtn
+                            readonly property bool preChecked: actionBar.preAction === "allin"
                             Layout.preferredWidth: 52
                             height: 28
                             radius: 5
+                            opacity: actionBar.canAct ? 1.0 : 0.4
                             color: allInArea.containsPress ? "#7b1f1f" : allInArea.containsMouse ? "#9e2a2a" : "#5c1111"
-                            border.color: "#ef5350"
-                            border.width: 1
+                            border.color: allInBtn.preChecked ? "#FFD700" : "#ef5350"
+                            border.width: allInBtn.preChecked ? 2 : 1
                             Text {
                                 anchors.centerIn: parent
                                 text: qsTr("All-In")
@@ -881,63 +963,100 @@ Rectangle {
                             MouseArea {
                                 id: allInArea
                                 anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
+                                enabled: actionBar.canAct
+                                cursorShape: actionBar.canAct ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 hoverEnabled: true
-                                onClicked: if (GameTable && GameTable.myTurn) GameTable.allIn()
+                                onClicked: actionBar.clickAction("allin")
                             }
                         }
                     }
                 }
 
-                // ── Aktions-Buttons: Fold / Call / Raise ──────────────────────────
+                // ── Aktions-Buttons: Fold / Check-Call / Bet-Raise ────────────────
+                // Dynamische Beschriftung + Aktivierung wie im Qt-Widgets-Client.
                 Item {
                     width: parent.width
                     height: 54
+
+                    // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
+                    // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
+                    component ActionButton: Rectangle {
+                        id: ab
+                        property string actionKey: ""
+                        property string label: ""
+                        property color topColor: "#4080d8"
+                        property color bottomColor: "#1a3d8b"
+                        property color edgeColor: "#6aa0e8"
+                        property bool armed: false   // klickbar: eigener Zug ODER Vorwahl möglich
+                        readonly property bool myTurnNow: GameTable !== null && GameTable.myTurn
+                        readonly property bool preChecked: ab.actionKey !== "" && actionBar.preAction === ab.actionKey
+
+                        radius: 9
+                        border.width: ab.preChecked ? 2 : 1
+                        border.color: ab.preChecked ? "#FFD700" : (ab.armed ? edgeColor : "#3a3a3a")
+                        opacity: !ab.armed ? 0.4 : ((ab.myTurnNow || ab.preChecked) ? 1.0 : 0.72)
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: ab.armed ? ab.topColor : "#2b2b2b" }
+                            GradientStop { position: 1.0; color: ab.armed ? ab.bottomColor : "#1c1c1c" }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            text: ab.label
+                            color: "#F0F0F0"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 15
+                            font.bold: true
+                            lineHeight: 0.9
+                        }
+
+                        // kleiner "vorgemerkt"-Punkt oben rechts
+                        Rectangle {
+                            visible: ab.preChecked
+                            anchors { top: parent.top; right: parent.right; margins: 4 }
+                            width: 8; height: 8; radius: 4
+                            color: "#FFD700"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: ab.armed
+                            cursorShape: ab.armed ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: actionBar.clickAction(ab.actionKey)
+                        }
+                    }
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5; bottomMargin: 5 }
                         spacing: 8
 
-                        VectorImage {
+                        ActionButton {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            source: "../resources/tableActionFold.svg"
-                            fillMode: VectorImage.PreserveAspectFit
-                            opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: if (GameTable && GameTable.myTurn) GameTable.fold()
-                            }
+                            actionKey: "fold"
+                            label: actionBar.foldText
+                            topColor: "#d94040"; bottomColor: "#8b1a1a"; edgeColor: "#e87070"
+                            armed: actionBar.canAct
                         }
 
-                        VectorImage {
+                        ActionButton {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            source: "../resources/tableActionCall.svg"
-                            fillMode: VectorImage.PreserveAspectFit
-                            opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: if (GameTable && GameTable.myTurn) GameTable.call()
-                            }
+                            actionKey: "call"
+                            label: actionBar.checkCallText
+                            topColor: "#4080d8"; bottomColor: "#1a3d8b"; edgeColor: "#6aa0e8"
+                            armed: actionBar.canAct
                         }
 
-                        VectorImage {
+                        ActionButton {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            source: "../resources/tableActionRaise.svg"
-                            fillMode: VectorImage.PreserveAspectFit
-                            opacity: GameTable && GameTable.myTurn ? 1.0 : 0.45
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (GameTable && GameTable.myTurn)
-                                        GameTable.raise(actionBar.raiseAmount)
-                                }
-                            }
+                            actionKey: "raise"
+                            label: actionBar.betRaiseText
+                            topColor: "#50b840"; bottomColor: "#1e6614"; edgeColor: "#7ad06a"
+                            armed: actionBar.canAct && actionBar.raiseAvailable
                         }
                     }
                 }

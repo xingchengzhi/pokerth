@@ -236,6 +236,29 @@ void QmlGuiInterface::refreshCash() const
     }
 }
 
+// Aktiver Spieler / Spieler-Aktion hat sich geändert → Spielerdaten aktualisieren,
+// damit der gelbe "am Zug"-Rahmen und die Aktions-Anzeige (Fold/Call/…) live folgen.
+void QmlGuiInterface::refreshGroupbox(int /*playerId*/, int /*state*/) const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshAction(int /*playerId*/, int /*action*/) const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::refreshChangePlayer() const
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
+    }
+}
+
 void QmlGuiInterface::refreshPlayerName() const
 {
     if (m_gameHandler) {

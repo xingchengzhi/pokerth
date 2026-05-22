@@ -32,6 +32,7 @@ GameHandler::GameHandler(QObject *parent)
         p["myTurn"]  = false;
         p["seatId"]  = i;
         p["button"]  = 0;
+        p["action"]  = 0;
         p["card0"]   = -1;
         p["card1"]   = -1;
         m_players.append(p);
@@ -61,6 +62,10 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     m_winnerSeatId = -1;
+    for (int i = 0; i < 10; ++i) {
+        m_lastSeenAction[i] = 0;
+        m_actionToken[i] = -1;
+    }
 
     // Re-build player list (seats may differ between games)
     refreshPlayerData();
@@ -98,6 +103,7 @@ void GameHandler::refreshPlayerData()
         p["myTurn"] = false;
         p["seatId"] = i;
         p["button"] = 0;
+        p["action"] = 0;
         p["card0"]  = -1;
         p["card1"]  = -1;
         newPlayers.append(p);
@@ -109,6 +115,16 @@ void GameHandler::refreshPlayerData()
         if (g) m_game = g;
     }
 
+    // Eindeutiges Token der aktuellen Setzrunde (Hand-Nr. × 8 + Runde). Eine Aktion
+    // wird nur angezeigt, solange dieses Token unverändert ist → zu Rundenbeginn
+    // (auch über Hände hinweg) verschwinden alle Aktions-Anzeigen automatisch.
+    int currentToken = -1;
+    if (m_game) {
+        auto hand = m_game->getCurrentHand();
+        if (hand)
+            currentToken = hand->getMyID() * 8 + static_cast<int>(hand->getCurrentRound());
+    }
+
     if (m_game) {
         PlayerList seats = m_game->getSeatsList();
         for (auto it = seats->begin(); it != seats->end(); ++it) {
@@ -116,9 +132,23 @@ void GameHandler::refreshPlayerData()
             if (id >= 0 && id < 10) {
                 int cards[2] = {-1, -1};
                 (*it)->getMyCards(cards);
-                // Show face-up cards for: human player (id==0), explicitly flipped,
-                // or required to show at showdown (winner / called player).
-                bool faceUp = (id == 0) || (*it)->getMyCardsFlip() || (*it)->checkIfINeedToShowCards();
+                const bool cardsKnown = cards[0] >= 0 && cards[1] >= 0;
+                // Gegnerkarten nur im Showdown-Kontext anzeigen. So verhindern wir,
+                // dass aufgedeckte Karten aus der vorherigen Hand kurz in der neuen
+                // Hand sichtbar bleiben.
+                const bool showdownReveal = m_boardCardCount >= 5
+                                            && ((*it)->getMyCardsFlip()
+                                                || (*it)->checkIfINeedToShowCards());
+                const bool faceUp = cardsKnown && (id == 0 || showdownReveal);
+
+                // Aktion nur in ihrer eigenen Runde anzeigen
+                int act = (*it)->getMyAction();
+                if (act != m_lastSeenAction[id]) {
+                    m_lastSeenAction[id] = act;
+                    m_actionToken[id] = currentToken;
+                }
+                int displayAction = (currentToken >= 0 && m_actionToken[id] == currentToken) ? act : 0;
+
                 QVariantMap p;
                 p["name"]   = QString::fromStdString((*it)->getMyName());
                 p["stack"]  = (*it)->getMyCash();
@@ -127,6 +157,7 @@ void GameHandler::refreshPlayerData()
                 p["myTurn"] = (*it)->getMyTurn();
                 p["seatId"] = id;
                 p["button"] = (*it)->getMyButton();
+                p["action"] = displayAction;
                 p["card0"]  = faceUp ? cards[0] : -1;
                 p["card1"]  = faceUp ? cards[1] : -1;
                 if (id == 0) {
@@ -168,6 +199,7 @@ void GameHandler::computeCallAndRaiseAmounts()
     int newCallAmount = 0;
     int newMinRaise = 0;
     int newMaxRaise = 0;
+    bool newCanAct = false;
 
     if (m_game) {
         auto hand = m_game->getCurrentHand();
@@ -179,6 +211,12 @@ void GameHandler::computeCallAndRaiseAmounts()
                 const int highestSet = bero->getHighestSet();
                 const int humanSet = humanPlayer->getMySet();
                 const int humanCash = humanPlayer->getMyCash();
+
+                // Mensch kann (vor)agieren, solange er in der Hand und nicht all-in ist.
+                newCanAct = humanPlayer->getMyAction() != PLAYER_ACTION_FOLD
+                            && humanPlayer->getMyAction() != PLAYER_ACTION_ALLIN
+                            && humanCash > 0
+                            && humanPlayer->isSessionActive();
 
                 if (humanCash + humanSet <= highestSet) {
                     newCallAmount = humanCash;
@@ -227,6 +265,10 @@ void GameHandler::computeCallAndRaiseAmounts()
         }
     }
 
+    if (newCanAct != m_canAct) {
+        m_canAct = newCanAct;
+        emit canActChanged();
+    }
     if (newCallAmount != m_callAmount) {
         m_callAmount = newCallAmount;
         emit callAmountChanged();

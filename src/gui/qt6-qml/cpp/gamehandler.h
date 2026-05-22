@@ -23,6 +23,7 @@ class GameHandler : public QObject
     Q_PROPERTY(QString phaseText READ phaseText NOTIFY phaseTextChanged)
     Q_PROPERTY(int handNumber READ handNumber NOTIFY handNumberChanged)
     Q_PROPERTY(bool myTurn READ myTurn NOTIFY myTurnChanged)
+    Q_PROPERTY(bool canAct READ canAct NOTIFY canActChanged)
     Q_PROPERTY(int callAmount READ callAmount NOTIFY callAmountChanged)
     Q_PROPERTY(int minRaiseAmount READ minRaiseAmount NOTIFY minRaiseAmountChanged)
     Q_PROPERTY(int maxRaiseAmount READ maxRaiseAmount NOTIFY maxRaiseAmountChanged)
@@ -47,6 +48,7 @@ public:
     QString phaseText() const { return m_phaseText; }
     int handNumber() const { return m_handNumber; }
     bool myTurn() const { return m_myTurn; }
+    bool canAct() const { return m_canAct; }
     int callAmount() const { return m_callAmount; }
     int minRaiseAmount() const { return m_minRaiseAmount; }
     int maxRaiseAmount() const { return m_maxRaiseAmount; }
@@ -88,6 +90,7 @@ signals:
     void phaseTextChanged();
     void handNumberChanged();
     void myTurnChanged();
+    void canActChanged();
     void callAmountChanged();
     void minRaiseAmountChanged();
     void maxRaiseAmountChanged();
@@ -113,6 +116,7 @@ private:
     QString m_phaseText;
     int m_handNumber = 0;
     bool m_myTurn = false;
+    bool m_canAct = false;
     int m_callAmount = 0;
     int m_minRaiseAmount = 0;
     int m_maxRaiseAmount = 0;
@@ -120,6 +124,11 @@ private:
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
     int m_winnerSeatId = -1;
+    // Aktions-Anzeige: pro Sitz die zuletzt gesehene Aktion + das Runden-Token,
+    // in dem sie gesetzt wurde. So wird die Aktion nur in ihrer eigenen Runde
+    // angezeigt und zu Rundenbeginn überall automatisch entfernt.
+    int m_lastSeenAction[10] = {};
+    int m_actionToken[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     bool m_localGameExitRequested = false;
 };
 

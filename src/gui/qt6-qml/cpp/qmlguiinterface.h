@@ -39,10 +39,10 @@ public:
     // Refresh functions
     virtual void refreshSet() const override;
     virtual void refreshCash() const override;
-    virtual void refreshAction(int = -1, int = -1) const override {}
-    virtual void refreshChangePlayer() const override {}
+    virtual void refreshAction(int = -1, int = -1) const override;
+    virtual void refreshChangePlayer() const override;
     virtual void refreshPot() const override;
-    virtual void refreshGroupbox(int = -1, int = -1) const override {}
+    virtual void refreshGroupbox(int = -1, int = -1) const override;
     virtual void refreshAll() const override;
     virtual void refreshPlayerName() const override;
     virtual void refreshButton() const override {}

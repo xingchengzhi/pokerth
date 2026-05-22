@@ -85,11 +85,14 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // Grüne Tischgrafik füllt die gesamte Zone
+            // Grüne Tischgrafik füllt die gesamte Zone. Unten am Bild liegt der
+            // hölzerne Tischrand → Crop am unteren Rand ausrichten, damit dieser
+            // auch im breiten Querformat sichtbar bleibt (im Hochformat ohnehin).
             Image {
                 anchors.fill: parent
                 source: "../resources/tableGreen.png"
                 fillMode: Image.PreserveAspectCrop
+                verticalAlignment: Image.AlignBottom
                 smooth: true
             }
 
@@ -105,6 +108,16 @@ Rectangle {
             // Breiter Tisch (Querformat) vs. hoher Tisch (Hochformat) – die
             // Spieler-Slots ordnen sich je nach Seitenverhältnis automatisch um.
             readonly property bool wide: width >= height
+
+            // Gegner-Boxen wachsen mit der Fensterbreite (eindeutige Referenz):
+            // Faktor 1.0 bei Telefonbreite (~390px), linear hoch bis zum Maximum
+            // (= Höhe der Self-Box) bei Vollbildbreite (~1920px).
+            readonly property int oppBaseHeight: 64
+            readonly property real oppScale: {
+                var cap = selfBox.height / oppBaseHeight
+                var t = (width - 390) / (1920 - 390)
+                return Math.max(1.0, Math.min(cap, 1.0 + t * (cap - 1.0)))
+            }
 
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
             // Hochformat: 3 oben, Rest an den Seiten nach unten.
@@ -304,7 +317,11 @@ Rectangle {
                     // Original-Seitenverhältnis (2×27+3=57)
                     // (4 + Avatar 38 + 4 + Karten 57 + 4 = 107)
                     width: 107
-                    height: 64
+                    height: tableZone.oppBaseHeight
+                    // Boxen skalieren mit der Auflösung (max = Höhe der Self-Box);
+                    // um die Slot-Mitte herum, damit die Position erhalten bleibt.
+                    transformOrigin: Item.Center
+                    scale: tableZone.oppScale
                     x: tableZone.width * slot[0] - width / 2
                     y: tableZone.height * slot[1] - height / 2
 

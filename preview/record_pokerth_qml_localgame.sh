@@ -6,14 +6,19 @@
 # Benötigte apt-Pakete:
 #   sudo apt install xvfb openbox ffmpeg scrot xdotool pulseaudio pulseaudio-utils
 #
-# Alle Koordinaten kalibriert per Screenshot-Analyse auf Fenstergröße 390×844
-# (WM-Deko: top=20px → xdotool WY = Client-Content-Top)
+# Desktop-Aufnahme auf 1440er Breite, Spiel startet im Portrait-Fenster.
+# Im Spiel wird dann alle 20s zwischen Portrait und Fullscreen gewechselt.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DISPLAY_NUM=99
-DISPLAY_RES="600x1000"
+DESKTOP_W=1440
+DESKTOP_H=900
+DISPLAY_RES="${DESKTOP_W}x${DESKTOP_H}"
+PORTRAIT_W=390
+PORTRAIT_H=844
+MODE_TOGGLE_INTERVAL=20
 BINARY="/opt/pokerth_env/repos/pokerth-test/build/bin/pokerth_qml-client"
 OUTPUT_DIR="${SCRIPT_DIR}/screenshots_localgame"
 VIDEO_FILE="${SCRIPT_DIR}/pokerth_qml_localgame_demo.mp4"
@@ -23,6 +28,13 @@ AUDIO_ENABLED=0
 AUDIO_SOURCE=""
 AUDIO_RUNTIME_DIR=""
 AUDIO_SYNC_DELAY_MS=1200
+GAME_MODE_TOGGLE_ACTIVE=0
+CURRENT_VIEW_MODE="portrait"
+NEXT_MODE_SWITCH_AT=0
+WX=0
+WY=0
+WW=0
+WH=0
 
 # Preview-Aufnahme soll möglichst nah an der UI-Aktion bleiben.
 # Der Pulse-Monitor der virtuellen Null-Sink hat sonst standardmäßig sehr hohe
@@ -59,8 +71,92 @@ click_at() {
 
 wait_preview() {
     local seconds="$1"
+    local remaining=$seconds
+
     echo "      Warte ${seconds}s ..."
-    sleep "$seconds"
+    while [ "$remaining" -gt 0 ]; do
+        if [ "$GAME_MODE_TOGGLE_ACTIVE" -eq 1 ] && [ "$SECONDS" -ge "$NEXT_MODE_SWITCH_AT" ]; then
+            toggle_view_mode
+            NEXT_MODE_SWITCH_AT=$((SECONDS + MODE_TOGGLE_INTERVAL))
+            continue
+        fi
+
+        local chunk=$remaining
+        if [ "$GAME_MODE_TOGGLE_ACTIVE" -eq 1 ]; then
+            local until_switch=$((NEXT_MODE_SWITCH_AT - SECONDS))
+            if [ "$until_switch" -lt "$chunk" ]; then
+                chunk=$until_switch
+            fi
+        fi
+
+        if [ "$chunk" -le 0 ]; then
+            chunk=1
+        fi
+
+        sleep "$chunk"
+        remaining=$((remaining - chunk))
+    done
+}
+
+refresh_window_geometry() {
+    local geom
+    geom=$(DISPLAY=":${DISPLAY_NUM}" xdotool getwindowgeometry --shell "$WIN_ID" 2>/dev/null)
+    eval "$geom"
+    WX=$X
+    WY=$Y
+    WW=$WIDTH
+    WH=$HEIGHT
+}
+
+update_click_coords() {
+    refresh_window_geometry
+
+    LOKALGAME_X=$(( WX + (WW * 195 / 390) ))
+    LOKALGAME_Y=$(( WY + (WH * 405 / 844) ))
+
+    SPIELSTART_X=$(( WX + (WW * 288 / 390) ))
+    SPIELSTART_Y=$(( WY + (WH * 671 / 844) ))
+
+    DOOR_X=$(( WX + (WW * 19 / 390) ))
+    DOOR_Y=$(( WY + (WH * 19 / 844) ))
+
+    FOLD_X=$(( WX + (WW * 68 / 390) ))
+    CALL_X=$(( WX + (WW * 195 / 390) ))
+    RAISE_X=$(( WX + (WW * 322 / 390) ))
+    ACTION_Y=$(( WY + (WH * 789 / 844) ))
+
+    HALF_POT_X=$(( WX + (WW * 151 / 390) ))
+    HALF_POT_Y=$(( WY + (WH * 748 / 844) ))
+    RAISE_ACTIVE_Y=$(( WY + (WH * 792 / 844) ))
+}
+
+apply_portrait_mode() {
+    local px=$(( (DESKTOP_W - PORTRAIT_W) / 2 ))
+    local py=$(( (DESKTOP_H - PORTRAIT_H) / 2 ))
+
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowsize --sync "$WIN_ID" "$PORTRAIT_W" "$PORTRAIT_H"
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" "$px" "$py"
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
+    CURRENT_VIEW_MODE="portrait"
+    update_click_coords
+}
+
+apply_fullscreen_mode() {
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowsize --sync "$WIN_ID" "$DESKTOP_W" "$DESKTOP_H"
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" 0 0
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
+    CURRENT_VIEW_MODE="fullscreen"
+    update_click_coords
+}
+
+toggle_view_mode() {
+    if [ "$CURRENT_VIEW_MODE" = "portrait" ]; then
+        echo "      ViewMode-Wechsel: portrait -> fullscreen"
+        apply_fullscreen_mode
+    else
+        echo "      ViewMode-Wechsel: fullscreen -> portrait"
+        apply_portrait_mode
+    fi
 }
 
 setup_virtual_audio() {
@@ -217,6 +313,9 @@ sleep 8
 DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID"
 sleep 0.3
 
+echo "      Setze initialen Portrait-Modus ..."
+apply_portrait_mode
+
 # ── Koordinaten (kalibriert per Screenshot-Analyse) ───────────────────────────
 #   Fenster: 390×844 Client-Bereich (ohne WM-Deko)
 #   WM-Deko: _NET_FRAME_EXTENTS = 1,1,20,5 → xdotool WY = Client-Content-Top
@@ -238,27 +337,7 @@ sleep 0.3
 #   TopBar-Tür-Icon (zurück, nur wenn StackView.depth > 1):
 #     WX+19, WY+19   (margin=6 + Icon-Zentrum in 38px-Bar)
 
-LOKALGAME_X=$(( WX + 195 ))
-LOKALGAME_Y=$(( WY + 405 ))
-
-SPIELSTART_X=$(( WX + 288 ))
-SPIELSTART_Y=$(( WY + 671 ))
-
-DOOR_X=$(( WX + 19 ))
-DOOR_Y=$(( WY + 19 ))
-
-FOLD_X=$(( WX + 68 ))
-CALL_X=$(( WX + 195 ))
-RAISE_X=$(( WX + 322 ))
-ACTION_Y=$(( WY + 789 ))    # Kalibriert: Buttons-Mitte ohne Raise-Controls
-
-# 50%-Pot-Button (nur sichtbar wenn Spieler am Zug & Raise möglich)
-# Wenn Raise-Controls sichtbar, verschiebt sich die ActionBar um 66px nach oben:
-#   ActionBar-Top: WY+765→WY+699, Buttons-Mitte: WY+792
-# raiseSection: topPad=5, Slider=26, spacing=4, Row=28 → "1/2"-Button-Mitte WY+748
-HALF_POT_X=$(( WX + 151 ))   # leftPad(8) + textInput(78) + gap(4) + 1/3-btn(38) + gap(4) + halbe38=19
-HALF_POT_Y=$(( WY + 748 ))   # raiseSection-Top(WY+699) + topPad(5) + Slider(26) + gap(4) + halbeRow(14)
-RAISE_ACTIVE_Y=$(( WY + 792 )) # RAISE-Button-Mitte wenn raiseSection sichtbar
+update_click_coords
 
 echo "      DEBUG: WX=${WX} WY=${WY}"
 echo "             LokalesSpiel=(${LOKALGAME_X},${LOKALGAME_Y})"
@@ -271,7 +350,7 @@ echo "             1/2-Pot=(${HALF_POT_X},${HALF_POT_Y})  RAISE-aktiv=(${RAISE_X
 echo ""
 echo "[6/6] Demo-Flow ..."
 
-PLAYER_ACTION_DELAY=2.1
+PLAYER_ACTION_DELAY=2
 HAND_SWITCH_DELAY=7
 HAND3_EXIT_DELAY=4
 
@@ -284,10 +363,15 @@ sleep 2
 shot "02_localgame_settings.png"
 
 # 3. Spiel starten mit Standardeinstellungen (10 Spieler, 5000 Startkapital)
+update_click_coords
 click_at "$SPIELSTART_X" "$SPIELSTART_Y" "(Spiel starten)"
 echo "      Warte auf GamePage (6s) ..."
 sleep 6
 shot "03_gamepage_preflop.png"
+
+GAME_MODE_TOGGLE_ACTIVE=1
+NEXT_MODE_SWITCH_AT=$((SECONDS + MODE_TOGGLE_INTERVAL))
+echo "      ViewMode-Toggle aktiv: alle ${MODE_TOGGLE_INTERVAL}s"
 
 # 4. Hand 1 – Spielverlauf
 #    Runde 1, 2, 4: CALL (kein Effekt wenn nicht am Zug)
@@ -296,11 +380,13 @@ echo "      Hand 1 – Spielverlauf ..."
 
 # Runde 1 – CALL
 wait_preview "$PLAYER_ACTION_DELAY"
+update_click_coords
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 1)"
 shot "04_hand1_runde1.png"
 
 # Runde 2 – CALL
 wait_preview "$PLAYER_ACTION_DELAY"
+update_click_coords
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 2)"
 shot "04_hand1_runde2.png"
 
@@ -310,13 +396,16 @@ shot "04_hand1_runde2.png"
 #   Sonst: Klicks landen auf Spieltisch (kein Effekt)
 wait_preview "$PLAYER_ACTION_DELAY"
 echo "      Runde 3: 1/2-Pot + RAISE versuchen ..."
+update_click_coords
 click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button)"
 sleep 0.5
+update_click_coords
 click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE)"
 shot "04_hand1_runde3.png"
 
 # Runde 4 – CALL
 wait_preview "$PLAYER_ACTION_DELAY"
+update_click_coords
 click_at "$CALL_X" "$ACTION_Y" "(CALL Runde 4)"
 shot "04_hand1_runde4.png"
 
@@ -328,19 +417,23 @@ shot "05_hand2_preflop.png"
 
 # Runde 1 – CALL
 wait_preview "$PLAYER_ACTION_DELAY"
+update_click_coords
 click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 1)"
 shot "05_hand2_runde1.png"
 
 # Runde 2 – CALL
 wait_preview "$PLAYER_ACTION_DELAY"
+update_click_coords
 click_at "$CALL_X" "$ACTION_Y" "(CALL Hand 2 Runde 2)"
 shot "05_hand2_runde2.png"
 
 # Runde 3 – 1/2-Pot + RAISE
 wait_preview "$PLAYER_ACTION_DELAY"
 echo "      Hand 2 Runde 3: 1/2-Pot + RAISE versuchen ..."
+update_click_coords
 click_at "$HALF_POT_X" "$HALF_POT_Y" "(1/2-Pot Button Hand 2)"
 sleep 0.5
+update_click_coords
 click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(RAISE Hand 2)"
 shot "05_hand2_runde3.png"
 
@@ -355,6 +448,13 @@ shot "05_hand3_start.png"
 #    2. Escape → mainStackView.pop() → LocalGamePage verlassen → StartPage
 echo "      Zurück zur Startseite ..."
 wait_preview "$HAND3_EXIT_DELAY"
+GAME_MODE_TOGGLE_ACTIVE=0
+
+if [ "$CURRENT_VIEW_MODE" != "portrait" ]; then
+    echo "      Wechsel zurück in Portrait vor dem Exit ..."
+    apply_portrait_mode
+fi
+
 echo "      Escape (GamePage verlassen) ..."
 DISPLAY=":${DISPLAY_NUM}" xdotool key Escape
 sleep 2

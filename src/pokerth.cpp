@@ -52,6 +52,7 @@
 #include "gui/qt6-qml/cpp/serverconnectionhandler.h"
 #include "gui/qt6-qml/cpp/lobbyhandler.h"
 #include "gui/qt6-qml/cpp/gamehandler.h"
+#include "gui/qt6-qml/cpp/loghandler.h"
 #include "gui/qt6-qml/cpp/qmlguiinterface.h"
 
 int main(int argc, char *argv[])
@@ -109,7 +110,9 @@ int main(int argc, char *argv[])
     lobbyHandler->setConfig(myConfig.get());
 
     GameHandler *gameHandler = new GameHandler(&app);
-    
+
+    LogHandler *logHandler = new LogHandler(myConfig.get(), &app);
+
     // Create GUI Interface with handlers
     QmlGuiInterface *guiInterface = new QmlGuiInterface(myConfig.get(), connectionHandler, lobbyHandler);
     guiInterface->setGameHandler(gameHandler);
@@ -123,7 +126,9 @@ int main(int argc, char *argv[])
             qWarning() << "Session initialization failed";
         }
         log->init();
-        
+        logHandler->setLog(log);
+        logHandler->refresh();
+
         guiInterface->setSession(session);
         connectionHandler->setSession(session);
         lobbyHandler->setSession(session);
@@ -144,6 +149,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("ServerConnection", connectionHandler);
     engine.rootContext()->setContextProperty("Lobby", lobbyHandler);
     engine.rootContext()->setContextProperty("GameTable", gameHandler);
+    engine.rootContext()->setContextProperty("LogStore", logHandler);
 	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
 
 	if (engine.rootObjects().isEmpty()) {

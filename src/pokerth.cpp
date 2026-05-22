@@ -53,6 +53,7 @@
 #include "gui/qt6-qml/cpp/lobbyhandler.h"
 #include "gui/qt6-qml/cpp/gamehandler.h"
 #include "gui/qt6-qml/cpp/loghandler.h"
+#include "gui/qt6-qml/cpp/networkgamehandler.h"
 #include "gui/qt6-qml/cpp/qmlguiinterface.h"
 
 int main(int argc, char *argv[])
@@ -113,6 +114,8 @@ int main(int argc, char *argv[])
 
     LogHandler *logHandler = new LogHandler(myConfig.get(), &app);
 
+    NetworkGameHandler *networkGameHandler = new NetworkGameHandler(&app);
+
     // Create GUI Interface with handlers
     QmlGuiInterface *guiInterface = new QmlGuiInterface(myConfig.get(), connectionHandler, lobbyHandler);
     guiInterface->setGameHandler(gameHandler);
@@ -128,6 +131,9 @@ int main(int argc, char *argv[])
         log->init();
         logHandler->setLog(log);
         logHandler->refresh();
+
+        networkGameHandler->setSession(session);
+        networkGameHandler->setConfig(myConfig.get());
 
         guiInterface->setSession(session);
         connectionHandler->setSession(session);
@@ -150,6 +156,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("Lobby", lobbyHandler);
     engine.rootContext()->setContextProperty("GameTable", gameHandler);
     engine.rootContext()->setContextProperty("LogStore", logHandler);
+    engine.rootContext()->setContextProperty("NetworkGame", networkGameHandler);
 	engine.load(QUrl(QStringLiteral("qrc:/pokerth.qml")));
 
 	if (engine.rootObjects().isEmpty()) {
@@ -182,6 +189,9 @@ int main(int argc, char *argv[])
     connectionHandler->setSession(boost::shared_ptr<Session>());
     lobbyHandler->setSession(boost::shared_ptr<Session>());
     gameHandler->setSession(boost::shared_ptr<Session>());
+    // Terminate + release the embedded network server (its ServerGuiWrapper
+    // references guiInterface) before guiInterface is deleted below.
+    networkGameHandler->shutdown();
     delete guiInterface; // releases guiInterface's session ref too
     session.reset(); // refcount now 0 → ~Session() → ~Log() SQL cleanup runs here safely
 

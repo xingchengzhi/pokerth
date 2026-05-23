@@ -379,11 +379,18 @@ Rectangle {
             Rectangle {
                 id: logOverlay
                 z: 150
-                anchors.fill: parent
+                // Querformat/Vollbild: Sidebar (~1/3 Breite) von rechts.
+                // Hochformat: volles Overlay über den Tisch.
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.right: parent.right
+                width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showLog
                 color: Qt.rgba(0, 0, 0, 0.88)
+                border.color: Config.StaticData.palette.secondary.col500
+                border.width: tableZone.wide ? 1 : 0
 
-                // Klicks abfangen, damit sie nicht an Tisch/Boxen durchgereicht werden
+                // Klicks innerhalb der Sidebar abfangen (Tisch daneben bleibt nutzbar)
                 MouseArea { anchors.fill: parent }
 
                 ColumnLayout {
@@ -448,7 +455,8 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         tableZone.showLog = !tableZone.showLog
-                        if (tableZone.showLog) tableZone.showChat = false
+                        // Im Hochformat überlagern sich beide → eins schließen.
+                        if (tableZone.showLog && !tableZone.wide) tableZone.showChat = false
                     }
                 }
             }
@@ -457,9 +465,16 @@ Rectangle {
             Rectangle {
                 id: chatOverlay
                 z: 150
-                anchors.fill: parent
+                // Querformat/Vollbild: Sidebar (~1/3 Breite) von links.
+                // Hochformat: volles Overlay über den Tisch.
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showChat
                 color: Qt.rgba(0, 0, 0, 0.88)
+                border.color: Config.StaticData.palette.secondary.col500
+                border.width: tableZone.wide ? 1 : 0
 
                 function chatSend() {
                     if (typeof GameTable === "undefined" || !GameTable) return
@@ -562,7 +577,8 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         tableZone.showChat = !tableZone.showChat
-                        if (tableZone.showChat) tableZone.showLog = false
+                        // Im Hochformat überlagern sich beide → eins schließen.
+                        if (tableZone.showChat && !tableZone.wide) tableZone.showLog = false
                     }
                 }
             }

@@ -27,6 +27,18 @@
 #include <list>
 
 namespace {
+// Karten-Code (0-51) → Kurzform mit Unicode-Farbsymbol, z. B. "K♥". Identisch zu
+// QmlGuiInterface::fmtCard, damit Showdown-Karten genau wie die Board-Karten im
+// Spielverlauf aussehen.  0-12 Karo(♦), 13-25 Herz(♥), 26-38 Pik(♠), 39-51 Kreuz(♣).
+QString logCard(int code)
+{
+    if (code < 0 || code > 51)
+        return QStringLiteral("?");
+    static const char *ranks[] = {"2","3","4","5","6","7","8","9","10","J","Q","K","A"};
+    static const QChar suits[] = { QChar(0x2666), QChar(0x2665), QChar(0x2660), QChar(0x2663) };
+    return QString::fromLatin1(ranks[code % 13]) + QString(suits[code / 13]);
+}
+
 // Avatar-Pfad → QML-Bildquelle. getMyAvatar() liefert (wie im Widgets-Client)
 // einen lokalen Dateipfad; existiert die Datei, als file://-URL zurückgeben.
 QString resolveAvatarSource(const std::string &raw)
@@ -992,19 +1004,79 @@ void GameHandler::onShowdown()
     QString newHandText;
     auto activeList = hand->getActivePlayerList();
     auto bero = hand->getCurrentBeRo();
-    if (activeList && bero) {
-        int nonFold = 0;
+    int nonFold = 0;
+    if (activeList) {
         for (auto it = activeList->begin(); it != activeList->end(); ++it)
             if ((*it)->getMyAction() != PLAYER_ACTION_FOLD) ++nonFold;
-
-        if (nonFold > 1) {
-            std::string name = CardsValue::determineHandName(bero->getHighestCardsValue(), activeList);
-            newHandText = QString::fromStdString(name);
-        }
+    }
+    if (activeList && bero && nonFold > 1) {
+        std::string name = CardsValue::determineHandName(bero->getHighestCardsValue(), activeList);
+        newHandText = QString::fromStdString(name);
     }
 
     if (newHandText != m_winningHandText) {
         m_winningHandText = newHandText;
         emit winningHandTextChanged();
+    }
+
+    // ── Showdown im Spielverlauf protokollieren (Logik 1:1 aus dem Widgets-Client) ──
+    // Die Engine ruft im PokerTH-Client weder logFlipHoleCardsMsg noch
+    // logPlayerWinsMsg von selbst auf – im Qt-Widgets-Client macht das die GUI
+    // (gameTableImpl::postRiverRunAnimation2/3). Daher hier nachgebildet, sonst
+    // fehlen aufgedeckte Karten und der Sieger im "Spielverlauf"-Overlay.
+    if (!activeList) return;
+
+    // 1) Aufgedeckte Hole-Cards der Spieler, die laut Engine zeigen müssen
+    //    (wie showHoleCards → setMyCardsFlip(1,1) für die Post-River-Runde:
+    //    "name shows [c0, c1] - \"Handname\"").
+    for (auto it = activeList->begin(); it != activeList->end(); ++it) {
+        if ((*it)->getMyAction() == PLAYER_ACTION_FOLD || !(*it)->checkIfINeedToShowCards())
+            continue;
+        int cards[2] = {-1, -1};
+        (*it)->getMyCards(cards);
+        if (cards[0] < 0 || cards[1] < 0)
+            continue;
+        QString line = QString::fromStdString((*it)->getMyName())
+                     + " shows [" + logCard(cards[0]) + ", " + logCard(cards[1]) + "]";
+        const int cardsValueInt = (*it)->getMyCardsValueInt();
+        if (cardsValueInt != -1) {
+            std::string handName = CardsValue::determineHandName(cardsValueInt, activeList);
+            if (!handName.empty())
+                line += " - \"" + QString::fromStdString(handName) + "\"";
+        }
+        appendGameLog(line);
+    }
+
+    // 2) Gewinner – Haupt-/Side-Pot wie postRiverRunAnimation3. Echte Gewinner
+    //    stehen in der winners-Liste UND haben tatsächlich Geld gewonnen.
+    const bool hasAllInPlayer = hand->getAllInCondition();
+    int winnersWithMoney = 0;
+    for (auto it = activeList->begin(); it != activeList->end(); ++it) {
+        const bool isW = std::find(winners.begin(), winners.end(), (*it)->getMyUniqueID()) != winners.end();
+        if (isW && (*it)->getLastMoneyWon() > 0)
+            ++winnersWithMoney;
+    }
+    const int highestWinnerCardsValue = bero ? bero->getHighestCardsValue() : 0;
+    for (auto it = activeList->begin(); it != activeList->end(); ++it) {
+        const bool isWinner = std::find(winners.begin(), winners.end(), (*it)->getMyUniqueID()) != winners.end();
+        const bool hasActuallyWon = isWinner && (*it)->getLastMoneyWon() > 0;
+        if ((*it)->getMyAction() == PLAYER_ACTION_FOLD || !hasActuallyWon)
+            continue;
+        // Bei All-In mit mehreren Gewinnern: bestes Blatt = Hauptpot, Rest Side-Pot.
+        bool isMainPot = true;
+        if (hasAllInPlayer && winnersWithMoney > 1
+            && (*it)->getMyCardsValueInt() < highestWinnerCardsValue)
+            isMainPot = false;
+        QString msg = QString::fromStdString((*it)->getMyName())
+                    + " wins $" + QString::number((*it)->getLastMoneyWon());
+        if (!isMainPot)
+            msg += QStringLiteral(" (side pot)");
+        appendGameLog(msg);
+    }
+
+    // 3) Sit-Out für Spieler ohne Cash (wie gameTableImpl nach der Pot-Verteilung).
+    for (auto it = activeList->begin(); it != activeList->end(); ++it) {
+        if ((*it)->getMyCash() == 0)
+            appendGameLog(QString::fromStdString((*it)->getMyName()) + " sits out");
     }
 }

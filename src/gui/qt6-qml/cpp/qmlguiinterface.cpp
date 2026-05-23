@@ -378,8 +378,9 @@ void QmlGuiInterface::logNewBlindsSetsMsg(int sbSet, int bbSet, std::string sbNa
 void QmlGuiInterface::logNewGameHandMsg(int gameID, int handID)
 {
     if (m_gameHandler) {
-        const QString msg = QStringLiteral("── Game ") + QString::number(gameID)
-                            + QStringLiteral(" | Hand ") + QString::number(handID) + QStringLiteral(" ──");
+        // Wortlaut 1:1 wie guiLog::logNewGameHandMsg im Qt-Widgets-Client.
+        const QString msg = QStringLiteral("## Game: ") + QString::number(gameID)
+                            + QStringLiteral(" | Hand: ") + QString::number(handID) + QStringLiteral(" ##");
         QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
     }
 }

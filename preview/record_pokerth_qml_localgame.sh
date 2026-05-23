@@ -20,6 +20,8 @@ PORTRAIT_W=390
 PORTRAIT_H=844
 MODE_TOGGLE_INTERVAL=10
 FULLSCREEN_OPEN_SEC=10
+LOG_OVERLAY_SEC=4.5
+FULLSCREEN_REST_SEC=5.5
 VIEW_MODE_STATE_FILE="${SCRIPT_DIR}/.preview_view_mode"
 VIEW_MODE_CYCLE_STOP_FILE="${SCRIPT_DIR}/.preview_view_mode_stop"
 
@@ -191,10 +193,10 @@ run_round_mode_cycle() {
     local label="$1"
     echo "      ${label}: warte ${MODE_TOGGLE_INTERVAL}s bis Fullscreen ..."
     wait_preview "$MODE_TOGGLE_INTERVAL"
-    toggle_logs_brief "${label}"
     toggle_view_mode
-    echo "      ${label}: Fullscreen max ${FULLSCREEN_OPEN_SEC}s ..."
-    wait_preview "$FULLSCREEN_OPEN_SEC"
+    echo "      ${label}: Logs im Fullscreen ${LOG_OVERLAY_SEC}s, danach noch ${FULLSCREEN_REST_SEC}s ..."
+    toggle_logs_brief "${label}"
+    wait_preview "$FULLSCREEN_REST_SEC"
     toggle_view_mode
 }
 

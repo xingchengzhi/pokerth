@@ -120,7 +120,9 @@ Item {
                 width: topRow.width - avatarBox.width - topRow.spacing
                 height: parent.height
 
-                // Karten gefoldeter Spieler durchscheinend einblenden
+                // Raus aus dem Spiel (kein Geld mehr → inaktiv) → Karten ganz
+                // ausblenden; bei Fold (noch im Spiel) nur durchscheinend.
+                visible: root.isActive
                 opacity: root.folded ? 0.3 : 1.0
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
 

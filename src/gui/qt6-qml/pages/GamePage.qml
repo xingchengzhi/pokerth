@@ -181,6 +181,11 @@ Rectangle {
                 anchors.verticalCenterOffset: -tableZone.height * 0.045
                 spacing: 6
                 z: 0
+                // Wächst mit der Fensterbreite wie die Gegner-Boxen; Kartenhöhe
+                // maximal = Höhe der Self-Box (Basis 64 × oppScale → max 82).
+                // Skalierung um die Mitte, damit die Position erhalten bleibt.
+                transformOrigin: Item.Center
+                scale: tableZone.oppScale
 
                 // Inline-Komponente für einen einzelnen Board-Card-Slot
                 // Karten-Seitenverhältnis 120:168 (≈0,714) – Karte = Platzhalter (1:1)
@@ -308,8 +313,16 @@ Rectangle {
                     readonly property var seq: tableZone.slotSeq[oppCount] || []
                     readonly property string slotName:
                         (occupied && oppOrder >= 1 && oppOrder <= seq.length) ? seq[oppOrder - 1] : ""
-                    readonly property var slot:
-                        slotName !== "" ? tableZone.slotPos[slotName] : [0.5, 0.5]
+                    // Immer ein gültiges [x,y]-Paar liefern. Während eines
+                    // Orientierungswechsels (oder vor dem ersten Layout, wenn
+                    // width/height noch 0 sind) können slotSeq und slotPos kurz
+                    // aus verschiedenen Sätzen stammen → Fallback auf die Mitte,
+                    // damit slot[0]/slot[1] nie auf undefined zugreifen.
+                    readonly property var slot: {
+                        if (slotName === "") return [0.5, 0.5]
+                        var p = tableZone.slotPos[slotName]
+                        return (p === undefined || p === null) ? [0.5, 0.5] : p
+                    }
 
                     visible: occupied && index !== 0 && slotName !== ""
 
@@ -330,7 +343,12 @@ Rectangle {
                         seatIndex: seatSlot.index
                         // Einsatz/Button zur Tischmitte zeigen lassen:
                         // linke Sitze rechts, rechte Sitze links, oben/unten-Mitte unten.
-                        betSide: seatSlot.slot[0] < 0.45 ? "right"
+                        // Im breiten (Querformat-)Layout sitzen die oberen Boxen
+                        // (Player 4–6) eng im Bogen → Einsatz/Icon unterhalb der Box
+                        // anzeigen, damit der seitliche Bereich nicht mit den
+                        // Nachbarboxen überlappt.
+                        betSide: (seatSlot.slot[1] < 0.30 && tableZone.wide) ? "bottom"
+                               : seatSlot.slot[0] < 0.45 ? "right"
                                : seatSlot.slot[0] > 0.55 ? "left"
                                : "bottom"
                     }

@@ -21,8 +21,25 @@ Rectangle {
     readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === 0
     readonly property int button: selfData && selfData.button !== undefined ? selfData.button : 0
     readonly property int bet: selfData && selfData.bet !== undefined ? selfData.bet : 0
+
+    // Letzte Aktion (0=keine,1=Fold,2=Check,3=Call,4=Bet,5=Raise,6=All-In)
+    readonly property int action: selfData && selfData.action !== undefined ? selfData.action : 0
+    readonly property string actionText: {
+        switch (root.action) {
+        case 1: return qsTr("Fold")
+        case 2: return qsTr("Check")
+        case 3: return qsTr("Call")
+        case 4: return qsTr("Bet")
+        case 5: return qsTr("Raise")
+        case 6: return qsTr("All-In")
+        default: return ""
+        }
+    }
+
     // Ich habe gefoldet → eigene Karten durchscheinend (wie im Qt-Widgets-Client)
     readonly property bool folded: selfData && selfData.folded !== undefined ? selfData.folded : false
+    // Spieler im Spiel? Wer kein Geld mehr für die nächste Hand hat, ist inaktiv.
+    readonly property bool playerActive: selfData && selfData.active !== undefined ? selfData.active : true
 
     color: "transparent"
 
@@ -115,6 +132,9 @@ Rectangle {
             width: cardsArea.cardW
             height: cardsArea.cardH
             color: "transparent"
+            // Raus aus dem Spiel (kein Geld mehr) → Karten ganz ausblenden;
+            // bei Fold (noch im Spiel) nur durchscheinend.
+            visible: root.playerActive
             opacity: root.folded ? 0.3 : 1.0
             Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
             CardImage { anchors.fill: parent; cardIndex: root.card0 }
@@ -126,6 +146,9 @@ Rectangle {
             width: cardsArea.cardW
             height: cardsArea.cardH
             color: "transparent"
+            // Raus aus dem Spiel (kein Geld mehr) → Karten ganz ausblenden;
+            // bei Fold (noch im Spiel) nur durchscheinend.
+            visible: root.playerActive
             opacity: root.folded ? 0.3 : 1.0
             Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
             CardImage { anchors.fill: parent; cardIndex: root.card1 }
@@ -170,30 +193,59 @@ Rectangle {
         }
     }
 
-    // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – oberhalb der Box.
-    // Button rechts neben dem Einsatz, beides zusammen zentriert.
+    // Aktion + Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – als
+    // zentrierte Gruppe oberhalb der Box: [Action] [Einsatz] [Button].
+    // Die Action-Anzeige steht links neben dem Einsatz.
     Item {
         id: betGroup
-        visible: root.bet > 0 || root.button > 0
+        readonly property bool actActive: root.actionText !== "" && !root.isWinner
+        visible: root.bet > 0 || root.button > 0 || actActive
         z: 25
 
         readonly property int gap: 4
+        readonly property real actW: actActive ? actionBadge.width : 0
+        readonly property real actH: actActive ? actionBadge.height : 0
         readonly property real betW: root.bet > 0 ? betRow.width : 0
         readonly property real betH: root.bet > 0 ? betRow.height : 0
         readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
         readonly property real bothGap: (root.bet > 0 && root.button > 0) ? gap : 0
+        readonly property real actGap: (actW > 0 && (betW > 0 || btnW > 0)) ? gap : 0
 
-        width: betW + bothGap + btnW
-        height: Math.max(betH, btnH)
+        width: actW + actGap + betW + bothGap + btnW
+        height: Math.max(actH, betH, btnH)
         x: (parent.width - width) / 2
         y: -height - 2
+
+        // Action-Badge – linkes Element der Gruppe
+        Rectangle {
+            id: actionBadge
+            visible: betGroup.actActive
+            width: actionLabel.width + 16
+            height: 20
+            radius: 10
+            color: Qt.rgba(0.04, 0.08, 0.18, 0.85)
+            border.color: "#8fb4ff"
+            border.width: 1
+            x: 0
+            y: (betGroup.height - height) / 2
+
+            Text {
+                id: actionLabel
+                anchors.centerIn: parent
+                text: root.actionText
+                color: "#eaf1ff"
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 12
+                font.bold: true
+            }
+        }
 
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: 0
+            x: betGroup.actW + betGroup.actGap
             y: (betGroup.height - height) / 2
 
             Image {
@@ -220,7 +272,7 @@ Rectangle {
             width: 26
             height: 26
             fillMode: Image.PreserveAspectFit
-            x: betGroup.betW + betGroup.bothGap
+            x: betGroup.actW + betGroup.actGap + betGroup.betW + betGroup.bothGap
             y: (betGroup.height - height) / 2
             source: root.button === 1 ? "../resources/tableDealerPuck.svg"
                   : root.button === 2 ? "../resources/tableSmallBlind.svg"

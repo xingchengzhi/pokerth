@@ -190,7 +190,16 @@ void GameHandler::refreshPlayerData()
                     m_lastSeenAction[id] = act;
                     m_actionToken[id] = currentToken;
                 }
-                int displayAction = (currentToken >= 0 && m_actionToken[id] == currentToken) ? act : 0;
+                // All-In bleibt die ganze Hand über sichtbar (bis Showdown-Ende):
+                // die Engine behält PLAYER_ACTION_ALLIN über alle Runden bei und
+                // setzt es erst zur nächsten Hand zurück. Übrige Aktionen
+                // verschwinden zu Rundenbeginn (Token-Logik).
+                int displayAction;
+                if (act == PLAYER_ACTION_ALLIN) {
+                    displayAction = act;
+                } else {
+                    displayAction = (currentToken >= 0 && m_actionToken[id] == currentToken) ? act : 0;
+                }
 
                 QVariantMap p;
                 p["name"]   = QString::fromStdString((*it)->getMyName());

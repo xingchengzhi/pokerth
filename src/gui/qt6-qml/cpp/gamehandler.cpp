@@ -19,8 +19,24 @@
 #include <QString>
 #include <QTimer>
 #include <QDebug>
+#include <QUrl>
+#include <QFileInfo>
 #include <algorithm>
 #include <list>
+
+namespace {
+// Avatar-Pfad → QML-Bildquelle. getMyAvatar() liefert (wie im Widgets-Client)
+// einen lokalen Dateipfad; existiert die Datei, als file://-URL zurückgeben.
+QString resolveAvatarSource(const std::string &raw)
+{
+    if (raw.empty())
+        return QString();
+    const QString path = QString::fromStdString(raw);
+    if (!QFileInfo::exists(path))
+        return QString();
+    return QUrl::fromLocalFile(path).toString();
+}
+} // namespace
 
 GameHandler::GameHandler(QObject *parent)
     : QObject(parent), m_phaseText("Preflop")
@@ -253,6 +269,11 @@ void GameHandler::refreshPlayerData()
                 // Gefoldete Spieler bleiben die ganze Hand über gefoldet → Karten
                 // durchscheinend darstellen (wie im Qt-Widgets-Client).
                 p["folded"] = ((*it)->getMyAction() == PLAYER_ACTION_FOLD);
+                // Avatar (gesetzter Spieler-Avatar); Sitz 0 notfalls aus der Config.
+                std::string avatarRaw = (*it)->getMyAvatar();
+                if (avatarRaw.empty() && id == 0 && m_config)
+                    avatarRaw = m_config->readConfigString("MyAvatar");
+                p["avatar"] = resolveAvatarSource(avatarRaw);
                 p["card0"]  = faceUp ? cards[0] : -1;
                 p["card1"]  = faceUp ? cards[1] : -1;
                 if (id == 0) {

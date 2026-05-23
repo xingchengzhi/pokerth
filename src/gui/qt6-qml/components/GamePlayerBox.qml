@@ -30,6 +30,8 @@ Item {
     readonly property int bet: seatData && seatData.bet !== undefined ? seatData.bet : 0
     // Spieler hat gefoldet → Karten durchscheinend (wie im Qt-Widgets-Client)
     readonly property bool folded: seatData && seatData.folded !== undefined ? seatData.folded : false
+    // Gesetzter Avatar (file://-URL) bzw. "" → Platzhalter
+    readonly property string avatarSource: seatData && seatData.avatar !== undefined ? seatData.avatar : ""
 
     // Letzte Aktion dieses Spielers (0=keine,1=Fold,2=Check,3=Call,4=Bet,5=Raise,6=All-In)
     readonly property int action: seatData && seatData.action !== undefined ? seatData.action : 0
@@ -110,8 +112,10 @@ Item {
                 Image {
                     anchors.fill: parent
                     anchors.margins: 1
-                    fillMode: Image.PreserveAspectFit
-                    source: "qrc:resources/pokerth.svg"
+                    fillMode: root.avatarSource !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+                    source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
+                    asynchronous: true
+                    cache: true
                 }
             }
 

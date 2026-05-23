@@ -40,6 +40,8 @@ Rectangle {
     readonly property bool folded: selfData && selfData.folded !== undefined ? selfData.folded : false
     // Spieler im Spiel? Wer kein Geld mehr für die nächste Hand hat, ist inaktiv.
     readonly property bool playerActive: selfData && selfData.active !== undefined ? selfData.active : true
+    // Gesetzter Avatar (file://-URL) bzw. "" → Platzhalter
+    readonly property string avatarSource: selfData && selfData.avatar !== undefined ? selfData.avatar : ""
 
     color: "transparent"
 
@@ -121,8 +123,10 @@ Rectangle {
             Image {
                 anchors.fill: parent
                 anchors.margins: 1
-                fillMode: Image.PreserveAspectFit
-                source: "qrc:resources/pokerth.svg"
+                fillMode: root.avatarSource !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+                source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
+                asynchronous: true
+                cache: true
             }
         }
 

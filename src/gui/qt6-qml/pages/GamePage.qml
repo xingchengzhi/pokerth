@@ -115,30 +115,32 @@ Rectangle {
         // 1. Status-Leiste: Spielphase | Pott | Hand-Nummer
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 36
+            Layout.preferredHeight: 40
             color: Qt.rgba(0, 0, 0, 0.78)
 
             RowLayout {
-                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
                 spacing: 0
 
                 Text {
                     text: GameTable ? GameTable.phaseText : qsTr("Preflop")
                     color: "#FFFFFF"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 12
-                    font.bold: true
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.6
                 }
                 Item { Layout.fillWidth: true }
                 Column {
-                    spacing: -1
+                    spacing: 0
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
                         color: "#99D500"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 13
+                        font.pixelSize: 14
                         font.bold: true
+                        font.letterSpacing: 0.3
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -146,15 +148,18 @@ Rectangle {
                         color: "#7aa800"
                         font.family: Config.StaticData.loadedFont.font.family
                         font.pixelSize: 10
-                        font.bold: true
+                        font.weight: Font.Medium
+                        font.letterSpacing: 0.3
                     }
                 }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: GameTable ? qsTr("Hand ") + GameTable.handNumber : qsTr("Hand 1")
-                    color: "#aaaaaa"
+                    color: "#bdbdbd"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: 11
+                    font.weight: Font.Medium
+                    font.letterSpacing: 0.5
                 }
             }
         }
@@ -254,12 +259,16 @@ Rectangle {
             readonly property var slotSeq: wide ? slotSeqLandscape : slotSeqPortrait
 
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
-            Column {
+            Item {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: -tableZone.height * 0.045
-                spacing: 6
+                // Größe = nur die Kartenreihe; das Winning-Hand-Badge liegt als
+                // Overlay darunter und zählt NICHT zur Größe → die Karten bleiben
+                // zentriert und rutschen nicht nach oben, wenn das Badge erscheint.
+                width: cardRow.width
+                height: cardRow.height
                 z: 0
                 // Wächst mit der Fensterbreite wie die Gegner-Boxen; Kartenhöhe
                 // maximal = Höhe der Self-Box (Basis 64 × oppScale → max 82).
@@ -324,7 +333,8 @@ Rectangle {
 
                 // 5 Slots: Flop (0-2) | Turn (3) | River (4)
                 Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    id: cardRow
+                    anchors.centerIn: parent
                     spacing: 3
 
                     CommunitySlot { boardIndex: 0 }
@@ -340,10 +350,14 @@ Rectangle {
                     CommunitySlot { boardIndex: 4 }
                 }
 
-                // Gewinner-Hand (z.B. "Full House") – nur während des Showdowns,
-                // unterhalb der Gemeinschaftskarten (wie im Qt-Widgets-Client).
+                // Gewinner-Hand (z.B. "Full House") – nur während des Showdowns.
+                // Liegt als Overlay UNTER der Kartenreihe und beeinflusst deren
+                // Position nicht. Im Hochformat darf es minimal in die darunter
+                // liegende Player-Row ragen.
                 Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.horizontalCenter: cardRow.horizontalCenter
+                    anchors.top: cardRow.bottom
+                    anchors.topMargin: 6
                     visible: (typeof GameTable !== "undefined" && GameTable)
                              ? GameTable.winningHandText !== "" : false
                     width: winHandLabel.implicitWidth + 22
@@ -421,6 +435,9 @@ Rectangle {
                     GamePlayerBox {
                         anchors.fill: parent
                         seatIndex: seatSlot.index
+                        // Nur die oberste Box (Player 5, TC-Slot) zeigt das
+                        // Winner-Badge im Hochformat unterhalb – sonst überall oben.
+                        winnerBelow: !tableZone.wide && seatSlot.slotName === "TC"
                         // Einsatz/Button zur Tischmitte zeigen lassen:
                         // linke Sitze rechts, rechte Sitze links, oben/unten-Mitte unten.
                         // Im breiten (Querformat-)Layout sitzen die oberen Boxen
@@ -455,7 +472,7 @@ Rectangle {
             property bool showLog: false
             property bool showChat: false
 
-            Rectangle {
+            Item {
                 id: logOverlay
                 z: 150
                 // Querformat/Vollbild: Sidebar (~1/3 Breite) von rechts.
@@ -465,25 +482,84 @@ Rectangle {
                 anchors.right: parent.right
                 width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showLog
-                color: Qt.rgba(0, 0, 0, 0.88)
-                border.color: Config.StaticData.palette.secondary.col500
-                border.width: tableZone.wide ? 1 : 0
 
-                // Klicks innerhalb der Sidebar abfangen (Tisch daneben bleibt nutzbar)
-                MouseArea { anchors.fill: parent }
+                // Schwebendes Sheet: eingerückt, abgerundet, mit Elevation.
+                Rectangle {
+                    id: logPanel
+                    anchors.fill: parent
+                    anchors.topMargin: 46   // Platz für das Umschalt-Icon oben rechts
+                    anchors.bottomMargin: 10
+                    anchors.leftMargin: tableZone.wide ? 10 : 8
+                    anchors.rightMargin: tableZone.wide ? 10 : 8
+                    radius: 16
+                    color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+                    border.color: Config.StaticData.palette.secondary.col500
+                    border.width: 1
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: "#000000"
+                        shadowOpacity: 0.55
+                        shadowBlur: 0.9
+                        shadowVerticalOffset: 3
+                        shadowHorizontalOffset: 0
+                    }
+                }
+
+                // Klicks innerhalb des Sheets abfangen (Tisch daneben bleibt nutzbar)
+                MouseArea { anchors.fill: logPanel }
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    anchors.fill: logPanel
                     anchors.margins: 12
-                    anchors.topMargin: 48   // Platz für das Umschalt-Icon oben rechts
-                    spacing: 6
+                    spacing: 8
 
-                    Text {
-                        text: qsTr("Spielverlauf")
-                        color: "#FFD700"
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 14
-                        font.bold: true
+                    // Header: Titel + Schließen
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Spielverlauf")
+                            color: Config.Theme.colorAccent
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 15
+                            font.bold: true
+                            font.letterSpacing: 0.4
+                        }
+                        Rectangle {
+                            Layout.preferredWidth: 26
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: logCloseArea.containsMouse
+                                   ? Config.Theme.withAlpha(Config.StaticData.palette.secondary.col500, 0.7)
+                                   : "transparent"
+                            VectorImage {
+                                anchors.centerIn: parent
+                                width: 14; height: 14
+                                source: "../resources/close.svg"
+                                layer.enabled: true
+                                layer.effect: MultiEffect {
+                                    colorization: 1.0
+                                    colorizationColor: Config.StaticData.palette.secondary.col200
+                                }
+                            }
+                            MouseArea {
+                                id: logCloseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: gamePage.toggleLogOverlay()
+                            }
+                        }
+                    }
+
+                    // Trennlinie
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col500, 0.5)
                     }
 
                     ListView {
@@ -500,10 +576,11 @@ Rectangle {
                             width: ListView.view.width
                             text: modelData
                             wrapMode: Text.WordWrap
-                            color: "#e6e6e6"
+                            color: Config.StaticData.palette.secondary.col100
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 12
-                            bottomPadding: 3
+                            lineHeight: 1.15
+                            bottomPadding: 4
                         }
                     }
                 }
@@ -537,7 +614,7 @@ Rectangle {
             }
 
             // ── Chat-Overlay (nur bei menschlichen Mitspielern) ────────────────
-            Rectangle {
+            Item {
                 id: chatOverlay
                 z: 150
                 // Querformat/Vollbild: Sidebar (~1/3 Breite) von links.
@@ -547,9 +624,30 @@ Rectangle {
                 anchors.left: parent.left
                 width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showChat
-                color: Qt.rgba(0, 0, 0, 0.88)
-                border.color: Config.StaticData.palette.secondary.col500
-                border.width: tableZone.wide ? 1 : 0
+
+                // Schwebendes Sheet (von links): eingerückt, abgerundet, mit Elevation.
+                Rectangle {
+                    id: chatPanel
+                    anchors.fill: parent
+                    anchors.topMargin: 46   // Platz für das Chat-Icon oben links
+                    anchors.bottomMargin: 10
+                    anchors.leftMargin: tableZone.wide ? 10 : 8
+                    anchors.rightMargin: tableZone.wide ? 10 : 8
+                    radius: 16
+                    color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+                    border.color: Config.StaticData.palette.secondary.col500
+                    border.width: 1
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: "#000000"
+                        shadowOpacity: 0.55
+                        shadowBlur: 0.9
+                        shadowVerticalOffset: 3
+                        shadowHorizontalOffset: 0
+                    }
+                }
 
                 function chatSend() {
                     if (typeof GameTable === "undefined" || !GameTable) return
@@ -579,20 +677,58 @@ Rectangle {
                     }
                 }
 
-                MouseArea { anchors.fill: parent }   // Klicks abfangen
+                MouseArea { anchors.fill: chatPanel }   // Klicks abfangen
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    anchors.fill: chatPanel
                     anchors.margins: 12
-                    anchors.topMargin: 48   // Platz für das Chat-Icon oben links
-                    spacing: 6
+                    spacing: 8
 
-                    Text {
-                        text: qsTr("Chat")
-                        color: "#FFD700"
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 14
-                        font.bold: true
+                    // Header: Titel + Schließen
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Chat")
+                            color: Config.Theme.colorAccent
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 15
+                            font.bold: true
+                            font.letterSpacing: 0.4
+                        }
+                        Rectangle {
+                            Layout.preferredWidth: 26
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: chatCloseArea.containsMouse
+                                   ? Config.Theme.withAlpha(Config.StaticData.palette.secondary.col500, 0.7)
+                                   : "transparent"
+                            VectorImage {
+                                anchors.centerIn: parent
+                                width: 14; height: 14
+                                source: "../resources/close.svg"
+                                layer.enabled: true
+                                layer.effect: MultiEffect {
+                                    colorization: 1.0
+                                    colorizationColor: Config.StaticData.palette.secondary.col200
+                                }
+                            }
+                            MouseArea {
+                                id: chatCloseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: gamePage.toggleChatOverlay()
+                            }
+                        }
+                    }
+
+                    // Trennlinie
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col500, 0.5)
                     }
 
                     ListView {
@@ -604,17 +740,35 @@ Rectangle {
                         boundsBehavior: Flickable.StopAtBounds
                         ScrollBar.vertical: ScrollBar {}
                         onCountChanged: positionViewAtEnd()
-                        delegate: Text {
+                        spacing: 4
+                        delegate: Item {
                             required property var modelData
                             width: ListView.view.width
-                            text: modelData
-                            textFormat: Text.RichText
-                            wrapMode: Text.WordWrap
-                            color: "#e6e6e6"
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 12
-                            bottomPadding: 3
-                            onLinkActivated: (link) => Qt.openUrlExternally(link)
+                            implicitHeight: bubble.height
+
+                            Rectangle {
+                                id: bubble
+                                width: parent.width
+                                height: msgText.implicitHeight + 12
+                                radius: 8
+                                color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
+
+                                Text {
+                                    id: msgText
+                                    anchors {
+                                        left: parent.left; right: parent.right; top: parent.top
+                                        leftMargin: 8; rightMargin: 8; topMargin: 6
+                                    }
+                                    text: modelData
+                                    textFormat: Text.RichText
+                                    wrapMode: Text.WordWrap
+                                    color: Config.StaticData.palette.secondary.col100
+                                    font.family: Config.StaticData.loadedFont.font.family
+                                    font.pixelSize: 12
+                                    lineHeight: 1.15
+                                    onLinkActivated: (link) => Qt.openUrlExternally(link)
+                                }
+                            }
                         }
                     }
 
@@ -1021,9 +1175,13 @@ Rectangle {
                             Layout.preferredHeight: 28
                             radius: 5
                             opacity: actionBar.canAct ? 1.0 : 0.4
-                            color: allInArea.containsPress ? "#7b1f1f" : allInArea.containsMouse ? "#9e2a2a" : "#5c1111"
-                            border.color: allInBtn.preChecked ? "#FFD700" : "#ef5350"
+                            color: allInArea.containsPress ? Qt.lighter(Config.Theme.colorAllInBottom, 1.35)
+                                 : allInArea.containsMouse ? Config.Theme.colorAllInTop
+                                 : Config.Theme.colorAllInBottom
+                            border.color: allInBtn.preChecked ? "#FFD700" : Config.Theme.colorAllInEdge
                             border.width: allInBtn.preChecked ? 2 : 1
+                            scale: (allInArea.pressed && actionBar.canAct) ? 0.95 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
                             Text {
                                 anchors.centerIn: parent
                                 text: qsTr("All-In")
@@ -1078,7 +1236,9 @@ Rectangle {
                 // Dynamische Beschriftung + Aktivierung wie im Qt-Widgets-Client.
                 Item {
                     width: parent.width
-                    height: 54
+                    // Touch-freundlich: auf schmalen (mobilen) Fenstern höher, damit
+                    // die Buttons gut in der Daumenzone liegen.
+                    height: Config.Theme.compact ? 64 : 54
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
                     // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
@@ -1090,16 +1250,32 @@ Rectangle {
                         property color bottomColor: "#1a3d8b"
                         property color edgeColor: "#6aa0e8"
                         property bool armed: false   // klickbar: eigener Zug ODER Vorwahl möglich
+                        property bool highlight: false   // primäre Aktion hervorheben (Raise)
                         readonly property bool myTurnNow: GameTable !== null && GameTable.myTurn
                         readonly property bool preChecked: ab.actionKey !== "" && actionBar.preAction === ab.actionKey
 
                         radius: 9
-                        border.width: ab.preChecked ? 2 : 1
+                        border.width: (ab.preChecked || (ab.highlight && ab.armed)) ? 2 : 1
                         border.color: ab.preChecked ? "#FFD700" : (ab.armed ? edgeColor : "#3a3a3a")
                         opacity: !ab.armed ? 0.4 : ((ab.myTurnNow || ab.preChecked) ? 1.0 : 0.72)
                         gradient: Gradient {
                             GradientStop { position: 0.0; color: ab.armed ? ab.topColor : "#2b2b2b" }
                             GradientStop { position: 1.0; color: ab.armed ? ab.bottomColor : "#1c1c1c" }
+                        }
+
+                        // Press-Feedback: kurzes Einsinken beim Tippen.
+                        scale: (abMouse.pressed && ab.armed) ? 0.96 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
+
+                        // Raise als primäre Aktion mit weichem Glow hervorheben.
+                        layer.enabled: ab.highlight && ab.armed
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowColor: ab.edgeColor
+                            shadowOpacity: 0.55
+                            shadowBlur: 0.8
+                            shadowVerticalOffset: 0
+                            shadowHorizontalOffset: 0
                         }
 
                         Text {
@@ -1110,7 +1286,8 @@ Rectangle {
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 15
                             font.bold: true
-                            lineHeight: 0.9
+                            font.letterSpacing: 0.5
+                            lineHeight: 0.95
                         }
 
                         // kleiner "vorgemerkt"-Punkt oben rechts
@@ -1122,6 +1299,7 @@ Rectangle {
                         }
 
                         MouseArea {
+                            id: abMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             enabled: ab.armed
@@ -1131,7 +1309,8 @@ Rectangle {
                     }
 
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5; bottomMargin: 5 }
+                        anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5
+                                  bottomMargin: Config.Theme.compact ? 9 : 5 }
                         spacing: 8
 
                         ActionButton {
@@ -1139,7 +1318,9 @@ Rectangle {
                             Layout.fillHeight: true
                             actionKey: "fold"
                             label: actionBar.foldText
-                            topColor: "#d94040"; bottomColor: "#8b1a1a"; edgeColor: "#e87070"
+                            topColor: Config.Theme.colorFoldTop
+                            bottomColor: Config.Theme.colorFoldBottom
+                            edgeColor: Config.Theme.colorFoldEdge
                             armed: actionBar.canAct
                         }
 
@@ -1148,7 +1329,9 @@ Rectangle {
                             Layout.fillHeight: true
                             actionKey: "call"
                             label: actionBar.checkCallText
-                            topColor: "#4080d8"; bottomColor: "#1a3d8b"; edgeColor: "#6aa0e8"
+                            topColor: Config.Theme.colorCallTop
+                            bottomColor: Config.Theme.colorCallBottom
+                            edgeColor: Config.Theme.colorCallEdge
                             armed: actionBar.canAct
                         }
 
@@ -1157,7 +1340,10 @@ Rectangle {
                             Layout.fillHeight: true
                             actionKey: "raise"
                             label: actionBar.betRaiseText
-                            topColor: "#50b840"; bottomColor: "#1e6614"; edgeColor: "#7ad06a"
+                            topColor: Config.Theme.colorRaiseTop
+                            bottomColor: Config.Theme.colorRaiseBottom
+                            edgeColor: Config.Theme.colorRaiseEdge
+                            highlight: true     // primäre Aktion betonen
                             armed: actionBar.canAct && actionBar.raiseAvailable
                         }
                     }

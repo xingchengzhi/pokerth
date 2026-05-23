@@ -45,32 +45,60 @@ Rectangle {
 
     color: "transparent"
 
-    // Hintergrund
+    // Informationsdichte: gefoldet → dezent zurücknehmen, raus aus dem Spiel →
+    // deutlich abdunkeln (analog zu den Gegnerboxen).
+    opacity: !root.playerActive ? 0.4 : (root.folded ? 0.78 : 1.0)
+    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
+
+    // Hintergrund mit dezentem Verlauf + weichem Schlagschatten → angehobene Karte.
     Rectangle {
         anchors.fill: parent
-        color: Config.StaticData.palette.secondary.col600
-        opacity: 0.8
-        radius: 5
+        radius: 6
+        opacity: 0.9
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Qt.lighter(Config.StaticData.palette.secondary.col600, 1.18) }
+            GradientStop { position: 1.0; color: Config.StaticData.palette.secondary.col700 }
+        }
+        border.color: Qt.rgba(1, 1, 1, 0.06)
+        border.width: 1
+
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowColor: "#000000"
+            shadowOpacity: 0.5
+            shadowBlur: 0.6
+            shadowVerticalOffset: 2
+            shadowHorizontalOffset: 0
+        }
     }
 
-    // Highlight: weicher Außen-Glow wenn ich am Zug bin
+    // Highlight: weicher Außen-Glow wenn ich am Zug bin – mit ruhigem Puls.
     Rectangle {
+        id: turnGlow
         anchors.fill: parent
         anchors.margins: -2
         color: "transparent"
         radius: 6
-        border.color: root.isMyTurn ? "#99FFD54A" : "transparent"
-        border.width: root.isMyTurn ? 1 : 0
+        border.color: root.isMyTurn ? "#CCFFD54A" : "transparent"
+        border.width: root.isMyTurn ? 2 : 0
         z: 10
 
         layer.enabled: root.isMyTurn
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: "#FFD700"
-            shadowOpacity: 0.75
+            shadowOpacity: 0.9
             shadowBlur: 1.0
             shadowVerticalOffset: 0
             shadowHorizontalOffset: 0
+        }
+
+        SequentialAnimation on opacity {
+            running: root.isMyTurn
+            loops: Animation.Infinite
+            NumberAnimation { from: 0.65; to: 1.0; duration: 750; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 1.0; to: 0.65; duration: 750; easing.type: Easing.InOutSine }
         }
     }
 
@@ -127,6 +155,9 @@ Rectangle {
                 source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
                 asynchronous: true
                 cache: true
+                // Raus aus dem Spiel → Avatar entsättigen.
+                layer.enabled: !root.playerActive
+                layer.effect: MultiEffect { saturation: -1.0 }
             }
         }
 
@@ -179,7 +210,8 @@ Rectangle {
             color: Config.StaticData.palette.secondary.col100
             font.family: Config.StaticData.loadedFont.font.family
             font.pixelSize: 12
-            font.bold: true
+            font.weight: Font.DemiBold
+            font.letterSpacing: 0.3
             elide: Text.ElideRight
             text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
         }
@@ -228,11 +260,14 @@ Rectangle {
             width: actionLabel.width + 16
             height: 20
             radius: 10
-            color: Qt.rgba(0.04, 0.08, 0.18, 0.85)
-            border.color: "#8fb4ff"
+            // Farbe je Aktion (gleiche Logik wie die Action-Buttons, nur dunkler).
+            color: Config.Theme.actionBadgeColor(root.action)
+            border.color: Config.Theme.actionBadgeBorder(root.action)
             border.width: 1
             x: 0
             y: (betGroup.height - height) / 2
+            Behavior on color { ColorAnimation { duration: 200 } }
+            Behavior on border.color { ColorAnimation { duration: 200 } }
 
             Text {
                 id: actionLabel
@@ -310,7 +345,7 @@ Rectangle {
         visible: root.isWinner
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.top
-        anchors.bottomMargin: 1
+        anchors.bottomMargin: 3
         width: winnerLabel.width + 14
         height: 18
         radius: 9

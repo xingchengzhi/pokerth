@@ -64,6 +64,55 @@ QtObject {
     readonly property color colorDanger:        "#e05050"
     readonly property color colorSuccess:       "#50c878"
 
+    // ── Action colors (Fold / Check-Call / Bet-Raise / All-In) ───────────────
+    // Eine Quelle für die Tisch-Aktionen: die Action-Buttons nutzen den hellen
+    // Top/Bottom/Edge-Verlauf, die Action-Badges auf den Spielerboxen nutzen den
+    // dunkleren *Badge*-Hintergrund + denselben Edge als Rand → Button und Badge
+    // gehören farblich immer zusammen (Badge nur etwas dunkler).
+    readonly property color colorFoldTop:     "#d94040"
+    readonly property color colorFoldBottom:  "#8b1a1a"
+    readonly property color colorFoldEdge:    "#e87070"
+    readonly property color colorFoldBadge:   "#5a1010"   // dunkler als FoldBottom
+
+    readonly property color colorCallTop:     "#4080d8"
+    readonly property color colorCallBottom:  "#1a3d8b"
+    readonly property color colorCallEdge:    "#6aa0e8"
+    readonly property color colorCallBadge:   "#122a55"   // dunkler als CallBottom
+
+    readonly property color colorRaiseTop:    "#50b840"
+    readonly property color colorRaiseBottom: "#1e6614"
+    readonly property color colorRaiseEdge:   "#7ad06a"
+    readonly property color colorRaiseBadge:  "#123f0b"   // dunkler als RaiseBottom
+
+    readonly property color colorAllInTop:    "#9e2a2a"
+    readonly property color colorAllInBottom: "#5c1111"
+    readonly property color colorAllInEdge:   "#ef5350"
+    readonly property color colorAllInBadge:  "#3c0a0a"   // dunkler als AllInBottom
+
+    // Action-Code (1=Fold,2=Check,3=Call,4=Bet,5=Raise,6=All-In) → Badge-Farben.
+    function actionBadgeColor(action) {
+        switch (action) {
+        case 1:  return colorFoldBadge   // Fold
+        case 2:                          // Check  → wie Call (blau)
+        case 3:  return colorCallBadge   // Call
+        case 4:                          // Bet    → wie Raise (grün)
+        case 5:  return colorRaiseBadge  // Raise
+        case 6:  return colorAllInBadge  // All-In
+        default: return colorCallBadge
+        }
+    }
+    function actionBadgeBorder(action) {
+        switch (action) {
+        case 1:  return colorFoldEdge
+        case 2:
+        case 3:  return colorCallEdge
+        case 4:
+        case 5:  return colorRaiseEdge
+        case 6:  return colorAllInEdge
+        default: return colorCallEdge
+        }
+    }
+
     // Chat send action (spectral green, readable on both themes)
     readonly property color colorChatSend:      isDark ? "#4ade80" : "#16a34a"
 
@@ -90,4 +139,9 @@ QtObject {
     // ── Opacity helpers ──────────────────────────────────────────────────────
     readonly property real overlayOpacity: 0.80
     readonly property real dimmedOpacity:  0.40
+
+    // Farbe mit gesetztem Alpha zurückgeben (für transluzente Sheet-Flächen).
+    function withAlpha(c, a) {
+        return Qt.rgba(c.r, c.g, c.b, a)
+    }
 }

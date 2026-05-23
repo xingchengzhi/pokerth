@@ -168,6 +168,14 @@ private:
     // angezeigt und zu Rundenbeginn überall automatisch entfernt.
     int m_lastSeenAction[10] = {};
     int m_actionToken[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    // Setzt ein Spieler bet/raise, müssen die Aktions-Badges aller anderen (noch
+    // nicht gefoldeten) Spieler verschwinden – sie sind wieder am Zug. Dazu bekommt
+    // jede Aktion eine fortlaufende Sequenznummer; angezeigt wird sie nur, wenn sie
+    // mindestens so neu ist wie die letzte Aggression (bet/raise) der Runde.
+    int m_actionSeq[10] = {};
+    int m_actionCounter = 0;
+    int m_lastAggressorSeq = 0;
+    int m_aggressorToken = -1;
     bool m_localGameExitRequested = false;
 };
 

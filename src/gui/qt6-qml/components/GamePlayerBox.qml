@@ -10,6 +10,9 @@ Item {
 
     property bool up: false
     property int seatIndex: 0
+    // Winner-Badge unterhalb statt oberhalb der Box anzeigen – nur für die oberste
+    // Box (Player 5) im Hochformat sinnvoll, sonst würde es oben anstoßen.
+    property bool winnerBelow: false
     // Seite, auf der Einsatz-Chip + Dealer/Blind-Button angezeigt werden:
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
@@ -50,37 +53,70 @@ Item {
     // Nur anzeigen wenn der Sitz besetzt ist
     visible: root.seatData !== null && root.seatData.name !== ""
 
+    // Informationsdichte: wer raus ist (kein Geld mehr → !isActive) wird deutlich
+    // abgedunkelt, wer nur gefoldet hat dezent zurückgenommen. So heben sich der
+    // aktive Spieler und die noch laufende Hand klarer hervor.
+    opacity: !root.isActive ? Config.Theme.dimmedOpacity
+           : (root.folded ? 0.72 : 1.0)
+    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
+
     // ── Hauptbox ────────────────────────────────────────────────────────────────
     Rectangle {
         id: playerBox
         anchors.fill: parent
         color: "transparent"
 
+        // Karten-Hintergrund mit dezentem Verlauf + weichem Schlagschatten → die
+        // Box wirkt als angehobene Karte statt als flache Fläche.
         Rectangle {
             anchors.fill: parent
-            color: Config.StaticData.palette.secondary.col600
-            opacity: 0.8
-            radius: 5
+            radius: 6
+            opacity: 0.9
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.lighter(Config.StaticData.palette.secondary.col600, 1.18) }
+                GradientStop { position: 1.0; color: Config.StaticData.palette.secondary.col700 }
+            }
+            border.color: Qt.rgba(1, 1, 1, 0.06)
+            border.width: 1
+
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#000000"
+                shadowOpacity: 0.5
+                shadowBlur: 0.6
+                shadowVerticalOffset: 2
+                shadowHorizontalOffset: 0
+            }
         }
 
-        // Highlight: weicher Außen-Glow wenn dieser Spieler am Zug ist
+        // Highlight: weicher Außen-Glow wenn dieser Spieler am Zug ist – mit
+        // ruhigem Puls, damit der Blick zum aktiven Spieler geführt wird.
         Rectangle {
+            id: turnGlow
             anchors.fill: parent
             anchors.margins: -2
             color: "transparent"
             radius: 6
-            border.color: root.isMyTurn ? "#99FFD54A" : "transparent"
-            border.width: root.isMyTurn ? 1 : 0
+            border.color: root.isMyTurn ? "#CCFFD54A" : "transparent"
+            border.width: root.isMyTurn ? 2 : 0
             z: 10
 
             layer.enabled: root.isMyTurn
             layer.effect: MultiEffect {
                 shadowEnabled: true
                 shadowColor: "#FFD700"
-                shadowOpacity: 0.75
+                shadowOpacity: 0.9
                 shadowBlur: 1.0
                 shadowVerticalOffset: 0
                 shadowHorizontalOffset: 0
+            }
+
+            SequentialAnimation on opacity {
+                running: root.isMyTurn
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.65; to: 1.0; duration: 750; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1.0; to: 0.65; duration: 750; easing.type: Easing.InOutSine }
             }
         }
 
@@ -116,6 +152,9 @@ Item {
                     source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
                     asynchronous: true
                     cache: true
+                    // Raus aus dem Spiel → Avatar entsättigen (klares "out"-Signal).
+                    layer.enabled: !root.isActive
+                    layer.effect: MultiEffect { saturation: -1.0 }
                 }
             }
 
@@ -171,7 +210,8 @@ Item {
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 10
-                font.bold: true
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.3
                 elide: Text.ElideRight
                 text: root.seatData && root.seatData.name !== "" ? root.seatData.name : "---"
             }
@@ -209,12 +249,16 @@ Item {
         }
     }
 
-    // WINNER-Badge oberhalb der Box
+    // WINNER-Badge: standardmäßig über der Box; nur die oberste Box (Player 5)
+    // zeigt es unterhalb (oben würde es am Bildschirmrand anstoßen). Etwas mehr
+    // vertikaler Abstand zur Box.
     Rectangle {
         visible: root.isWinner
         anchors.horizontalCenter: playerBox.horizontalCenter
-        anchors.bottom: playerBox.top
-        anchors.bottomMargin: 1
+        anchors.top: root.winnerBelow ? playerBox.bottom : undefined
+        anchors.bottom: root.winnerBelow ? undefined : playerBox.top
+        anchors.topMargin: root.winnerBelow ? 3 : 0
+        anchors.bottomMargin: root.winnerBelow ? 0 : 3
         width: winnerLabel.width + 12
         height: 16
         radius: 8
@@ -242,10 +286,13 @@ Item {
         width: actionLabel.width + 14
         height: 18
         radius: 9
-        color: Qt.rgba(0.04, 0.08, 0.18, 0.85)
-        border.color: "#8fb4ff"
+        // Farbe je Aktion (gleiche Logik wie die Action-Buttons, nur dunkler).
+        color: Config.Theme.actionBadgeColor(root.action)
+        border.color: Config.Theme.actionBadgeBorder(root.action)
         border.width: 1
         z: 18
+        Behavior on color { ColorAnimation { duration: 200 } }
+        Behavior on border.color { ColorAnimation { duration: 200 } }
 
         readonly property real cardsCenterX: playerBox.x
                             + topRow.x
@@ -279,36 +326,31 @@ Item {
         z: 25
 
         readonly property bool horizontal: root.betSide === "bottom" || root.betSide === "top"
-        readonly property int gap: 4
-        readonly property bool actActive: root.actionText !== "" && !root.isWinner
-        readonly property real actW: (horizontal && actActive) ? actionBadge.width : 0
-        readonly property real actH: (horizontal && actActive) ? actionBadge.height : 0
         readonly property real betW: root.bet > 0 ? betRow.width : 0
         readonly property real betH: root.bet > 0 ? betRow.height : 0
         readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
-        readonly property real bothGap: (root.bet > 0 && root.button > 0) ? gap : 0
-        readonly property real actGap: (actW > 0 && (betW > 0 || btnW > 0)) ? gap : 0
 
-        // Horizontal (Player 5): [Action][Einsatz][Button] – zentriert unter der Box.
-        // Seiten: die Gruppe überspannt die volle Boxhöhe; Einsatz und Button sitzen
-        // in festen Slots (Mitte/unten), damit nichts verrutscht.
-        width: horizontal ? (actW + actGap + betW + bothGap + btnW) : Math.max(betW, btnW)
-        height: horizontal ? Math.max(actH, betH, btnH) : playerBox.height
+        // Oben/unten (z. B. Player 5): die Gruppe überspannt die volle Boxbreite,
+        // damit Einsatz und Button in FESTEN Slots sitzen (Einsatz mittig, Button
+        // rechts) und nicht verrutschen – unabhängig davon, ob ein Action-Badge
+        // aktiv ist. Seiten (left/right): volle Boxhöhe, Einsatz Mitte, Button unten.
+        width: horizontal ? playerBox.width : Math.max(betW, btnW)
+        height: horizontal ? Math.max(betH, btnH) : playerBox.height
 
         x: root.betSide === "right" ? playerBox.width + 3
          : root.betSide === "left"  ? -width - 3
-         : (playerBox.width - width) / 2
+         : 0
         y: root.betSide === "bottom" ? playerBox.height + 2
          : root.betSide === "top"    ? -height - 2
          : (playerBox.height - height) / 2
 
+        // Einsatz – immer mittig (horizontal: Box-Mitte; Seiten: mittlerer Slot).
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: betGroup.horizontal ? (betGroup.actW + betGroup.actGap) : (betGroup.width - width) / 2
-            // Seiten: mittlerer fester Slot; horizontal: in der Zeile zentriert.
+            x: (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
 
             Image {
@@ -329,6 +371,7 @@ Item {
             }
         }
 
+        // Dealer/Blind-Button – horizontal: fest am rechten Boxrand; Seiten: unterer Slot.
         Image {
             id: buttonImg
             visible: root.button > 0
@@ -336,9 +379,8 @@ Item {
             height: 22
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
-               ? (betGroup.actW + betGroup.actGap + betGroup.betW + betGroup.bothGap)
-                    : (root.betSide === "right" ? 0 : (betGroup.width - width))
-            // Seiten: unterer fester Slot; horizontal: in der Zeile zentriert.
+               ? (betGroup.width - width)
+               : (root.betSide === "right" ? 0 : (betGroup.width - width))
             y: betGroup.horizontal
                ? (betGroup.height - height) / 2
                : (betGroup.height * 5 / 6 - height / 2)

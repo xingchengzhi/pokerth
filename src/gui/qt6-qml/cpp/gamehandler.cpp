@@ -300,9 +300,47 @@ void GameHandler::refreshPlayerData()
             currentToken = hand->getMyID() * 8 + static_cast<int>(hand->getCurrentRound());
     }
 
+    // Neue Setzrunde → die letzte Aggression (bet/raise) gilt nicht mehr.
+    if (currentToken != m_aggressorToken) {
+        m_aggressorToken = currentToken;
+        m_lastAggressorSeq = 0;
+    }
+
     int humanCount = 0;
     if (m_game) {
         PlayerList seats = m_game->getSeatsList();
+
+        // Vorab-Durchlauf: Aktionswechsel erfassen, jeder Aktion eine fortlaufende
+        // Sequenznummer geben und die jüngste Aggression (bet/raise) der Runde
+        // merken – unabhängig von der Sitzreihenfolge.
+        for (auto it = seats->begin(); it != seats->end(); ++it) {
+            int id = (*it)->getMyID();
+            if (id < 0 || id >= 10) continue;
+            int act = (*it)->getMyAction();
+            if (act != m_lastSeenAction[id]) {
+                m_lastSeenAction[id] = act;
+                m_actionToken[id] = currentToken;
+                m_actionSeq[id] = ++m_actionCounter;
+                // Aggression (= alle anderen müssen erneut reagieren): bet/raise
+                // immer; ein All-In nur, wenn sein Einsatz ÜBER dem aktuellen
+                // Höchsteinsatz der übrigen Spieler liegt (echtes Erhöhen – ein
+                // All-In-Call auf/unter dem Höchsteinsatz löst nicht aus).
+                bool aggressive = (act == PLAYER_ACTION_BET || act == PLAYER_ACTION_RAISE);
+                if (act == PLAYER_ACTION_ALLIN) {
+                    int mySet = (*it)->getMySet();
+                    int maxOtherSet = 0;
+                    for (auto jt = seats->begin(); jt != seats->end(); ++jt) {
+                        if (jt == it) continue;
+                        int s = (*jt)->getMySet();
+                        if (s > maxOtherSet) maxOtherSet = s;
+                    }
+                    aggressive = (mySet > maxOtherSet);
+                }
+                if (aggressive)
+                    m_lastAggressorSeq = m_actionSeq[id];
+            }
+        }
+
         for (auto it = seats->begin(); it != seats->end(); ++it) {
             int id = (*it)->getMyID();
             if (!(*it)->getMyName().empty() && (*it)->getMyType() == PLAYER_TYPE_HUMAN)
@@ -321,21 +359,30 @@ void GameHandler::refreshPlayerData()
                                             && (*it)->checkIfINeedToShowCards();
                 const bool faceUp = cardsKnown && (id == 0 || showdownReveal);
 
-                // Aktion nur in ihrer eigenen Runde anzeigen
+                // Im Showdown werden ALLE Aktions-Badges entfernt (auch All-In und
+                // Fold) – jetzt zählen nur noch aufgedeckte Karten, Gewinner-Hand
+                // und Sieger.
+                // Sonst: All-In bleibt die ganze Hand über sichtbar (die Engine
+                // behält PLAYER_ACTION_ALLIN über alle Runden bei und setzt es erst
+                // zur nächsten Hand zurück). Übrige Aktionen verschwinden zu Runden-
+                // beginn (Token-Logik) und sobald ein anderer Spieler bet/raise
+                // gesetzt hat (Sequenz < letzte Aggression).
                 int act = (*it)->getMyAction();
-                if (act != m_lastSeenAction[id]) {
-                    m_lastSeenAction[id] = act;
-                    m_actionToken[id] = currentToken;
-                }
-                // All-In bleibt die ganze Hand über sichtbar (bis Showdown-Ende):
-                // die Engine behält PLAYER_ACTION_ALLIN über alle Runden bei und
-                // setzt es erst zur nächsten Hand zurück. Übrige Aktionen
-                // verschwinden zu Rundenbeginn (Token-Logik).
+                const bool sameRound = (currentToken >= 0 && m_actionToken[id] == currentToken);
                 int displayAction;
-                if (act == PLAYER_ACTION_ALLIN) {
+                if (m_showdownActive) {
+                    displayAction = 0;
+                } else if (act == PLAYER_ACTION_ALLIN) {
+                    displayAction = act;
+                } else if (act == PLAYER_ACTION_FOLD) {
+                    // "Fold" bleibt für die Runde stehen – eine spätere bet/raise
+                    // eines anderen Spielers entfernt es nicht (nur nicht-gefoldete
+                    // Spieler müssen erneut handeln).
+                    displayAction = sameRound ? act : 0;
+                } else if (sameRound && m_actionSeq[id] >= m_lastAggressorSeq) {
                     displayAction = act;
                 } else {
-                    displayAction = (currentToken >= 0 && m_actionToken[id] == currentToken) ? act : 0;
+                    displayAction = 0;
                 }
 
                 QVariantMap p;
@@ -345,7 +392,10 @@ void GameHandler::refreshPlayerData()
                 p["active"] = (*it)->getMyActiveStatus();
                 p["myTurn"] = (*it)->getMyTurn();
                 p["seatId"] = id;
-                p["button"] = (*it)->getMyButton();
+                // Dealer/Small-/Big-Blind nur für aktive Spieler: ausgeschiedene
+                // (0 Coins, raus) behalten sonst ihr altes BB/SB/D-Icon bis zur
+                // nächsten Hand. All-In-Spieler bleiben aktiv und behalten es korrekt.
+                p["button"] = (*it)->getMyActiveStatus() ? (*it)->getMyButton() : BUTTON_NONE;
                 p["action"] = displayAction;
                 // Gefoldete Spieler bleiben die ganze Hand über gefoldet → Karten
                 // durchscheinend darstellen (wie im Qt-Widgets-Client).

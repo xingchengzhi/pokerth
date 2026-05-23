@@ -187,17 +187,6 @@ toggle_logs_brief() {
     DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+l
 }
 
-toggle_chat_once() {
-    local label="$1"
-    local hold="${2:-1}"
-
-    echo "      Shortcut Alt+C (Chat öffnen: ${label})"
-    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+c
-    wait_preview "$hold"
-    echo "      Shortcut Alt+C (Chat schließen: ${label})"
-    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+c
-}
-
 run_round_mode_cycle() {
     local label="$1"
     echo "      ${label}: warte ${MODE_TOGGLE_INTERVAL}s bis Fullscreen ..."
@@ -464,7 +453,6 @@ shot "03_gamepage_preflop.png"
 set_auto_check_fold_mode
 shot "03_gamepage_auto_mode.png"
 toggle_logs_once "nach Auto-Modus" 1
-toggle_chat_once "nach Auto-Modus" 1
 echo "      ViewMode-Zyklus: je Runde ${MODE_TOGGLE_INTERVAL}s bis Fullscreen, dann max ${FULLSCREEN_OPEN_SEC}s offen"
 
 # 4. Hand 1 – Auto-Modus

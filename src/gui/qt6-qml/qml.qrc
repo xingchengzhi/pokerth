@@ -52,6 +52,8 @@
         <file>resources/chipStack.svg</file>
         <file>resources/close.svg</file>
         <file>resources/doorExit.svg</file>
+        <file>resources/gameChat.svg</file>
+        <file>resources/gameLog.svg</file>
         <file>resources/dotsThree.svg</file>
         <file>resources/dotsThreeVertical.svg</file>
         <file>resources/download.svg</file>

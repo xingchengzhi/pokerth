@@ -11,6 +11,7 @@
 #include <boardinterface.h>
 #include <berointerface.h>
 #include <cardsvalue.h>
+#include <playerdata.h>
 #include <game_defs.h>
 #include <gamedata.h>
 #include <configfile.h>
@@ -88,6 +89,10 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_winnerSeatId = -1;
     m_winningHandText.clear();
     m_showdownActive = false;
+    m_gameLog.clear();
+    emit gameLogChanged();
+    m_chatLog.clear();
+    emit chatLogChanged();
     for (int i = 0; i < 10; ++i) {
         m_lastSeenAction[i] = 0;
         m_actionToken[i] = -1;
@@ -122,6 +127,38 @@ void GameHandler::playYourTurnTimeoutSound()
     ensureSoundEventHandler();
     if (m_soundEventHandler)
         m_soundEventHandler->playSound("yourturn", 0);
+}
+
+void GameHandler::appendGameLog(const QString &message)
+{
+    if (message.isEmpty()) return;
+    m_gameLog.append(message);
+    // Begrenzen, damit der Verlauf nicht unbegrenzt wächst.
+    const int kMaxLines = 400;
+    if (m_gameLog.size() > kMaxLines)
+        m_gameLog.erase(m_gameLog.begin(), m_gameLog.begin() + (m_gameLog.size() - kMaxLines));
+    emit gameLogChanged();
+}
+
+void GameHandler::appendChat(const QString &playerName, const QString &message)
+{
+    if (message.isEmpty()) return;
+    m_chatLog.append(playerName + ": " + message);
+    const int kMaxLines = 400;
+    if (m_chatLog.size() > kMaxLines)
+        m_chatLog.erase(m_chatLog.begin(), m_chatLog.begin() + (m_chatLog.size() - kMaxLines));
+    emit chatLogChanged();
+}
+
+void GameHandler::sendChat(const QString &message)
+{
+    if (!m_session || message.trimmed().isEmpty()) return;
+    // Auf 128 Bytes UTF-8 begrenzen (wie der Lobby-Chat).
+    QString text = message;
+    while (!text.isEmpty() && text.toUtf8().size() > 128)
+        text.chop(1);
+    if (text.isEmpty()) return;
+    m_session->sendGameChatMessage(text.toStdString());
 }
 
 bool GameHandler::localGameCallbacksBlocked() const
@@ -166,10 +203,13 @@ void GameHandler::refreshPlayerData()
             currentToken = hand->getMyID() * 8 + static_cast<int>(hand->getCurrentRound());
     }
 
+    int humanCount = 0;
     if (m_game) {
         PlayerList seats = m_game->getSeatsList();
         for (auto it = seats->begin(); it != seats->end(); ++it) {
             int id = (*it)->getMyID();
+            if (!(*it)->getMyName().empty() && (*it)->getMyType() == PLAYER_TYPE_HUMAN)
+                ++humanCount;
             if (id >= 0 && id < 10) {
                 int cards[2] = {-1, -1};
                 (*it)->getMyCards(cards);
@@ -222,6 +262,13 @@ void GameHandler::refreshPlayerData()
                 newPlayers[id] = p;
             }
         }
+    }
+
+    // Chat-Icon nur, wenn außer mir noch ein menschlicher Spieler dabei ist.
+    const bool newHasHumanOpponents = humanCount > 1;
+    if (newHasHumanOpponents != m_hasHumanOpponents) {
+        m_hasHumanOpponents = newHasHumanOpponents;
+        emit hasHumanOpponentsChanged();
     }
 
     m_players = newPlayers;

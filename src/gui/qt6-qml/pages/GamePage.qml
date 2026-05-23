@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.VectorImage
 
 import "../components"
 import "../config" as Config
@@ -369,6 +370,201 @@ Rectangle {
                 // (4 + Avatar/Karten 54 + 4 + Text 16 + 4 = 82)
                 height: 82
                 maxAvatarSize: 54
+            }
+
+            // ── Spielverlauf (Log) + Chat – Umschalt-Icons + Overlays ──────────
+            property bool showLog: false
+            property bool showChat: false
+
+            Rectangle {
+                id: logOverlay
+                z: 150
+                anchors.fill: parent
+                visible: tableZone.showLog
+                color: Qt.rgba(0, 0, 0, 0.88)
+
+                // Klicks abfangen, damit sie nicht an Tisch/Boxen durchgereicht werden
+                MouseArea { anchors.fill: parent }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    anchors.topMargin: 48   // Platz für das Umschalt-Icon oben rechts
+                    spacing: 6
+
+                    Text {
+                        text: qsTr("Spielverlauf")
+                        color: "#FFD700"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    ListView {
+                        id: logList
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.gameLog : []
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar {}
+                        onCountChanged: positionViewAtEnd()
+                        delegate: Text {
+                            required property var modelData
+                            width: ListView.view.width
+                            text: modelData
+                            wrapMode: Text.WordWrap
+                            color: "#e6e6e6"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 12
+                            bottomPadding: 3
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: logToggle
+                z: 200
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 8
+                width: 34; height: 34; radius: 17
+                color: tableZone.showLog ? Config.Theme.colorAccent : Qt.rgba(0, 0, 0, 0.45)
+
+                VectorImage {
+                    anchors.centerIn: parent
+                    width: 20
+                    height: 20
+                    source: "../resources/gameLog.svg"
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorization: 1.0
+                        colorizationColor: tableZone.showLog ? "#101010" : "#FFFFFF"
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        tableZone.showLog = !tableZone.showLog
+                        if (tableZone.showLog) tableZone.showChat = false
+                    }
+                }
+            }
+
+            // ── Chat-Overlay (nur bei menschlichen Mitspielern) ────────────────
+            Rectangle {
+                id: chatOverlay
+                z: 150
+                anchors.fill: parent
+                visible: tableZone.showChat
+                color: Qt.rgba(0, 0, 0, 0.88)
+
+                function chatSend() {
+                    if (typeof GameTable === "undefined" || !GameTable) return
+                    var t = chatInput.text.trim()
+                    if (t.length === 0) return
+                    GameTable.sendChat(t)
+                    chatInput.text = ""
+                }
+
+                MouseArea { anchors.fill: parent }   // Klicks abfangen
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    anchors.topMargin: 48   // Platz für das Chat-Icon oben links
+                    spacing: 6
+
+                    Text {
+                        text: qsTr("Chat")
+                        color: "#FFD700"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    ListView {
+                        id: chatList
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog : []
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar {}
+                        onCountChanged: positionViewAtEnd()
+                        delegate: Text {
+                            required property var modelData
+                            width: ListView.view.width
+                            text: modelData
+                            wrapMode: Text.WordWrap
+                            color: "#e6e6e6"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 12
+                            bottomPadding: 3
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        TextField {
+                            id: chatInput
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("Nachricht …")
+                            font.family: Config.StaticData.loadedFont.font.family
+                            color: Config.StaticData.palette.secondary.col100
+                            placeholderTextColor: Config.StaticData.palette.secondary.col400
+                            background: Rectangle {
+                                radius: 6
+                                color: Config.StaticData.palette.secondary.col600
+                                border.color: chatInput.activeFocus
+                                    ? Config.StaticData.palette.secondary.col200
+                                    : Config.StaticData.palette.secondary.col400
+                                border.width: 1
+                            }
+                            onAccepted: chatOverlay.chatSend()
+                        }
+                        CustomButton {
+                            text: qsTr("Senden")
+                            implicitWidth: 90
+                            enabled: chatInput.text.trim().length > 0
+                            onClicked: chatOverlay.chatSend()
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: chatToggle
+                z: 200
+                visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.hasHumanOpponents : false
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: 8
+                width: 34; height: 34; radius: 17
+                color: tableZone.showChat ? Config.Theme.colorAccent : Qt.rgba(0, 0, 0, 0.45)
+
+                VectorImage {
+                    anchors.centerIn: parent
+                    width: 20
+                    height: 20
+                    source: "../resources/gameChat.svg"
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorization: 1.0
+                        colorizationColor: tableZone.showChat ? "#101010" : "#FFFFFF"
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        tableZone.showChat = !tableZone.showChat
+                        if (tableZone.showChat) tableZone.showLog = false
+                    }
+                }
             }
         }
 

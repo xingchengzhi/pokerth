@@ -84,13 +84,13 @@ public:
     
     // Log functions
     virtual void logPlayerActionMsg(std::string playName, int action, int setValue) override;
-    virtual void logNewGameHandMsg(int gameID, int HandID) override {}
-    virtual void logPlayerWinsMsg(std::string playerName, int pot, bool main) override {}
-    virtual void logPlayerSitsOut(std::string playerName) override {}
+    virtual void logNewGameHandMsg(int gameID, int HandID) override;
+    virtual void logPlayerWinsMsg(std::string playerName, int pot, bool main) override;
+    virtual void logPlayerSitsOut(std::string playerName) override;
     virtual void logNewBlindsSetsMsg(int sbSet, int bbSet, std::string sbName, std::string bbName) override;
-    virtual void logDealBoardCardsMsg(int roundID, int card1, int card2, int card3, int card4 = -1, int card5 = -1) override {}
-    virtual void logFlipHoleCardsMsg(std::string playerName, int card1, int card2, int cardsValueInt = -1, std::string showHas = "shows") override {}
-    virtual void logPlayerWinGame(std::string playerName, int gameID) override {}
+    virtual void logDealBoardCardsMsg(int roundID, int card1, int card2, int card3, int card4 = -1, int card5 = -1) override;
+    virtual void logFlipHoleCardsMsg(std::string playerName, int card1, int card2, int cardsValueInt = -1, std::string showHas = "shows") override;
+    virtual void logPlayerWinGame(std::string playerName, int gameID) override;
     virtual void flushLogAtGame(int gameID) override {}
     virtual void flushLogAtHand() override {}
 
@@ -128,7 +128,7 @@ public:
     virtual void SignalNetClientSpectatorLeft(unsigned playerId, const std::string &playerName, int removeReason) override {}
     virtual void SignalNetClientNewGameAdmin(unsigned playerId, const std::string &playerName) override {}
     
-    virtual void SignalNetClientGameChatMsg(const std::string &playerName, const std::string &msg) override {}
+    virtual void SignalNetClientGameChatMsg(const std::string &playerName, const std::string &msg) override;
     virtual void SignalNetClientLobbyChatMsg(const std::string &playerName, const std::string &msg) override;
     virtual void SignalNetClientPrivateChatMsg(const std::string &playerName, const std::string &msg) override;
     virtual void SignalNetClientMsgBox(const std::string &msg) override {}

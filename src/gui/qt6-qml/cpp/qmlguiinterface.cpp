@@ -13,8 +13,22 @@
 #include <gamedata.h>
 #include <game_defs.h>
 #include <QString>
+#include <QChar>
 #include <QMetaObject>
 #include <QTimer>
+
+namespace {
+// Karten-Code (0-51) → Kurzform mit Unicode-Farbsymbol, z. B. "K♥".
+//   0-12 Karo(♦), 13-25 Herz(♥), 26-38 Pik(♠), 39-51 Kreuz(♣); Rang 2..A.
+QString fmtCard(int code)
+{
+    if (code < 0 || code > 51)
+        return QStringLiteral("?");
+    static const char *ranks[] = {"2","3","4","5","6","7","8","9","10","J","Q","K","A"};
+    static const QChar suits[] = { QChar(0x2666), QChar(0x2665), QChar(0x2660), QChar(0x2663) };
+    return QString::fromLatin1(ranks[code % 13]) + QString(suits[code / 13]);
+}
+} // namespace
 
 QmlGuiInterface::QmlGuiInterface(ConfigFile *config, ServerConnectionHandler *handler, LobbyHandler *lobbyHandler)
     : m_config(config), m_session(), m_handler(handler), m_lobbyHandler(lobbyHandler)
@@ -137,6 +151,15 @@ void QmlGuiInterface::SignalNetClientLobbyChatMsg(const std::string &playerName,
         const QString qMsg = QString::fromStdString(msg);
         QMetaObject::invokeMethod(m_lobbyHandler, "onLobbyChatMessage", Qt::QueuedConnection,
                                   Q_ARG(QString, qPlayerName), Q_ARG(QString, qMsg));
+    }
+}
+
+void QmlGuiInterface::SignalNetClientGameChatMsg(const std::string &playerName, const std::string &msg)
+{
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "appendChat", Qt::QueuedConnection,
+                                  Q_ARG(QString, QString::fromStdString(playerName)),
+                                  Q_ARG(QString, QString::fromStdString(msg)));
     }
 }
 
@@ -317,20 +340,101 @@ void QmlGuiInterface::stopTimeoutAnimation(int playerNum)
 
 void QmlGuiInterface::logPlayerActionMsg(std::string playName, int action, int setValue)
 {
-    Q_UNUSED(playName)
-    Q_UNUSED(setValue)
-
     if (m_gameHandler && action > 0) {
         QMetaObject::invokeMethod(m_gameHandler, "onRefreshAction", Qt::QueuedConnection,
                                   Q_ARG(int, 0), Q_ARG(int, action));
+
+        // Spielverlauf-Text (analog guiLog::logPlayerActionMsg).
+        const QString name = QString::fromStdString(playName);
+        QString msg = name;
+        switch (action) {
+        case 1: msg += QStringLiteral(" folds."); break;
+        case 2: msg += QStringLiteral(" checks."); break;
+        case 3: msg += QStringLiteral(" calls $") + QString::number(setValue) + "."; break;
+        case 4: msg += QStringLiteral(" bets $") + QString::number(setValue) + "."; break;
+        case 5: msg += QStringLiteral(" bets $") + QString::number(setValue) + "."; break;
+        case 6: msg += QStringLiteral(" is all in with $") + QString::number(setValue) + "."; break;
+        default: msg.clear();
+        }
+        if (!msg.isEmpty())
+            QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection,
+                                      Q_ARG(QString, msg));
     }
 }
 
-void QmlGuiInterface::logNewBlindsSetsMsg(int sbSet, int /*bbSet*/, std::string /*sbName*/, std::string /*bbName*/)
+void QmlGuiInterface::logNewBlindsSetsMsg(int sbSet, int bbSet, std::string sbName, std::string bbName)
 {
     if (m_gameHandler) {
         QMetaObject::invokeMethod(m_gameHandler, "onBlindsSet", Qt::QueuedConnection,
                                   Q_ARG(int, sbSet));
+
+        const QString sb = QString::fromStdString(sbName) + " posts small blind ($" + QString::number(sbSet) + ")";
+        const QString bb = QString::fromStdString(bbName) + " posts big blind ($" + QString::number(bbSet) + ")";
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, sb));
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, bb));
+    }
+}
+
+void QmlGuiInterface::logNewGameHandMsg(int gameID, int handID)
+{
+    if (m_gameHandler) {
+        const QString msg = QStringLiteral("── Game ") + QString::number(gameID)
+                            + QStringLiteral(" | Hand ") + QString::number(handID) + QStringLiteral(" ──");
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
+    }
+}
+
+void QmlGuiInterface::logPlayerWinsMsg(std::string playerName, int pot, bool main)
+{
+    if (m_gameHandler) {
+        QString msg = QString::fromStdString(playerName) + " wins $" + QString::number(pot);
+        if (!main)
+            msg += QStringLiteral(" (side pot)");
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
+    }
+}
+
+void QmlGuiInterface::logPlayerSitsOut(std::string playerName)
+{
+    if (m_gameHandler) {
+        const QString msg = QString::fromStdString(playerName) + " sits out";
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
+    }
+}
+
+void QmlGuiInterface::logDealBoardCardsMsg(int roundID, int card1, int card2, int card3, int card4, int card5)
+{
+    if (!m_gameHandler)
+        return;
+    QString round;
+    switch (roundID) {
+    case 1: round = QStringLiteral("Flop"); break;
+    case 2: round = QStringLiteral("Turn"); break;
+    case 3: round = QStringLiteral("River"); break;
+    default: round = QStringLiteral("?");
+    }
+    QStringList cards;
+    cards << fmtCard(card1) << fmtCard(card2) << fmtCard(card3);
+    if (card4 >= 0) cards << fmtCard(card4);
+    if (card5 >= 0) cards << fmtCard(card5);
+    const QString msg = "--- " + round + " --- [" + cards.join(", ") + "]";
+    QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
+}
+
+void QmlGuiInterface::logFlipHoleCardsMsg(std::string playerName, int card1, int card2, int /*cardsValueInt*/, std::string showHas)
+{
+    if (m_gameHandler) {
+        const QString msg = QString::fromStdString(playerName) + " " + QString::fromStdString(showHas)
+                            + " [" + fmtCard(card1) + ", " + fmtCard(card2) + "]";
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
+    }
+}
+
+void QmlGuiInterface::logPlayerWinGame(std::string playerName, int gameID)
+{
+    if (m_gameHandler) {
+        const QString msg = QString::fromStdString(playerName) + " wins game " + QString::number(gameID) + "!";
+        QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection, Q_ARG(QString, msg));
     }
 }
 

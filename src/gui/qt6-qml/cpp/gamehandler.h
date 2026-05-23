@@ -8,6 +8,7 @@
 
 #include <QObject>
 #include <QVariantList>
+#include <QStringList>
 #include <boost/shared_ptr.hpp>
 
 class ConfigFile;
@@ -34,6 +35,10 @@ class GameHandler : public QObject
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
     Q_PROPERTY(int winnerSeatId READ winnerSeatId NOTIFY winnerSeatIdChanged)
     Q_PROPERTY(QString winningHandText READ winningHandText NOTIFY winningHandTextChanged)
+    Q_PROPERTY(QStringList gameLog READ gameLog NOTIFY gameLogChanged)
+    Q_PROPERTY(QStringList chatLog READ chatLog NOTIFY chatLogChanged)
+    // true, sobald außer mir noch (mind.) ein menschlicher Spieler im Spiel ist
+    Q_PROPERTY(bool hasHumanOpponents READ hasHumanOpponents NOTIFY hasHumanOpponentsChanged)
 
 public:
     explicit GameHandler(QObject *parent = nullptr);
@@ -62,6 +67,15 @@ public:
     QVariantList boardCards() const { return m_boardCards; }
     int winnerSeatId() const { return m_winnerSeatId; }
     QString winningHandText() const { return m_winningHandText; }
+    QStringList gameLog() const { return m_gameLog; }
+    QStringList chatLog() const { return m_chatLog; }
+    bool hasHumanOpponents() const { return m_hasHumanOpponents; }
+
+    // Append a line to the in-game action log (called from QmlGuiInterface).
+    Q_INVOKABLE void appendGameLog(const QString &message);
+    // In-game chat: append a received message / send one to the table.
+    Q_INVOKABLE void appendChat(const QString &playerName, const QString &message);
+    Q_INVOKABLE void sendChat(const QString &message);
 
     // Called from QmlGuiInterface callbacks (must be Q_INVOKABLE for invokeMethod)
     Q_INVOKABLE void onRefreshSet();
@@ -108,6 +122,9 @@ signals:
     void boardCardsChanged();
     void winnerSeatIdChanged();
     void winningHandTextChanged();
+    void gameLogChanged();
+    void chatLogChanged();
+    void hasHumanOpponentsChanged();
 
 private:
     bool localGameCallbacksBlocked() const;
@@ -139,6 +156,9 @@ private:
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
     int m_winnerSeatId = -1;
     QString m_winningHandText;  // Name der Gewinner-Hand (nur während des Showdowns)
+    QStringList m_gameLog;      // Live-Aktions-Log (Spielverlauf) für das Overlay
+    QStringList m_chatLog;      // In-Game-Chat-Verlauf
+    bool m_hasHumanOpponents = false;
     // Showdown aktiv: erst dann dürfen Gegnerkarten aufgedeckt werden. Verhindert,
     // dass die (noch veraltete) playerNeedToShowCards-Liste während der River-
     // Setzrunde der nächsten Hand fälschlich Karten aufdeckt.

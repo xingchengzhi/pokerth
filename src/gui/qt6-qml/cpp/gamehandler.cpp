@@ -21,6 +21,8 @@
 #include <QDebug>
 #include <QUrl>
 #include <QFileInfo>
+#include <QDateTime>
+#include <QRegularExpression>
 #include <algorithm>
 #include <list>
 
@@ -35,6 +37,47 @@ QString resolveAvatarSource(const std::string &raw)
     if (!QFileInfo::exists(path))
         return QString();
     return QUrl::fromLocalFile(path).toString();
+}
+
+// ASCII-Smileys → Unicode-Emoji (identisch zum Lobby-Chat). Eingabe ist bereits
+// HTML-escaped ('>' = "&gt;"); RichText rendert die Emoji über die Systemschrift.
+QString chatCheckForEmotes(const QString &input)
+{
+    QString result = input;
+    auto emo = [](char32_t cp) -> QString { return QString::fromUcs4(&cp, 1); };
+
+    result.replace(QLatin1String("0:-)"),    emo(0x1F607)); // 😇
+    result.replace(QLatin1String("X-("),     emo(0x1F620)); // 😠
+    result.replace(QLatin1String("B-)"),     emo(0x1F60E)); // 😎
+    result.replace(QLatin1String("8-)"),     emo(0x1F60E)); // 😎
+    result.replace(QLatin1String(":'("),     emo(0x1F622)); // 😢
+    result.replace(QLatin1String("&gt;:-)"), emo(0x1F608)); // 😈
+    result.replace(QLatin1String(":-["),     emo(0x1F633)); // 😳
+    result.replace(QLatin1String(":-*"),     emo(0x1F617)); // 😗
+    result.replace(QLatin1String(":-))" ),   emo(0x1F602)); // 😂
+    result.replace(QLatin1String(":))" ),    emo(0x1F602)); // 😂
+    result.replace(QLatin1String(":-|"),     emo(0x1F610)); // 😐
+    result.replace(QLatin1String(":-P"),     emo(0x1F61B)); // 😛
+    result.replace(QLatin1String(":-p"),     emo(0x1F61B)); // 😛
+    result.replace(QLatin1String(":-("),     emo(0x1F61E)); // 😞
+    result.replace(QLatin1String(":("),      emo(0x1F61E)); // 😞
+    result.replace(QLatin1String(":-&"),     emo(0x1F912)); // 🤒
+    result.replace(QLatin1String(":-D"),     emo(0x1F603)); // 😃
+    result.replace(QLatin1String(":D"),      emo(0x1F603)); // 😃
+    result.replace(QLatin1String(":-!"),     emo(0x1F60F)); // 😏
+    result.replace(QLatin1String(":-0"),     emo(0x1F62E)); // 😮
+    result.replace(QLatin1String(":-O"),     emo(0x1F62E)); // 😮
+    result.replace(QLatin1String(":-o"),     emo(0x1F62E)); // 😮
+    result.replace(QLatin1String(":-/"),     emo(0x1F615)); // 😕
+    if (!result.contains(QLatin1String("http://")) && !result.contains(QLatin1String("https://")))
+        result.replace(QLatin1String(":/"), emo(0x1F615));  // 😕
+    result.replace(QLatin1String(";-)"),     emo(0x1F609)); // 😉
+    result.replace(QLatin1String(";)"),      emo(0x1F609)); // 😉
+    result.replace(QLatin1String(":-S"),     emo(0x1F61F)); // 😟
+    result.replace(QLatin1String(":-s"),     emo(0x1F61F)); // 😟
+    result.replace(QLatin1String(":-)"),     emo(0x1F60A)); // 😊
+    result.replace(QLatin1String(":)"),      emo(0x1F60A)); // 😊
+    return result;
 }
 } // namespace
 
@@ -159,7 +202,33 @@ void GameHandler::appendGameLog(const QString &message)
 void GameHandler::appendChat(const QString &playerName, const QString &message)
 {
     if (message.isEmpty()) return;
-    m_chatLog.append(playerName + ": " + message);
+
+    // Formatierung analog zum Lobby-Chat: /me-Aktion, Emojis, Erwähnung.
+    const QString myNick = m_config ? QString::fromStdString(m_config->readConfigString("MyName")) : QString();
+    const bool isAction = message.startsWith(QStringLiteral("/me "));
+    const QString rawDisplay = isAction ? message.mid(4) : message;
+
+    QString escapedMsg = rawDisplay.toHtmlEscaped();
+    static const QRegularExpression urlRe(QStringLiteral("(https?://\\S+)"));
+    escapedMsg.replace(urlRe, QStringLiteral("<a href=\"\\1\">\\1</a>"));
+
+    const bool isMention = !myNick.isEmpty() && rawDisplay.contains(myNick, Qt::CaseInsensitive);
+    const QString color = isMention ? QStringLiteral("#E3C800") : QStringLiteral("#e6e6e6");
+    QString styledMsg = QStringLiteral("<span style=\"color:") + color
+                        + (isMention ? QStringLiteral("; font-weight:bold") : QString())
+                        + QStringLiteral(";\">") + escapedMsg + QStringLiteral("</span>");
+    if (!m_config || !m_config->readConfigInt("DisableChatEmoticons"))
+        styledMsg = chatCheckForEmotes(styledMsg);
+
+    const QString ts = QDateTime::currentDateTime().toString(QStringLiteral("HH:mm:ss"));
+    const QString name = playerName.toHtmlEscaped();
+    QString line;
+    if (isAction)
+        line = QStringLiteral("[") + ts + QStringLiteral("] <i>* ") + name + QStringLiteral(" ") + styledMsg + QStringLiteral(" *</i>");
+    else
+        line = QStringLiteral("[") + ts + QStringLiteral("] <b>") + name + QStringLiteral(":</b> ") + styledMsg;
+
+    m_chatLog.append(line);
     const int kMaxLines = 400;
     if (m_chatLog.size() > kMaxLines)
         m_chatLog.erase(m_chatLog.begin(), m_chatLog.begin() + (m_chatLog.size() - kMaxLines));

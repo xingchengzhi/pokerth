@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.VectorImage
+import QtQuick.Window
 
 import "../components"
 import "../config" as Config
@@ -13,6 +14,84 @@ Rectangle {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     color: "transparent"
+
+    function applyPlayingMode(index) {
+        if (!actionBar)
+            return
+        actionBar.playingMode = index
+        // Falls bereits mein Zug: gewählten Auto-Modus sofort ausführen.
+        if (GameTable && GameTable.myTurn) {
+            if (index === 2) {
+                if (actionBar.canCheck) GameTable.call()
+                else GameTable.fold()
+            } else if (index === 1) {
+                GameTable.call()
+            }
+        }
+    }
+
+    function toggleLogOverlay() {
+        if (!tableZone)
+            return
+        tableZone.showLog = !tableZone.showLog
+        if (tableZone.showLog && !tableZone.wide)
+            tableZone.showChat = false
+    }
+
+    function toggleChatOverlay() {
+        if (!tableZone)
+            return
+        tableZone.showChat = !tableZone.showChat
+        if (tableZone.showChat && !tableZone.wide)
+            tableZone.showLog = false
+    }
+
+    function toggleFullscreenMode() {
+        var win = gamePage.Window.window
+        if (!win)
+            return
+        if (win.visibility === Window.FullScreen)
+            win.visibility = Window.Windowed
+        else
+            win.visibility = Window.FullScreen
+    }
+
+    Shortcut {
+        sequence: "Alt+L"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.toggleLogOverlay()
+    }
+    Shortcut {
+        sequence: "Alt+C"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.toggleChatOverlay()
+    }
+    Shortcut {
+        sequence: "Alt+F"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(2)
+    }
+    Shortcut {
+        sequence: "Alt+M"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(0)
+    }
+    Shortcut {
+        sequence: "Alt+K"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(1)
+    }
+    Shortcut {
+        sequence: "F11"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.toggleFullscreenMode()
+    }
 
     Image {
         id: gameBackground
@@ -453,11 +532,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        tableZone.showLog = !tableZone.showLog
-                        // Im Hochformat überlagern sich beide → eins schließen.
-                        if (tableZone.showLog && !tableZone.wide) tableZone.showChat = false
-                    }
+                    onClicked: gamePage.toggleLogOverlay()
                 }
             }
 
@@ -482,6 +557,26 @@ Rectangle {
                     if (t.length === 0) return
                     GameTable.sendChat(t)
                     chatInput.text = ""
+                }
+
+                // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen ergänzen.
+                function tabComplete() {
+                    if (typeof GameTable === "undefined" || !GameTable) return
+                    var full = chatInput.text
+                    var lastSpace = full.lastIndexOf(" ")
+                    var prefix = full.substring(lastSpace + 1)
+                    if (prefix.length === 0) return
+                    var lower = prefix.toLowerCase()
+                    for (var i = 0; i < GameTable.players.length; i++) {
+                        var n = GameTable.players[i].name
+                        if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
+                            // erstes Wort → mit ": " (Anrede), sonst mit Leerzeichen
+                            var suffix = (lastSpace < 0) ? ": " : " "
+                            chatInput.text = full.substring(0, lastSpace + 1) + n + suffix
+                            chatInput.cursorPosition = chatInput.text.length
+                            return
+                        }
+                    }
                 }
 
                 MouseArea { anchors.fill: parent }   // Klicks abfangen
@@ -513,17 +608,19 @@ Rectangle {
                             required property var modelData
                             width: ListView.view.width
                             text: modelData
+                            textFormat: Text.RichText
                             wrapMode: Text.WordWrap
                             color: "#e6e6e6"
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 12
                             bottomPadding: 3
+                            onLinkActivated: (link) => Qt.openUrlExternally(link)
                         }
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 4
                         TextField {
                             id: chatInput
                             Layout.fillWidth: true
@@ -540,12 +637,37 @@ Rectangle {
                                 border.width: 1
                             }
                             onAccepted: chatOverlay.chatSend()
+                            Keys.onReturnPressed: chatOverlay.chatSend()
+                            // Tab-Vervollständigung von Spielernamen
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Tab) {
+                                    event.accepted = true
+                                    chatOverlay.tabComplete()
+                                }
+                            }
                         }
-                        CustomButton {
-                            text: qsTr("Senden")
-                            implicitWidth: 90
+                        // Senden-Button wie in der Lobby (send.svg)
+                        Button {
+                            Layout.preferredWidth: 44
+                            Layout.preferredHeight: 36
                             enabled: chatInput.text.trim().length > 0
                             onClicked: chatOverlay.chatSend()
+                            background: Item {}
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            contentItem: Image {
+                                anchors.centerIn: parent
+                                width: 20
+                                height: 20
+                                source: "../resources/send.svg"
+                                sourceSize: Qt.size(36, 36)
+                                smooth: true
+                                antialiasing: true
+                                layer.enabled: true
+                                layer.effect: MultiEffect {
+                                    colorization: 1.0
+                                    colorizationColor: Config.Theme.colorChatSend
+                                }
+                            }
                         }
                     }
                 }
@@ -575,11 +697,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        tableZone.showChat = !tableZone.showChat
-                        // Im Hochformat überlagern sich beide → eins schließen.
-                        if (tableZone.showChat && !tableZone.wide) tableZone.showLog = false
-                    }
+                    onClicked: gamePage.toggleChatOverlay()
                 }
             }
         }
@@ -935,14 +1053,7 @@ Rectangle {
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
                             currentIndex: actionBar.playingMode
-                            onActivated: {
-                                actionBar.playingMode = index
-                                // Falls bereits mein Zug: gewählten Auto-Modus sofort ausführen.
-                                if (GameTable && GameTable.myTurn) {
-                                    if (index === 2) { if (actionBar.canCheck) GameTable.call(); else GameTable.fold() }
-                                    else if (index === 1) GameTable.call()
-                                }
-                            }
+                            onActivated: gamePage.applyPlayingMode(index)
 
                             contentItem: Text {
                                 leftPadding: 8

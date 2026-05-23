@@ -18,9 +18,8 @@ DESKTOP_H=900
 DISPLAY_RES="${DESKTOP_W}x${DESKTOP_H}"
 PORTRAIT_W=390
 PORTRAIT_H=844
-MODE_TOGGLE_INTERVAL=15
-ACTION_GUARD_SEC=10
-ACTION_BLOCK_FILE="${SCRIPT_DIR}/.preview_action_block"
+MODE_TOGGLE_INTERVAL=10
+FULLSCREEN_OPEN_SEC=10
 VIEW_MODE_STATE_FILE="${SCRIPT_DIR}/.preview_view_mode"
 VIEW_MODE_CYCLE_STOP_FILE="${SCRIPT_DIR}/.preview_view_mode_stop"
 
@@ -96,21 +95,17 @@ wait_preview() {
 
 quick_call_action() {
     local label="$1"
-    touch "$ACTION_BLOCK_FILE"
     update_click_coords
     fast_click_at "$CALL_X" "$ACTION_Y" "(${label})"
-    rm -f "$ACTION_BLOCK_FILE"
 }
 
 quick_halfpot_raise_action() {
     local label="$1"
-    touch "$ACTION_BLOCK_FILE"
     update_click_coords
     fast_click_at "$HALF_POT_X" "$HALF_POT_Y" "(${label} 1/2-Pot)"
     sleep 0.04
     update_click_coords
     fast_click_at "$RAISE_X" "$RAISE_ACTIVE_Y" "(${label} Raise)"
-    rm -f "$ACTION_BLOCK_FILE"
 }
 
 sync_view_mode_state() {
@@ -141,6 +136,11 @@ update_click_coords() {
     DOOR_X=$(( WX + (WW * 19 / 390) ))
     DOOR_Y=$(( WY + (WH * 19 / 844) ))
 
+    MODE_COMBO_X=$(( WX + WW - 74 ))
+    MODE_COMBO_Y=$(( WY + (WH * 803 / 844) ))
+    LOG_TOGGLE_X=$(( WX + WW - 25 ))
+    LOG_TOGGLE_Y=$(( WY + 25 ))
+
     if [ "$CURRENT_VIEW_MODE" = "fullscreen" ] && [ "$DESKTOP_W" -eq 1440 ] && [ "$DESKTOP_H" -eq 900 ]; then
         # Expliziter Fullscreen-Koordinatensatz fuer Action-Bar.
         FOLD_X=$(( FS_CALL_X - 163 ))
@@ -162,9 +162,68 @@ update_click_coords() {
     fi
 }
 
+set_auto_check_fold_mode() {
+    echo "      Aktiviere Auto Check/Fold ..."
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+f
+}
+
+toggle_logs_once() {
+    local label="$1"
+    local hold="${2:-1}"
+
+    echo "      Shortcut Alt+L (Logs öffnen: ${label})"
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+l
+    wait_preview "$hold"
+    echo "      Shortcut Alt+L (Logs schließen: ${label})"
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+l
+}
+
+toggle_logs_brief() {
+    local label="$1"
+
+    echo "      Shortcut Alt+L (Logs kurz anzeigen: ${label})"
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+l
+    sleep 4.5
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+l
+}
+
+toggle_chat_once() {
+    local label="$1"
+    local hold="${2:-1}"
+
+    echo "      Shortcut Alt+C (Chat öffnen: ${label})"
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+c
+    wait_preview "$hold"
+    echo "      Shortcut Alt+C (Chat schließen: ${label})"
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --window "$WIN_ID" alt+c
+}
+
+run_round_mode_cycle() {
+    local label="$1"
+    echo "      ${label}: warte ${MODE_TOGGLE_INTERVAL}s bis Fullscreen ..."
+    wait_preview "$MODE_TOGGLE_INTERVAL"
+    toggle_logs_brief "${label}"
+    toggle_view_mode
+    echo "      ${label}: Fullscreen max ${FULLSCREEN_OPEN_SEC}s ..."
+    wait_preview "$FULLSCREEN_OPEN_SEC"
+    toggle_view_mode
+}
+
+press_fullscreen_toggle() {
+    DISPLAY=":${DISPLAY_NUM}" xdotool windowactivate --sync "$WIN_ID" 2>/dev/null || \
+        DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
+    DISPLAY=":${DISPLAY_NUM}" xdotool key --clearmodifiers F11
+    sleep 0.2
+}
+
 apply_portrait_mode() {
     local px=$(( (DESKTOP_W - PORTRAIT_W) / 2 ))
     local py=$(( (DESKTOP_H - PORTRAIT_H) / 2 ))
+
+    # Falls wir im Fullscreen sind, zuerst per F11 zurück in den Fenstermodus.
+    if [ "$CURRENT_VIEW_MODE" = "fullscreen" ]; then
+        press_fullscreen_toggle
+    fi
 
     DISPLAY=":${DISPLAY_NUM}" xdotool windowsize --sync "$WIN_ID" "$PORTRAIT_W" "$PORTRAIT_H"
     DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" "$px" "$py"
@@ -175,8 +234,7 @@ apply_portrait_mode() {
 }
 
 apply_fullscreen_mode() {
-    DISPLAY=":${DISPLAY_NUM}" xdotool windowsize --sync "$WIN_ID" "$DESKTOP_W" "$DESKTOP_H"
-    DISPLAY=":${DISPLAY_NUM}" xdotool windowmove --sync "$WIN_ID" 0 0
+    press_fullscreen_toggle
     DISPLAY=":${DISPLAY_NUM}" xdotool windowfocus "$WIN_ID" 2>/dev/null || true
     CURRENT_VIEW_MODE="fullscreen"
     printf '%s\n' "$CURRENT_VIEW_MODE" > "$VIEW_MODE_STATE_FILE"
@@ -190,32 +248,6 @@ toggle_view_mode() {
     else
         echo "      ViewMode-Wechsel: fullscreen -> portrait"
         apply_portrait_mode
-    fi
-}
-
-guard_action_window() {
-    :
-}
-
-start_view_mode_cycle() {
-    stop_view_mode_cycle
-    rm -f "$VIEW_MODE_CYCLE_STOP_FILE"
-    (
-        while [ ! -f "$VIEW_MODE_CYCLE_STOP_FILE" ]; do
-            sleep "$MODE_TOGGLE_INTERVAL"
-            [ -f "$VIEW_MODE_CYCLE_STOP_FILE" ] && break
-            toggle_view_mode
-        done
-    ) &
-    VIEW_MODE_CYCLE_PID=$!
-}
-
-stop_view_mode_cycle() {
-    if [ -n "${VIEW_MODE_CYCLE_PID:-}" ]; then
-        touch "$VIEW_MODE_CYCLE_STOP_FILE" 2>/dev/null || true
-        kill "$VIEW_MODE_CYCLE_PID" 2>/dev/null || true
-        wait "$VIEW_MODE_CYCLE_PID" 2>/dev/null || true
-        unset VIEW_MODE_CYCLE_PID
     fi
 }
 
@@ -270,9 +302,6 @@ setup_virtual_audio() {
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 cleanup() {
     echo "[cleanup] Beende alle Prozesse ..."
-    touch "$VIEW_MODE_CYCLE_STOP_FILE" 2>/dev/null || true
-    rm -f "$ACTION_BLOCK_FILE" 2>/dev/null || true
-    stop_view_mode_cycle
     kill "${POKERTH_PID:-}" 2>/dev/null || true
     sleep 1
     if [ -n "${FFMPEG_PID:-}" ]; then
@@ -432,67 +461,49 @@ echo "      Warte auf GamePage (6s) ..."
 sleep 6
 shot "03_gamepage_preflop.png"
 
-GAME_MODE_TOGGLE_ACTIVE=1
-NEXT_MODE_SWITCH_AT=$((SECONDS + MODE_TOGGLE_INTERVAL))
-echo "      ViewMode-Toggle aktiv: alle ${MODE_TOGGLE_INTERVAL}s"
+set_auto_check_fold_mode
+shot "03_gamepage_auto_mode.png"
+toggle_logs_once "nach Auto-Modus" 1
+toggle_chat_once "nach Auto-Modus" 1
+echo "      ViewMode-Zyklus: je Runde ${MODE_TOGGLE_INTERVAL}s bis Fullscreen, dann max ${FULLSCREEN_OPEN_SEC}s offen"
 
-# 4. Hand 1 – Spielverlauf
-#    Runde 1, 2, 4: CALL (kein Effekt wenn nicht am Zug)
-#    Runde 3:       1/2-Pot + RAISE (kein Effekt wenn nicht am Zug oder kein Raise möglich)
+# 4. Hand 1 – Auto-Modus
 echo "      Hand 1 – Spielverlauf ..."
 
-# Runde 1 – CALL
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-quick_call_action "CALL Runde 1"
+# Runde 1
+run_round_mode_cycle "Hand 1 Runde 1"
 shot "04_hand1_runde1.png"
 
-# Runde 2 – CALL
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-quick_call_action "CALL Runde 2"
+# Runde 2
+run_round_mode_cycle "Hand 1 Runde 2"
 shot "04_hand1_runde2.png"
 
-# Runde 3 – 1/2-Pot setzen, dann RAISE
-#   Wenn Spieler gerade an der Reihe ist und Raise-Controls sichtbar:
-#     1/2-Klick → setzt raiseAmount auf halben Pot → RAISE klicken
-#   Sonst: Klicks landen auf Spieltisch (kein Effekt)
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-echo "      Runde 3: 1/2-Pot + RAISE versuchen ..."
-quick_halfpot_raise_action "Runde 3"
+# Runde 3
+run_round_mode_cycle "Hand 1 Runde 3"
 shot "04_hand1_runde3.png"
 
-# Runde 4 – CALL
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-quick_call_action "CALL Runde 4"
+# Runde 4
+run_round_mode_cycle "Hand 1 Runde 4"
 shot "04_hand1_runde4.png"
+
+toggle_logs_once "zwischen Hand 1 und Hand 2" 1
 
 # 5. Hand 2 – kompakt durchspielen und dann in Hand 3 überleiten
 echo "      Hand 2 – Spielverlauf ..."
 
-start_view_mode_cycle
 wait_preview "$HAND_SWITCH_DELAY"
 shot "05_hand2_preflop.png"
 
-# Runde 1 – CALL
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-quick_call_action "CALL Hand 2 Runde 1"
+# Runde 1
+run_round_mode_cycle "Hand 2 Runde 1"
 shot "05_hand2_runde1.png"
 
-# Runde 2 – CALL
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-quick_call_action "CALL Hand 2 Runde 2"
+# Runde 2
+run_round_mode_cycle "Hand 2 Runde 2"
 shot "05_hand2_runde2.png"
 
-# Runde 3 – 1/2-Pot + RAISE
-start_view_mode_cycle
-wait_preview "$PLAYER_ACTION_DELAY"
-echo "      Hand 2 Runde 3: 1/2-Pot + RAISE versuchen ..."
-quick_halfpot_raise_action "Hand 2 Runde 3"
+# Runde 3
+run_round_mode_cycle "Hand 2 Runde 3"
 shot "05_hand2_runde3.png"
 
 # Hand 2 entspannt auslaufen lassen; es reicht, wenn der Ablauf sichtbar in die
@@ -506,8 +517,6 @@ shot "05_hand3_start.png"
 #    2. Escape → mainStackView.pop() → LocalGamePage verlassen → StartPage
 echo "      Zurück zur Startseite ..."
 wait_preview "$HAND3_EXIT_DELAY"
-
-stop_view_mode_cycle
 
 
 if [ "$CURRENT_VIEW_MODE" != "portrait" ]; then

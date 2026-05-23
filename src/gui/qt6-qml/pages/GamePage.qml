@@ -616,6 +616,8 @@ Rectangle {
             // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──
             property string preAction: ""        // "", "fold", "call", "raise", "allin"
             property int preCallAmount: -1        // callAmount zum Zeitpunkt der Vorwahl
+            // Spielmodus: 0 = manuell, 1 = Auto Check/Call, 2 = Auto Check/Fold.
+            property int playingMode: 0
 
             readonly property bool canAct: GameTable !== null && GameTable.canAct
             // Während der Vorwahl zeigt der Fold-Button bei freiem Check "Check / Fold"
@@ -639,6 +641,11 @@ Rectangle {
 
             function clickAction(which) {
                 if (GameTable === null) return
+                // Eigener Klick auf einen Action-Button hat Vorrang vor dem
+                // Auto-Modus → zurück auf "manuell", dann die Aktion ausführen
+                // bzw. vormerken (wie im Qt-Widgets-Client).
+                if (playingMode !== 0)
+                    playingMode = 0
                 if (GameTable.myTurn) {
                     preAction = ""
                     fireAction(which)
@@ -693,8 +700,15 @@ Rectangle {
                 target: GameTable
                 function onMyTurnChanged() {
                     actionBar.syncRaiseAmount()
-                    // Beim eigenen Zug die vorgemerkte Aktion ausführen
-                    if (GameTable.myTurn && actionBar.preAction !== "") {
+                    if (!GameTable.myTurn)
+                        return
+                    // Auto-Spielmodus hat Vorrang vor der manuellen Vorwahl.
+                    if (actionBar.playingMode === 2) {            // Auto Check/Fold
+                        if (actionBar.canCheck) GameTable.call()  // Check (kein Einsatz offen)
+                        else GameTable.fold()
+                    } else if (actionBar.playingMode === 1) {     // Auto Check/Call (any)
+                        GameTable.call()
+                    } else if (actionBar.preAction !== "") {       // Manuell: Vorwahl ausführen
                         var a = actionBar.preAction
                         actionBar.preAction = ""
                         actionBar.runPreAction(a)
@@ -746,52 +760,16 @@ Rectangle {
                     height: visible ? implicitHeight : 0
                     clip: true
 
-                    // Zeile 1: Slider
-                    Slider {
-                        id: raiseSlider
-                        width: parent.width - 16
-                        height: 26
-                        enabled: actionBar.raiseAvailable
-                        opacity: enabled ? 1.0 : 0.45
-                        from: actionBar.raiseMinAmount
-                        to: actionBar.raiseAvailable ? Math.max(actionBar.raiseMinAmount, actionBar.raiseMaxAmount) : 1
-                        stepSize: actionBar.raiseStepFor(actionBar.raiseMaxAmount)
-                        value: actionBar.raiseAmount
-                        onMoved: actionBar.raiseAmount = actionBar.clampRaiseAmount(actionBar.roundedRaiseAmount(value))
-
-                        background: Rectangle {
-                            x: raiseSlider.leftPadding
-                            y: raiseSlider.topPadding + raiseSlider.availableHeight / 2 - height / 2
-                            width: raiseSlider.availableWidth
-                            height: 4
-                            radius: 2
-                            color: "#333333"
-                            Rectangle {
-                                width: raiseSlider.visualPosition * parent.width
-                                height: parent.height
-                                radius: 2
-                                color: "#4CAF50"
-                            }
-                        }
-                        handle: Rectangle {
-                            x: raiseSlider.leftPadding + raiseSlider.visualPosition * (raiseSlider.availableWidth - width)
-                            y: raiseSlider.topPadding + raiseSlider.availableHeight / 2 - height / 2
-                            width: 18; height: 18; radius: 9
-                            color: raiseSlider.pressed ? "#80FF80" : "#4CAF50"
-                            border.color: "#2a7a2a"
-                            border.width: 1
-                        }
-                    }
-
-                    // Zeile 2: Betrag-Eingabe + Pot-%-Buttons + All-In
+                    // Zeile 1: Betrag-Eingabe (links) + Slider
                     RowLayout {
                         width: parent.width - 16
-                        spacing: 4
+                        spacing: 6
 
-                        // Betrag-Eingabe
+                        // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            height: 28
+                            Layout.preferredHeight: 28
+                            Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
                             border.color: actionBar.raiseAvailable ? "#4CAF50" : "#3a3a3a"
@@ -831,6 +809,49 @@ Rectangle {
                             }
                         }
 
+                        Slider {
+                            id: raiseSlider
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 26
+                            Layout.alignment: Qt.AlignVCenter
+                            enabled: actionBar.raiseAvailable
+                            opacity: enabled ? 1.0 : 0.45
+                            from: actionBar.raiseMinAmount
+                            to: actionBar.raiseAvailable ? Math.max(actionBar.raiseMinAmount, actionBar.raiseMaxAmount) : 1
+                            stepSize: actionBar.raiseStepFor(actionBar.raiseMaxAmount)
+                            value: actionBar.raiseAmount
+                            onMoved: actionBar.raiseAmount = actionBar.clampRaiseAmount(actionBar.roundedRaiseAmount(value))
+
+                            background: Rectangle {
+                                x: raiseSlider.leftPadding
+                                y: raiseSlider.topPadding + raiseSlider.availableHeight / 2 - height / 2
+                                width: raiseSlider.availableWidth
+                                height: 4
+                                radius: 2
+                                color: "#333333"
+                                Rectangle {
+                                    width: raiseSlider.visualPosition * parent.width
+                                    height: parent.height
+                                    radius: 2
+                                    color: "#4CAF50"
+                                }
+                            }
+                            handle: Rectangle {
+                                x: raiseSlider.leftPadding + raiseSlider.visualPosition * (raiseSlider.availableWidth - width)
+                                y: raiseSlider.topPadding + raiseSlider.availableHeight / 2 - height / 2
+                                width: 18; height: 18; radius: 9
+                                color: raiseSlider.pressed ? "#80FF80" : "#4CAF50"
+                                border.color: "#2a7a2a"
+                                border.width: 1
+                            }
+                        }
+                    }
+
+                    // Zeile 2: Pot-%-Buttons + All-In (bündig) + Spielmodus-Dropdown (rechts)
+                    RowLayout {
+                        width: parent.width - 16
+                        spacing: 4
+
                         // Pot-Prozent-Buttons: 1/3 · 1/2 · Pot
                         Repeater {
                             model: [
@@ -844,7 +865,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                height: 28
+                                Layout.preferredHeight: 28
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -874,14 +895,12 @@ Rectangle {
                             }
                         }
 
-                        Item { Layout.fillWidth: true }
-
-                        // All-In-Button (ebenfalls vorwählbar)
+                        // All-In – bündig an die Pot-Buttons
                         Rectangle {
                             id: allInBtn
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             Layout.preferredWidth: 52
-                            height: 28
+                            Layout.preferredHeight: 28
                             radius: 5
                             opacity: actionBar.canAct ? 1.0 : 0.4
                             color: allInArea.containsPress ? "#7b1f1f" : allInArea.containsMouse ? "#9e2a2a" : "#5c1111"
@@ -902,6 +921,43 @@ Rectangle {
                                 cursorShape: actionBar.canAct ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 hoverEnabled: true
                                 onClicked: actionBar.clickAction("allin")
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        // Spielmodus-Dropdown (rechts): Manuell / Auto Check/Call / Auto Check/Fold
+                        ComboBox {
+                            id: playingModeCombo
+                            Layout.preferredWidth: 132
+                            Layout.preferredHeight: 28
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 11
+                            model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
+                            currentIndex: actionBar.playingMode
+                            onActivated: {
+                                actionBar.playingMode = index
+                                // Falls bereits mein Zug: gewählten Auto-Modus sofort ausführen.
+                                if (GameTable && GameTable.myTurn) {
+                                    if (index === 2) { if (actionBar.canCheck) GameTable.call(); else GameTable.fold() }
+                                    else if (index === 1) GameTable.call()
+                                }
+                            }
+
+                            contentItem: Text {
+                                leftPadding: 8
+                                rightPadding: playingModeCombo.indicator.width + 4
+                                text: playingModeCombo.displayText
+                                font: playingModeCombo.font
+                                color: "#FFFFFF"
+                                verticalAlignment: Text.AlignVCenter
+                                elide: Text.ElideRight
+                            }
+                            background: Rectangle {
+                                radius: 5
+                                color: actionBar.playingMode === 0 ? "#222222" : "#3a2e10"
+                                border.color: actionBar.playingMode === 0 ? "#3a3a3a" : Config.Theme.colorAccent
+                                border.width: 1
                             }
                         }
                     }

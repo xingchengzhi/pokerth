@@ -188,6 +188,8 @@ public:
     void setGameListFilterMode(int mode);
     
     void setMyPlayerInfo(unsigned playerId, const QString &playerName);
+    // Set the current player's game-admin status (e.g. on self-join as host).
+    void setCurrentPlayerAdmin(bool isAdmin);
 
 public slots:
     // Player management

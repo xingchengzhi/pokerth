@@ -188,11 +188,13 @@ void QmlGuiInterface::SignalNetClientPlayerChanged(unsigned playerId, const std:
 
 void QmlGuiInterface::SignalNetClientSelfJoined(unsigned playerId, const std::string &playerName, bool isGameAdmin)
 {
-    Q_UNUSED(isGameAdmin)
     if (m_lobbyHandler) {
         const QString qPlayerName = QString::fromStdString(playerName);
-        QMetaObject::invokeMethod(m_lobbyHandler, [this, playerId, qPlayerName]() {
+        QMetaObject::invokeMethod(m_lobbyHandler, [this, playerId, qPlayerName, isGameAdmin]() {
             m_lobbyHandler->setMyPlayerInfo(playerId, qPlayerName);
+            // Beim Selbst-Beitritt (z. B. als Host des eigenen Spiels) den
+            // Spiel-Admin-Status übernehmen → Start-Button im Warteraum sichtbar.
+            m_lobbyHandler->setCurrentPlayerAdmin(isGameAdmin);
             m_lobbyHandler->onSelfJoinedGame();
         }, Qt::QueuedConnection);
     }

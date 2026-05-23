@@ -8,9 +8,27 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
 DEPLOY_DIR="${SCRIPT_DIR}/pokerth-linux-binary"
 DEPLOY_NAME="pokerth-linux-$(uname -m)-$(date +%Y%m%d)"
+DEPLOY_PARENT_DIR="$(dirname "$DEPLOY_DIR")"
 
 echo "=== PokerTH Binary Deploy Erstellung ==="
 echo "Deploy: $DEPLOY_DIR"
+echo ""
+
+echo "=== Bereinigung (vorab) ==="
+if [ -d "$DEPLOY_DIR" ]; then
+    rm -rf "$DEPLOY_DIR"
+    echo "Entfernt: $DEPLOY_DIR"
+else
+    echo "Kein altes Deploy-Verzeichnis gefunden"
+fi
+
+LAST_ZIP=$(find "$DEPLOY_PARENT_DIR" -maxdepth 1 -type f -name "pokerth-linux-*.zip" -printf "%T@ %p\n" 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)
+if [ -n "$LAST_ZIP" ] && [ -f "$LAST_ZIP" ]; then
+    rm -f "$LAST_ZIP"
+    echo "Entfernt: $LAST_ZIP"
+else
+    echo "Keine alte ZIP-Datei gefunden"
+fi
 echo ""
 
 if [ ! -f "$BUILD_DIR/bin/pokerth_client" ]; then
@@ -18,7 +36,6 @@ if [ ! -f "$BUILD_DIR/bin/pokerth_client" ]; then
     exit 1
 fi
 
-rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR"/{bin,lib,data,share,plugins}
 
 echo "=== Kopiere Binaries ==="

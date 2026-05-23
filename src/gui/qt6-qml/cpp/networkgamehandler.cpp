@@ -10,11 +10,22 @@
 #include <gamedata.h>
 #include <gui/generic/serverguiwrapper.h>
 
+#include <QFile>
+#include <QTextStream>
+#include <QDomDocument>
+#include <QVariantMap>
+
 #include <list>
 
 NetworkGameHandler::NetworkGameHandler(QObject *parent)
     : QObject(parent)
 {
+}
+
+void NetworkGameHandler::setConfig(ConfigFile *config)
+{
+    m_config = config;
+    refreshProfiles();
 }
 
 NetworkGameHandler::~NetworkGameHandler()
@@ -104,4 +115,160 @@ void NetworkGameHandler::createGame(int maxPlayers, int startCash, int firstSmal
     m_session->startNetworkClientForLocalServer(gameData);
 
     emit hostingStarted();
+}
+
+// ─── Join a network server ───────────────────────────────────────────────────
+
+void NetworkGameHandler::joinGame(const QString &address, int port, bool ipv6, bool sctp)
+{
+    if (!m_session) {
+        emit joinFailed(tr("No session available."));
+        return;
+    }
+    const QString addr = address.trimmed();
+    if (addr.isEmpty()) {
+        emit joinFailed(tr("Please enter a server address."));
+        return;
+    }
+
+    // Mirror startWindowImpl::callJoinNetworkGameDialog: stop any running
+    // client/server, then connect to the remote server (auto-joins its first
+    // game → wait room via the existing connect/lobby signals).
+    m_session->terminateNetworkClient();
+    if (m_serverSession)
+        m_serverSession->terminateNetworkServer();
+
+    m_session->startNetworkClient(addr.toStdString(),
+                                  static_cast<unsigned>(port), ipv6, sctp);
+    emit joinStarted();
+}
+
+int NetworkGameHandler::defaultPort() const
+{
+    if (!m_config)
+        return 7234;
+    const int p = m_config->readConfigInt("ServerPort");
+    return p > 0 ? p : 7234;
+}
+
+// ─── Server profiles (<UserDataDir>/serverprofiles.xml) ──────────────────────
+
+QString NetworkGameHandler::serverProfilesPath() const
+{
+    if (!m_config)
+        return QString();
+    QString dir = QString::fromStdString(m_config->readConfigString("UserDataDir"));
+    if (dir.isEmpty())
+        return QString();
+    if (!dir.endsWith('/') && !dir.endsWith('\\'))
+        dir += '/';
+    return dir + "serverprofiles.xml";
+}
+
+void NetworkGameHandler::refreshProfiles()
+{
+    QVariantList list;
+    const QString path = serverProfilesPath();
+    if (!path.isEmpty()) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly)) {
+            QDomDocument doc;
+            if (doc.setContent(&file)) {
+                QDomElement profiles = doc.documentElement().firstChildElement("ServerProfiles");
+                for (QDomElement e = profiles.firstChildElement("Profile"); !e.isNull();
+                     e = e.nextSiblingElement("Profile")) {
+                    QVariantMap m;
+                    m["name"]    = e.attribute("Name");
+                    m["address"] = e.attribute("Address");
+                    m["port"]    = e.attribute("Port").toInt();
+                    m["ipv6"]    = e.attribute("IsIpv6").toInt() != 0;
+                    m["sctp"]    = e.attribute("IsSctp").toInt() != 0;
+                    list.append(m);
+                }
+            }
+            file.close();
+        }
+    }
+    m_serverProfiles = list;
+    emit serverProfilesChanged();
+}
+
+void NetworkGameHandler::saveProfile(const QString &name, const QString &address,
+                                     int port, bool ipv6, bool sctp)
+{
+    const QString path = serverProfilesPath();
+    const QString trimmedName = name.trimmed();
+    if (path.isEmpty() || trimmedName.isEmpty())
+        return;
+
+    QDomDocument doc;
+    QFile in(path);
+    if (in.open(QIODevice::ReadOnly)) {
+        doc.setContent(&in);
+        in.close();
+    }
+    QDomElement root = doc.documentElement();
+    if (root.isNull()) {
+        root = doc.createElement("PokerTH");
+        doc.appendChild(root);
+    }
+    QDomElement profiles = root.firstChildElement("ServerProfiles");
+    if (profiles.isNull()) {
+        profiles = doc.createElement("ServerProfiles");
+        root.appendChild(profiles);
+    }
+    // Replace an existing profile with the same name.
+    QDomElement e = profiles.firstChildElement("Profile");
+    while (!e.isNull()) {
+        QDomElement next = e.nextSiblingElement("Profile");
+        if (e.attribute("Name") == trimmedName)
+            profiles.removeChild(e);
+        e = next;
+    }
+    QDomElement p = doc.createElement("Profile");
+    p.setAttribute("Name", trimmedName);
+    p.setAttribute("Address", address.trimmed());
+    p.setAttribute("Port", QString::number(port));
+    p.setAttribute("IsIpv6", ipv6 ? 1 : 0);
+    p.setAttribute("IsSctp", sctp ? 1 : 0);
+    profiles.appendChild(p);
+
+    QFile out(path);
+    if (out.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream stream(&out);
+        stream << doc.toString();
+        out.close();
+    }
+    refreshProfiles();
+}
+
+void NetworkGameHandler::deleteProfile(const QString &name)
+{
+    const QString path = serverProfilesPath();
+    if (path.isEmpty())
+        return;
+    QDomDocument doc;
+    QFile in(path);
+    if (!in.open(QIODevice::ReadOnly))
+        return;
+    const auto parseResult = doc.setContent(&in);
+    in.close();
+    if (!parseResult)   // ParseResult / bool – contextual conversion
+        return;
+
+    QDomElement profiles = doc.documentElement().firstChildElement("ServerProfiles");
+    QDomElement e = profiles.firstChildElement("Profile");
+    while (!e.isNull()) {
+        QDomElement next = e.nextSiblingElement("Profile");
+        if (e.attribute("Name") == name)
+            profiles.removeChild(e);
+        e = next;
+    }
+    QFile out(path);
+    if (out.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream stream(&out);
+        stream << doc.toString();
+        out.close();
+    }
+    refreshProfiles();
 }

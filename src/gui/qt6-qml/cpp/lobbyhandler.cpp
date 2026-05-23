@@ -766,6 +766,14 @@ void LobbyHandler::onGameListChanged(unsigned gameId)
     emit gameContextChanged();
 }
 
+void LobbyHandler::setCurrentPlayerAdmin(bool isAdmin)
+{
+    if (m_isCurrentPlayerAdmin != isAdmin) {
+        m_isCurrentPlayerAdmin = isAdmin;
+        emit isCurrentPlayerAdminChanged();
+    }
+}
+
 void LobbyHandler::setMyPlayerInfo(unsigned playerId, const QString &playerName)
 {
     if (m_myPlayerId != playerId) {

@@ -1355,7 +1355,12 @@ ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cl
 			InitMessage *netInit = init->GetMsg()->mutable_initmessage();
 			netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
 			netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-			netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
+			// Announce the version matching the client type. QML clients must
+			// send the QML version (the server's MIN_BUILD_ID_QML check uses it),
+			// otherwise a current server rejects them with "version not supported".
+			netInit->set_buildid(context.GetClientType() == CLIENT_TYPE_QML
+				? MAKE_BUILD_ID(CLIENT_TYPE_QML, QML_VERSION_MAJOR, QML_VERSION_MINOR, QML_VERSION_REVISION)
+				: MAKE_BUILD_ID(CLIENT_TYPE_QT_WIDGET, POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
 			if (!context.GetSessionGuid().empty()) {
 				netInit->set_mylastsessionid(context.GetSessionGuid());
 			}
@@ -1433,7 +1438,10 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             InitMessage *netInit = init->GetMsg()->mutable_initmessage();
             netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
             netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-            netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
+            // Announce the version matching the client type (see above).
+            netInit->set_buildid(context.GetClientType() == CLIENT_TYPE_QML
+                ? MAKE_BUILD_ID(CLIENT_TYPE_QML, QML_VERSION_MAJOR, QML_VERSION_MINOR, QML_VERSION_REVISION)
+                : MAKE_BUILD_ID(CLIENT_TYPE_QT_WIDGET, POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
             
             // Include session GUID and server password BEFORE setting login type
             if (!context.GetSessionGuid().empty()) {

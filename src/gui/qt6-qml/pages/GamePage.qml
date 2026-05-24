@@ -135,7 +135,7 @@ Rectangle {
                     spacing: 0
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: GameTable ? qsTr("Pot: $") + GameTable.pot : qsTr("Pot: $0")
+                        text: qsTr("Pot: $%1").arg(GameTable ? GameTable.pot : 0)
                         color: "#99D500"
                         font.family: Config.StaticData.loadedFont.font.family
                         font.pixelSize: 14
@@ -144,7 +144,7 @@ Rectangle {
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: GameTable ? qsTr("Total: $") + GameTable.totalPot : qsTr("Total: $0")
+                        text: qsTr("Total: $%1").arg(GameTable ? GameTable.totalPot : 0)
                         color: "#7aa800"
                         font.family: Config.StaticData.loadedFont.font.family
                         font.pixelSize: 10
@@ -154,7 +154,7 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: GameTable ? qsTr("Hand ") + GameTable.handNumber : qsTr("Hand 1")
+                    text: qsTr("Hand %1").arg(GameTable ? GameTable.handNumber : 1)
                     color: "#bdbdbd"
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: 11
@@ -173,8 +173,13 @@ Rectangle {
             // Grüne Tischgrafik füllt die gesamte Zone. Unten am Bild liegt der
             // hölzerne Tischrand → Crop am unteren Rand ausrichten, damit dieser
             // auch im breiten Querformat sichtbar bleibt (im Hochformat ohnehin).
+            // Querformat: reicht hinter der geschrumpften Action-Box bis zum
+            // unteren Bildschirmrand, damit dort kein dunkler Streifen bleibt.
             Image {
-                anchors.fill: parent
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: parent.height + (tableZone.wide ? actionBar.height : 0)
                 source: "../resources/tableGreen.png"
                 fillMode: Image.PreserveAspectCrop
                 verticalAlignment: Image.AlignBottom
@@ -198,10 +203,29 @@ Rectangle {
             // Faktor 1.0 bei Telefonbreite (~390px), linear hoch bis zum Maximum
             // (= Höhe der Self-Box) bei Vollbildbreite (~1920px).
             readonly property int oppBaseHeight: 64
+            // Breite einer Gegner-Box (= seatSlot.width), Basis für die Abstandsprüfung.
+            readonly property int oppBaseWidth: 107
             readonly property real oppScale: {
                 var cap = selfBox.height / oppBaseHeight
                 var t = (width - 390) / (1920 - 390)
-                return Math.max(1.0, Math.min(cap, 1.0 + t * (cap - 1.0)))
+                var s = Math.max(1.0, Math.min(cap, 1.0 + t * (cap - 1.0)))
+                // Querformat: die oberen Boxen sitzen eng im Bogen. Skalierung so
+                // begrenzen, dass benachbarte Boxen mind. 2px horizontalen Abstand
+                // behalten – sonst überlappen sie am Umschalt-Breakpoint.
+                if (wide && width > 0) {
+                    var sq = slotSeq[seatCount - 1] || []
+                    var xs = []
+                    for (var i = 0; i < sq.length; ++i) {
+                        var p = slotPos[sq[i]]
+                        if (p && p[1] < 0.30) xs.push(p[0])   // nur die obere Reihe
+                    }
+                    xs.sort(function(a, b) { return a - b })
+                    for (var j = 1; j < xs.length; ++j) {
+                        var maxArc = ((xs[j] - xs[j - 1]) * width - 2) / oppBaseWidth
+                        if (maxArc < s) s = maxArc
+                    }
+                }
+                return s
             }
 
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
@@ -457,7 +481,9 @@ Rectangle {
                 id: selfBox
                 z: 1
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 20
+                // Querformat: etwas mehr Luft zwischen Self-Box und Action-Panel
+                // (12 px) als unten zum Bildschirmrand (8 px).
+                anchors.bottomMargin: tableZone.wide ? 12 : 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
                 // (6 + Avatar 54 + 6 + Karten [2×39+4=82] + 6 = 154)
@@ -471,6 +497,38 @@ Rectangle {
             // ── Spielverlauf (Log) + Chat – Umschalt-Icons + Overlays ──────────
             property bool showLog: false
             property bool showChat: false
+
+            // Ungelesene Chat-Nachrichten: alles oberhalb von chatReadCount gilt als
+            // ungelesen. Als gelesen markiert wird, sobald der Chat 2 s offen war
+            // (chatReadTimer); danach gelten weitere Nachrichten bei offenem Chat
+            // sofort als gelesen.
+            property int chatReadCount: 0
+            readonly property int chatUnread: {
+                var n = (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog.length : 0
+                return Math.max(0, n - chatReadCount)
+            }
+            onShowChatChanged: {
+                if (showChat) chatReadTimer.restart()
+                else chatReadTimer.stop()
+            }
+            Timer {
+                id: chatReadTimer
+                interval: 2000
+                onTriggered: tableZone.chatReadCount =
+                    (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog.length : 0
+            }
+            Connections {
+                target: (typeof GameTable !== "undefined") ? GameTable : null
+                // Bei offenem, bereits gelesenem Chat (2s-Timer abgelaufen) gelten
+                // neue Nachrichten sofort als gelesen.
+                function onChatLogChanged() {
+                    // Chat wurde geleert (neues Spiel) → Zähler nachführen.
+                    if (GameTable.chatLog.length < tableZone.chatReadCount)
+                        tableZone.chatReadCount = GameTable.chatLog.length
+                    if (tableZone.showChat && !chatReadTimer.running)
+                        tableZone.chatReadCount = GameTable.chatLog.length
+                }
+            }
 
             Item {
                 id: logOverlay
@@ -487,7 +545,7 @@ Rectangle {
                 Rectangle {
                     id: logPanel
                     anchors.fill: parent
-                    anchors.topMargin: 46   // Platz für das Umschalt-Icon oben rechts
+                    anchors.topMargin: 50   // Abstand zum Umschalt-Icon oben rechts
                     anchors.bottomMargin: 10
                     anchors.leftMargin: tableZone.wide ? 10 : 8
                     anchors.rightMargin: tableZone.wide ? 10 : 8
@@ -575,8 +633,9 @@ Rectangle {
                             required property var modelData
                             width: ListView.view.width
                             text: modelData
+                            // Farben kommen aus dem HTML (Widgets-Log-Style).
+                            textFormat: Text.RichText
                             wrapMode: Text.WordWrap
-                            color: Config.StaticData.palette.secondary.col100
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 12
                             lineHeight: 1.15
@@ -625,11 +684,17 @@ Rectangle {
                 width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showChat
 
+                // Emoji-Picker über dem Eingabefeld ein-/ausblenden.
+                property bool showEmojiPicker: false
+                // Beim Schrumpfen der Liste ans Ende scrollen, damit die letzten
+                // Nachrichten sichtbar bleiben.
+                onShowEmojiPickerChanged: if (showEmojiPicker) Qt.callLater(chatList.positionViewAtEnd)
+
                 // Schwebendes Sheet (von links): eingerückt, abgerundet, mit Elevation.
                 Rectangle {
                     id: chatPanel
                     anchors.fill: parent
-                    anchors.topMargin: 46   // Platz für das Chat-Icon oben links
+                    anchors.topMargin: 50   // Abstand zum Chat-Icon oben links
                     anchors.bottomMargin: 10
                     anchors.leftMargin: tableZone.wide ? 10 : 8
                     anchors.rightMargin: tableZone.wide ? 10 : 8
@@ -740,7 +805,7 @@ Rectangle {
                         boundsBehavior: Flickable.StopAtBounds
                         ScrollBar.vertical: ScrollBar {}
                         onCountChanged: positionViewAtEnd()
-                        spacing: 4
+                        spacing: 3
                         delegate: Item {
                             required property var modelData
                             width: ListView.view.width
@@ -749,7 +814,7 @@ Rectangle {
                             Rectangle {
                                 id: bubble
                                 width: parent.width
-                                height: msgText.implicitHeight + 12
+                                height: msgText.implicitHeight + 6
                                 radius: 8
                                 color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
 
@@ -757,7 +822,7 @@ Rectangle {
                                     id: msgText
                                     anchors {
                                         left: parent.left; right: parent.right; top: parent.top
-                                        leftMargin: 8; rightMargin: 8; topMargin: 6
+                                        leftMargin: 8; rightMargin: 8; topMargin: 3
                                     }
                                     text: modelData
                                     textFormat: Text.RichText
@@ -765,16 +830,48 @@ Rectangle {
                                     color: Config.StaticData.palette.secondary.col100
                                     font.family: Config.StaticData.loadedFont.font.family
                                     font.pixelSize: 12
-                                    lineHeight: 1.15
+                                    lineHeight: 1.0
                                     onLinkActivated: (link) => Qt.openUrlExternally(link)
                                 }
                             }
                         }
                     }
 
+                    // Emoji-Picker – über dem Eingabefeld; die Nachrichtenliste
+                    // (Layout.fillHeight) schrumpft entsprechend, letzte Nachrichten
+                    // bleiben sichtbar.
+                    EmojiPicker {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 150
+                        visible: chatOverlay.showEmojiPicker
+                        onPicked: (emoji) => {
+                            chatInput.insert(chatInput.cursorPosition, emoji)
+                            chatInput.forceActiveFocus()
+                        }
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 4
+                        // Emoji-Picker-Umschalter
+                        Button {
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            onClicked: chatOverlay.showEmojiPicker = !chatOverlay.showEmojiPicker
+                            background: Rectangle {
+                                radius: 6
+                                color: chatOverlay.showEmojiPicker
+                                       ? Config.StaticData.palette.secondary.col500 : "transparent"
+                            }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            contentItem: Text {
+                                text: "🙂"
+                                font.family: Config.StaticData.emojiFamily
+                                font.pixelSize: 20
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
                         TextField {
                             id: chatInput
                             Layout.fillWidth: true
@@ -853,6 +950,31 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: gamePage.toggleChatOverlay()
                 }
+
+                // Badge mit Anzahl ungelesener Chat-Nachrichten.
+                Rectangle {
+                    visible: tableZone.chatUnread > 0
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.topMargin: -3
+                    anchors.rightMargin: -3
+                    width: Math.max(17, unreadLabel.implicitWidth + 8)
+                    height: 17
+                    radius: 8.5
+                    color: Config.Theme.colorDanger
+                    border.color: "#1d222b"
+                    border.width: 1.5
+
+                    Text {
+                        id: unreadLabel
+                        anchors.centerIn: parent
+                        text: tableZone.chatUnread > 99 ? "99+" : tableZone.chatUnread
+                        color: "#FFFFFF"
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
+                }
             }
         }
 
@@ -860,8 +982,18 @@ Rectangle {
         Item {
             id: actionBar
             Layout.fillWidth: true
-            // Höhe wächst dynamisch mit dem Inhalt
-            Layout.preferredHeight: actionBarCol.implicitHeight
+            // Höhe wächst dynamisch mit dem Inhalt (Querformat: +8 px, damit das
+            // Panel mit 8 px Abstand über dem unteren Bildschirmrand schwebt).
+            Layout.preferredHeight: actionBarCol.implicitHeight + (tableZone.wide ? 8 : 0)
+
+            // Querformat: Inhalt auf die (skalierte) Breite des Community-Cards-
+            // Bereichs begrenzen und zentrieren – sonst wird u. a. der Slider viel
+            // zu breit. Eine Untergrenze stellt sicher, dass die Steuerelemente
+            // (Pot-Buttons + All-In + Spielmodus) nicht zu eng werden. Hochformat:
+            // volle Breite.
+            readonly property real panelWidth: tableZone.wide
+                ? Math.min(width, Math.max(communityArea.width * communityArea.scale, 380))
+                : width
 
             // Aktuell vorbereiteter Raise-Betrag; kann auch vor dem eigenen Zug gesetzt werden
             property int raiseAmount: 0
@@ -893,8 +1025,10 @@ Rectangle {
 
             readonly property bool canAct: GameTable !== null && GameTable.canAct
             // Während der Vorwahl zeigt der Fold-Button bei freiem Check "Check / Fold"
+            // Vorwahl bei gratis Check: zweizeilig, damit auch längere Übersetzungen
+            // (z. B. "Check / Se coucher") auf den Button passen.
             readonly property string foldText: (GameTable !== null && !GameTable.myTurn && canCheck)
-                ? (qsTr("Check") + " / " + qsTr("Fold")) : qsTr("Fold")
+                ? (qsTr("Check") + " /\n" + qsTr("Fold")) : qsTr("Fold")
 
             function fireAction(which) {
                 if (GameTable === null) return
@@ -1010,13 +1144,22 @@ Rectangle {
             }
 
             Rectangle {
-                anchors.fill: parent
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                // Querformat: 8 px Abstand zum unteren Bildschirmrand (Tisch zeigt
+                // sich darunter durch).
+                anchors.bottomMargin: tableZone.wide ? 8 : 0
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: actionBar.panelWidth
                 color: Qt.rgba(0, 0, 0, 0.82)
+                // Geschrumpft (Querformat) als leicht abgerundetes Panel.
+                radius: tableZone.wide ? 10 : 0
             }
 
             Column {
                 id: actionBarCol
-                width: parent.width
+                width: actionBar.panelWidth
+                anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 0
 
                 // ── Raise-Bereich: dauerhaft vorbereitbar, Aktion erst beim eigenen Zug ──

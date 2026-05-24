@@ -4,6 +4,7 @@
  *****************************************************************************/
 
 #include "lobbyhandler.h"
+#include "chatemotes.h"
 #include "session.h"
 #include "configfile.h"
 #include "gamedata.h"
@@ -65,9 +66,8 @@ static QString checkForEmotes(const QString &input)
     result.replace(QLatin1String(":-)"),     emo(0x1F60A)); // 😊 smile
     result.replace(QLatin1String(":)"),      emo(0x1F60A)); // 😊 smile
 
-    // Unicode emoji in the input are already valid HTML text content and are
-    // rendered directly by QML via the system emoji font — no substitution needed.
-    return result;
+    // Unicode emoji in der Anzeige vergrößern (wie im Game-Chat, ~22px).
+    return enlargeEmojis(result);
 }
 
 

@@ -10,6 +10,7 @@
         <file>components/CustomToggle.qml</file>
         <file>components/GamePlayerBox.qml</file>
         <file>components/GamePlayerSelfBox.qml</file>
+        <file>components/EmojiPicker.qml</file>
         <file>components/PlayerListItem.qml</file>
         <file>components/GuiSettings.qml</file>
         <file>components/InternetGameSettings.qml</file>
@@ -71,6 +72,8 @@
         <file>resources/power.svg</file>
         <file>resources/Rubik-Italic-VariableFont_wght.ttf</file>
         <file>resources/Rubik-VariableFont_wght.ttf</file>
+        <file>resources/NotoColorEmoji.ttf</file>
+        <file>resources/NotoColorEmoji-OFL.txt</file>
         <file>resources/minus.svg</file>
         <file>resources/plus.svg</file>
         <file>resources/send.svg</file>

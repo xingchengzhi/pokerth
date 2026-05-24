@@ -201,7 +201,7 @@ Rectangle {
                     StyledField {
                         id: gameNameField
                         Layout.fillWidth: true
-                        text: "My Online Game"
+                        text: qsTr("My Online Game")
                         maximumLength: 48
                         placeholderText: qsTr("Spielname eingeben …")
                         background: Rectangle {

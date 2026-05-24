@@ -4,6 +4,7 @@
  *****************************************************************************/
 
 #include "gamehandler.h"
+#include "chatemotes.h"
 #include <session.h>
 #include <game.h>
 #include <handinterface.h>
@@ -37,6 +38,30 @@ QString logCard(int code)
     static const char *ranks[] = {"2","3","4","5","6","7","8","9","10","J","Q","K","A"};
     static const QChar suits[] = { QChar(0x2666), QChar(0x2665), QChar(0x2660), QChar(0x2663) };
     return QString::fromLatin1(ranks[code % 13]) + QString(suits[code / 13]);
+}
+
+// Spielverlauf-Zeile als HTML einfärben – Farben/Stil 1:1 wie der Qt-Widgets-
+// Client (Default-Tischstil): normal #F0F0F0, Gewinner Hauptpot #FFFF00, Side-Pot
+// #FFFFCC, Sit-out/Board #FF6633.
+QString formatLogLine(const QString &text, int type)
+{
+    const QString esc = text.toHtmlEscaped();
+    switch (type) {
+    case GameHandler::LogHeader:
+        return QStringLiteral("<span style=\"color:#F0F0F0; font-weight:bold;\">") + esc + QStringLiteral("</span>");
+    case GameHandler::LogWinnerMain:
+        return QStringLiteral("<span style=\"color:#FFFF00;\">") + esc + QStringLiteral("</span>");
+    case GameHandler::LogWinnerSide:
+        return QStringLiteral("<span style=\"color:#FFFFCC;\">") + esc + QStringLiteral("</span>");
+    case GameHandler::LogSitOut:
+        return QStringLiteral("<i><span style=\"color:#FF6633;\">") + esc + QStringLiteral("</span></i>");
+    case GameHandler::LogBoard:
+        return QStringLiteral("<span style=\"color:#FF6633;\">") + esc + QStringLiteral("</span>");
+    case GameHandler::LogGameWin:
+        return QStringLiteral("<b><i><span style=\"color:#F0F0F0;\">") + esc + QStringLiteral("</span></i></b>");
+    default:
+        return QStringLiteral("<span style=\"color:#F0F0F0;\">") + esc + QStringLiteral("</span>");
+    }
 }
 
 // Avatar-Pfad → QML-Bildquelle. getMyAvatar() liefert (wie im Widgets-Client)
@@ -89,7 +114,7 @@ QString chatCheckForEmotes(const QString &input)
     result.replace(QLatin1String(":-s"),     emo(0x1F61F)); // 😟
     result.replace(QLatin1String(":-)"),     emo(0x1F60A)); // 😊
     result.replace(QLatin1String(":)"),      emo(0x1F60A)); // 😊
-    return result;
+    return enlargeEmojis(result);
 }
 } // namespace
 
@@ -200,10 +225,10 @@ void GameHandler::playYourTurnTimeoutSound()
         m_soundEventHandler->playSound("yourturn", 0);
 }
 
-void GameHandler::appendGameLog(const QString &message)
+void GameHandler::appendGameLog(const QString &message, int type)
 {
     if (message.isEmpty()) return;
-    m_gameLog.append(message);
+    m_gameLog.append(formatLogLine(message, type));
     // Begrenzen, damit der Verlauf nicht unbegrenzt wächst.
     const int kMaxLines = 400;
     if (m_gameLog.size() > kMaxLines)
@@ -1121,12 +1146,12 @@ void GameHandler::onShowdown()
                     + " wins $" + QString::number((*it)->getLastMoneyWon());
         if (!isMainPot)
             msg += QStringLiteral(" (side pot)");
-        appendGameLog(msg);
+        appendGameLog(msg, isMainPot ? LogWinnerMain : LogWinnerSide);
     }
 
     // 3) Sit-Out für Spieler ohne Cash (wie gameTableImpl nach der Pot-Verteilung).
     for (auto it = activeList->begin(); it != activeList->end(); ++it) {
         if ((*it)->getMyCash() == 0)
-            appendGameLog(QString::fromStdString((*it)->getMyName()) + " sits out");
+            appendGameLog(QString::fromStdString((*it)->getMyName()) + " sits out", LogSitOut);
     }
 }

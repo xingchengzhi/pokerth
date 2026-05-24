@@ -15,6 +15,9 @@ Rectangle {
     clip: true
     color: Config.StaticData.palette.secondary.col700
 
+    // Emoji-Picker über dem Chat-Eingabefeld ein-/ausblenden (compact + wide).
+    property bool showEmojiPicker: false
+
     // Mock data for development
     property int connectedPlayers: Lobby ? Lobby.playerListModel.count : 0
     property int runningGames: Lobby ? Lobby.gameListModel.runningCount : 0
@@ -900,9 +903,39 @@ Rectangle {
                             }
                         }
 
+                        EmojiPicker {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 140
+                            visible: lobbyPage.showEmojiPicker
+                            onPicked: (emoji) => {
+                                chatInputCompact.insert(chatInputCompact.cursorPosition, emoji)
+                                chatInputCompact.forceActiveFocus()
+                            }
+                        }
+
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 4
+
+                            Button {
+                                Layout.preferredWidth: 36
+                                Layout.preferredHeight: 36
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
+                                onClicked: lobbyPage.showEmojiPicker = !lobbyPage.showEmojiPicker
+                                background: Rectangle {
+                                    radius: 6
+                                    color: lobbyPage.showEmojiPicker
+                                           ? Config.StaticData.palette.secondary.col500 : "transparent"
+                                }
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                contentItem: Text {
+                                    text: "🙂"
+                                    font.family: Config.StaticData.emojiFamily
+                                    font.pixelSize: 20
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
 
                             TextField {
                                 id: chatInputCompact
@@ -1184,9 +1217,39 @@ Rectangle {
                             }
                         }
 
+                        EmojiPicker {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 150
+                            visible: lobbyPage.showEmojiPicker
+                            onPicked: (emoji) => {
+                                chatInput.insert(chatInput.cursorPosition, emoji)
+                                chatInput.forceActiveFocus()
+                            }
+                        }
+
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 4
+
+                            Button {
+                                Layout.preferredWidth: 36
+                                Layout.preferredHeight: 36
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
+                                onClicked: lobbyPage.showEmojiPicker = !lobbyPage.showEmojiPicker
+                                background: Rectangle {
+                                    radius: 6
+                                    color: lobbyPage.showEmojiPicker
+                                           ? Config.StaticData.palette.secondary.col500 : "transparent"
+                                }
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                contentItem: Text {
+                                    text: "🙂"
+                                    font.family: Config.StaticData.emojiFamily
+                                    font.pixelSize: 20
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
 
                             TextField {
                                 id: chatInput

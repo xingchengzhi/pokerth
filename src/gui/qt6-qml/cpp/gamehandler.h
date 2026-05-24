@@ -71,8 +71,21 @@ public:
     QStringList chatLog() const { return m_chatLog; }
     bool hasHumanOpponents() const { return m_hasHumanOpponents; }
 
+    // Zeilentyp für die Einfärbung des Spielverlaufs – Farben/Stil 1:1 wie der
+    // Qt-Widgets-Client (Default-Tischstil).
+    enum LogLineType {
+        LogNormal = 0,   // Aktionen, Blinds, aufgedeckte Karten (#F0F0F0)
+        LogHeader,       // "## Game | Hand ##" (fett)
+        LogWinnerMain,   // Gewinner Hauptpot (#FFFF00)
+        LogWinnerSide,   // Gewinner Side-Pot (#FFFFCC)
+        LogSitOut,       // "… sits out" (kursiv, #FF6633)
+        LogBoard,        // "--- Flop/Turn/River ---" (#FF6633)
+        LogGameWin       // "… wins game X!" (fett+kursiv)
+    };
+    Q_ENUM(LogLineType)
+
     // Append a line to the in-game action log (called from QmlGuiInterface).
-    Q_INVOKABLE void appendGameLog(const QString &message);
+    Q_INVOKABLE void appendGameLog(const QString &message, int type = LogNormal);
     // In-game chat: append a received message / send one to the table.
     Q_INVOKABLE void appendChat(const QString &playerName, const QString &message);
     Q_INVOKABLE void sendChat(const QString &message);

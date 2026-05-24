@@ -52,6 +52,13 @@ QtObject {
         source: "../resources/Rubik-VariableFont_wght.ttf"
     }
 
+    // Gebündelter Farb-Emoji-Font (Noto Color Emoji, OFL), damit Emojis überall
+    // identisch und farbig erscheinen – unabhängig von der System-Schrift.
+    readonly property QtObject emojiFont: FontLoader {
+        source: "../resources/NotoColorEmoji.ttf"
+    }
+    readonly property string emojiFamily: emojiFont.name !== "" ? emojiFont.name : "Noto Color Emoji"
+
     // Spektrum-Farben (angelehnt an pokerth.net Chart-Palette, Platz 1–10)
     readonly property var chartColors: [
         "#3dbd72",  // 1  – Smaragdgrün

@@ -42,6 +42,7 @@ set(QML_FILES
     components/CustomSpinBox.qml
     components/GamePlayerBox.qml
     components/GamePlayerSelfBox.qml
+    components/EmojiPicker.qml
     components/GuiSettings.qml
     components/InternetGameSettings.qml
     components/LocalGameSettings.qml

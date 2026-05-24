@@ -229,31 +229,26 @@ Rectangle {
         }
     }
 
-    // Aktion + Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – als
-    // zentrierte Gruppe oberhalb der Box: [Action] [Einsatz] [Button].
-    // Die Action-Anzeige steht links neben dem Einsatz.
+    // Aktion + Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb
+    // der Box. FESTE Slots (wie bei Player 5): die Gruppe überspannt die volle
+    // Boxbreite → Action links, Einsatz mittig, Button rechts. So verrutscht
+    // nichts, egal welche Elemente gerade aktiv sind.
     Item {
         id: betGroup
         readonly property bool actActive: root.actionText !== "" && !root.isWinner
         visible: root.bet > 0 || root.button > 0 || actActive
         z: 25
 
-        readonly property int gap: 4
-        readonly property real actW: actActive ? actionBadge.width : 0
         readonly property real actH: actActive ? actionBadge.height : 0
-        readonly property real betW: root.bet > 0 ? betRow.width : 0
         readonly property real betH: root.bet > 0 ? betRow.height : 0
-        readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
-        readonly property real bothGap: (root.bet > 0 && root.button > 0) ? gap : 0
-        readonly property real actGap: (actW > 0 && (betW > 0 || btnW > 0)) ? gap : 0
 
-        width: actW + actGap + betW + bothGap + btnW
+        width: root.width
         height: Math.max(actH, betH, btnH)
-        x: (parent.width - width) / 2
+        x: 0
         y: -height - 2
 
-        // Action-Badge – linkes Element der Gruppe
+        // Action-Badge – fester Slot links
         Rectangle {
             id: actionBadge
             visible: betGroup.actActive
@@ -280,11 +275,12 @@ Rectangle {
             }
         }
 
+        // Einsatz – fester Slot mittig
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: betGroup.actW + betGroup.actGap
+            x: (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
 
             Image {
@@ -305,13 +301,14 @@ Rectangle {
             }
         }
 
+        // Dealer/Blind-Button – fester Slot rechts
         Image {
             id: buttonImg
             visible: root.button > 0
             width: 26
             height: 26
             fillMode: Image.PreserveAspectFit
-            x: betGroup.actW + betGroup.actGap + betGroup.betW + betGroup.bothGap
+            x: betGroup.width - width
             y: (betGroup.height - height) / 2
             source: root.button === 1 ? "../resources/tableDealerPuck.svg"
                   : root.button === 2 ? "../resources/tableSmallBlind.svg"

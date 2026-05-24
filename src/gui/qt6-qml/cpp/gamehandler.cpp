@@ -321,8 +321,15 @@ void GameHandler::refreshPlayerData()
     int currentToken = -1;
     if (m_game) {
         auto hand = m_game->getCurrentHand();
-        if (hand)
+        if (hand) {
             currentToken = hand->getMyID() * 8 + static_cast<int>(hand->getCurrentRound());
+            // Showdown gilt nur in der Post-River-Phase. In jeder aktiven Setzrunde
+            // (Preflop–River) zurücksetzen, damit ein stehengebliebenes Flag (z. B.
+            // wenn onNextRoundCleanGui im Netzwerkspiel nicht feuert) nicht die
+            // Action-Badges der Folgehände ausblendet.
+            if (hand->getCurrentRound() != GAME_STATE_POST_RIVER)
+                m_showdownActive = false;
+        }
     }
 
     // Neue Setzrunde → die letzte Aggression (bet/raise) gilt nicht mehr.
@@ -342,8 +349,13 @@ void GameHandler::refreshPlayerData()
             int id = (*it)->getMyID();
             if (id < 0 || id >= 10) continue;
             int act = (*it)->getMyAction();
-            if (act != m_lastSeenAction[id]) {
+            int curSet = (*it)->getMySet();
+            // Frische Aktion = Aktionstyp ODER Einsatz hat sich geändert. So zählt
+            // auch ein erneutes Callen nach einer Erhöhung (Typ bleibt CALL, Einsatz
+            // steigt) als neue Aktion → das zuvor geleerte Badge erscheint wieder.
+            if (act != m_lastSeenAction[id] || curSet != m_lastSeenSet[id]) {
                 m_lastSeenAction[id] = act;
+                m_lastSeenSet[id] = curSet;
                 m_actionToken[id] = currentToken;
                 m_actionSeq[id] = ++m_actionCounter;
                 // Aggression (= alle anderen müssen erneut reagieren): bet/raise
@@ -352,14 +364,13 @@ void GameHandler::refreshPlayerData()
                 // All-In-Call auf/unter dem Höchsteinsatz löst nicht aus).
                 bool aggressive = (act == PLAYER_ACTION_BET || act == PLAYER_ACTION_RAISE);
                 if (act == PLAYER_ACTION_ALLIN) {
-                    int mySet = (*it)->getMySet();
                     int maxOtherSet = 0;
                     for (auto jt = seats->begin(); jt != seats->end(); ++jt) {
                         if (jt == it) continue;
                         int s = (*jt)->getMySet();
                         if (s > maxOtherSet) maxOtherSet = s;
                     }
-                    aggressive = (mySet > maxOtherSet);
+                    aggressive = (curSet > maxOtherSet);
                 }
                 if (aggressive)
                     m_lastAggressorSeq = m_actionSeq[id];

@@ -43,12 +43,18 @@ Log::~Log()
     // at that point.
     if (!myConnectionName.isEmpty()) {
         const QString prefix = myConnectionName;
+        // Nur die Verbindung DIESES Threads dürfen wir öffnen/schließen. Für
+        // Verbindungen anderer Threads (z. B. der Netzwerk-ClientThread legt beim
+        // Loggen eine eigene an) würde QSqlDatabase::database() sonst
+        // "requested database does not belong to the calling thread" warnen –
+        // diese entfernen wir nur per Namen (removeDatabase prüft den Thread nicht).
+        const QString ownThreadConn =
+            QString("%1_thread_%2").arg(prefix).arg((qulonglong)QThread::currentThreadId());
         const QStringList allConns = QSqlDatabase::connectionNames();
         for (const QString &name : allConns) {
             if (name == prefix || name.startsWith(prefix + "_thread_")) {
-                // Must destroy any QSqlDatabase handle before calling
-                // removeDatabase(), otherwise Qt warns about an open connection.
-                {
+                if (name == ownThreadConn) {
+                    // Handle vor removeDatabase() zerstören (sonst "still in use").
                     QSqlDatabase db = QSqlDatabase::database(name, false);
                     if (db.isOpen())
                         db.close();

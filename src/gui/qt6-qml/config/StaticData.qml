@@ -49,7 +49,7 @@ QtObject {
     property var palette: isDark ? _dark : _light
 
     readonly property QtObject loadedFont: FontLoader {
-        source: "../resources/Rubik-VariableFont_wght.ttf"
+        source: "../resources/Inter-VariableFont.ttf"
     }
 
     // Gebündelter Farb-Emoji-Font (Noto Color Emoji, OFL), damit Emojis überall

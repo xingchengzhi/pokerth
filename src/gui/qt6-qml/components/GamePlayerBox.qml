@@ -66,6 +66,11 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
+        // Aktiver Spieler leicht „angehoben" → mehr Tiefe/Fokus (sanfter Übergang).
+        scale: root.isMyTurn ? 1.04 : 1.0
+        transformOrigin: Item.Center
+        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+
         // Karten-Hintergrund mit dezentem Verlauf + weichem Schlagschatten → die
         // Box wirkt als angehobene Karte statt als flache Fläche.
         Rectangle {
@@ -83,9 +88,9 @@ Item {
             layer.effect: MultiEffect {
                 shadowEnabled: true
                 shadowColor: "#000000"
-                shadowOpacity: 0.5
-                shadowBlur: 0.6
-                shadowVerticalOffset: 2
+                shadowOpacity: 0.42
+                shadowBlur: 0.9
+                shadowVerticalOffset: 3
                 shadowHorizontalOffset: 0
             }
         }
@@ -291,8 +296,17 @@ Item {
         border.color: Config.Theme.actionBadgeBorder(root.action)
         border.width: 1
         z: 18
+        transformOrigin: Item.Center
         Behavior on color { ColorAnimation { duration: 200 } }
         Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        // Pop beim Erscheinen einer neuen Aktion (Mikroanimation).
+        onVisibleChanged: if (visible) badgePop.restart()
+        SequentialAnimation {
+            id: badgePop
+            NumberAnimation { target: actionBadge; property: "scale"; from: 0.6; to: 1.12; duration: 110; easing.type: Easing.OutQuad }
+            NumberAnimation { target: actionBadge; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutBack }
+        }
 
         readonly property real cardsCenterX: playerBox.x
                             + topRow.x
@@ -352,6 +366,14 @@ Item {
             spacing: 2
             x: (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
+            transformOrigin: Item.Center
+            // Chip „poppt" beim Setzen rein (Mikroanimation).
+            onVisibleChanged: if (visible) betPop.restart()
+            SequentialAnimation {
+                id: betPop
+                NumberAnimation { target: betRow; property: "scale"; from: 0.5; to: 1.15; duration: 110; easing.type: Easing.OutQuad }
+                NumberAnimation { target: betRow; property: "scale"; to: 1.0; duration: 130; easing.type: Easing.OutBack }
+            }
 
             Image {
                 width: 16

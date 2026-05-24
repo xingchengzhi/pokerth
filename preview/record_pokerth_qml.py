@@ -94,6 +94,7 @@ class QmlRecorder:
         self.wm_proc: asyncio.subprocess.Process | None = None
         self.ffmpeg_proc: asyncio.subprocess.Process | None = None
         self.app_proc: asyncio.subprocess.Process | None = None
+        self._log_handles: list[object] = []
 
         self.win_id: str | None = None
         self.wx = 0
@@ -122,6 +123,7 @@ class QmlRecorder:
         stderr = asyncio.subprocess.DEVNULL
         if log_file is not None:
             log_handle = log_file.open("wb")
+            self._log_handles.append(log_handle)
             stdout = log_handle
             stderr = asyncio.subprocess.STDOUT
 
@@ -297,6 +299,11 @@ class QmlRecorder:
                 except TimeoutError:
                     proc.kill()
                     await proc.wait()
+
+        for handle in self._log_handles:
+            with contextlib.suppress(Exception):
+                handle.close()
+        self._log_handles.clear()
 
     async def run(self) -> int:
         self.output_dir.mkdir(parents=True, exist_ok=True)

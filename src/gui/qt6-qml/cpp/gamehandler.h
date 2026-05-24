@@ -180,6 +180,10 @@ private:
     // in dem sie gesetzt wurde. So wird die Aktion nur in ihrer eigenen Runde
     // angezeigt und zu Rundenbeginn überall automatisch entfernt.
     int m_lastSeenAction[10] = {};
+    // Zusätzlich zum Aktionstyp den Einsatz pro Sitz merken: ein erneutes Callen
+    // nach einer Erhöhung bleibt Typ CALL, erhöht aber den Einsatz → gilt als
+    // frische Aktion, damit das (zuvor geleerte) Badge wieder erscheint.
+    int m_lastSeenSet[10] = {};
     int m_actionToken[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     // Setzt ein Spieler bet/raise, müssen die Aktions-Badges aller anderen (noch
     // nicht gefoldeten) Spieler verschwinden – sie sind wieder am Zug. Dazu bekommt

@@ -18,6 +18,10 @@ Rectangle {
     // Emoji-Picker über dem Chat-Eingabefeld ein-/ausblenden (compact + wide).
     property bool showEmojiPicker: false
 
+    // Chat-History (gesendete Nachrichten, max. 50) + Navigationsindex.
+    property var chatHistory: []
+    property int chatHistoryIndex: 0
+
     // Mock data for development
     property int connectedPlayers: Lobby ? Lobby.playerListModel.count : 0
     property int runningGames: Lobby ? Lobby.gameListModel.runningCount : 0
@@ -953,6 +957,19 @@ Rectangle {
                                 }
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: sendChatMessage()
+                                onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                Keys.onUpPressed: (event) => {
+                                    event.accepted = true
+                                    if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
+                                        lobbyPage.chatHistoryIndex++
+                                    lobbyPage.showChatHistory(chatInputCompact, lobbyPage.chatHistoryIndex)
+                                }
+                                Keys.onDownPressed: (event) => {
+                                    event.accepted = true
+                                    if (lobbyPage.chatHistoryIndex - 1 >= 0)
+                                        lobbyPage.chatHistoryIndex--
+                                    lobbyPage.showChatHistory(chatInputCompact, lobbyPage.chatHistoryIndex)
+                                }
                             }
 
                             Button {
@@ -1268,6 +1285,19 @@ Rectangle {
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: sendChatMessage()
                                 Keys.onReturnPressed: sendChatMessage()
+                                onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                Keys.onUpPressed: (event) => {
+                                    event.accepted = true
+                                    if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
+                                        lobbyPage.chatHistoryIndex++
+                                    lobbyPage.showChatHistory(chatInput, lobbyPage.chatHistoryIndex)
+                                }
+                                Keys.onDownPressed: (event) => {
+                                    event.accepted = true
+                                    if (lobbyPage.chatHistoryIndex - 1 >= 0)
+                                        lobbyPage.chatHistoryIndex--
+                                    lobbyPage.showChatHistory(chatInput, lobbyPage.chatHistoryIndex)
+                                }
                             }
 
                             Button {
@@ -1399,15 +1429,24 @@ Rectangle {
     }
 
     function sendChatMessage() {
-        var msg = Config.Responsive.compact ? chatInputCompact.text.trim()
-                                            : chatInput.text.trim()
+        var field = Config.Responsive.compact ? chatInputCompact : chatInput
+        var msg = field.text.trim()
         if (msg !== "") {
             Lobby.sendChatMessage(msg)
-            if (Config.Responsive.compact)
-                chatInputCompact.text = ""
-            else
-                chatInput.text = ""
+            chatHistory.push(field.text)
+            if (chatHistory.length > 50) chatHistory.shift()
+            chatHistoryIndex = 0
+            field.text = ""
         }
+    }
+
+    // Chat-History (Pfeil hoch/runter, wie im Qt-Widgets-Client; max. 50).
+    function showChatHistory(field, idx) {
+        if (idx > 0 && idx <= chatHistory.length)
+            field.text = chatHistory[chatHistory.length - idx]
+        else
+            field.text = ""
+        field.cursorPosition = field.text.length
     }
 
     // ── Preview / Demo sequence ────────────────────────────────────────────

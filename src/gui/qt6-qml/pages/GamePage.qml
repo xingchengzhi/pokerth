@@ -355,6 +355,24 @@ Rectangle {
                     }
                 }
 
+                // Weicher Lichtschein hinter den Gemeinschaftskarten → Fokus auf die
+                // Tischmitte (dezent, warm).
+                Rectangle {
+                    anchors.centerIn: cardRow
+                    width: cardRow.width + 80
+                    height: cardRow.height + 54
+                    radius: height / 2
+                    color: Qt.rgba(1.0, 0.93, 0.72, 0.12)
+                    z: -1
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        blurEnabled: true
+                        blur: 1.0
+                        blurMax: 48
+                        autoPaddingEnabled: true
+                    }
+                }
+
                 // 5 Slots: Flop (0-2) | Turn (3) | River (4)
                 Row {
                     id: cardRow
@@ -374,33 +392,96 @@ Rectangle {
                     CommunitySlot { boardIndex: 4 }
                 }
 
-                // Gewinner-Hand (z.B. "Full House") – nur während des Showdowns.
-                // Liegt als Overlay UNTER der Kartenreihe und beeinflusst deren
-                // Position nicht. Im Hochformat darf es minimal in die darunter
-                // liegende Player-Row ragen.
+                // Pot prominent in der Tischmitte (über den Karten): Chip-Icon +
+                // Betrag mit goldenem Glow. Poppt bei Pot-Erhöhung (Mikroanimation).
                 Rectangle {
+                    id: potBadge
                     anchors.horizontalCenter: cardRow.horizontalCenter
-                    anchors.top: cardRow.bottom
-                    anchors.topMargin: 6
-                    visible: (typeof GameTable !== "undefined" && GameTable)
-                             ? GameTable.winningHandText !== "" : false
-                    width: winHandLabel.implicitWidth + 22
-                    height: 22
-                    radius: 11
-                    color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
-                    border.color: "#FFD700"
+                    anchors.bottom: cardRow.top
+                    anchors.bottomMargin: 12
+                    visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.totalPot > 0 : false
+                    width: potRow.width + 16
+                    height: 21
+                    radius: 10
+                    color: Qt.rgba(0, 0, 0, 0.62)
+                    border.color: Config.Theme.colorAccent
                     border.width: 1
+                    transformOrigin: Item.Center
 
-                    Text {
-                        id: winHandLabel
-                        anchors.centerIn: parent
-                        text: (typeof GameTable !== "undefined" && GameTable)
-                              ? GameTable.winningHandText : ""
-                        color: "#FFD700"
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 12
-                        font.bold: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: Config.Theme.colorAccent
+                        shadowOpacity: 0.45
+                        shadowBlur: 0.9
+                        shadowVerticalOffset: 0
                     }
+
+                    Row {
+                        id: potRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Image {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 12; height: 12
+                            source: "../resources/chipStack.svg"
+                            fillMode: Image.PreserveAspectFit
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "$" + (GameTable ? GameTable.totalPot : 0)
+                            color: Config.Theme.colorAccent
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 11
+                            font.bold: true
+                            font.letterSpacing: 0.3
+                        }
+                    }
+
+                    SequentialAnimation {
+                        id: potPop
+                        NumberAnimation { target: potBadge; property: "scale"; from: 1.0; to: 1.18; duration: 110; easing.type: Easing.OutQuad }
+                        NumberAnimation { target: potBadge; property: "scale"; to: 1.0; duration: 170; easing.type: Easing.OutBack }
+                    }
+                    Connections {
+                        target: (typeof GameTable !== "undefined") ? GameTable : null
+                        function onTotalPotChanged() {
+                            if (GameTable && GameTable.totalPot > 0) potPop.restart()
+                        }
+                    }
+                }
+
+            }
+
+            // Gewinner-Hand (z.B. "Full House") – nur während des Showdowns.
+            // Als eigenes Top-Level-Element (NICHT in communityArea), damit es
+            // unabhängig von deren z/Scale immer ÜBER den Spielerboxen liegt –
+            // in Hoch- UND Querformat. Positioniert knapp unter den (skalierten)
+            // Community Cards.
+            Rectangle {
+                id: winHandBadge
+                z: 50   // über Boxen (z:1), unter den Overlays (z:150)
+                visible: (typeof GameTable !== "undefined" && GameTable)
+                         ? GameTable.winningHandText !== "" : false
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: tableZone.height * 0.455
+                   + (communityArea.height * communityArea.scale) / 2 + 8
+                width: winHandLabel.implicitWidth + 22
+                height: 22
+                radius: 11
+                color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
+                border.color: "#FFD700"
+                border.width: 1
+
+                Text {
+                    id: winHandLabel
+                    anchors.centerIn: parent
+                    text: (typeof GameTable !== "undefined" && GameTable)
+                          ? GameTable.winningHandText : ""
+                    color: "#FFD700"
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: 12
+                    font.bold: true
                 }
             }
 
@@ -690,6 +771,18 @@ Rectangle {
                 // Nachrichten sichtbar bleiben.
                 onShowEmojiPickerChanged: if (showEmojiPicker) Qt.callLater(chatList.positionViewAtEnd)
 
+                // Chat-History: Pfeil hoch/runter ruft gesendete Nachrichten ab
+                // (wie im Qt-Widgets-Client; max. 50 Einträge, Index 1 = letzte).
+                property var chatHistory: []
+                property int historyIndex: 0
+                function showHistory(idx) {
+                    if (idx > 0 && idx <= chatHistory.length)
+                        chatInput.text = chatHistory[chatHistory.length - idx]
+                    else
+                        chatInput.text = ""
+                    chatInput.cursorPosition = chatInput.text.length
+                }
+
                 // Schwebendes Sheet (von links): eingerückt, abgerundet, mit Elevation.
                 Rectangle {
                     id: chatPanel
@@ -719,6 +812,9 @@ Rectangle {
                     var t = chatInput.text.trim()
                     if (t.length === 0) return
                     GameTable.sendChat(t)
+                    chatHistory.push(chatInput.text)
+                    if (chatHistory.length > 50) chatHistory.shift()
+                    historyIndex = 0
                     chatInput.text = ""
                 }
 
@@ -889,11 +985,23 @@ Rectangle {
                             }
                             onAccepted: chatOverlay.chatSend()
                             Keys.onReturnPressed: chatOverlay.chatSend()
-                            // Tab-Vervollständigung von Spielernamen
+                            // Tippt der Nutzer, History-Navigation zurücksetzen.
+                            onTextEdited: chatOverlay.historyIndex = 0
+                            // Tab = Namens-Vervollständigung; Hoch/Runter = History.
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Tab) {
                                     event.accepted = true
                                     chatOverlay.tabComplete()
+                                } else if (event.key === Qt.Key_Up) {
+                                    event.accepted = true
+                                    if (chatOverlay.historyIndex + 1 <= chatOverlay.chatHistory.length)
+                                        chatOverlay.historyIndex++
+                                    chatOverlay.showHistory(chatOverlay.historyIndex)
+                                } else if (event.key === Qt.Key_Down) {
+                                    event.accepted = true
+                                    if (chatOverlay.historyIndex - 1 >= 0)
+                                        chatOverlay.historyIndex--
+                                    chatOverlay.showHistory(chatOverlay.historyIndex)
                                 }
                             }
                         }
@@ -1354,7 +1462,7 @@ Rectangle {
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
                             currentIndex: actionBar.playingMode
-                            onActivated: gamePage.applyPlayingMode(index)
+                            onActivated: (index) => gamePage.applyPlayingMode(index)
 
                             contentItem: Text {
                                 leftPadding: 8

@@ -696,7 +696,45 @@
     </message>
 </context>
 <context>
+    <name>LobbyHandler</name>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="1380"/>
+        <source>%1 has been invited to %2 by %3.</source>
+        <translation>%1 wurde von %3 zu %2 eingeladen.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="1392"/>
+        <source>%1 has rejected the invitation to %2.</source>
+        <translation>%1 hat die Einladung zu %2 abgelehnt.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="1391"/>
+        <source>%1 cannot join %2 because he is busy.</source>
+        <translation>%1 kann %2 nicht beitreten, da gerade beschäftigt.</translation>
+    </message>
+</context>
+<context>
     <name>LobbyPage</name>
+    <message>
+        <location filename="../pages/LobbyPage.qml" line="1619"/>
+        <source>Game invitation</source>
+        <translation>Spiel-Einladung</translation>
+    </message>
+    <message>
+        <location filename="../pages/LobbyPage.qml" line="1627"/>
+        <source>You have been invited to the game &lt;b&gt;%1&lt;/b&gt; by &lt;b&gt;%2&lt;/b&gt;.&lt;br&gt;Would you like to join this game?</source>
+        <translation>Du wurdest von &lt;b&gt;%2&lt;/b&gt; zum Spiel &lt;b&gt;%1&lt;/b&gt; eingeladen.&lt;br&gt;Möchtest Du beitreten?</translation>
+    </message>
+    <message>
+        <location filename="../pages/LobbyPage.qml" line="1641"/>
+        <source>Decline</source>
+        <translation>Ablehnen</translation>
+    </message>
+    <message>
+        <location filename="../pages/LobbyPage.qml" line="1646"/>
+        <source>Join</source>
+        <translation>Beitreten</translation>
+    </message>
     <message>
         <location filename="../pages/LobbyPage.qml" line="663"/>
         <source>Available Players</source>

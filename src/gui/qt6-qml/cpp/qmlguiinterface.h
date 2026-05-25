@@ -146,9 +146,9 @@ public:
     virtual void SignalLobbyPlayerKicked(const std::string &nickName, const std::string &byWhom, const std::string &reason) override {}
     virtual void SignalLobbyPlayerLeft(unsigned playerId) override;
     
-    virtual void SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom) override {}
-    virtual void SignalPlayerGameInvitation(unsigned gameId, unsigned playerIdWho, unsigned playerIdFrom) override {}
-    virtual void SignalRejectedGameInvitation(unsigned gameId, unsigned playerIdWho, DenyGameInvitationReason reason) override {}
+    virtual void SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom) override;
+    virtual void SignalPlayerGameInvitation(unsigned gameId, unsigned playerIdWho, unsigned playerIdFrom) override;
+    virtual void SignalRejectedGameInvitation(unsigned gameId, unsigned playerIdWho, DenyGameInvitationReason reason) override;
 
 private:
     ConfigFile *m_config;

@@ -212,6 +212,14 @@ public slots:
     void sendChatMessage(const QString &message);
     void onLobbyChatMessage(const QString &playerName, const QString &message);
     void onPrivateChatMessage(const QString &playerName, const QString &message);
+
+    // Spiel-Einladungen (eingehend). Von QmlGuiInterface aufgerufen.
+    void onSelfGameInvitation(unsigned gameId, unsigned playerIdFrom);
+    void onPlayerGameInvitation(unsigned gameId, unsigned playerIdWho, unsigned playerIdFrom);
+    void onRejectedGameInvitation(unsigned gameId, unsigned playerIdWho, int reason);
+    // Antwort aus QML auf das Einladungs-Popup.
+    Q_INVOKABLE void acceptGameInvitation(unsigned gameId);
+    Q_INVOKABLE void rejectGameInvitation(unsigned gameId, int reason);
     
     // Actions from QML
     Q_INVOKABLE void joinGame(unsigned gameId, const QString &password);
@@ -251,6 +259,8 @@ signals:
     void chatLineReady(const QString &formattedLine);
     void chatLogChanged();
     void lobbyChatMentionDetected();
+    // Eingehende Spiel-Einladung → QML zeigt ein Ja/Nein-Popup.
+    void gameInvitationReceived(int gameId, const QString &gameName, const QString &fromName);
     void gameCreated(unsigned gameId);
     void gameJoined(unsigned gameId);
     void selfJoinedGame();
@@ -286,6 +296,9 @@ private:
     QString m_myPlayerName;
     unsigned m_myPlayerId;
     QStringList m_chatLog;      // formatierter Lobby-Chat-Verlauf (HTML-Zeilen)
+    // Aktuell im QML-Popup angefragte Einladung (0 = keine). Verhindert, dass
+    // mehrere Einladungs-Popups gleichzeitig erscheinen (weitere → "busy").
+    unsigned m_pendingInviteGameId = 0;
     bool m_isCurrentPlayerAdmin;
     bool m_isInGame = false;
     unsigned m_currentGameId = 0;

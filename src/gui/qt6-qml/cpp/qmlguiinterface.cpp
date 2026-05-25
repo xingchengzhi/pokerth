@@ -233,6 +233,34 @@ void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
     }
 }
 
+void QmlGuiInterface::SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, [this, gameId, playerIdFrom]() {
+            m_lobbyHandler->onSelfGameInvitation(gameId, playerIdFrom);
+        }, Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::SignalPlayerGameInvitation(unsigned gameId, unsigned playerIdWho, unsigned playerIdFrom)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, [this, gameId, playerIdWho, playerIdFrom]() {
+            m_lobbyHandler->onPlayerGameInvitation(gameId, playerIdWho, playerIdFrom);
+        }, Qt::QueuedConnection);
+    }
+}
+
+void QmlGuiInterface::SignalRejectedGameInvitation(unsigned gameId, unsigned playerIdWho, DenyGameInvitationReason reason)
+{
+    if (m_lobbyHandler) {
+        const int r = static_cast<int>(reason);
+        QMetaObject::invokeMethod(m_lobbyHandler, [this, gameId, playerIdWho, r]() {
+            m_lobbyHandler->onRejectedGameInvitation(gameId, playerIdWho, r);
+        }, Qt::QueuedConnection);
+    }
+}
+
 void QmlGuiInterface::SignalNetClientGameStart(boost::shared_ptr<Game> game)
 {
     if (m_lobbyHandler) {

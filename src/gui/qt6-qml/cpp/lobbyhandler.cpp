@@ -1331,6 +1331,69 @@ void LobbyHandler::invitePlayer(unsigned playerId)
     m_session->invitePlayerToCurrentGame(playerId);
 }
 
+// ── Eingehende Spiel-Einladungen (Invite-Only-Spiele) ──────────────────────
+void LobbyHandler::onSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
+{
+    if (!m_session)
+        return;
+    // Absender auf der Ignore-Liste ODER es ist bereits ein Einladungs-Popup
+    // offen → automatisch mit "busy" ablehnen (wie der Qt-Widgets-Client).
+    if (isPlayerIgnored(playerIdFrom) || m_pendingInviteGameId != 0) {
+        m_session->rejectGameInvitation(gameId, DENY_GAME_INVITATION_BUSY);
+        return;
+    }
+    m_pendingInviteGameId = gameId;
+    const QString gameName = QString::fromStdString(m_session->getClientGameInfo(gameId).name);
+    const QString fromName = QString::fromStdString(m_session->getClientPlayerInfo(playerIdFrom).playerName);
+    emit gameInvitationReceived(static_cast<int>(gameId), gameName, fromName);
+}
+
+void LobbyHandler::acceptGameInvitation(unsigned gameId)
+{
+    if (m_pendingInviteGameId == gameId)
+        m_pendingInviteGameId = 0;
+    if (!m_session)
+        return;
+    m_session->acceptGameInvitation(gameId);
+}
+
+void LobbyHandler::rejectGameInvitation(unsigned gameId, int reason)
+{
+    if (m_pendingInviteGameId == gameId)
+        m_pendingInviteGameId = 0;
+    if (!m_session)
+        return;
+    const DenyGameInvitationReason deny = (reason == DENY_GAME_INVITATION_BUSY)
+        ? DENY_GAME_INVITATION_BUSY : DENY_GAME_INVITATION_NO;
+    m_session->rejectGameInvitation(gameId, deny);
+}
+
+void LobbyHandler::onPlayerGameInvitation(unsigned gameId, unsigned playerIdWho, unsigned playerIdFrom)
+{
+    if (!m_session)
+        return;
+    const QString who  = QString::fromStdString(m_session->getClientPlayerInfo(playerIdWho).playerName).toHtmlEscaped();
+    const QString game = QString::fromStdString(m_session->getClientGameInfo(gameId).name).toHtmlEscaped();
+    const QString from = QString::fromStdString(m_session->getClientPlayerInfo(playerIdFrom).playerName).toHtmlEscaped();
+    const QString ts   = QDateTime::currentDateTime().toString("HH:mm:ss");
+    pushChatLine(QStringLiteral("[") + ts + QStringLiteral("] <span style=\"color:#8ab4f8;\">")
+                 + tr("%1 has been invited to %2 by %3.").arg(who, game, from)
+                 + QStringLiteral("</span>"));
+}
+
+void LobbyHandler::onRejectedGameInvitation(unsigned gameId, unsigned playerIdWho, int reason)
+{
+    if (!m_session)
+        return;
+    const QString who  = QString::fromStdString(m_session->getClientPlayerInfo(playerIdWho).playerName).toHtmlEscaped();
+    const QString game = QString::fromStdString(m_session->getClientGameInfo(gameId).name).toHtmlEscaped();
+    const QString msg  = (reason == DENY_GAME_INVITATION_BUSY)
+        ? tr("%1 cannot join %2 because he is busy.").arg(who, game)
+        : tr("%1 has rejected the invitation to %2.").arg(who, game);
+    const QString ts   = QDateTime::currentDateTime().toString("HH:mm:ss");
+    pushChatLine(QStringLiteral("[") + ts + QStringLiteral("] <span style=\"color:#e0686d;\">") + msg + QStringLiteral("</span>"));
+}
+
 void LobbyHandler::adminBanPlayer(unsigned playerId)
 {
     if (!m_session) {

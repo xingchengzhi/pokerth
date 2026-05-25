@@ -1588,6 +1588,95 @@ Rectangle {
         }
     }
 
+    // ── Eingehende Spiel-Einladung (Invite-Only-Spiele) ────────────────────
+    // Ja/Nein-Popup analog zum Qt-Widgets-Client. Schließen ohne Auswahl
+    // (Escape) = ablehnen, damit der Einladende eine Antwort erhält.
+    Popup {
+        id: inviteGamePopup
+        anchors.centerIn: parent
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape
+
+        property int inviteGameId: 0
+        property string inviteGameName: ""
+        property string inviteFromName: ""
+        property bool answered: false
+
+        background: Rectangle {
+            color: Config.StaticData.palette.secondary.col700
+            border.color: Config.StaticData.palette.secondary.col400
+            border.width: 1
+            radius: 8
+        }
+
+        ColumnLayout {
+            spacing: 12
+            width: Math.min(lobbyPage.width * 0.85, 360)
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Game invitation")
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("You have been invited to the game <b>%1</b> by <b>%2</b>.<br>Would you like to join this game?")
+                      .arg(inviteGamePopup.inviteGameName)
+                      .arg(inviteGamePopup.inviteFromName)
+                textFormat: Text.RichText
+                color: Config.StaticData.palette.secondary.col200
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                CustomButton {
+                    text: qsTr("Decline")
+                    Layout.fillWidth: true
+                    onClicked: inviteGamePopup.respond(false)
+                }
+                CustomButton {
+                    text: qsTr("Join")
+                    Layout.fillWidth: true
+                    onClicked: inviteGamePopup.respond(true)
+                }
+            }
+        }
+
+        function respond(accepted) {
+            answered = true
+            if (accepted)
+                Lobby.acceptGameInvitation(inviteGameId)
+            else
+                Lobby.rejectGameInvitation(inviteGameId, 0)   // 0 = DENY_GAME_INVITATION_NO
+            close()
+        }
+        onClosed: {
+            // Ohne Auswahl geschlossen (Escape) → ablehnen, damit Server- und
+            // Pending-State sauber zurückgesetzt werden.
+            if (!answered)
+                Lobby.rejectGameInvitation(inviteGameId, 0)
+        }
+    }
+
+    Connections {
+        target: Lobby
+        function onGameInvitationReceived(gameId, gameName, fromName) {
+            inviteGamePopup.inviteGameId = gameId
+            inviteGamePopup.inviteGameName = gameName
+            inviteGamePopup.inviteFromName = fromName
+            inviteGamePopup.answered = false
+            inviteGamePopup.open()
+        }
+    }
+
     Component.onCompleted: {
         console.log("LobbyPage loaded")
         console.log("My player name:", Lobby.myPlayerName)

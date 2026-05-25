@@ -287,11 +287,14 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                // Mittig zwischen oberen (0.32·H) und unteren Seiten-Boxen (0.59·H).
-                // Im Portrait sind die Seiten-Boxen per seatNudge gespreizt (oben −4,
-                // unten +14) → der wahre Mittelpunkt liegt (14−4)/2 = 5px tiefer;
-                // entsprechend nachziehen. Im Widescreen unverändert.
-                anchors.verticalCenterOffset: -tableZone.height * 0.045 + (tableZone.wide ? 0 : 5)
+                // Portrait: mittig zwischen oberen (0.32·H) und unteren Seiten-Boxen
+                // (0.59·H); die per seatNudge gespreizten unteren Boxen verschieben
+                // den Mittelpunkt um (14−4)/2 = 5px nach unten.
+                // Widescreen: mittig zwischen oberster Spielerreihe (TC ≈ 0.13·H)
+                // und der Self-Box.
+                anchors.verticalCenterOffset: tableZone.wide
+                    ? (tableZone.height * 0.13 + (selfBox.y + selfBox.height / 2)) / 2 - tableZone.height / 2
+                    : -tableZone.height * 0.045 + 5
                 // Größe = nur die Kartenreihe; das Winning-Hand-Badge liegt als
                 // Overlay darunter und zählt NICHT zur Größe → die Karten bleiben
                 // zentriert und rutschen nicht nach oben, wenn das Badge erscheint.
@@ -472,10 +475,10 @@ Rectangle {
                          ? GameTable.winningHandText !== "" : false
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Abstand zur Kartenreihe identisch zum Pot-Badge oben
-                // (Portrait 6, Querformat 8 – jeweils · oppScale). Folgt dem
-                // gleichen Portrait-Versatz (+5px) wie communityArea, damit es
-                // mittig unter den Karten bleibt.
-                y: tableZone.height * 0.455 + (tableZone.wide ? 0 : 5)
+                // (Portrait 6, Querformat 8 – jeweils · oppScale). Setzt direkt am
+                // (skalierten) Mittelpunkt der communityArea an, folgt damit deren
+                // Zentrierung in Hoch- UND Querformat.
+                y: communityArea.y + communityArea.height / 2
                    + (communityArea.height * communityArea.scale) / 2
                    + (tableZone.wide ? 8 : 6) * communityArea.scale
                 width: winHandLabel.implicitWidth + 22
@@ -813,6 +816,8 @@ Rectangle {
                 anchors.left: parent.left
                 width: tableZone.wide ? Math.max(parent.width / 3, 300) : parent.width
                 visible: tableZone.showChat
+                // Chat geschlossen → Emoji-Picker mitschließen.
+                onVisibleChanged: if (!visible) showEmojiPicker = false
 
                 // Emoji-Picker über dem Eingabefeld ein-/ausblenden.
                 property bool showEmojiPicker: false

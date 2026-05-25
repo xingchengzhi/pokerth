@@ -1412,16 +1412,27 @@ Rectangle {
     // Accumulated HTML for the chat areas (avoids full-document reassignment)
     property string _chatHtml: ""
 
-    // Chat handler: append to both wide and compact chat areas
+    // Lobby-Chat aus dem persistenten Handler-Verlauf (Lobby.chatLog) aufbauen.
+    // Dieser Verlauf wird beim Betreten/Verlassen eines Spiels NICHT geleert
+    // (wie im Qt-Widgets-Client), sodass die History nach Rückkehr in die Lobby
+    // erhalten bleibt – auch falls diese Seite/das TextArea neu erzeugt wurde.
+    function rebuildChat() {
+        if (typeof Lobby === "undefined" || !Lobby)
+            return
+        if (Lobby.chatLog.length === 0)
+            return   // noch keine Nachricht → Begrüßungstext stehen lassen
+        _chatHtml = Lobby.chatLog.join("<br/>")
+        chatArea.text = _chatHtml
+        chatAreaCompact.text = _chatHtml
+        // Auto-scroll to bottom
+        chatArea.cursorPosition = chatArea.length
+        chatAreaCompact.cursorPosition = chatAreaCompact.length
+    }
+
     Connections {
         target: Lobby
-        function onChatLineReady(line) {
-            _chatHtml += (_chatHtml.length > 0 ? "<br/>" : "") + line
-            chatArea.text = _chatHtml
-            chatAreaCompact.text = _chatHtml
-            // Auto-scroll to bottom
-            chatArea.cursorPosition = chatArea.length
-            chatAreaCompact.cursorPosition = chatAreaCompact.length
+        function onChatLogChanged() {
+            lobbyPage.rebuildChat()
         }
         function onLobbyChatMentionDetected() {
             // TODO: play lobbychatnotify sound (requires SoundEffect + runtime path)
@@ -1582,5 +1593,8 @@ Rectangle {
         console.log("My player name:", Lobby.myPlayerName)
         console.log("Player model count:", Lobby.playerListModel.rowCount())
         console.log("Game model count:", Lobby.gameListModel.rowCount())
+        // Bereits vorhandenen Chat-Verlauf wiederherstellen (z.B. nach Rückkehr
+        // aus einem Spiel).
+        rebuildChat()
     }
 }

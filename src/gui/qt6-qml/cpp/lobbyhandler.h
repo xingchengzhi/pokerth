@@ -11,6 +11,7 @@
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
 #include <QString>
+#include <QStringList>
 #include <QHash>
 #include <QVariantMap>
 #include <boost/shared_ptr.hpp>
@@ -158,6 +159,9 @@ class LobbyHandler : public QObject
     Q_PROPERTY(int playerIgnoreListRevision READ playerIgnoreListRevision NOTIFY playerIgnoreListChanged)
     Q_PROPERTY(bool isInGame READ isInGame NOTIFY isInGameChanged)
     Q_PROPERTY(int currentGameId READ currentGameId NOTIFY currentGameIdChanged)
+    // Persistenter Lobby-Chat-Verlauf (formatierte HTML-Zeilen). Erlaubt es
+    // mehreren Seiten (Lobby + GameWait), denselben Chat inkl. History zu zeigen.
+    Q_PROPERTY(QStringList chatLog READ chatLog NOTIFY chatLogChanged)
 
 public:
     explicit LobbyHandler(QObject *parent = nullptr);
@@ -173,6 +177,7 @@ public:
     
     QString myPlayerName() const { return m_myPlayerName; }
     unsigned myPlayerId() const { return m_myPlayerId; }
+    QStringList chatLog() const { return m_chatLog; }
     bool isMyPlayerGuest() const;
     bool isCurrentPlayerAdmin() const { return m_isCurrentPlayerAdmin; }
     bool canInviteFromCurrentGame() const;
@@ -213,7 +218,10 @@ public slots:
     Q_INVOKABLE void leaveGame();
     void onSelfJoinedGame();
     void onGameStarted();
-    void onRemovedFromGame();
+    // reason = NTF_NET_REMOVED_* (socket_msg.h); wird an QML weitergereicht,
+    // damit ein selbst angefordertes Verlassen (ON_REQUEST) anders navigiert
+    // als z.B. ein geschlossenes/beendetes Spiel (GAME_CLOSED).
+    void onRemovedFromGame(int reason);
     
     // Player actions (QML-invokable)
     Q_INVOKABLE void createGame(const QString &name, const QString &password,
@@ -241,12 +249,13 @@ public slots:
 
 signals:
     void chatLineReady(const QString &formattedLine);
+    void chatLogChanged();
     void lobbyChatMentionDetected();
     void gameCreated(unsigned gameId);
     void gameJoined(unsigned gameId);
     void selfJoinedGame();
     void gameStarted();
-    void removedFromGame();
+    void removedFromGame(int reason);
     void errorOccurred(const QString &errorMessage);
     void myPlayerNameChanged();
     void myPlayerIdChanged();
@@ -261,6 +270,11 @@ signals:
     void currentGameIdChanged();
 
 private:
+    // Hängt eine fertig formatierte Chat-Zeile an den Verlauf an (begrenzt) und
+    // benachrichtigt sowohl die Live-Verbraucher (chatLineReady) als auch die
+    // bindbare chatLog-Property.
+    void pushChatLine(const QString &line);
+
     boost::shared_ptr<Session> m_session;
     ConfigFile *m_config;
     
@@ -271,6 +285,7 @@ private:
     
     QString m_myPlayerName;
     unsigned m_myPlayerId;
+    QStringList m_chatLog;      // formatierter Lobby-Chat-Verlauf (HTML-Zeilen)
     bool m_isCurrentPlayerAdmin;
     bool m_isInGame = false;
     unsigned m_currentGameId = 0;

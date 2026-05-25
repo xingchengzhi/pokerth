@@ -11,6 +11,11 @@ Rectangle {
 
     signal picked(string emoji)
 
+    // Kompakter Modus: >0 = feste Zeilenzahl, horizontal scrollend (platzsparender
+    // Streifen, z.B. 2-zeilig in der GameWait-Page). 0 = klassisches vertikal
+    // scrollendes Raster (Lobby/Game-Chat).
+    property int rows: 0
+
     color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.98)
     border.color: Config.StaticData.palette.secondary.col500
     border.width: 1
@@ -111,8 +116,12 @@ Rectangle {
         cellWidth: 38
         cellHeight: 38
         model: root.emojis
+        // Kompakt → spaltenweise (oben→unten) füllen und horizontal scrollen,
+        // damit genau `rows` Zeilen sichtbar bleiben.
+        flow: root.rows > 0 ? GridView.FlowTopToBottom : GridView.FlowLeftToRight
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+        ScrollBar.vertical: ScrollBar { policy: root.rows > 0 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOn }
+        ScrollBar.horizontal: ScrollBar { policy: root.rows > 0 ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded }
 
         delegate: Item {
             required property var modelData

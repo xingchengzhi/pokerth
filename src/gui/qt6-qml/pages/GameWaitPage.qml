@@ -9,6 +9,7 @@ import "../components"
 
 Rectangle {
     id: gameWaitPage
+    objectName: "gameWaitPage"
     Layout.fillWidth: true
     Layout.fillHeight: true
     color: Config.StaticData.palette.secondary.col700
@@ -33,6 +34,10 @@ Rectangle {
     readonly property bool isRanking: (info.gameType || 1) === 4
     readonly property bool canStart: isAdmin && !isRanking && players.length >= 2
 
+    // NTF_NET_REMOVED_ON_REQUEST (socket_msg.h) – selbst angefordertes Verlassen
+    // (Tür-Icon / "Leave Game"). Andere Gründe (z.B. GAME_CLOSED) navigieren anders.
+    readonly property int removedOnRequest: 202
+
     // Helfer analog zu LobbyPage
     function gameTypeIconSource(gameType) {
         if (gameType === 2) return "../resources/userSquare.svg"
@@ -41,11 +46,51 @@ Rectangle {
         return "../resources/user.svg"
     }
 
+    // ── Chat-Status: spiegelt 1:1 den Lobby-Chat (Lobby.chatLog / sendChatMessage),
+    // sodass hier derselbe Chat inkl. Verlauf sichtbar ist ───────────────────
+    property bool showEmojiPicker: false
+    property var chatHistory: []
+    property int chatHistoryIndex: 0
+
+    function sendChatMessage() {
+        if (typeof Lobby === "undefined" || !Lobby) return
+        var msg = chatInput.text.trim()
+        if (msg === "") return
+        Lobby.sendChatMessage(msg)
+        chatHistory.push(chatInput.text)
+        if (chatHistory.length > 50) chatHistory.shift()
+        chatHistoryIndex = 0
+        chatInput.text = ""
+    }
+
+    // Chat-History (Pfeil hoch/runter, wie im Qt-Widgets-Client; max. 50).
+    function showChatHistory(idx) {
+        if (idx > 0 && idx <= chatHistory.length)
+            chatInput.text = chatHistory[chatHistory.length - idx]
+        else
+            chatInput.text = ""
+        chatInput.cursorPosition = chatInput.text.length
+    }
+
     Connections {
         target: Lobby
-        function onRemovedFromGame() {
-            console.log("[NAV] GameWaitPage.onRemovedFromGame | depth before:", mainStackView.depth, "| currentItem:", mainStackView.currentItem ? (mainStackView.currentItem.objectName || mainStackView.currentItem.toString()) : "null")
-            mainStackView.pop()
+        function onRemovedFromGame(reason) {
+            console.log("[NAV] GameWaitPage.onRemovedFromGame | reason:", reason, "| depth before:", mainStackView.depth, "| currentItem:", mainStackView.currentItem ? (mainStackView.currentItem.objectName || mainStackView.currentItem.toString()) : "null")
+            if (reason === gameWaitPage.removedOnRequest) {
+                // Selbst verlassen → IMMER bis zur Lobby zurück (aus Warteraum ODER
+                // laufendem Spiel: dann werden GamePage UND GameWaitPage gepoppt).
+                var lobby = mainStackView.find(function(item) {
+                    return item && item.objectName === "lobbyPage"
+                })
+                if (lobby)
+                    mainStackView.pop(lobby)
+                else
+                    mainStackView.pop()
+            } else {
+                // Andere Gründe (z.B. Spiel beendet/geschlossen): zurück in den
+                // Warteraum, sofern man aus dem Spiel kommt (einfacher pop()).
+                mainStackView.pop()
+            }
             console.log("[NAV] GameWaitPage.onRemovedFromGame | depth after:", mainStackView.depth)
         }
         function onGameStarted() {
@@ -59,44 +104,12 @@ Rectangle {
         anchors.margins: Config.Theme.margin
         spacing: Config.Theme.spacing
 
-        // ── Header: Zurück + Titel ────────────────────────────────────────
+        // ── Header: Titel ─────────────────────────────────────────────────
+        // Kein Zurück-Caret: das Spiel wird ausschließlich über den
+        // "Leave Game"-Button unten verlassen.
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-
-            Rectangle {
-                implicitWidth: 38
-                implicitHeight: 38
-                radius: 5
-                color: backArea.containsMouse
-                       ? Config.StaticData.palette.secondary.col600
-                       : Config.StaticData.palette.secondary.col700
-                border.color: Config.StaticData.palette.secondary.col500
-                border.width: 1
-
-                Image {
-                    anchors.centerIn: parent
-                    width: 18; height: 18
-                    source: "../resources/caretLeft.svg"
-                    sourceSize: Qt.size(36, 36)
-                    smooth: true; antialiasing: true
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        colorization: 1.0
-                        colorizationColor: Config.StaticData.palette.secondary.col200
-                    }
-                }
-
-                MouseArea {
-                    id: backArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (Lobby) Lobby.leaveGame()
-                    }
-                }
-            }
 
             Label {
                 text: qsTr("Game Info")
@@ -122,9 +135,11 @@ Rectangle {
         }
 
         // ── Game details card ─────────────────────────────────────────────
+        // Nimmt 2/3 der flexiblen Höhe ein; der Chat darunter 1/3.
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.verticalStretchFactor: 2
             color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
             radius: 6
 
@@ -243,9 +258,12 @@ Rectangle {
                     id: playerList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumHeight: 0   // darf schrumpfen → scrollt bei Übergröße
                     clip: true
                     model: gameWaitPage.players
                     spacing: 4
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar {}
 
                     delegate: Rectangle {
                         required property var modelData
@@ -303,6 +321,172 @@ Rectangle {
                                 font.bold: modelData.isAdmin === true
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Game-Chat (unteres Drittel; wächst bei geöffnetem Emoji-Picker
+        // nach oben in den Info-Bereich, dessen Spielerliste dann scrollt) ──
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.verticalStretchFactor: gameWaitPage.showEmojiPicker ? 2 : 1
+            // Mindesthöhe (Picker zu): Chrome (Titel + Eingabezeile + Ränder) plus
+            // Platz für ~4 Nachrichtenzeilen, damit der Verlauf nie zu klein wird.
+            Layout.minimumHeight: 200
+            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
+            radius: 6
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 4
+
+                Label {
+                    text: qsTr("Lobby Chat")
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.bold: true
+                    font.pixelSize: 13
+                    color: Config.StaticData.palette.secondary.col200
+                }
+
+                ListView {
+                    id: chatList
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 0   // weicht dem Emoji-Picker (Liste schrumpft)
+                    clip: true
+                    model: (typeof Lobby !== "undefined" && Lobby) ? Lobby.chatLog : []
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar {}
+                    onCountChanged: positionViewAtEnd()
+                    spacing: 3
+                    delegate: Item {
+                        required property var modelData
+                        width: ListView.view.width
+                        implicitHeight: bubble.height
+
+                        Rectangle {
+                            id: bubble
+                            width: parent.width
+                            height: msgText.implicitHeight + 6
+                            radius: 8
+                            color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
+
+                            Text {
+                                id: msgText
+                                anchors {
+                                    left: parent.left; right: parent.right; top: parent.top
+                                    leftMargin: 8; rightMargin: 8; topMargin: 3
+                                }
+                                text: modelData
+                                textFormat: Text.RichText
+                                wrapMode: Text.WordWrap
+                                color: Config.StaticData.palette.secondary.col100
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 12
+                                lineHeight: 1.0
+                                onLinkActivated: (link) => Qt.openUrlExternally(link)
+                            }
+                        }
+                    }
+                }
+
+                // Emoji-Picker – kompakter 2-zeiliger Streifen (horizontal
+                // scrollend) direkt über dem Eingabefeld. Spart vertikalen Platz,
+                // damit das Eingabefeld nie unter den Leave-Button rutscht.
+                EmojiPicker {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 2 * 38 + 12 + 8   // 2 Zeilen + Ränder + H-Scrollbar
+                    rows: 2
+                    visible: gameWaitPage.showEmojiPicker
+                    onPicked: (emoji) => {
+                        chatInput.insert(chatInput.cursorPosition, emoji)
+                        chatInput.forceActiveFocus()
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    // Emoji-Picker-Umschalter
+                    Button {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        onClicked: gameWaitPage.showEmojiPicker = !gameWaitPage.showEmojiPicker
+                        background: Rectangle {
+                            radius: 6
+                            color: gameWaitPage.showEmojiPicker
+                                   ? Config.StaticData.palette.secondary.col500 : "transparent"
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        contentItem: Text {
+                            text: "🙂"
+                            font.family: Config.StaticData.emojiFamily
+                            font.pixelSize: 20
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+
+                    TextField {
+                        id: chatInput
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        enabled: !(Lobby && Lobby.isMyPlayerGuest)
+                        placeholderText: (Lobby && Lobby.isMyPlayerGuest)
+                                         ? qsTr("Guests cannot chat")
+                                         : qsTr("Type your message...")
+                        font.family: Config.StaticData.loadedFont.font.family
+                        color: Config.StaticData.palette.secondary.col200
+                        background: Rectangle {
+                            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.5)
+                            radius: 3
+                        }
+                        placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
+                        onAccepted: gameWaitPage.sendChatMessage()
+                        Keys.onReturnPressed: gameWaitPage.sendChatMessage()
+                        onTextEdited: gameWaitPage.chatHistoryIndex = 0
+                        Keys.onUpPressed: (event) => {
+                            event.accepted = true
+                            if (gameWaitPage.chatHistoryIndex + 1 <= gameWaitPage.chatHistory.length)
+                                gameWaitPage.chatHistoryIndex++
+                            gameWaitPage.showChatHistory(gameWaitPage.chatHistoryIndex)
+                        }
+                        Keys.onDownPressed: (event) => {
+                            event.accepted = true
+                            if (gameWaitPage.chatHistoryIndex - 1 >= 0)
+                                gameWaitPage.chatHistoryIndex--
+                            gameWaitPage.showChatHistory(gameWaitPage.chatHistoryIndex)
+                        }
+                    }
+
+                    Button {
+                        Layout.minimumWidth: 44
+                        Layout.preferredWidth: 44
+                        Layout.maximumWidth: 44
+                        Layout.preferredHeight: 36
+                        Layout.maximumHeight: 44
+                        enabled: !(Lobby && Lobby.isMyPlayerGuest) && chatInput.text.trim().length > 0
+                        onClicked: gameWaitPage.sendChatMessage()
+                        background: Item {}
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        contentItem: Image {
+                            width: 18
+                            height: 18
+                            anchors.centerIn: parent
+                            source: "../resources/send.svg"
+                            sourceSize: Qt.size(36, 36)
+                            smooth: true
+                            antialiasing: true
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: Config.Theme.colorChatSend
                             }
                         }
                     }

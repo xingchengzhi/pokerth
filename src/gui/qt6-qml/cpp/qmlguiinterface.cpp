@@ -226,10 +226,9 @@ void QmlGuiInterface::SignalNetClientSelfJoined(unsigned playerId, const std::st
 
 void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
 {
-    Q_UNUSED(notificationId)
     if (m_lobbyHandler) {
-        QMetaObject::invokeMethod(m_lobbyHandler, [this]() {
-            m_lobbyHandler->onRemovedFromGame();
+        QMetaObject::invokeMethod(m_lobbyHandler, [this, notificationId]() {
+            m_lobbyHandler->onRemovedFromGame(notificationId);
         }, Qt::QueuedConnection);
     }
 }

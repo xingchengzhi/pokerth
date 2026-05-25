@@ -55,11 +55,30 @@ ApplicationWindow {
             return false
 
         var current = mainStackView.currentItem
+
+        // Warteraum: das Spiel sauber über den Server verlassen (wie der
+        // "Leave Game"-Button). Der StackView wird durch onRemovedFromGame
+        // gepoppt – hier NICHT direkt poppen.
+        if (current && current.objectName === "gameWaitPage") {
+            if (typeof Lobby !== "undefined" && Lobby)
+                Lobby.leaveGame()
+            return true
+        }
+
         var isGamePage = current && current.objectName === "gamePage"
         var localGame = isGamePage
                         && (typeof GameTable !== "undefined")
                         && GameTable
                         && GameTable.isLocalGameRunning()
+
+        // Laufendes Netzwerkspiel: serverseitig verlassen und zurück in die
+        // LOBBY (nicht in den darunterliegenden Warteraum). Der StackView wird
+        // durch onRemovedFromGame bis zur Lobby gepoppt – hier NICHT poppen.
+        if (isGamePage && !localGame) {
+            if (typeof Lobby !== "undefined" && Lobby)
+                Lobby.leaveGame()
+            return true
+        }
 
         if (localGame)
             GameTable.endLocalGame()
@@ -189,10 +208,12 @@ ApplicationWindow {
                 // console.log("[NAV] Stack depth:", depth, "| currentItem:", currentItem ? (currentItem.objectName || currentItem.toString()) : "null")
                 var isLobby = (currentItem && currentItem.objectName === "lobbyPage");
                 var isGame  = (currentItem && currentItem.objectName === "gamePage");
+                var isGameWait = (currentItem && currentItem.objectName === "gameWaitPage");
                 if (depth <= 1) {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = sideMenu.visible ? "resources/caretLeft.svg" : "resources/threeLines.svg";
-                } else if (isLobby || isGame) {
+                } else if (isLobby || isGame || isGameWait) {
+                    // Lobby, Spiel UND Warteraum: Tür-Icon zum Verlassen.
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = "resources/doorExit.svg";
                 } else {

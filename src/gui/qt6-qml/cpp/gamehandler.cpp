@@ -703,15 +703,25 @@ void GameHandler::onDisableMyButtons()
 void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
 {
     if (localGameCallbacksBlocked()) return;
-    if (playerNum != 0 || timeoutSec < 4) return;
 
-    // Wie im Widgets-Client: Ton erst nach 3 Sekunden Vorlauf.
-    m_timeoutBeepTimer->start((timeoutSec - 3) * 1000);
+    // Fortschrittsbalken (Ersatz fürs Action-Badge) für den gerade aktiven Sitz.
+    if (m_timeoutSeatId != playerNum || m_timeoutSec != timeoutSec) {
+        m_timeoutSeatId = playerNum;
+        m_timeoutSec = timeoutSec;
+        emit timeoutChanged();
+    }
+
+    // Wie im Widgets-Client: Ton erst nach 3 Sekunden Vorlauf – nur für mich.
+    if (playerNum == 0 && timeoutSec >= 4)
+        m_timeoutBeepTimer->start((timeoutSec - 3) * 1000);
 }
 
 void GameHandler::onStopTimeoutAnimation(int playerNum)
 {
-    Q_UNUSED(playerNum)
+    if (m_timeoutSeatId == playerNum) {
+        m_timeoutSeatId = -1;
+        emit timeoutChanged();
+    }
     m_timeoutBeepTimer->stop();
 }
 

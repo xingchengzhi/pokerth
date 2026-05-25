@@ -60,6 +60,12 @@ QtObject {
     readonly property color colorAccent:        "#E3C800"
     readonly property color colorAccentDim:     "#b09a00"
 
+    // Action-Timeout-Fortschrittsbalken: schlanker Balken mit Kontur + Schatten.
+    // Blaue Füllung (Self-Box etwas heller), dunkler "leerer" Track.
+    readonly property color colorTimeout:        "#4070D0"
+    readonly property color colorTimeoutSelf:    "#6E9CEC"
+    readonly property color colorTimeoutTrack:   "#0e1a30"
+
     // Semantic
     readonly property color colorDanger:        "#e05050"
     readonly property color colorSuccess:       "#50c878"

@@ -272,6 +272,68 @@ Rectangle {
         }
     }
 
+    // Action-Timeout: schlanker Fortschrittsbalken an Stelle des Action-Badges
+    // (Sitz 0 = ich), solange ich am Zug bin – zählt über die Timeout-Dauer runter.
+    Item {
+        id: timeoutBar
+        readonly property bool active: (typeof GameTable !== "undefined" && GameTable)
+                                       && GameTable.timeoutSeatId === 0
+        property real progress: 1.0
+        visible: active && !root.isWinner && root.actionText === ""
+        anchors.horizontalCenter: bottomBar.horizontalCenter
+        anchors.verticalCenter: bottomBar.verticalCenter
+        width: 56
+        height: 7
+        z: 26
+
+        // Track (statisch): Kontur + Dropshadow.
+        Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: Config.Theme.colorTimeoutTrack
+            border.color: Qt.rgba(1, 1, 1, 0.55)
+            border.width: 1
+            layer.enabled: timeoutBar.visible
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#000000"
+                shadowOpacity: 0.6
+                shadowBlur: 0.7
+                shadowVerticalOffset: 1
+                shadowHorizontalOffset: 0
+            }
+        }
+
+        // Füllung (animiert) ÜBER dem Track – NICHT im Layer, damit die Breiten-
+        // Animation zuverlässig läuft. Gleiches Blau wie bei den Gegnern, heller.
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 1
+            height: parent.height - 2
+            radius: height / 2
+            color: Config.Theme.colorTimeoutSelf
+            width: (parent.width - 2) * timeoutBar.progress
+        }
+
+        onActiveChanged: {
+            if (active) {
+                progress = 1.0
+                timeoutAnim.restart()
+            } else {
+                timeoutAnim.stop()
+            }
+        }
+        NumberAnimation {
+            id: timeoutAnim
+            target: timeoutBar
+            property: "progress"
+            from: 1.0; to: 0.0
+            duration: ((typeof GameTable !== "undefined" && GameTable) ? GameTable.timeoutSec : 0) * 1000
+            easing.type: Easing.Linear
+        }
+    }
+
     // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb der Box.
     // FESTE Slots (wie bei Player 5): die Gruppe überspannt die volle Boxbreite →
     // Einsatz mittig, Button rechts. So verrutscht nichts, egal welche Elemente

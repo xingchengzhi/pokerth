@@ -35,6 +35,11 @@ class GameHandler : public QObject
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
     Q_PROPERTY(int winnerSeatId READ winnerSeatId NOTIFY winnerSeatIdChanged)
     Q_PROPERTY(QString winningHandText READ winningHandText NOTIFY winningHandTextChanged)
+    // Aktiver Action-Timeout: Sitz, der gerade am Zug ist (−1 = keiner) und die
+    // Timeout-Dauer in Sekunden. Die Player-Box zeigt dafür anstelle des
+    // Action-Badges einen kleinen Fortschrittsbalken.
+    Q_PROPERTY(int timeoutSeatId READ timeoutSeatId NOTIFY timeoutChanged)
+    Q_PROPERTY(int timeoutSec READ timeoutSec NOTIFY timeoutChanged)
     Q_PROPERTY(QStringList gameLog READ gameLog NOTIFY gameLogChanged)
     Q_PROPERTY(QStringList chatLog READ chatLog NOTIFY chatLogChanged)
     // true, sobald außer mir noch (mind.) ein menschlicher Spieler im Spiel ist
@@ -67,6 +72,8 @@ public:
     QVariantList boardCards() const { return m_boardCards; }
     int winnerSeatId() const { return m_winnerSeatId; }
     QString winningHandText() const { return m_winningHandText; }
+    int timeoutSeatId() const { return m_timeoutSeatId; }
+    int timeoutSec() const { return m_timeoutSec; }
     QStringList gameLog() const { return m_gameLog; }
     QStringList chatLog() const { return m_chatLog; }
     bool hasHumanOpponents() const { return m_hasHumanOpponents; }
@@ -135,6 +142,7 @@ signals:
     void boardCardsChanged();
     void winnerSeatIdChanged();
     void winningHandTextChanged();
+    void timeoutChanged();
     void gameLogChanged();
     void chatLogChanged();
     void hasHumanOpponentsChanged();
@@ -169,6 +177,8 @@ private:
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
     int m_winnerSeatId = -1;
     QString m_winningHandText;  // Name der Gewinner-Hand (nur während des Showdowns)
+    int m_timeoutSeatId = -1;   // Sitz mit laufendem Action-Timeout (−1 = keiner)
+    int m_timeoutSec = 0;       // Dauer des Action-Timeouts in Sekunden
     QStringList m_gameLog;      // Live-Aktions-Log (Spielverlauf) für das Overlay
     QStringList m_chatLog;      // In-Game-Chat-Verlauf
     bool m_hasHumanOpponents = false;

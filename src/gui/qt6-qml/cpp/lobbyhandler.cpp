@@ -1140,7 +1140,7 @@ void LobbyHandler::onLobbyChatMessage(const QString &playerName, const QString &
                + escapedName + QLatin1String(":</b> ") + styledMsg;
     }
 
-    emit chatLineReady(line);
+    pushChatLine(line);
 }
 
 void LobbyHandler::onPrivateChatMessage(const QString &playerName, const QString &message)
@@ -1159,6 +1159,16 @@ void LobbyHandler::onPrivateChatMessage(const QString &playerName, const QString
                          + playerName.toHtmlEscaped()
                          + QLatin1String("(pm): ") + escapedMsg
                          + QLatin1String("</span></i>");
+    pushChatLine(line);
+}
+
+void LobbyHandler::pushChatLine(const QString &line)
+{
+    m_chatLog.append(line);
+    const int kMaxLines = 400;
+    if (m_chatLog.size() > kMaxLines)
+        m_chatLog.erase(m_chatLog.begin(), m_chatLog.begin() + (m_chatLog.size() - kMaxLines));
+    emit chatLogChanged();
     emit chatLineReady(line);
 }
 
@@ -1256,13 +1266,13 @@ void LobbyHandler::onGameStarted()
     emit gameStarted();
 }
 
-void LobbyHandler::onRemovedFromGame()
+void LobbyHandler::onRemovedFromGame(int reason)
 {
     m_isInGame = false;
     m_currentGameId = 0;
     emit isInGameChanged();
     emit currentGameIdChanged();
-    emit removedFromGame();
+    emit removedFromGame(reason);
 }
 
 QString LobbyHandler::currentGameName() const

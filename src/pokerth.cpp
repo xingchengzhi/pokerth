@@ -38,6 +38,7 @@
 #include <QApplication>
 #include <QSettings>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QIcon>
 #include <boost/shared_ptr.hpp>
 #include "configfile.h"
@@ -168,6 +169,17 @@ int main(int argc, char *argv[])
     }
 
     int result = app.exec();
+
+    // Scene-Graph sauber herunterfahren, BEVOR die Engine (und damit die
+    // QML-Items samt Fenster) beim Stack-Unwind zerstört wird. Auf Wayland mit
+    // Threaded-Render-Loop stürzt sonst QQuickWindowPrivate::cleanup() beim
+    // Zerstören der Items ab (derefWindow → Cleanup eines bereits halb
+    // abgebauten SG). hide() stoppt den Render-Thread und gibt die SG-Ressourcen
+    // frei, solange GUI-Thread und App noch voll leben.
+    for (QObject *root : engine.rootObjects()) {
+        if (auto *w = qobject_cast<QQuickWindow *>(root))
+            w->hide();
+    }
 
     // Cleanup order matters:
     // 1. Stop network thread first (before any owned objects are freed).

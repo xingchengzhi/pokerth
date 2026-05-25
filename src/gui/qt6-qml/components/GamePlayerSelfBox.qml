@@ -234,60 +234,60 @@ Rectangle {
         }
     }
 
-    // Aktion + Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb
-    // der Box. FESTE Slots (wie bei Player 5): die Gruppe überspannt die volle
-    // Boxbreite → Action links, Einsatz mittig, Button rechts. So verrutscht
-    // nichts, egal welche Elemente gerade aktiv sind.
+    // Action-Badge: INNERHALB der Box, unten, horizontal zentriert zwischen
+    // Nickname (links) und Stack (rechts) – auf Höhe der Infozeile.
+    Rectangle {
+        id: actionBadge
+        visible: root.actionText !== "" && !root.isWinner
+        anchors.horizontalCenter: bottomBar.horizontalCenter
+        anchors.verticalCenter: bottomBar.verticalCenter
+        width: actionLabel.width + 16
+        height: 18
+        radius: 9
+        z: 26
+        // Farbe je Aktion (gleiche Logik wie die Action-Buttons, nur dunkler).
+        color: Config.Theme.actionBadgeColor(root.action)
+        border.color: Config.Theme.actionBadgeBorder(root.action)
+        border.width: 1
+        transformOrigin: Item.Center
+        Behavior on color { ColorAnimation { duration: 200 } }
+        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        // Pop beim Erscheinen einer neuen Aktion (Mikroanimation).
+        onVisibleChanged: if (visible) selfBadgePop.restart()
+        SequentialAnimation {
+            id: selfBadgePop
+            NumberAnimation { target: actionBadge; property: "scale"; from: 0.6; to: 1.12; duration: 110; easing.type: Easing.OutQuad }
+            NumberAnimation { target: actionBadge; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutBack }
+        }
+
+        Text {
+            id: actionLabel
+            anchors.centerIn: parent
+            text: root.actionText
+            color: "#eaf1ff"
+            font.family: Config.StaticData.loadedFont.font.family
+            font.pixelSize: 11
+            font.bold: true
+        }
+    }
+
+    // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb der Box.
+    // FESTE Slots (wie bei Player 5): die Gruppe überspannt die volle Boxbreite →
+    // Einsatz mittig, Button rechts. So verrutscht nichts, egal welche Elemente
+    // gerade aktiv sind. (Das Action-Badge sitzt jetzt INNERHALB der Box, unten.)
     Item {
         id: betGroup
-        readonly property bool actActive: root.actionText !== "" && !root.isWinner
-        visible: root.bet > 0 || root.button > 0 || actActive
+        visible: root.bet > 0 || root.button > 0
         z: 25
 
-        readonly property real actH: actActive ? actionBadge.height : 0
         readonly property real betH: root.bet > 0 ? betRow.height : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
 
         width: root.width
-        height: Math.max(actH, betH, btnH)
+        height: Math.max(betH, btnH)
         x: 0
         y: -height - 2
-
-        // Action-Badge – fester Slot links
-        Rectangle {
-            id: actionBadge
-            visible: betGroup.actActive
-            width: actionLabel.width + 16
-            height: 20
-            radius: 10
-            // Farbe je Aktion (gleiche Logik wie die Action-Buttons, nur dunkler).
-            color: Config.Theme.actionBadgeColor(root.action)
-            border.color: Config.Theme.actionBadgeBorder(root.action)
-            border.width: 1
-            x: 0
-            y: (betGroup.height - height) / 2
-            transformOrigin: Item.Center
-            Behavior on color { ColorAnimation { duration: 200 } }
-            Behavior on border.color { ColorAnimation { duration: 200 } }
-
-            // Pop beim Erscheinen einer neuen Aktion (Mikroanimation).
-            onVisibleChanged: if (visible) selfBadgePop.restart()
-            SequentialAnimation {
-                id: selfBadgePop
-                NumberAnimation { target: actionBadge; property: "scale"; from: 0.6; to: 1.12; duration: 110; easing.type: Easing.OutQuad }
-                NumberAnimation { target: actionBadge; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutBack }
-            }
-
-            Text {
-                id: actionLabel
-                anchors.centerIn: parent
-                text: root.actionText
-                color: "#eaf1ff"
-                font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 12
-                font.bold: true
-            }
-        }
 
         // Einsatz – fester Slot mittig
         Row {

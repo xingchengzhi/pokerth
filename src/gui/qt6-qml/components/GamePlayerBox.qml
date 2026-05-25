@@ -259,11 +259,11 @@ Item {
     // vertikaler Abstand zur Box.
     Rectangle {
         visible: root.isWinner
-        anchors.horizontalCenter: playerBox.horizontalCenter
-        anchors.top: root.winnerBelow ? playerBox.bottom : undefined
-        anchors.bottom: root.winnerBelow ? undefined : playerBox.top
-        anchors.topMargin: root.winnerBelow ? 3 : 0
-        anchors.bottomMargin: root.winnerBelow ? 0 : 3
+        anchors.horizontalCenter: parent.horizontalCenter
+        // Vertikal über bzw. unter der Box per explizitem y – ein bedingter
+        // anchors-Wechsel mit `undefined` ist fragil (Anchor fällt weg → Badge
+        // landet mittig in der Box). Unterhalb (winnerBelow) bzw. oberhalb.
+        y: root.winnerBelow ? (parent.height + 2) : (-height - 2)
         width: winnerLabel.width + 12
         height: 16
         radius: 8

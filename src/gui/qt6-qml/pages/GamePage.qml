@@ -210,7 +210,7 @@ Rectangle {
                 var t = (width - 390) / (1920 - 390)
                 var s = Math.max(1.0, Math.min(cap, 1.0 + t * (cap - 1.0)))
                 // Querformat: die oberen Boxen sitzen eng im Bogen. Skalierung so
-                // begrenzen, dass benachbarte Boxen mind. 2px horizontalen Abstand
+                // begrenzen, dass benachbarte Boxen mind. 20px horizontalen Abstand
                 // behalten – sonst überlappen sie am Umschalt-Breakpoint.
                 if (wide && width > 0) {
                     var sq = slotSeq[seatCount - 1] || []
@@ -221,7 +221,7 @@ Rectangle {
                     }
                     xs.sort(function(a, b) { return a - b })
                     for (var j = 1; j < xs.length; ++j) {
-                        var maxArc = ((xs[j] - xs[j - 1]) * width - 2) / oppBaseWidth
+                        var maxArc = ((xs[j] - xs[j - 1]) * width - 20) / oppBaseWidth
                         if (maxArc < s) s = maxArc
                     }
                 }
@@ -287,7 +287,11 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -tableZone.height * 0.045
+                // Mittig zwischen oberen (0.32·H) und unteren Seiten-Boxen (0.59·H).
+                // Im Portrait sind die Seiten-Boxen per seatNudge gespreizt (oben −4,
+                // unten +14) → der wahre Mittelpunkt liegt (14−4)/2 = 5px tiefer;
+                // entsprechend nachziehen. Im Widescreen unverändert.
+                anchors.verticalCenterOffset: -tableZone.height * 0.045 + (tableZone.wide ? 0 : 5)
                 // Größe = nur die Kartenreihe; das Winning-Hand-Badge liegt als
                 // Overlay darunter und zählt NICHT zur Größe → die Karten bleiben
                 // zentriert und rutschen nicht nach oben, wenn das Badge erscheint.
@@ -398,7 +402,10 @@ Rectangle {
                     id: potBadge
                     anchors.horizontalCenter: cardRow.horizontalCenter
                     anchors.bottom: cardRow.top
-                    anchors.bottomMargin: 12
+                    // Gleicher Abstand zur Kartenreihe wie das Winning-Hand-Badge
+                    // darunter; Portrait kompakter (6) als Querformat (8). Skaliert
+                    // mit oppScale, da innerhalb communityArea.
+                    anchors.bottomMargin: tableZone.wide ? 8 : 6
                     visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.totalPot > 0 : false
                     width: potRow.width + 16
                     height: 21
@@ -464,14 +471,31 @@ Rectangle {
                 visible: (typeof GameTable !== "undefined" && GameTable)
                          ? GameTable.winningHandText !== "" : false
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: tableZone.height * 0.455
-                   + (communityArea.height * communityArea.scale) / 2 + 8
+                // Abstand zur Kartenreihe identisch zum Pot-Badge oben
+                // (Portrait 6, Querformat 8 – jeweils · oppScale). Folgt dem
+                // gleichen Portrait-Versatz (+5px) wie communityArea, damit es
+                // mittig unter den Karten bleibt.
+                y: tableZone.height * 0.455 + (tableZone.wide ? 0 : 5)
+                   + (communityArea.height * communityArea.scale) / 2
+                   + (tableZone.wide ? 8 : 6) * communityArea.scale
                 width: winHandLabel.implicitWidth + 22
                 height: 22
                 radius: 11
                 color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
                 border.color: "#FFD700"
                 border.width: 1
+                transformOrigin: Item.Center
+
+                // Gleicher weicher Schein wie das Pot-Badge – hier in Gold passend
+                // zum Rahmen, damit die Gewinner-Hand ebenso hervorgehoben wird.
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#FFD700"
+                    shadowOpacity: 0.45
+                    shadowBlur: 0.9
+                    shadowVerticalOffset: 0
+                }
 
                 Text {
                     id: winHandLabel
@@ -482,6 +506,19 @@ Rectangle {
                     font.family: Config.StaticData.loadedFont.font.family
                     font.pixelSize: 12
                     font.bold: true
+                }
+
+                // Poppt beim Erscheinen der Gewinner-Hand – analog potPop.
+                SequentialAnimation {
+                    id: winHandPop
+                    NumberAnimation { target: winHandBadge; property: "scale"; from: 1.0; to: 1.18; duration: 110; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: winHandBadge; property: "scale"; to: 1.0; duration: 170; easing.type: Easing.OutBack }
+                }
+                Connections {
+                    target: (typeof GameTable !== "undefined") ? GameTable : null
+                    function onWinningHandTextChanged() {
+                        if (GameTable && GameTable.winningHandText !== "") winHandPop.restart()
+                    }
                 }
             }
 
@@ -534,8 +571,20 @@ Rectangle {
                     // um die Slot-Mitte herum, damit die Position erhalten bleibt.
                     transformOrigin: Item.Center
                     scale: tableZone.oppScale
+                    // Hochformat: die Seiten-Boxen als Gruppe vertikal spreizen,
+                    // um der Tischmitte mehr Luft zu geben. Untere (Player 1/2/8/9 →
+                    // L_lower/L_bottom/R_lower/R_bottom) 14px nach unten, obere
+                    // (L_upper/TL/R_upper/TR) 4px nach oben. TC (oben Mitte) bleibt.
+                    readonly property real seatNudge: {
+                        if (tableZone.wide) return 0
+                        if (slotName === "L_lower" || slotName === "L_bottom"
+                            || slotName === "R_lower" || slotName === "R_bottom") return 14
+                        if (slotName === "L_upper" || slotName === "TL"
+                            || slotName === "R_upper" || slotName === "TR") return -4
+                        return 0
+                    }
                     x: tableZone.width * slot[0] - width / 2
-                    y: tableZone.height * slot[1] - height / 2
+                    y: tableZone.height * slot[1] - height / 2 + seatNudge
 
                     GamePlayerBox {
                         anchors.fill: parent

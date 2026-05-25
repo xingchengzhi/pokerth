@@ -59,6 +59,20 @@
 
 int main(int argc, char *argv[])
 {
+    // Qt6 nutzt auf Wayland standardmäßig den THREADED Scene-Graph-Render-Loop.
+    // Dessen Teardown beim Programmende kann mit der GUI-Thread-Zerstörung der
+    // QML-Items kollidieren → Absturz in QQuickWindowPrivate::cleanup(QSGNode*).
+    // Der BASIC-Render-Loop rendert auf dem GUI-Thread und baut synchron/ohne
+    // Race ab. Nur erzwingen, wenn der User nichts gesetzt hat UND wir auf
+    // Wayland laufen (X11 ist vom Problem nicht betroffen; Funktionsumfang/
+    // Effekte bleiben identisch, nur die Render-Thread-Aufteilung ändert sich).
+    if (qEnvironmentVariableIsEmpty("QSG_RENDER_LOOP")) {
+        const bool onWayland = !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
+                               || qgetenv("XDG_SESSION_TYPE") == QByteArrayLiteral("wayland");
+        if (onWayland)
+            qputenv("QSG_RENDER_LOOP", "basic");
+    }
+
     QGuiApplication::setApplicationName("PokerTH");
     QGuiApplication::setOrganizationName("PokerTH");
  	QGuiApplication::setOrganizationDomain("pokerth.net");

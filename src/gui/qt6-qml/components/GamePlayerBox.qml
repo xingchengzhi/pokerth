@@ -27,6 +27,12 @@ Item {
     readonly property int card0: seatData && seatData.card0 !== undefined ? seatData.card0 : -1
     readonly property int card1: seatData && seatData.card1 !== undefined ? seatData.card1 : -1
     readonly property bool isMyTurn: seatData ? seatData.myTurn : false
+    // Aktiver Spieler (am Zug): lokal über seatData.myTurn (Engine setzt
+    // getMyTurn()), im Netzwerk-Spiel über den Action-Timeout (timeoutSeatId) –
+    // dort ist myTurn clientseitig nicht gesetzt. Beides berücksichtigen, damit
+    // der Highlight-Rahmen in BEIDEN Spielarten erscheint.
+    readonly property bool isAtTurn: root.isMyTurn
+        || ((typeof GameTable !== "undefined" && GameTable) ? GameTable.timeoutSeatId === root.seatIndex : false)
     readonly property bool isActive: seatData ? seatData.active : false
     readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === root.seatIndex
     readonly property int button: seatData && seatData.button !== undefined ? seatData.button : 0
@@ -67,7 +73,7 @@ Item {
         color: "transparent"
 
         // Aktiver Spieler leicht „angehoben" → mehr Tiefe/Fokus (sanfter Übergang).
-        scale: root.isMyTurn ? 1.04 : 1.0
+        scale: root.isAtTurn ? 1.04 : 1.0
         transformOrigin: Item.Center
         Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
@@ -95,33 +101,51 @@ Item {
             }
         }
 
-        // Highlight: weicher Außen-Glow wenn dieser Spieler am Zug ist – mit
-        // ruhigem Puls, damit der Blick zum aktiven Spieler geführt wird.
-        Rectangle {
+        // Highlight: aktiver Spieler bekommt einen gold Rahmen + weichen Glow,
+        // mit ruhigem Puls. WICHTIG: der Rahmen liegt als eigene Ebene OHNE Layer
+        // vor, der weiche Glow als separate gelayerte Ebene dahinter. So bleibt
+        // der Rahmen sichtbar, selbst wenn der MultiEffect-Glow auf einem System
+        // nicht rendert (war zuvor in EINEM gelayerten Rechteck → bei Layer-
+        // Problemen verschwand der Rahmen mit).
+        Item {
             id: turnGlow
             anchors.fill: parent
             anchors.margins: -2
-            color: "transparent"
-            radius: 6
-            border.color: root.isMyTurn ? "#CCFFD54A" : "transparent"
-            border.width: root.isMyTurn ? 2 : 0
             z: 10
-
-            layer.enabled: root.isMyTurn
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowColor: "#FFD700"
-                shadowOpacity: 0.9
-                shadowBlur: 1.0
-                shadowVerticalOffset: 0
-                shadowHorizontalOffset: 0
-            }
+            visible: root.isAtTurn
 
             SequentialAnimation on opacity {
-                running: root.isMyTurn
+                running: root.isAtTurn
                 loops: Animation.Infinite
                 NumberAnimation { from: 0.65; to: 1.0; duration: 750; easing.type: Easing.InOutSine }
                 NumberAnimation { from: 1.0; to: 0.65; duration: 750; easing.type: Easing.InOutSine }
+            }
+
+            // Weicher Außen-Glow (gelayert) – reine Eye-Candy, optional.
+            Rectangle {
+                anchors.fill: parent
+                color: "transparent"
+                radius: 6
+                border.color: "#FFD54A"
+                border.width: 2
+                layer.enabled: root.isAtTurn
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#FFD700"
+                    shadowOpacity: 0.9
+                    shadowBlur: 1.0
+                    shadowVerticalOffset: 0
+                    shadowHorizontalOffset: 0
+                }
+            }
+
+            // Gold-Rahmen (immer sichtbar, KEIN Layer).
+            Rectangle {
+                anchors.fill: parent
+                color: "transparent"
+                radius: 6
+                border.color: "#CCFFD54A"
+                border.width: 2
             }
         }
 

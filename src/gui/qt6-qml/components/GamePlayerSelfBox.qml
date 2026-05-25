@@ -18,6 +18,10 @@ Rectangle {
     readonly property int card0: selfData && selfData.card0 !== undefined ? selfData.card0 : -1
     readonly property int card1: selfData && selfData.card1 !== undefined ? selfData.card1 : -1
     readonly property bool isMyTurn: selfData ? selfData.myTurn : false
+    // Am Zug: lokal über myTurn, im Netzwerk-Spiel über den Action-Timeout
+    // (timeoutSeatId === 0). Beides, damit der Highlight in BEIDEN Modi erscheint.
+    readonly property bool isAtTurn: root.isMyTurn
+        || ((typeof GameTable !== "undefined" && GameTable) ? GameTable.timeoutSeatId === 0 : false)
     readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === 0
     readonly property int button: selfData && selfData.button !== undefined ? selfData.button : 0
     readonly property int bet: selfData && selfData.bet !== undefined ? selfData.bet : 0
@@ -51,7 +55,7 @@ Rectangle {
     Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
 
     // Am Zug leicht „angehoben" (Tiefe/Fokus, sanfter Übergang).
-    scale: root.isMyTurn ? 1.03 : 1.0
+    scale: root.isAtTurn ? 1.03 : 1.0
     transformOrigin: Item.Center
     Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
@@ -78,32 +82,49 @@ Rectangle {
         }
     }
 
-    // Highlight: weicher Außen-Glow wenn ich am Zug bin – mit ruhigem Puls.
-    Rectangle {
+    // Highlight: gold Rahmen + weicher Glow wenn ich am Zug bin, mit Puls.
+    // Rahmen als eigene Ebene OHNE Layer (immer sichtbar), Glow als separate
+    // gelayerte Ebene – so bleibt der Rahmen sichtbar, auch wenn der MultiEffect
+    // auf einem System nicht rendert.
+    Item {
         id: turnGlow
         anchors.fill: parent
         anchors.margins: -2
-        color: "transparent"
-        radius: 6
-        border.color: root.isMyTurn ? "#CCFFD54A" : "transparent"
-        border.width: root.isMyTurn ? 2 : 0
         z: 10
-
-        layer.enabled: root.isMyTurn
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: "#FFD700"
-            shadowOpacity: 0.9
-            shadowBlur: 1.0
-            shadowVerticalOffset: 0
-            shadowHorizontalOffset: 0
-        }
+        visible: root.isAtTurn
 
         SequentialAnimation on opacity {
-            running: root.isMyTurn
+            running: root.isAtTurn
             loops: Animation.Infinite
             NumberAnimation { from: 0.65; to: 1.0; duration: 750; easing.type: Easing.InOutSine }
             NumberAnimation { from: 1.0; to: 0.65; duration: 750; easing.type: Easing.InOutSine }
+        }
+
+        // Weicher Außen-Glow (gelayert) – optional.
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            radius: 6
+            border.color: "#FFD54A"
+            border.width: 2
+            layer.enabled: root.isAtTurn
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#FFD700"
+                shadowOpacity: 0.9
+                shadowBlur: 1.0
+                shadowVerticalOffset: 0
+                shadowHorizontalOffset: 0
+            }
+        }
+
+        // Gold-Rahmen (immer sichtbar, KEIN Layer).
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            radius: 6
+            border.color: "#CCFFD54A"
+            border.width: 2
         }
     }
 

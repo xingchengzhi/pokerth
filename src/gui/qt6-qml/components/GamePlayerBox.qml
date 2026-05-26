@@ -17,8 +17,8 @@ Item {
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
 
-    implicitWidth: 120
-    implicitHeight: 64
+    implicitWidth: 125
+    implicitHeight: 80
 
     // Spielerdaten aus GameTable
     readonly property var seatData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > seatIndex)
@@ -55,6 +55,22 @@ Item {
         default: return ""
         }
     }
+
+    // Länderflagge: Lookup über gamePlayersInGame – identisch zu GameWaitPage,
+    // wo es zuverlässig funktioniert. playerListRevision erzwingt Reaktivität.
+    readonly property string countryCode: {
+        if (typeof Lobby === "undefined" || !Lobby || !root.seatData) return ""
+        var _p = Lobby.playerListRevision
+        var _g = Lobby.gameListRevision
+        var pname = root.seatData.name
+        if (!pname) return ""
+        var gp = Lobby.gamePlayersInGame(Lobby.currentGameId)
+        for (var i = 0; i < gp.length; i++)
+            if (gp[i].playerName === pname) return gp[i].countryCode || ""
+        return ""
+    }
+    // Widescreen-Layout: Box ist groß genug für 2-zeilige Info (Name + Flagge/Cash)
+    readonly property bool wideLayout: height >= 76
 
     // Nur anzeigen wenn der Sitz besetzt ist
     visible: root.seatData !== null && root.seatData.name !== ""
@@ -156,7 +172,7 @@ Item {
         Row {
             id: topRow
             width: parent.width - 2 * playerBox.hMargin
-            height: parent.height - 26
+            height: parent.height - 36
             x: playerBox.hMargin
             y: 4
             spacing: playerBox.hMargin
@@ -226,8 +242,9 @@ Item {
             }
         }
 
-        // Name + Stack – unterer Außenrand = oberer Außenrand (topRow.y)
+        // Portrait: Name + Stack einzeilig
         Row {
+            visible: !root.wideLayout
             width: parent.width - 2 * playerBox.hMargin
             height: 13
             x: playerBox.hMargin
@@ -251,6 +268,54 @@ Item {
                 color: Config.Theme.colorAccent
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 10
+                font.bold: true
+                text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
+            }
+        }
+
+        // Widescreen: Name + Flagge + Stack 2-zeilig
+        Item {
+            id: infoBar
+            visible: root.wideLayout
+            width: parent.width - 2 * playerBox.hMargin
+            height: 28
+            x: playerBox.hMargin
+            y: parent.height - height - topRow.y
+
+            Text {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                horizontalAlignment: Text.AlignLeft
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.3
+                elide: Text.ElideRight
+                text: root.seatData && root.seatData.name !== "" ? root.seatData.name : "---"
+            }
+
+            Image {
+                visible: root.countryCode !== ""
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                width: 18
+                height: 12
+                source: root.countryCode !== ""
+                    ? "qrc:/resources/cflags/" + root.countryCode + ".svg" : ""
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            Text {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                horizontalAlignment: Text.AlignRight
+                color: Config.Theme.colorAccent
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 11
                 font.bold: true
                 text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }
@@ -349,7 +414,7 @@ Item {
             text: root.actionText
             color: "#eaf1ff"
             font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 11
+            font.pixelSize: 12
             font.bold: true
         }
     }

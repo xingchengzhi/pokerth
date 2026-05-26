@@ -235,7 +235,7 @@ Rectangle {
             horizontalAlignment: Text.AlignLeft
             color: Config.StaticData.palette.secondary.col100
             font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 12
+            font.pixelSize: 13
             font.weight: Font.DemiBold
             font.letterSpacing: 0.3
             elide: Text.ElideRight
@@ -249,7 +249,7 @@ Rectangle {
             horizontalAlignment: Text.AlignRight
             color: Config.Theme.colorAccent
             font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 12
+            font.pixelSize: 13
             font.bold: true
             text: root.selfData ? "$" + root.selfData.stack : "$0"
         }
@@ -288,7 +288,7 @@ Rectangle {
             text: root.actionText
             color: "#eaf1ff"
             font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 11
+            font.pixelSize: 12
             font.bold: true
         }
     }

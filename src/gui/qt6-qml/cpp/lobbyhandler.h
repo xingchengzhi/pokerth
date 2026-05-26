@@ -243,6 +243,7 @@ public slots:
     Q_INVOKABLE void adminBanPlayer(unsigned playerId);
     Q_INVOKABLE void sendPrivateMessage(unsigned targetPlayerId, const QString &message);
     Q_INVOKABLE QVariantMap playerListEntry(int row) const;
+    Q_INVOKABLE QString playerCountryByName(const QString &name) const;
     Q_INVOKABLE QVariantList gamePlayersInGame(unsigned gameId) const;
     Q_INVOKABLE bool canJoinGame(unsigned gameId) const;
     Q_INVOKABLE bool openExternalUrl(const QString &url) const;

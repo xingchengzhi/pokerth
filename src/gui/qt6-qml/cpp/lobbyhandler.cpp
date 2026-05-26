@@ -972,6 +972,16 @@ QVariantList LobbyHandler::gamePlayersInGame(unsigned gameId) const
     return players;
 }
 
+QString LobbyHandler::playerCountryByName(const QString &name) const
+{
+    for (int row = 0; row < m_playerListModel.rowCount(); ++row) {
+        QModelIndex idx = m_playerListModel.index(row, 0);
+        if (m_playerListModel.data(idx, PlayerListModel::PlayerNameRole).toString() == name)
+            return m_playerListModel.data(idx, PlayerListModel::CountryCodeRole).toString();
+    }
+    return QString();
+}
+
 bool LobbyHandler::openExternalUrl(const QString &url) const
 {
     if (url.trimmed().isEmpty())

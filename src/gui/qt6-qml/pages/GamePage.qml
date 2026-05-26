@@ -140,7 +140,7 @@ Rectangle {
                     text: GameTable ? GameTable.phaseText : qsTr("Preflop")
                     color: "#FFFFFF"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 13
+                    font.pixelSize: 14
                     font.weight: Font.DemiBold
                     font.letterSpacing: 0.6
                 }
@@ -152,7 +152,7 @@ Rectangle {
                         text: qsTr("Pot: $%1").arg(GameTable ? GameTable.pot : 0)
                         color: "#99D500"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 14
+                        font.pixelSize: 15
                         font.bold: true
                         font.letterSpacing: 0.3
                     }
@@ -161,7 +161,7 @@ Rectangle {
                         text: qsTr("Total: $%1").arg(GameTable ? GameTable.totalPot : 0)
                         color: "#7aa800"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                         font.weight: Font.Medium
                         font.letterSpacing: 0.3
                     }
@@ -171,7 +171,7 @@ Rectangle {
                     text: qsTr("Hand %1").arg(GameTable ? GameTable.handNumber : 1)
                     color: "#bdbdbd"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 11
+                    font.pixelSize: 12
                     font.weight: Font.Medium
                     font.letterSpacing: 0.5
                 }
@@ -216,9 +216,9 @@ Rectangle {
             // Gegner-Boxen wachsen mit der Fensterbreite (eindeutige Referenz):
             // Faktor 1.0 bei Telefonbreite (~390px), linear hoch bis zum Maximum
             // (= Höhe der Self-Box) bei Vollbildbreite (~1920px).
-            readonly property int oppBaseHeight: 64
+            readonly property int oppBaseHeight: wide ? 80 : 64
             // Breite einer Gegner-Box (= seatSlot.width), Basis für die Abstandsprüfung.
-            readonly property int oppBaseWidth: 107
+            readonly property int oppBaseWidth: wide ? 125 : 107
             readonly property real oppScale: {
                 var cap = selfBox.height / oppBaseHeight
                 var t = (width - 390) / (1920 - 390)
@@ -425,8 +425,8 @@ Rectangle {
                     anchors.bottomMargin: tableZone.wide ? 8 : 6
                     visible: (typeof GameTable !== "undefined" && GameTable) ? GameTable.totalPot > 0 : false
                     width: potRow.width + 16
-                    height: 21
-                    radius: 10
+                    height: 24
+                    radius: 12
                     color: Qt.rgba(0, 0, 0, 0.62)
                     border.color: Config.Theme.colorAccent
                     border.width: 1
@@ -447,7 +447,7 @@ Rectangle {
                         spacing: 4
                         Image {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 12; height: 12
+                            width: 13; height: 13
                             source: "../resources/chipStack.svg"
                             fillMode: Image.PreserveAspectFit
                         }
@@ -456,7 +456,7 @@ Rectangle {
                             text: "$" + (GameTable ? GameTable.totalPot : 0)
                             color: Config.Theme.colorAccent
                             font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 11
+                            font.pixelSize: 13
                             font.bold: true
                             font.letterSpacing: 0.3
                         }
@@ -496,8 +496,8 @@ Rectangle {
                    + (communityArea.height * communityArea.scale) / 2
                    + (tableZone.wide ? 8 : 6) * communityArea.scale
                 width: winHandLabel.implicitWidth + 22
-                height: 22
-                radius: 11
+                height: 26
+                radius: 13
                 color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
                 border.color: "#FFD700"
                 border.width: 1
@@ -521,7 +521,7 @@ Rectangle {
                           ? GameTable.winningHandText : ""
                     color: "#FFD700"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 12
+                    font.pixelSize: 14
                     font.bold: true
                 }
 
@@ -580,9 +580,9 @@ Rectangle {
                     visible: occupied && index !== 0 && slotName !== ""
 
                     // Inhalt füllt die Box ohne überschüssige Ränder; Karten im
-                    // Original-Seitenverhältnis (2×27+3=57)
-                    // (4 + Avatar 38 + 4 + Karten 57 + 4 = 107)
-                    width: 107
+                    // Original-Seitenverhältnis (2×31+3=65)
+                    // (4 + Avatar 44 + 4 + Karten 65 + 4 + 4 = 125)
+                    width: tableZone.wide ? 125 : 107
                     height: tableZone.oppBaseHeight
                     // Boxen skalieren mit der Auflösung (max = Höhe der Self-Box);
                     // um die Slot-Mitte herum, damit die Position erhalten bleibt.
@@ -633,12 +633,12 @@ Rectangle {
                 anchors.bottomMargin: tableZone.wide ? 12 : 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
-                // (6 + Avatar 54 + 6 + Karten [2×39+4=82] + 6 = 154)
-                width: 154
+                // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)
+                width: tableZone.wide ? 168 : 154
                 // Kompakter: keine überschüssige Höhe
-                // (4 + Avatar/Karten 54 + 4 + Text 16 + 4 = 82)
-                height: 82
-                maxAvatarSize: 54
+                // (4 + Avatar/Karten 60 + 4 + Text 16 + 4 = 88)
+                height: tableZone.wide ? 88 : 82
+                maxAvatarSize: tableZone.wide ? 60 : 54
             }
 
             // ── Spielverlauf (Log) + Chat – Umschalt-Icons + Overlays ──────────

@@ -108,6 +108,10 @@ public:
     Q_INVOKABLE void onDisableMyButtons();
     Q_INVOKABLE void onStartTimeoutAnimation(int playerNum, int timeoutSec);
     Q_INVOKABLE void onStopTimeoutAnimation(int playerNum);
+    // Netzwerk-Spiel beendet / aus dem Spiel entfernt: GameHandler-Zustand
+    // zurücksetzen, damit kein stale m_myTurn/m_game zurückbleibt (sonst kann
+    // eine späte Aktion ins tote Spiel laufen → siehe ClientThread::SendPlayerAction).
+    Q_INVOKABLE void onNetworkGameEnded();
     Q_INVOKABLE void onBlindsSet(int smallBlind);
     Q_INVOKABLE void onNextRoundCleanGui();
     Q_INVOKABLE void onDealFlopCards();
@@ -155,6 +159,8 @@ private:
     void refreshBoardCards();
     void refreshPotData();
     void computeCallAndRaiseAmounts();
+    void beginRoundTransition();   // Buttons während Rundenwechsel inaktiv
+    void endRoundTransition();     // nächste Runde begonnen → Buttons frei
     void doActionDone();
 
     boost::shared_ptr<Session> m_session;
@@ -169,6 +175,15 @@ private:
     int m_handNumber = 0;
     bool m_myTurn = false;
     bool m_canAct = false;
+    // True während des Übergangs zwischen zwei Setzrunden (Karten werden
+    // ausgeteilt / neue Hand) bis die nächste Runde tatsächlich begonnen hat
+    // (erster Spielzug). Solange aktiv, sind die Action-Buttons inaktiv – so
+    // kann keine (Vor-)Aktion in den Rundenwechsel fallen und verloren gehen.
+    bool m_roundTransition = false;
+    // True ab dem Moment, in dem ICH in der aktuellen Runde gehandelt habe, bis
+    // die nächste Runde beginnt (oder ich nach einer Erhöhung erneut am Zug bin).
+    // Solange aktiv → keine Vorwahl mehr, Buttons inaktiv.
+    bool m_actedThisRound = false;
     int m_callAmount = 0;
     int m_minRaiseAmount = 0;
     int m_maxRaiseAmount = 0;

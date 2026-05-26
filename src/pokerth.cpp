@@ -221,6 +221,22 @@ int main(int argc, char *argv[])
     delete guiInterface; // releases guiInterface's session ref too
     session.reset(); // refcount now 0 → ~Session() → ~Log() SQL cleanup runs here safely
 
+    // Wayland-Workaround gegen den reproduzierbaren Shutdown-Crash: der
+    // QQmlApplicationEngine-Destruktor (Stack-Unwind am main-Ende) baut die
+    // QtQuickLayouts-Items ab; auf Wayland dereferenziert dabei ein Item ein
+    // bereits halb zerstörtes Fenster → SIGSEGV in QQuickWindowPrivate::cleanup
+    // (auch mit Basic-Render-Loop und hide() nicht zuverlässig vermeidbar).
+    // Da sämtliche Persistenz bereits erledigt ist – Config-XML eager via
+    // writeBuffer(), Log-SQL via ~Session() oben, und die QtQuick-Settings
+    // (Parameters.qml) sichern wir hier noch explizit auf Platte – beenden wir
+    // den Prozess hart, ohne den fehlerhaften QML-/Qt-Teardown auszuführen.
+    if (QGuiApplication::platformName().startsWith(QLatin1String("wayland"))) {
+        QSettings().sync();   // QtQuick-Settings (gemeinsamer QConfFile-Store) flushen
+        std::cout.flush();
+        std::cerr.flush();
+        std::_Exit(result);
+    }
+
     return result;
 }
 

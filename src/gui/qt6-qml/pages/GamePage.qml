@@ -19,14 +19,28 @@ Rectangle {
         if (!actionBar)
             return
         actionBar.playingMode = index
-        // Falls bereits mein Zug: gewählten Auto-Modus sofort ausführen.
-        if (GameTable && GameTable.myTurn) {
-            if (index === 2) {
-                if (actionBar.canCheck) GameTable.call()
-                else GameTable.fold()
-            } else if (index === 1) {
-                GameTable.call()
-            }
+        // Falls bereits mein Zug: gewählten Auto-Modus ausführen – aber
+        // VERZÖGERT (Qt.callLater), niemals synchron. Diese Funktion läuft u.a.
+        // aus dem activated-Handler der Modus-ComboBox bzw. aus einem Shortcut.
+        // fold()/call() verändert sofort den Spielzustand und löst ein erneutes
+        // myTurnChanged + Re-Layout der ActionBar (inkl. dieser ComboBox) aus;
+        // synchron mitten im Klick-/Signal-Handler führte das zu Re-Entrancy
+        // (lokales Spiel fror ein, Netzwerk-Spiel stürzte ab).
+        if (GameTable && GameTable.myTurn)
+            Qt.callLater(gamePage.runAutoAction)
+    }
+
+    // Auto-Modus-Aktion im nächsten Event-Loop-Durchlauf ausführen. Der Zustand
+    // wird erneut geprüft, da er sich seit der Planung geändert haben kann
+    // (z.B. Zug bereits vorbei). Qt.callLater dedupliziert Mehrfachaufrufe.
+    function runAutoAction() {
+        if (!actionBar || !GameTable || !GameTable.myTurn)
+            return
+        if (actionBar.playingMode === 2) {            // Auto Check/Fold
+            if (actionBar.canCheck) GameTable.call()
+            else GameTable.fold()
+        } else if (actionBar.playingMode === 1) {     // Auto Check/Call
+            GameTable.call()
         }
     }
 
@@ -1271,11 +1285,15 @@ Rectangle {
                     if (!GameTable.myTurn)
                         return
                     // Auto-Spielmodus hat Vorrang vor der manuellen Vorwahl.
-                    if (actionBar.playingMode === 2) {            // Auto Check/Fold
-                        if (actionBar.canCheck) GameTable.call()  // Check (kein Einsatz offen)
-                        else GameTable.fold()
-                    } else if (actionBar.playingMode === 1) {     // Auto Check/Call (any)
-                        GameTable.call()
+                    // SYNCHRON ausführen (nicht via Qt.callLater): diese Funktion
+                    // läuft als Reaktion auf das myTurnChanged-Signal der Engine,
+                    // nicht in einem QML-Eingabe-Event – ein erneutes myTurnChanged
+                    // aus doActionDone (setzt myTurn=false) kehrt hier sofort wieder
+                    // zurück, also keine Re-Entrancy-Gefahr. Verzögert hingegen
+                    // konnte eine zwischenzeitliche Nachricht (disableMyButtons →
+                    // myTurn=false) die Aktion verschlucken → Timeout statt Aktion.
+                    if (actionBar.playingMode === 2 || actionBar.playingMode === 1) {
+                        gamePage.runAutoAction()
                     } else if (actionBar.preAction !== "") {       // Manuell: Vorwahl ausführen
                         var a = actionBar.preAction
                         actionBar.preAction = ""

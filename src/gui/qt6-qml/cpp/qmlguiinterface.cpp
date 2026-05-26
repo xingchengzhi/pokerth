@@ -231,6 +231,11 @@ void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
             m_lobbyHandler->onRemovedFromGame(notificationId);
         }, Qt::QueuedConnection);
     }
+    // GameHandler-Zustand zurücksetzen (m_myTurn/m_game), damit keine späte
+    // Aktion ins beendete Spiel läuft.
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onNetworkGameEnded", Qt::QueuedConnection);
+    }
 }
 
 void QmlGuiInterface::SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
@@ -300,9 +305,18 @@ void QmlGuiInterface::refreshGroupbox(int /*playerId*/, int /*state*/) const
 
 void QmlGuiInterface::refreshAction(int playerId, int action) const
 {
+    // WICHTIG: hier nur die GUI auffrischen, KEINEN Aktions-Sound abspielen.
+    // Der Aktions-Sound kommt ausschließlich über logPlayerActionMsg() (feuert
+    // genau einmal pro Aktion, in lokalen UND Netzwerk-Spielen). Im Netzwerk
+    // ruft die Engine pro Aktion sowohl refreshAction(id, action) als auch
+    // logPlayerActionMsg() auf – würden beide den Sound spielen, hörte man ihn
+    // doppelt (leicht versetzt). Lokal spielt refreshAction ohnehin keinen Sound
+    // (Aktion = PLAYER_ACTION_NONE). onRefreshSet = gleiche Auffrischung wie
+    // onRefreshAction, nur ohne Sound.
+    Q_UNUSED(playerId);
+    Q_UNUSED(action);
     if (m_gameHandler) {
-        QMetaObject::invokeMethod(m_gameHandler, "onRefreshAction", Qt::QueuedConnection,
-                                  Q_ARG(int, playerId), Q_ARG(int, action));
+        QMetaObject::invokeMethod(m_gameHandler, "onRefreshSet", Qt::QueuedConnection);
     }
 }
 

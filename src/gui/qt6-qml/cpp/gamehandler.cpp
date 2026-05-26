@@ -503,7 +503,13 @@ void GameHandler::computeCallAndRaiseAmounts()
                 const int humanCash = humanPlayer->getMyCash();
 
                 // Mensch kann (vor)agieren, solange er in der Hand und nicht all-in ist.
-                newCanAct = humanPlayer->getMyAction() != PLAYER_ACTION_FOLD
+                // NICHT während des Rundenwechsels (m_roundTransition) und NICHT
+                // nachdem ich in dieser Runde bereits gehandelt habe
+                // (m_actedThisRound) – in beiden Fällen sind die Buttons inaktiv,
+                // bis die nächste Runde begonnen hat (bzw. ich erneut am Zug bin).
+                newCanAct = !m_roundTransition
+                            && !m_actedThisRound
+                            && humanPlayer->getMyAction() != PLAYER_ACTION_FOLD
                             && humanPlayer->getMyAction() != PLAYER_ACTION_ALLIN
                             && humanCash > 0
                             && humanPlayer->isSessionActive();
@@ -581,6 +587,13 @@ void GameHandler::doActionDone()
     if (m_myTurn) {
         m_myTurn = false;
         emit myTurnChanged();
+    }
+
+    // Ich habe in dieser Runde gehandelt → Buttons inaktiv bis zur nächsten
+    // Runde (bzw. bis onMeInAction mich nach einer Erhöhung erneut am Zug meldet).
+    if (!m_actedThisRound) {
+        m_actedThisRound = true;
+        computeCallAndRaiseAmounts();   // m_canAct → false
     }
 
     if (m_session->isNetworkClientRunning()) {
@@ -683,6 +696,10 @@ void GameHandler::onRefreshGameLabels(int gameState)
 void GameHandler::onMeInAction()
 {
     if (localGameCallbacksBlocked()) return;
+    // Es ist mein Zug → die Runde läuft definitiv: Rundenwechsel-Sperre lösen
+    // und „bereits gehandelt" zurücksetzen (frischer Zug, auch nach Erhöhung).
+    m_roundTransition = false;
+    m_actedThisRound = false;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
     if (!m_myTurn) {
@@ -704,6 +721,10 @@ void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
 {
     if (localGameCallbacksBlocked()) return;
 
+    // Erster Spielzug der neuen Runde → Rundenwechsel ist vorbei, Buttons frei
+    // (gilt auch wenn ein Gegner zuerst dran ist → Vorwahl wieder möglich).
+    endRoundTransition();
+
     // Fortschrittsbalken (Ersatz fürs Action-Badge) für den gerade aktiven Sitz.
     if (m_timeoutSeatId != playerNum || m_timeoutSec != timeoutSec) {
         m_timeoutSeatId = playerNum;
@@ -719,6 +740,26 @@ void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
 void GameHandler::onStopTimeoutAnimation(int playerNum)
 {
     if (m_timeoutSeatId == playerNum) {
+        m_timeoutSeatId = -1;
+        emit timeoutChanged();
+    }
+    m_timeoutBeepTimer->stop();
+}
+
+void GameHandler::onNetworkGameEnded()
+{
+    // Aus dem Netzwerk-Spiel entfernt (Spielende, geschlossen, gekickt …):
+    // den eigenen Zustand sauber zurücksetzen. Ohne dies bleiben m_myTurn und
+    // m_game stale; eine spätere Aktion (z.B. Auto-Modus der ComboBox auf der
+    // noch sichtbaren GamePage) würde fold()/call() mit gültig aussehender
+    // Wache aufrufen und auf Engine-Seite einen null Game-shared_ptr
+    // dereferenzieren.
+    m_game.reset();
+    if (m_myTurn) {
+        m_myTurn = false;
+        emit myTurnChanged();
+    }
+    if (m_timeoutSeatId != -1) {
         m_timeoutSeatId = -1;
         emit timeoutChanged();
     }
@@ -781,6 +822,8 @@ void GameHandler::onNextRoundCleanGui()
     // Showdown beenden, bevor die Spielerdaten neu gebaut werden → Karten zu.
     m_showdownActive = false;
     refreshPlayerData();
+    // Neue Hand: Buttons inaktiv bis zum ersten Zug der Preflop-Runde.
+    beginRoundTransition();
 }
 
 void GameHandler::onDealFlopCards()
@@ -789,6 +832,7 @@ void GameHandler::onDealFlopCards()
     m_boardCardCount = 3;
     emit boardCardCountChanged();
     refreshBoardCards();
+    beginRoundTransition();
 }
 
 void GameHandler::onDealTurnCard()
@@ -797,6 +841,7 @@ void GameHandler::onDealTurnCard()
     m_boardCardCount = 4;
     emit boardCardCountChanged();
     refreshBoardCards();
+    beginRoundTransition();
 }
 
 void GameHandler::onDealRiverCard()
@@ -805,6 +850,27 @@ void GameHandler::onDealRiverCard()
     m_boardCardCount = 5;
     emit boardCardCountChanged();
     refreshBoardCards();
+    beginRoundTransition();
+}
+
+// Rundenwechsel beginnt (Karten ausgeteilt / neue Hand): Action-Buttons sofort
+// inaktiv schalten. Wird erst beim Start der nächsten Runde (erster Spielzug,
+// onStartTimeoutAnimation / onMeInAction) wieder aufgehoben.
+void GameHandler::beginRoundTransition()
+{
+    if (!m_roundTransition) {
+        m_roundTransition = true;
+        computeCallAndRaiseAmounts();   // m_canAct → false → Buttons inaktiv
+    }
+}
+
+void GameHandler::endRoundTransition()
+{
+    if (m_roundTransition) {
+        m_roundTransition = false;
+        m_actedThisRound = false;       // neue Runde → noch nicht gehandelt
+        computeCallAndRaiseAmounts();   // Buttons wieder gemäß Spielzustand
+    }
 }
 
 // ─── Q_INVOKABLE actions called from QML ────────────────────────────────────

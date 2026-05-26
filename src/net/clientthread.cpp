@@ -191,6 +191,14 @@ void
 ClientThread::SendPlayerAction()
 {
 	// Warning: This function is called in the context of the GUI thread.
+	// Guard against being called without an active game/hand: the GUI may still
+	// think it is the player's turn after the game ended or returned to the
+	// lobby (e.g. a stale auto-action). Without this, the GetGame()->... derefs
+	// below would dereference a null shared_ptr and abort (boost assertion).
+	// Mirrors the existing "if (GetGame())" guards elsewhere in this file.
+	boost::shared_ptr<Game> curGame = GetGame();
+	if (!curGame || !curGame->getCurrentHand())
+		return;
 	// Create a network packet containing the current player action.
 	{
 		boost::mutex::scoped_lock lock(m_pingDataMutex);
@@ -200,9 +208,9 @@ ClientThread::SendPlayerAction()
 	packet->GetMsg()->set_messagetype(PokerTHMessage::Type_MyActionRequestMessage);
 	MyActionRequestMessage *netMyAction = packet->GetMsg()->mutable_myactionrequestmessage();
 	netMyAction->set_gameid(GetGameId());
-	boost::shared_ptr<PlayerInterface> myPlayer = GetGame()->getSeatsList()->front();
-	netMyAction->set_handnum(GetGame()->getCurrentHandID());
-	netMyAction->set_gamestate(static_cast<NetGameState>(GetGame()->getCurrentHand()->getCurrentRound()));
+	boost::shared_ptr<PlayerInterface> myPlayer = curGame->getSeatsList()->front();
+	netMyAction->set_handnum(curGame->getCurrentHandID());
+	netMyAction->set_gamestate(static_cast<NetGameState>(curGame->getCurrentHand()->getCurrentRound()));
 	netMyAction->set_myaction(static_cast<NetPlayerAction>(myPlayer->getMyAction()));
 	// Only send last bet if not fold/checked.
 	if (myPlayer->getMyAction() != PLAYER_ACTION_FOLD && myPlayer->getMyAction() != PLAYER_ACTION_CHECK)

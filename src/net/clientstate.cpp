@@ -2128,6 +2128,8 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		// Start new hand.
 		client->GetGame()->getSeatsList()->front()->setMyCards(myCards);
 		client->GetGame()->initHand();
+		qDebug() << "[ACTDBG] initHand done, new handID=" << client->GetGame()->getCurrentHandID()
+		         << "player0Action=" << client->GetGame()->getSeatsList()->front()->getMyAction();
 		client->GetGame()->getCurrentHand()->setSmallBlind(netHandStart.smallblind());
 		client->GetGame()->getCurrentHand()->getCurrentBeRo()->setMinimumRaise(2 * netHandStart.smallblind());
 		client->GetGame()->startHand();
@@ -2280,6 +2282,18 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		}
 
 		tmpPlayer->setMyAction(PlayerAction(netActionDone.playeraction()));
+		if (tmpPlayer->getMyID() == 0) {
+			auto bero1 = curGame->getCurrentHand()->getCurrentBeRo();
+			qDebug() << "[ACTDBG] PAD->setAction(p0) action=" << (int)netActionDone.playeraction()
+			         << "padGameState=" << (int)netActionDone.gamestate()
+			         << "(0=Pre,1=F,2=T,3=R,4=SB,5=BB)"
+			         << "curHandID=" << curGame->getCurrentHandID()
+			         << "curRound=" << (int)curGame->getCurrentHand()->getCurrentRound()
+			         << "button=" << (int)tmpPlayer->getMyButton()
+			         << "bbPosId=" << (bero1 ? (int)bero1->getBigBlindPositionId() : -99)
+			         << "prevPlayerId=" << curGame->getCurrentHand()->getPreviousPlayerID()
+			         << "firstRound=" << (bero1 ? bero1->getFirstRound() : -1);
+		}
 		// CRITICAL: Only update set if we're still in the same game state
 		// After Flop/Turn/River, collectPot() has already been called and sets were cleared
 		// Don't restore sets from stale PlayersActionDoneMessage that arrive after card dealing
@@ -2415,6 +2429,18 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetGui().startTimeoutAnimation(tmpPlayer->getMyID(), client->GetGameData().playerActionTimeoutSec);
 
 		if (tmpPlayer->getMyID() == 0) { // Is this the GUI player?
+			auto bero0 = curGame->getCurrentHand()->getCurrentBeRo();
+			qDebug() << "[BBDBG] PlayersTurnMessage seat0"
+			         << "msgGameState=" << (int)netPlayersTurn.gamestate()
+			         << "curRound=" << (int)curGame->getCurrentHand()->getCurrentRound()
+			         << "p0Action=" << (int)tmpPlayer->getMyAction()
+			         << "p0Button=" << (int)tmpPlayer->getMyButton()
+			         << "(1=D,2=SB,3=BB)"
+			         << "bbPosId=" << (bero0 ? (int)bero0->getBigBlindPositionId() : -99)
+			         << "prevPlayerId=" << curGame->getCurrentHand()->getPreviousPlayerID()
+			         << "firstRound=" << (bero0 ? bero0->getFirstRound() : -1)
+			         << "highestSet=" << (bero0 ? bero0->getHighestSet() : -1)
+			         << "p0Set=" << tmpPlayer->getMySet();
 			// Only allow action if player has cash and is not already All-In
 			if (tmpPlayer->getMyCash() > 0 || tmpPlayer->getMyAction() != PLAYER_ACTION_ALLIN) {
 				client->GetGui().meInAction();
@@ -2501,6 +2527,8 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 
 		// Set player numbers using the game start data slots.
 		unsigned numPlayers = netAllInShow.playersallin_size();
+		qDebug() << "[ALLIN] AllInShowCardsMessage received numPlayers=" << numPlayers
+		         << "round=" << (int)curGame->getCurrentHand()->getCurrentRound();
 		// Request player info for players if needed.
 		for (unsigned i = 0; i < numPlayers; i++) {
 			const AllInShowCardsMessage::PlayerAllIn &p = netAllInShow.playersallin(i);
@@ -2513,7 +2541,12 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			tmpCards[0] = static_cast<int>(p.allincard1());
 			tmpCards[1] = static_cast<int>(p.allincard2());
 			tmpPlayer->setMyCards(tmpCards);
+			qDebug() << "[ALLIN]   seatId=" << tmpPlayer->getMyID()
+			         << "uniqueId=" << p.playerid()
+			         << "cards=" << tmpCards[0] << "/" << tmpCards[1]
+			         << "action=" << (int)tmpPlayer->getMyAction();
 		}
+		qDebug() << "[ALLIN] calling flipHolecardsAllIn()";
 		client->GetGui().flipHolecardsAllIn();
 		if(curGame->getCurrentHand()->getCurrentRound()<GAME_STATE_RIVER) {
 			client->GetClientLog()->logHoleCardsHandName(

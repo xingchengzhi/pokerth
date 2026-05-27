@@ -24,6 +24,8 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <QRegularExpression>
+#include <QCoreApplication>
+#include <QEvent>
 #include <algorithm>
 #include <list>
 
@@ -145,6 +147,31 @@ GameHandler::GameHandler(QObject *parent)
     connect(m_timeoutBeepTimer, &QTimer::timeout, this, [this]() {
         playYourTurnTimeoutSound();
     });
+
+    // AFK-Reset: echte Nutzeraktivität (Maus/Tastatur) hält den serverseitigen
+    // Inaktivitäts-Timeout zurück. WICHTIG: Spielaktionen (fold/call/raise)
+    // zählen serverseitig NICHT als Aktivität (Type_MyActionRequestMessage ist
+    // von IsClientActivity ausgenommen, damit Auto-Check/Fold den AFK-Timeout
+    // nicht aushebelt) – nur eine Type_ResetTimeoutMessage setzt den In-Game-
+    // Timer (21 min) zurück. Ohne dies wurde der QML-Client trotz aktiven
+    // Spielens nach ~21 min vom Server gekickt (wie der Widgets-Client per
+    // eventFilter). App-weiter Filter, ratenbegrenzt.
+    m_afkResetTimer.start();
+    if (qApp)
+        qApp->installEventFilter(this);
+}
+
+bool GameHandler::eventFilter(QObject *watched, QEvent *event)
+{
+    const QEvent::Type t = event->type();
+    if (t == QEvent::MouseButtonPress || t == QEvent::KeyPress) {
+        if (m_session && m_session->isNetworkClientRunning()
+            && m_afkResetTimer.elapsed() >= kAfkResetIntervalMs) {
+            m_session->resetNetworkTimeout();
+            m_afkResetTimer.restart();
+        }
+    }
+    return QObject::eventFilter(watched, event);
 }
 
 GameHandler::~GameHandler()
@@ -393,7 +420,19 @@ void GameHandler::refreshPlayerData()
                 const bool showdownReveal = m_showdownActive
                                             && (*it)->getMyAction() != PLAYER_ACTION_FOLD
                                             && (*it)->checkIfINeedToShowCards();
-                const bool faceUp = cardsKnown && (id == 0 || showdownReveal);
+                // All-In-Aufdeckung: Karten sind nach AllInShowCardsMessage für alle
+                // nicht-gefoldeten Spieler sichtbar (bis zur nächsten Hand).
+                const bool allInReveal = m_allInRevealed
+                                         && (*it)->getMyAction() != PLAYER_ACTION_FOLD;
+                const bool faceUp = cardsKnown && (id == 0 || showdownReveal || allInReveal);
+                if (id != 0 && m_allInRevealed) {
+                    qDebug() << "[ALLIN] refreshPD seat" << id
+                             << "cardsKnown=" << cardsKnown
+                             << "cards=" << cards[0] << "/" << cards[1]
+                             << "action=" << (int)(*it)->getMyAction()
+                             << "allInReveal=" << allInReveal
+                             << "faceUp=" << faceUp;
+                }
 
                 // Im Showdown werden ALLE Aktions-Badges entfernt (auch All-In und
                 // Fold) – jetzt zählen nur noch aufgedeckte Karten, Gewinner-Hand
@@ -406,7 +445,9 @@ void GameHandler::refreshPlayerData()
                 int act = (*it)->getMyAction();
                 const bool sameRound = (currentToken >= 0 && m_actionToken[id] == currentToken);
                 int displayAction;
-                if (m_showdownActive) {
+                if (m_showdownActive || allInReveal) {
+                    // Showdown und All-In-Runout (Karten aufgedeckt): Badge entfernen
+                    // damit die aufgedeckten Karten nicht verdeckt werden.
                     displayAction = 0;
                 } else if (act == PLAYER_ACTION_ALLIN) {
                     displayAction = act;
@@ -490,6 +531,9 @@ void GameHandler::computeCallAndRaiseAmounts()
     int newMinRaise = 0;
     int newMaxRaise = 0;
     bool newCanAct = false;
+    int dbgMyAction = -1;   // [ACTDBG] zuletzt gelesene Engine-Aktion (für Log)
+    int dbgPrevId   = -99;  // [ACTDBG] getPreviousPlayerID() (für Log)
+    int dbgHandId   = -1;   // [ACTDBG] aktuelle Hand-ID (für Log)
 
     if (m_game) {
         auto hand = m_game->getCurrentHand();
@@ -502,17 +546,35 @@ void GameHandler::computeCallAndRaiseAmounts()
                 const int humanSet = humanPlayer->getMySet();
                 const int humanCash = humanPlayer->getMyCash();
 
-                // Mensch kann (vor)agieren, solange er in der Hand und nicht all-in ist.
-                // NICHT während des Rundenwechsels (m_roundTransition) und NICHT
-                // nachdem ich in dieser Runde bereits gehandelt habe
-                // (m_actedThisRound) – in beiden Fällen sind die Buttons inaktiv,
-                // bis die nächste Runde begonnen hat (bzw. ich erneut am Zug bin).
-                newCanAct = !m_roundTransition
-                            && !m_actedThisRound
-                            && humanPlayer->getMyAction() != PLAYER_ACTION_FOLD
-                            && humanPlayer->getMyAction() != PLAYER_ACTION_ALLIN
+                // Buttons aktiv (für Vor-Auswahl ODER echten Zug), wenn ich in
+                // der Hand und nicht all-in bin UND entweder gerade am Zug bin
+                // (m_myTurn) ODER NICHT der zuletzt handelnde Spieler war.
+                //
+                // Das spiegelt exakt gameTableImpl::updateMyButtonsState() der
+                // Widgets-Referenz: dort sind die Buttons „checkable" (Vorwahl)
+                // solange getPreviousPlayerID() != 0 (= ich war nicht der letzte
+                // Akteur). getMyAction() == NONE taugt NICHT als Kriterium: nach
+                // meiner Aktion (CALL/CHECK) und einer anschließenden Erhöhung
+                // eines Gegners muss ich erneut handeln können – getMyAction()
+                // ist dann aber bereits != NONE, sodass die Vorwahl fälschlich
+                // gesperrt blieb, bis ich am Zug bin. previousPlayerID wird beim
+                // Rundenwechsel/Deal auf -1 gesetzt (Vorwahl bleibt offen, kein
+                // Flackern) und nach jeder Aktion auf den Akteur – nach MEINER
+                // Aktion also auf 0, was die Buttons sauber abschaltet, bis ein
+                // Gegner handelt.
+                const int myAction = humanPlayer->getMyAction();
+                const int prevPlayerId = hand->getPreviousPlayerID();
+                dbgMyAction = myAction;
+                dbgPrevId   = prevPlayerId;
+                dbgHandId   = hand->getMyID();
+                const bool baseEligible =
+                            myAction != PLAYER_ACTION_FOLD
+                            && myAction != PLAYER_ACTION_ALLIN
                             && humanCash > 0
                             && humanPlayer->isSessionActive();
+                newCanAct = baseEligible
+                            && (m_myTurn || prevPlayerId != 0)
+                            && !m_showdownActive;
 
                 if (humanCash + humanSet <= highestSet) {
                     newCallAmount = humanCash;
@@ -561,8 +623,19 @@ void GameHandler::computeCallAndRaiseAmounts()
         }
     }
 
+    // VERDACHT: myTurn=true aber Engine zeigt uns bereits als Fold/AllIn → stale Daten?
+    if (m_myTurn && (dbgMyAction == PLAYER_ACTION_FOLD || dbgMyAction == PLAYER_ACTION_ALLIN)) {
+        qDebug() << "[ACTDBG] SUSPECT: myTurn=true but myAction=" << dbgMyAction
+                 << "(FOLD=1,ALLIN=6) handId=" << dbgHandId
+                 << "prevId=" << dbgPrevId << "newCanAct=" << newCanAct;
+    }
     if (newCanAct != m_canAct) {
         m_canAct = newCanAct;
+        qDebug() << "[ACTDBG] canAct=" << m_canAct << "prevPlayerId=" << dbgPrevId
+                 << "myAction=" << dbgMyAction
+                 << "(NONE=0,FOLD=1,CHK=2,CALL=3,BET=4,RAISE=5,ALLIN=6)"
+                 << "handId=" << dbgHandId
+                 << "myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId;
         emit canActChanged();
     }
     if (newCallAmount != m_callAmount) {
@@ -579,6 +652,22 @@ void GameHandler::computeCallAndRaiseAmounts()
     }
 }
 
+bool GameHandler::humanCanAct() const
+{
+    if (!m_game) return false;
+    auto hand = m_game->getCurrentHand();
+    if (!hand) return false;
+    auto seats = hand->getSeatsList();
+    if (!seats || seats->empty()) return false;
+    auto human = seats->front();
+    if (!human) return false;
+    const int a = human->getMyAction();
+    return a != PLAYER_ACTION_FOLD
+        && a != PLAYER_ACTION_ALLIN
+        && human->getMyCash() > 0
+        && human->isSessionActive();
+}
+
 void GameHandler::doActionDone()
 {
     if (!m_session) return;
@@ -588,13 +677,21 @@ void GameHandler::doActionDone()
         m_myTurn = false;
         emit myTurnChanged();
     }
-
-    // Ich habe in dieser Runde gehandelt → Buttons inaktiv bis zur nächsten
-    // Runde (bzw. bis onMeInAction mich nach einer Erhöhung erneut am Zug meldet).
-    if (!m_actedThisRound) {
-        m_actedThisRound = true;
-        computeCallAndRaiseAmounts();   // m_canAct → false
+    // Mein Aktionsfenster schließen: solange m_timeoutSeatId == 0 gälte ich über
+    // isMyTurnToAct() weiter als „am Zug" → eine zweite Aktion könnte durchrutschen.
+    // Jetzt, da gehandelt, sofort beenden (stopTimeoutAnimation folgt ohnehin).
+    if (m_timeoutSeatId == 0) {
+        m_timeoutSeatId = -1;
+        emit timeoutChanged();
     }
+    qDebug() << "[ACTDBG] doActionDone sent, net="
+             << (m_session && m_session->isNetworkClientRunning());
+
+    // Ich habe gehandelt → Buttons sofort inaktiv schalten. canAct leitet das
+    // aus getMyAction() (!= NONE) ab; die Aktion ist zu diesem Zeitpunkt bereits
+    // auf dem Spieler gesetzt (fold/call/raise), daher liefert das Recompute den
+    // korrekten Wert (inaktiv bis zur nächsten Runde bzw. bis ich erneut dran bin).
+    computeCallAndRaiseAmounts();
 
     if (m_session->isNetworkClientRunning()) {
         // Network game: send action to server
@@ -614,6 +711,7 @@ void GameHandler::doActionDone()
 void GameHandler::onRefreshSet()
 {
     if (localGameCallbacksBlocked()) return;
+    qDebug() << "[ACTDBG] >> onRefreshSet myTurn=" << m_myTurn;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
 }
@@ -621,7 +719,7 @@ void GameHandler::onRefreshSet()
 void GameHandler::onRefreshAction(int playerId, int playerAction)
 {
     if (localGameCallbacksBlocked()) return;
-
+    qDebug() << "[ACTDBG] >> onRefreshAction id=" << playerId << "act=" << playerAction << "myTurn=" << m_myTurn;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
 
@@ -644,6 +742,7 @@ void GameHandler::onRefreshAction(int playerId, int playerAction)
 void GameHandler::onRefreshCash()
 {
     if (localGameCallbacksBlocked()) return;
+    qDebug() << "[ACTDBG] >> onRefreshCash myTurn=" << m_myTurn;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
 }
@@ -657,6 +756,7 @@ void GameHandler::onRefreshPlayerName()
 void GameHandler::onRefreshPot()
 {
     if (localGameCallbacksBlocked()) return;
+    qDebug() << "[ACTDBG] >> onRefreshPot myTurn=" << m_myTurn;
     refreshPotData();
     refreshPlayerData();
     computeCallAndRaiseAmounts();
@@ -695,22 +795,62 @@ void GameHandler::onRefreshGameLabels(int gameState)
 
 void GameHandler::onMeInAction()
 {
+    qDebug() << "[ACTDBG] onMeInAction() blocked=" << localGameCallbacksBlocked()
+             << "myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId;
     if (localGameCallbacksBlocked()) return;
-    // Es ist mein Zug → die Runde läuft definitiv: Rundenwechsel-Sperre lösen
-    // und „bereits gehandelt" zurücksetzen (frischer Zug, auch nach Erhöhung).
-    m_roundTransition = false;
-    m_actedThisRound = false;
     refreshPlayerData();
     computeCallAndRaiseAmounts();
     if (!m_myTurn) {
         m_myTurn = true;
         emit myTurnChanged();
     }
+    qDebug() << "[ACTDBG] meInAction myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId;
+    if (m_game) {
+        auto dh = m_game->getCurrentHand();
+        if (dh) {
+            auto db = dh->getCurrentBeRo();
+            auto ds = dh->getSeatsList();
+            if (db && ds && !ds->empty()) {
+                auto hp = ds->front();
+                qDebug() << "[ACTDBG]   amounts call=" << m_callAmount
+                         << "minRaise=" << m_minRaiseAmount << "maxRaise=" << m_maxRaiseAmount
+                         << "| mySet=" << hp->getMySet() << "highestSet=" << db->getHighestSet()
+                         << "cash=" << hp->getMyCash() << "myButton=" << hp->getMyButton()
+                         << "(1=D,2=SB,3=BB) myAction=" << hp->getMyAction()
+                         << "round=" << dh->getCurrentRound()
+                         << "fullBetRule=" << db->getFullBetRule()
+                         << "minRaiseEngine=" << db->getMinimumRaise();
+                qDebug() << "[BBDBG] onMeInAction BB-check:"
+                         << "bbPosId=" << (int)db->getBigBlindPositionId()
+                         << "sbPosId=" << (int)db->getSmallBlindPositionId()
+                         << "p0UniqueId=" << hp->getMyUniqueID()
+                         << "prevPlayerId=" << dh->getPreviousPlayerID()
+                         << "firstRound=" << db->getFirstRound()
+                         << "isP0BB=" << (hp->getMyUniqueID() == db->getBigBlindPositionId());
+            }
+        }
+    }
+    // Maßgeblicher „ich bin am Zug"-Punkt (wie meInAction im Widgets-Client):
+    // hier – und nur hier – die vorgemerkte/automatische Aktion auslösen,
+    // IMMER (auch wenn m_myTurn oben schon true war, z.B. via Action-Timer).
+    emit meInActionTriggered();
 }
 
 void GameHandler::onDisableMyButtons()
 {
     if (localGameCallbacksBlocked()) return;
+    int dbgAct = -1;
+    if (m_game) {
+        auto hand = m_game->getCurrentHand();
+        if (hand) {
+            auto seats = hand->getSeatsList();
+            if (seats && !seats->empty())
+                dbgAct = seats->front()->getMyAction();
+        }
+    }
+    qDebug() << "[ACTDBG] onDisableMyButtons myTurn=" << m_myTurn
+             << "p0Action=" << dbgAct
+             << "(NONE=0,FOLD=1,CHK=2,CALL=3,BET=4,RAISE=5,ALLIN=6)";
     if (m_myTurn) {
         m_myTurn = false;
         emit myTurnChanged();
@@ -719,11 +859,11 @@ void GameHandler::onDisableMyButtons()
 
 void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
 {
+    // Log VOR dem Guard, damit blockierte Aufrufe sichtbar sind
+    if (playerNum == 0)
+        qDebug() << "[ACTDBG] onStartTimeout(0) blocked=" << localGameCallbacksBlocked()
+                 << "myTurn=" << m_myTurn << "humanCanAct=" << humanCanAct() << "tSeat=" << m_timeoutSeatId;
     if (localGameCallbacksBlocked()) return;
-
-    // Erster Spielzug der neuen Runde → Rundenwechsel ist vorbei, Buttons frei
-    // (gilt auch wenn ein Gegner zuerst dran ist → Vorwahl wieder möglich).
-    endRoundTransition();
 
     // Fortschrittsbalken (Ersatz fürs Action-Badge) für den gerade aktiven Sitz.
     if (m_timeoutSeatId != playerNum || m_timeoutSec != timeoutSec) {
@@ -732,8 +872,26 @@ void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
         emit timeoutChanged();
     }
 
-    // Wie im Widgets-Client: Ton erst nach 3 Sekunden Vorlauf – nur für mich.
-    if (playerNum == 0 && timeoutSec >= 4)
+    // Der Server zählt jetzt die Aktionszeit für DIESEN Sitz herunter. Ist es
+    // mein Sitz (0) und kann ich agieren, ist es definitiv mein Zug. m_myTurn
+    // hier setzen (nicht erst in onMeInAction): startTimeoutAnimation kommt
+    // VOR meInAction und markiert exakt das Fenster, in dem der Server auf
+    // meine Aktion wartet. Sonst gab es ein Fenster, in dem die Buttons bereits
+    // aktiv waren (canAct), aber m_myTurn noch false war → Klicks/Vorwahlen
+    // wurden als „kein Zug" verworfen (fold/call/raise prüfen m_myTurn) und
+    // liefen in den Timeout (Server-Auto-Check).
+    if (playerNum == 0 && !m_myTurn && humanCanAct()) {
+        m_myTurn = true;
+        emit myTurnChanged();
+    }
+    if (playerNum == 0)
+        qDebug() << "[ACTDBG] startTimeout seat0 myTurn=" << m_myTurn
+                 << "humanCanAct=" << humanCanAct() << "tSeat=" << m_timeoutSeatId;
+
+    // Wie im Widgets-Client: Ton erst nach 3 Sekunden Vorlauf – nur für mich
+    // und nur, wenn ich noch am Zug bin (eine vorgemerkte Aktion kann oben
+    // bereits synchron ausgeführt worden sein → dann kein Beep).
+    if (playerNum == 0 && m_myTurn && timeoutSec >= 4)
         m_timeoutBeepTimer->start((timeoutSec - 3) * 1000);
 }
 
@@ -744,6 +902,13 @@ void GameHandler::onStopTimeoutAnimation(int playerNum)
         emit timeoutChanged();
     }
     m_timeoutBeepTimer->stop();
+
+    // Mein Aktionsfenster ist vorbei (gehandelt oder Zug abgelaufen) → Zug
+    // beenden, passend zum Setzen in onStartTimeoutAnimation.
+    if (playerNum == 0 && m_myTurn) {
+        m_myTurn = false;
+        emit myTurnChanged();
+    }
 }
 
 void GameHandler::onNetworkGameEnded()
@@ -821,9 +986,12 @@ void GameHandler::onNextRoundCleanGui()
     }
     // Showdown beenden, bevor die Spielerdaten neu gebaut werden → Karten zu.
     m_showdownActive = false;
+    m_allInRevealed = false;
     refreshPlayerData();
-    // Neue Hand: Buttons inaktiv bis zum ersten Zug der Preflop-Runde.
-    beginRoundTransition();
+    // Button-Zustand auffrischen: zum Hand-Ende/-Start ist getMyAction() noch
+    // die letzte Aktion (!= NONE) → Buttons inaktiv, bis die Engine zur neuen
+    // Hand auf NONE zurücksetzt.
+    computeCallAndRaiseAmounts();
 }
 
 void GameHandler::onDealFlopCards()
@@ -832,7 +1000,6 @@ void GameHandler::onDealFlopCards()
     m_boardCardCount = 3;
     emit boardCardCountChanged();
     refreshBoardCards();
-    beginRoundTransition();
 }
 
 void GameHandler::onDealTurnCard()
@@ -841,7 +1008,6 @@ void GameHandler::onDealTurnCard()
     m_boardCardCount = 4;
     emit boardCardCountChanged();
     refreshBoardCards();
-    beginRoundTransition();
 }
 
 void GameHandler::onDealRiverCard()
@@ -850,34 +1016,13 @@ void GameHandler::onDealRiverCard()
     m_boardCardCount = 5;
     emit boardCardCountChanged();
     refreshBoardCards();
-    beginRoundTransition();
-}
-
-// Rundenwechsel beginnt (Karten ausgeteilt / neue Hand): Action-Buttons sofort
-// inaktiv schalten. Wird erst beim Start der nächsten Runde (erster Spielzug,
-// onStartTimeoutAnimation / onMeInAction) wieder aufgehoben.
-void GameHandler::beginRoundTransition()
-{
-    if (!m_roundTransition) {
-        m_roundTransition = true;
-        computeCallAndRaiseAmounts();   // m_canAct → false → Buttons inaktiv
-    }
-}
-
-void GameHandler::endRoundTransition()
-{
-    if (m_roundTransition) {
-        m_roundTransition = false;
-        m_actedThisRound = false;       // neue Runde → noch nicht gehandelt
-        computeCallAndRaiseAmounts();   // Buttons wieder gemäß Spielzustand
-    }
 }
 
 // ─── Q_INVOKABLE actions called from QML ────────────────────────────────────
 
 void GameHandler::fold()
 {
-    if (!m_game || !m_session || !m_myTurn) return;
+    if (!m_game || !m_session || !isMyTurnToAct()) return;
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -894,7 +1039,7 @@ void GameHandler::fold()
 
 void GameHandler::call()
 {
-    if (!m_game || !m_session || !m_myTurn) return;
+    if (!m_game || !m_session || !isMyTurnToAct()) return;
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -930,7 +1075,7 @@ void GameHandler::call()
 
 void GameHandler::raise(int amount)
 {
-    if (!m_game || !m_session || !m_myTurn) return;
+    if (!m_game || !m_session || !isMyTurnToAct()) return;
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -963,7 +1108,8 @@ void GameHandler::raise(int amount)
             hand->setLastActionPlayerID(humanPlayer->getMyUniqueID());
         }
     } else {
-        humanPlayer->setMyAction(PLAYER_ACTION_RAISE, true);
+        const bool firstBet = (bero->getHighestSet() == 0);
+        humanPlayer->setMyAction(firstBet ? PLAYER_ACTION_BET : PLAYER_ACTION_RAISE, true);
         bero->setMinimumRaise(humanPlayer->getMySet() - bero->getHighestSet());
         bero->setHighestSet(humanPlayer->getMySet());
         hand->setLastActionPlayerID(humanPlayer->getMyUniqueID());
@@ -979,7 +1125,7 @@ void GameHandler::raise(int amount)
 
 void GameHandler::allIn()
 {
-    if (!m_game || !m_session || !m_myTurn) return;
+    if (!m_game || !m_session || !isMyTurnToAct()) return;
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -1140,6 +1286,7 @@ void GameHandler::onShowdown()
     // (determinePlayerNeedToShowCards() wurde in postRiverRun() bereits aufgerufen).
     m_showdownActive = true;
     refreshPlayerData();
+    computeCallAndRaiseAmounts(); // Buttons sofort deaktivieren
 
     // Find the winner seat ID from the board (pot is already distributed)
     std::list<unsigned> winners = board->getWinners();
@@ -1241,4 +1388,40 @@ void GameHandler::onShowdown()
         if ((*it)->getMyCash() == 0)
             appendGameLog(QString::fromStdString((*it)->getMyName()) + " sits out", LogSitOut);
     }
+}
+
+void GameHandler::onFlipHolecardsAllIn()
+{
+    // Karten aller nicht-gefoldeten Spieler aufdecken (All-in-Runout).
+    // Die Engine hat setMyCards() bereits für alle All-In-Spieler aufgerufen
+    // (clientstate.cpp: AllInShowCardsMessage-Handler).
+    qDebug() << "[ALLIN] onFlipHolecardsAllIn() blocked=" << localGameCallbacksBlocked()
+             << "hasGame=" << (bool)m_game;
+    if (localGameCallbacksBlocked()) return;
+    if (!m_game) return;
+    auto hand = m_game->getCurrentHand();
+    if (!hand) return;
+
+    // Wie im Qt-Widgets-Client: nur aufdecken, wenn >= 2 Spieler nicht gefoldet
+    // haben (anderenfalls hat jemand schon gewonnen und es gibt nichts zu zeigen).
+    auto active = hand->getActivePlayerList();
+    if (!active) return;
+    int nonFolded = 0;
+    for (auto it = active->begin(); it != active->end(); ++it) {
+        int c[2] = {-1, -1};
+        (*it)->getMyCards(c);
+        qDebug() << "[ALLIN]   active seatId=" << (*it)->getMyID()
+                 << "action=" << (int)(*it)->getMyAction()
+                 << "cards=" << c[0] << "/" << c[1];
+        if ((*it)->getMyAction() != PLAYER_ACTION_FOLD) ++nonFolded;
+    }
+    qDebug() << "[ALLIN]   nonFolded=" << nonFolded;
+    if (nonFolded < 2) {
+        qDebug() << "[ALLIN]   GUARD: nonFolded<2 - aborting";
+        return;
+    }
+
+    m_allInRevealed = true;
+    qDebug() << "[ALLIN]   m_allInRevealed set to true, calling refreshPlayerData";
+    refreshPlayerData();
 }

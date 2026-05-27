@@ -70,7 +70,8 @@ Item {
         return ""
     }
     // Widescreen-Layout: Box ist groß genug für 2-zeilige Info (Name + Flagge/Cash)
-    readonly property bool wideLayout: height >= 76
+    // Nur im Querformat – Hochformat zeigt einzeilig mit voller Karten-/Avatar-Höhe.
+    readonly property bool wideLayout: Config.Responsive.landscape && height >= 76
 
     // Nur anzeigen wenn der Sitz besetzt ist
     visible: root.seatData !== null && root.seatData.name !== ""
@@ -172,7 +173,7 @@ Item {
         Row {
             id: topRow
             width: parent.width - 2 * playerBox.hMargin
-            height: parent.height - 36
+            height: root.wideLayout ? (parent.height - 36) : (parent.height - 26)
             x: playerBox.hMargin
             y: 4
             spacing: playerBox.hMargin
@@ -548,8 +549,8 @@ Item {
         Image {
             id: buttonImg
             visible: root.button > 0
-            width: 22
-            height: 22
+            width: 26
+            height: 26
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
                ? (betGroup.width - width)

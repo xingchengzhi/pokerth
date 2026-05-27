@@ -596,6 +596,12 @@ void QmlGuiInterface::riverAnimation1()
     });
 }
 
+void QmlGuiInterface::flipHolecardsAllIn()
+{
+    if (!m_gameHandler) return;
+    QMetaObject::invokeMethod(m_gameHandler, "onFlipHolecardsAllIn", Qt::QueuedConnection);
+}
+
 void QmlGuiInterface::postRiverAnimation1()
 {
     // Show-down: call BeRo::postRiverRun() which distributes the pot

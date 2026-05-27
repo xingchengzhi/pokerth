@@ -69,7 +69,7 @@ public:
     virtual void riverAnimation2() override {}
     virtual void postRiverAnimation1() override;
     virtual void postRiverRunAnimation1() override;
-    virtual void flipHolecardsAllIn() override {}
+    virtual void flipHolecardsAllIn() override;
     virtual void nextRoundCleanGui() override;
     virtual void meInAction() override;
     virtual void updateMyButtonsState() override {}

@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QVariantList>
 #include <QStringList>
+#include <QElapsedTimer>
 #include <boost/shared_ptr.hpp>
 
 class ConfigFile;
@@ -124,6 +125,7 @@ public:
     Q_INVOKABLE void onSwitchRounds();
     Q_INVOKABLE void onPostRiverRunBeRo();
     Q_INVOKABLE void onShowdown();
+    Q_INVOKABLE void onFlipHolecardsAllIn();
 
     // Called from QML
     Q_INVOKABLE void fold();
@@ -137,6 +139,13 @@ signals:
     void phaseTextChanged();
     void handNumberChanged();
     void myTurnChanged();
+    // Wird bei JEDEM „ich bin am Zug"-Callback der Engine ausgelöst (meInAction),
+    // unabhängig davon, ob sich m_myTurn dabei ändert. Die QML-Seite führt darauf
+    // die vorgemerkte/automatische Aktion aus – wie der Widgets-Client, der die
+    // gemerkte Aktion direkt in meInAction() ausführt (Button-Klick). So hängt die
+    // Ausführung NICHT mehr am myTurn-Flankenwechsel (der z.B. ausbleibt, wenn der
+    // Zug schon über den Action-Timer als aktiv markiert wurde).
+    void meInActionTriggered();
     void canActChanged();
     void callAmountChanged();
     void minRaiseAmountChanged();
@@ -151,6 +160,11 @@ signals:
     void chatLogChanged();
     void hasHumanOpponentsChanged();
 
+protected:
+    // App-weiter Filter: echte Nutzeraktivität (Maus/Tastatur) → ResetTimeout
+    // an den Server, damit der In-Game-AFK-Timeout (21 min) nicht zuschlägt.
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     bool localGameCallbacksBlocked() const;
     void ensureSoundEventHandler();
@@ -159,8 +173,14 @@ private:
     void refreshBoardCards();
     void refreshPotData();
     void computeCallAndRaiseAmounts();
-    void beginRoundTransition();   // Buttons während Rundenwechsel inaktiv
-    void endRoundTransition();     // nächste Runde begonnen → Buttons frei
+    // True, wenn der menschliche Spieler (Sitz 0) gerade agieren kann (in der
+    // Hand, nicht all-in/gefoldet, Cash > 0, aktiv). Engine-basiert.
+    bool humanCanAct() const;
+    // True, wenn der Server gerade auf MEINE Aktion wartet. Maßgeblich ist der
+    // Aktions-Timer auf meinem Sitz (m_timeoutSeatId == 0), der bereits ab
+    // startTimeoutAnimation gesetzt ist (vor meInAction). Zusätzlich m_myTurn,
+    // falls der Timer-Pfad mal nicht greift. Verhindert verworfene Aktionen.
+    bool isMyTurnToAct() const { return m_myTurn || m_timeoutSeatId == 0; }
     void doActionDone();
 
     boost::shared_ptr<Session> m_session;
@@ -168,6 +188,10 @@ private:
     ConfigFile *m_config = nullptr;
     SoundEvents *m_soundEventHandler = nullptr;
     QTimer *m_timeoutBeepTimer = nullptr;
+    // Ratenbegrenzung für AFK-Reset (ResetTimeoutMessage). Wie der Widgets-
+    // Client: höchstens alle paar Minuten senden, bei echter Nutzeraktivität.
+    QElapsedTimer m_afkResetTimer;
+    static constexpr qint64 kAfkResetIntervalMs = 3 * 60 * 1000; // 3 min
 
     QVariantList m_players;
     int m_pot = 0;
@@ -175,15 +199,6 @@ private:
     int m_handNumber = 0;
     bool m_myTurn = false;
     bool m_canAct = false;
-    // True während des Übergangs zwischen zwei Setzrunden (Karten werden
-    // ausgeteilt / neue Hand) bis die nächste Runde tatsächlich begonnen hat
-    // (erster Spielzug). Solange aktiv, sind die Action-Buttons inaktiv – so
-    // kann keine (Vor-)Aktion in den Rundenwechsel fallen und verloren gehen.
-    bool m_roundTransition = false;
-    // True ab dem Moment, in dem ICH in der aktuellen Runde gehandelt habe, bis
-    // die nächste Runde beginnt (oder ich nach einer Erhöhung erneut am Zug bin).
-    // Solange aktiv → keine Vorwahl mehr, Buttons inaktiv.
-    bool m_actedThisRound = false;
     int m_callAmount = 0;
     int m_minRaiseAmount = 0;
     int m_maxRaiseAmount = 0;
@@ -201,6 +216,9 @@ private:
     // dass die (noch veraltete) playerNeedToShowCards-Liste während der River-
     // Setzrunde der nächsten Hand fälschlich Karten aufdeckt.
     bool m_showdownActive = false;
+    // All-in-Aufdeckung: alle nicht-gefoldeten Spielerkarten sichtbar
+    // (AllInShowCardsMessage), bis zur nächsten Hand zurückgesetzt.
+    bool m_allInRevealed = false;
     // Aktions-Anzeige: pro Sitz die zuletzt gesehene Aktion + das Runden-Token,
     // in dem sie gesetzt wurde. So wird die Aktion nur in ihrer eigenen Runde
     // angezeigt und zu Rundenbeginn überall automatisch entfernt.

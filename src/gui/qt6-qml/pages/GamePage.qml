@@ -1195,6 +1195,24 @@ Rectangle {
 
             // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──
             property string preAction: ""        // "", "fold", "call", "raise", "allin"
+            // Reset bei Handwechsel oder Showdown
+            property int lastHandNumber: -1
+            Connections {
+                target: GameTable
+                function onHandNumberChanged() {
+                    if (GameTable && GameTable.handNumber !== lastHandNumber) {
+                        preAction = ""
+                        lastHandNumber = GameTable.handNumber
+                        console.log("[ACTDBG] preAction Reset: Neue Hand " + lastHandNumber)
+                    }
+                }
+                function onPhaseTextChanged() {
+                    if (GameTable && GameTable.phaseText === "Showdown") {
+                        preAction = ""
+                        console.log("[ACTDBG] preAction Reset: Showdown")
+                    }
+                }
+            }
             property int preCallAmount: -1        // callAmount zum Zeitpunkt der Vorwahl
             // Spielmodus: 0 = manuell, 1 = Auto Check/Call, 2 = Auto Check/Fold.
             property int playingMode: 0
@@ -1228,7 +1246,14 @@ Rectangle {
                 // bzw. vormerken (wie im Qt-Widgets-Client).
                 if (playingMode !== 0)
                     playingMode = 0
-                if (GameTable.myTurn) {
+                // Es ist mein Zug, sobald der Server meinen Aktions-Timer zählt
+                // (timeoutSeatId === 0) – auch wenn das myTurn-Flag noch nicht
+                // gesetzt sein sollte. Dann SOFORT ausführen, sonst nur vormerken.
+                var myTurnNow = GameTable.myTurn || GameTable.timeoutSeatId === 0
+                console.log("[ACTDBG] click", which, "myTurn=", GameTable.myTurn,
+                            "tSeat=", GameTable.timeoutSeatId, "canAct=", GameTable.canAct,
+                            "pre=", preAction)
+                if (myTurnNow) {
                     preAction = ""
                     fireAction(which)
                 } else if (canAct) {
@@ -1281,17 +1306,34 @@ Rectangle {
             Connections {
                 target: GameTable
                 function onMyTurnChanged() {
+                    // Nur den Raise-Wert an den aktuellen Spielzustand anpassen.
+                    // Die Ausführung der vorgemerkten/automatischen Aktion erfolgt
+                    // in onMeInActionTriggered (maßgeblicher Engine-Callback), NICHT
+                    // hier am Flankenwechsel – sonst wird sie verschluckt, wenn der
+                    // Zug bereits über den Action-Timer als aktiv markiert wurde.
                     actionBar.syncRaiseAmount()
-                    if (!GameTable.myTurn)
-                        return
-                    // Auto-Spielmodus hat Vorrang vor der manuellen Vorwahl.
-                    // SYNCHRON ausführen (nicht via Qt.callLater): diese Funktion
-                    // läuft als Reaktion auf das myTurnChanged-Signal der Engine,
-                    // nicht in einem QML-Eingabe-Event – ein erneutes myTurnChanged
-                    // aus doActionDone (setzt myTurn=false) kehrt hier sofort wieder
-                    // zurück, also keine Re-Entrancy-Gefahr. Verzögert hingegen
-                    // konnte eine zwischenzeitliche Nachricht (disableMyButtons →
-                    // myTurn=false) die Aktion verschlucken → Timeout statt Aktion.
+                }
+                function onMeInActionTriggered() {
+                    // Wie meInAction() im Widgets-Client: GENAU HIER die gemerkte
+                    // bzw. automatische Aktion ausführen. Dieser Callback kommt bei
+                    // jedem eigenen Zug verlässlich (auch wenn m_myTurn schon true
+                    // war) → keine verschluckten Aktionen mehr.
+                    console.log("[ACTDBG] meInActionTriggered pre=", actionBar.preAction,
+                                "mode=", actionBar.playingMode, "myTurn=", GameTable.myTurn,
+                                "tSeat=", GameTable.timeoutSeatId)
+                    actionBar.syncRaiseAmount()
+
+                    // BB-Option erkennen: ich bin BB (button=3), callAmount=0 (niemand
+                    // hat erhöht) und noch keine Gemeinschaftskarten (Preflop). In diesem
+                    // Fall verfällt jede Vorauswahl – der Spieler soll bewusst Check oder
+                    // Raise wählen können.
+                    var p0btn = GameTable.players.length > 0 ? GameTable.players[0]["button"] : 0
+                    var isBbOption = (p0btn === 3 && GameTable.callAmount === 0 && GameTable.boardCardCount === 0)
+                    if (isBbOption && actionBar.preAction !== "") {
+                        console.log("[BBDBG] BB-Option: Vorauswahl '" + actionBar.preAction + "' verworfen")
+                        actionBar.preAction = ""
+                    }
+
                     if (actionBar.playingMode === 2 || actionBar.playingMode === 1) {
                         gamePage.runAutoAction()
                     } else if (actionBar.preAction !== "") {       // Manuell: Vorwahl ausführen
@@ -1644,7 +1686,11 @@ Rectangle {
                             topColor: Config.Theme.colorFoldTop
                             bottomColor: Config.Theme.colorFoldBottom
                             edgeColor: Config.Theme.colorFoldEdge
-                            armed: actionBar.canAct
+                            // Immer klickbar wenn ICH am Zug bin (myTurnNow); sonst
+                            // nur im Vorwahl-Fenster (canAct, durch Rundenwechsel/
+                            // bereits-gehandelt gated). So sperrt das Gating nie den
+                            // echten Zug → keine verpassten Aktionen mehr.
+                            armed: myTurnNow || actionBar.canAct
                         }
 
                         ActionButton {
@@ -1655,7 +1701,7 @@ Rectangle {
                             topColor: Config.Theme.colorCallTop
                             bottomColor: Config.Theme.colorCallBottom
                             edgeColor: Config.Theme.colorCallEdge
-                            armed: actionBar.canAct
+                            armed: myTurnNow || actionBar.canAct
                         }
 
                         ActionButton {
@@ -1667,7 +1713,7 @@ Rectangle {
                             bottomColor: Config.Theme.colorRaiseBottom
                             edgeColor: Config.Theme.colorRaiseEdge
                             highlight: true     // primäre Aktion betonen
-                            armed: actionBar.canAct && actionBar.raiseAvailable
+                            armed: (myTurnNow || actionBar.canAct) && actionBar.raiseAvailable
                         }
                     }
                 }

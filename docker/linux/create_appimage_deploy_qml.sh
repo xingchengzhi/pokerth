@@ -12,7 +12,7 @@ set -e
 #
 # Was gebündelt wird:   Qt-Libs, QML-Module, Qt-Plugins, glibc, ld-linux,
 #                       libstdc++, libgcc_s, app-eigene Deps (boost, protobuf, ssl)
-# Was NICHT gebündelt:  GPU/GL, Windowing (X11/XCB/Wayland), GLib/DBus, Fonts
+# Was NICHT gebündelt:  GPU/GL, Windowing (X11/XCB/Wayland), Fonts
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -116,15 +116,18 @@ is_excluded_lib() {
         libxkbcommon.so*|libxkbcommon-x11.so*)                 return 0 ;;
 
         # --- GLib / GObject / GIO / DBus ---
-        libglib-2.0.so*|libgobject-2.0.so*|libgio-2.0.so*)    return 0 ;;
-        libgmodule-2.0.so*|libgthread-2.0.so*)                 return 0 ;;
-        libdbus-1.so*|libdbus-glib*.so*)                       return 0 ;;
+        # Fuer Jammy-Kompatibilitaet werden diese bewusst mitgebuendelt,
+        # da Qt6-Multimedia-Backends (z. B. libpxbackend) sonst an fehlenden
+        # oder zu alten Host-Symbolen scheitern koennen.
+
+        # --- Audio-Backends (PipeWire/pxbackend) ---
+        # Ebenfalls mitbuendeln, damit keine Host-Abhaengigkeit auf
+        # libpxbackend-1.0.so besteht.
 
         # --- Fonts / System-Infrastruktur ---
         libfontconfig.so*|libfreetype.so*) return 0 ;;
         libexpat.so*|libp11-kit.so*)       return 0 ;;
         libudev.so*|libsystemd.so*)        return 0 ;;
-        libmount.so*|libblkid.so*)         return 0 ;;
 
         *) return 1 ;;
     esac
@@ -180,6 +183,17 @@ collect_all_dependencies() {
 }
 
 collect_all_dependencies "$APPDIR/usr/bin/pokerth_qml-client" "$APPDIR/usr/lib"
+
+# Zusatzabsicherung fuer Qt6-Multimedia auf Jammy:
+# Falls der initiale ldd-Rekursionslauf bestimmte Audio-Backend-Libs nicht
+# erfasst (z. B. durch abweichende Paketlayouts), sammeln wir sie explizit.
+for forced_audio_lib in libpxbackend-1.0.so libpipewire-0.3.so.0 libspa-0.2.so; do
+    forced_path=$(ldconfig -p 2>/dev/null | grep "${forced_audio_lib}" | head -1 | awk '{print $NF}')
+    if [ -n "$forced_path" ] && [ -f "$forced_path" ]; then
+        echo "Erzwinge Bundle: ${forced_audio_lib}"
+        collect_all_dependencies "$forced_path" "$APPDIR/usr/lib"
+    fi
+done
 
 # --- Sicherstellung glibc-Bundle ---
 
@@ -396,7 +410,11 @@ export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/s
 # (z. B. libEGL.so.1, libGLX, Mesa/NVIDIA-Treiber) auf dem Zielsystem gefunden
 # werden. Die Reihenfolge bleibt: zuerst AppImage-Libs, dann Host-Libs.
 HOST_LIB_DIRS=""
-for d in /lib /usr/lib /lib64 /usr/lib64 /lib/$(uname -m)-linux-gnu /usr/lib/$(uname -m)-linux-gnu /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu; do
+# Kein externes `uname`: mit gebuendelter libc kann ein Host-Binary hier
+# symbol lookup errors erzeugen. Deshalb nur Bash-interne Architekturableitung.
+APP_ARCH="${MACHTYPE%%-*}"
+[ -z "$APP_ARCH" ] && APP_ARCH="${HOSTTYPE:-x86_64}"
+for d in /lib /usr/lib /lib64 /usr/lib64 /lib/${APP_ARCH}-linux-gnu /usr/lib/${APP_ARCH}-linux-gnu /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu; do
     if [ -d "$d" ]; then
         if [ -z "$HOST_LIB_DIRS" ]; then
             HOST_LIB_DIRS="$d"

@@ -10,6 +10,7 @@
 #include <QVariantList>
 #include <QStringList>
 #include <QElapsedTimer>
+#include <QSet>
 #include <boost/shared_ptr.hpp>
 
 class ConfigFile;
@@ -116,6 +117,8 @@ public:
     // zurücksetzen, damit kein stale m_myTurn/m_game zurückbleibt (sonst kann
     // eine späte Aktion ins tote Spiel laufen → siehe ClientThread::SendPlayerAction).
     Q_INVOKABLE void onNetworkGameEnded();
+    // Netzwerk: Spieler hat das Spiel verlassen → Sitz leeren
+    Q_INVOKABLE void onNetClientPlayerLeft(unsigned uniquePlayerId);
     Q_INVOKABLE void onBlindsSet(int smallBlind);
     Q_INVOKABLE void onNextRoundCleanGui();
     Q_INVOKABLE void onDealFlopCards();
@@ -245,6 +248,9 @@ private:
     int m_lastAggressorSeq = 0;
     int m_aggressorToken = -1;
     bool m_localGameExitRequested = false;
+    // Unique-IDs von Spielern, die das Netzwerkspiel verlassen haben.
+    // Ihr Sitz wird in refreshPlayerData() als leer dargestellt.
+    QSet<unsigned> m_leftPlayers;
 };
 
 #endif // GAMEHANDLER_H

@@ -213,34 +213,37 @@ Rectangle {
             // Spieler-Slots ordnen sich je nach Seitenverhältnis automatisch um.
             readonly property bool wide: width >= height
 
-            // Gegner-Boxen wachsen mit der Fensterbreite (eindeutige Referenz):
-            // Faktor 1.0 bei Telefonbreite (~390px), linear hoch bis zum Maximum
-            // (= Höhe der Self-Box) bei Vollbildbreite (~1920px).
+            // Gegner- und Self-Box wachsen im Querformat gemeinsam. Referenz ist
+            // nicht nur die absolute Breite, sondern wie viel zusätzliche Breite
+            // bei gleicher Höhe entsteht: dadurch reagieren die Boxen sichtbar
+            // schneller beim Ziehen von Portrait nach Wide.
             readonly property int oppBaseHeight: wide ? 80 : 64
-            // Breite einer Gegner-Box (= seatSlot.width), Basis für die Abstandsprüfung.
             readonly property int oppBaseWidth: wide ? 125 : 107
-            readonly property real oppScale: {
-                var cap = selfBox.height / oppBaseHeight
-                var t = (width - 390) / (1920 - 390)
-                var s = Math.max(1.0, Math.min(cap, 1.0 + t * (cap - 1.0)))
-                // Querformat: die oberen Boxen sitzen eng im Bogen. Skalierung so
-                // begrenzen, dass benachbarte Boxen mind. 20px horizontalen Abstand
-                // behalten – sonst überlappen sie am Umschalt-Breakpoint.
-                if (wide && width > 0) {
-                    var sq = slotSeq[seatCount - 1] || []
-                    var xs = []
-                    for (var i = 0; i < sq.length; ++i) {
-                        var p = slotPos[sq[i]]
-                        if (p && p[1] < 0.30) xs.push(p[0])   // nur die obere Reihe
-                    }
-                    xs.sort(function(a, b) { return a - b })
-                    for (var j = 1; j < xs.length; ++j) {
-                        var maxArc = ((xs[j] - xs[j - 1]) * width - 20) / oppBaseWidth
-                        if (maxArc < s) s = maxArc
-                    }
-                }
-                return s
+            readonly property int selfBaseWidth: wide ? 168 : 154
+            readonly property int selfBaseHeight: wide ? oppBaseHeight : 82
+            readonly property real opponentGapBase: 10
+            readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
+            readonly property real selfGapBase: opponentGapBase * 2
+            readonly property real selfBadgeGapBase: 34
+            readonly property int landscapeRowCount: seatCount <= 4 ? 1
+                : seatCount <= 6 ? 2
+                : seatCount <= 8 ? 3
+                : 4
+            readonly property real boxScale: {
+                if (!wide || height <= 0) return 1.0
+
+                var ratioGain = Math.max(0, width / height - 1.0)
+                var s = Math.min(1.58, 1.0 + ratioGain * 0.48)
+
+                // Vertikal muss Platz für die tatsächlich benötigten Gegner-Reihen,
+                // einen größeren Self-Abstand und die visuell skalierte Self-Box bleiben.
+                var verticalCap = (height - 24)
+                    / (landscapeRowCount * oppBaseHeight
+                        + Math.max(0, landscapeRowCount - 1) * opponentGapBase
+                        + Math.max(selfGapBase, selfBadgeGapBase) + selfBaseHeight)
+                return Math.max(1.0, Math.min(s, verticalCap))
             }
+            readonly property real oppScale: boxScale
 
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
             // Hochformat: 3 oben, Rest an den Seiten nach unten.
@@ -255,20 +258,48 @@ Rectangle {
                 "R_lower":  [0.82, 0.59],
                 "R_bottom": [0.82, 0.72]
             })
-            // Querformat: breiter Oval-Tisch – Gegner bogenförmig oben + an den
-            // Seiten verteilt, eigene Box unten in der Mitte.
-            readonly property var slotPosLandscape: ({
-                "BL":  [0.16, 0.70],
-                "L":   [0.10, 0.44],
-                "TLo": [0.19, 0.19],
-                "TL":  [0.35, 0.15],
-                "TC":  [0.50, 0.13],
-                "TR":  [0.65, 0.15],
-                "TRo": [0.81, 0.19],
-                "R":   [0.90, 0.44],
-                "BR":  [0.84, 0.70]
-            })
+            // Querformat: Slot-Abstände werden aus visueller Boxgröße,
+            // Spieleranzahl und Self-Abstand berechnet statt als offene Ellipse
+            // fest verdrahtet. Horizontaler und vertikaler Gegner-Abstand werden getrennt begrenzt;
+            // zur Self-Box bleibt bewusst mehr Luft.
+            readonly property var slotPosLandscape: buildLandscapeSlots()
             readonly property var slotPos: wide ? slotPosLandscape : slotPosPortrait
+
+            function buildLandscapeSlots() {
+                var s = boxScale
+                var visualW = oppBaseWidth * s
+                var visualH = oppBaseHeight * s
+                var selfVisualH = selfBaseHeight * s
+                var sideMargin = Math.max(18, width * 0.025)
+                var wantedGapY = opponentGapBase * s
+                var gapY = Math.max(8, wantedGapY)
+                var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
+                var sideX = (sideMargin + visualW / 2) / Math.max(width, 1)
+                var radiusX = Math.max(0.22, 0.5 - sideX)
+                var topY = (12 + visualH / 2) / Math.max(height, 1)
+                var selfTop = height - 12 - selfVisualH
+                var bottomY = (selfTop - selfGapY - visualH / 2) / Math.max(height, 1)
+                var centerY = (topY + bottomY) / 2
+                var radiusY = Math.max((visualH + gapY) / Math.max(height, 1), (bottomY - topY) / 2)
+
+                function point(degrees) {
+                    var radians = degrees * Math.PI / 180
+                    return [0.5 + radiusX * Math.cos(radians),
+                            centerY + radiusY * Math.sin(radians)]
+                }
+
+                return {
+                    "BL":  point(135),
+                    "L":   point(180),
+                    "TLo": point(215),
+                    "TL":  point(245),
+                    "TC":  point(270),
+                    "TR":  point(295),
+                    "TRo": point(325),
+                    "R":   point(0),
+                    "BR":  point(45)
+                }
+            }
 
             // Slot-Reihenfolge je nach Gegnerzahl M – symmetrisch links/rechts verteilt,
             // damit unabhängig von der Spielerzahl Kreis-Symmetrie entsteht.
@@ -296,6 +327,32 @@ Rectangle {
             })
             readonly property var slotSeq: wide ? slotSeqLandscape : slotSeqPortrait
 
+            readonly property real landscapeEllipseCenterY: {
+                var s = boxScale
+                var visualH = oppBaseHeight * s
+                var selfVisualH = selfBaseHeight * s
+                var gapY = Math.max(8, opponentGapBase * s)
+                var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
+                var topY = 12 + visualH / 2
+                var selfTop = height - 12 - selfVisualH
+                var bottomY = selfTop - selfGapY - visualH / 2
+                return (topY + bottomY) / 2
+            }
+            readonly property real topOpponentBottomY: {
+                var oppCount = seatCount - 1
+                var seq = slotSeq[oppCount] || []
+                var topCenter = 0.13
+                for (var i = 0; i < seq.length; ++i) {
+                    var p = slotPos[seq[i]]
+                    if (p && p[1] < topCenter) topCenter = p[1]
+                }
+                return topCenter * height + oppBaseHeight * oppScale / 2
+            }
+            readonly property real selfVisualTopY:
+                selfBox.y + selfBox.height / 2 - selfBox.height * boxScale / 2
+            readonly property real communityCenterY:
+                wide ? landscapeEllipseCenterY : (topOpponentBottomY + selfVisualTopY) / 2
+
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Item {
                 id: communityArea
@@ -304,10 +361,10 @@ Rectangle {
                 // Portrait: mittig zwischen oberen (0.32·H) und unteren Seiten-Boxen
                 // (0.59·H); die per seatNudge gespreizten unteren Boxen verschieben
                 // den Mittelpunkt um (14−4)/2 = 5px nach unten.
-                // Widescreen: mittig zwischen oberster Spielerreihe (TC ≈ 0.13·H)
-                // und der Self-Box.
+                // Widescreen: im Mittelpunkt derselben Ellipse, auf der die
+                // Gegnerboxen um den Community-Bereich liegen.
                 anchors.verticalCenterOffset: tableZone.wide
-                    ? (tableZone.height * 0.13 + (selfBox.y + selfBox.height / 2)) / 2 - tableZone.height / 2
+                    ? tableZone.communityCenterY - tableZone.height / 2
                     : -tableZone.height * 0.045 + 5
                 // Größe = nur die Kartenreihe; das Winning-Hand-Badge liegt als
                 // Overlay darunter und zählt NICHT zur Größe → die Karten bleiben
@@ -582,7 +639,7 @@ Rectangle {
                     // Inhalt füllt die Box ohne überschüssige Ränder; Karten im
                     // Original-Seitenverhältnis (2×31+3=65)
                     // (4 + Avatar 44 + 4 + Karten 65 + 4 + 4 = 125)
-                    width: tableZone.wide ? 125 : 107
+                    width: tableZone.oppBaseWidth
                     height: tableZone.oppBaseHeight
                     // Boxen skalieren mit der Auflösung (max = Höhe der Self-Box);
                     // um die Slot-Mitte herum, damit die Position erhalten bleibt.
@@ -630,14 +687,16 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 // Querformat: etwas mehr Luft zwischen Self-Box und Action-Panel
                 // (12 px) als unten zum Bildschirmrand (8 px).
-                anchors.bottomMargin: tableZone.wide ? 12 : 20
+                anchors.bottomMargin: tableZone.wide ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
                 // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)
-                width: tableZone.wide ? 168 : 154
+                width: tableZone.selfBaseWidth
                 // Kompakter: keine überschüssige Höhe
                 // (4 + Avatar/Karten 60 + 4 + Text 16 + 4 = 88)
-                height: tableZone.wide ? 88 : 82
+                height: tableZone.selfBaseHeight
+                transformOrigin: Item.Center
+                scale: tableZone.boxScale
                 maxAvatarSize: tableZone.wide ? 60 : 54
             }
 

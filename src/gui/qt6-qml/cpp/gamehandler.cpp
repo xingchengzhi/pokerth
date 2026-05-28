@@ -199,6 +199,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
 
     m_localGameExitRequested = false;
     m_game = game;
+    m_leftPlayers.clear();
     // Reset state for new game
     m_pot = 0;
     m_phaseText = "Preflop";
@@ -406,6 +407,9 @@ void GameHandler::refreshPlayerData()
 
         for (auto it = seats->begin(); it != seats->end(); ++it) {
             int id = (*it)->getMyID();
+            // Spieler, der das Spiel verlassen hat: Sitz als leer behandeln.
+            if (m_leftPlayers.contains((*it)->getMyUniqueID()))
+                continue;
             if (!(*it)->getMyName().empty() && (*it)->getMyType() == PLAYER_TYPE_HUMAN)
                 ++humanCount;
             if (id >= 0 && id < 10) {
@@ -945,6 +949,13 @@ void GameHandler::onNetworkGameEnded()
         emit timeoutChanged();
     }
     m_timeoutBeepTimer->stop();
+}
+
+void GameHandler::onNetClientPlayerLeft(unsigned uniquePlayerId)
+{
+    m_leftPlayers.insert(uniquePlayerId);
+    refreshPlayerData();
+    emit playersChanged();
 }
 
 void GameHandler::onBlindsSet(int smallBlind)

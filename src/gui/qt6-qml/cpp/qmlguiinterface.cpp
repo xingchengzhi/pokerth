@@ -238,6 +238,15 @@ void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
     }
 }
 
+void QmlGuiInterface::SignalNetClientPlayerLeft(unsigned playerId, const std::string & /*playerName*/, int /*removeReason*/)
+{
+    // Sitz des Spielers in der Spielansicht leeren.
+    if (m_gameHandler) {
+        QMetaObject::invokeMethod(m_gameHandler, "onNetClientPlayerLeft", Qt::QueuedConnection,
+                                  Q_ARG(unsigned, playerId));
+    }
+}
+
 void QmlGuiInterface::SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
 {
     qDebug() << "[INVITE] SignalSelfGameInvitation received: gameId=" << gameId << "fromPlayerId=" << playerIdFrom

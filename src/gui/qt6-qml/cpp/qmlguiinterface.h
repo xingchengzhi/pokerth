@@ -123,7 +123,7 @@ public:
     virtual void SignalNetClientGameStart(boost::shared_ptr<Game> game) override;
     virtual void SignalNetClientPlayerJoined(unsigned playerId, const std::string &playerName, bool isGameAdmin) override;
     virtual void SignalNetClientPlayerChanged(unsigned playerId, const std::string &newPlayerName) override;
-    virtual void SignalNetClientPlayerLeft(unsigned playerId, const std::string &playerName, int removeReason) override {}
+    virtual void SignalNetClientPlayerLeft(unsigned playerId, const std::string &playerName, int removeReason) override;
     virtual void SignalNetClientSpectatorJoined(unsigned playerId, const std::string &playerName) override {}
     virtual void SignalNetClientSpectatorLeft(unsigned playerId, const std::string &playerName, int removeReason) override {}
     virtual void SignalNetClientNewGameAdmin(unsigned playerId, const std::string &playerName) override {}

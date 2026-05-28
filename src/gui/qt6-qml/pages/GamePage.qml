@@ -224,7 +224,8 @@ Rectangle {
             readonly property real opponentGapBase: 10
             readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
             readonly property real selfGapBase: opponentGapBase * 2
-            readonly property real selfBadgeGapBase: 34
+            readonly property real selfBadgeGapBase: 22
+            readonly property real sideBadgeGapBase: 48
             readonly property int landscapeRowCount: seatCount <= 4 ? 1
                 : seatCount <= 6 ? 2
                 : seatCount <= 8 ? 3
@@ -233,7 +234,7 @@ Rectangle {
                 if (!wide || height <= 0) return 1.0
 
                 var ratioGain = Math.max(0, width / height - 1.0)
-                var s = Math.min(1.58, 1.0 + ratioGain * 0.48)
+                var s = Math.min(1.48, 1.0 + ratioGain * 0.42)
 
                 // Vertikal muss Platz für die tatsächlich benötigten Gegner-Reihen,
                 // einen größeren Self-Abstand und die visuell skalierte Self-Box bleiben.
@@ -270,7 +271,7 @@ Rectangle {
                 var visualW = oppBaseWidth * s
                 var visualH = oppBaseHeight * s
                 var selfVisualH = selfBaseHeight * s
-                var sideMargin = Math.max(18, width * 0.025)
+                var sideMargin = Math.max(18, width * 0.025) + sideBadgeGapBase * s
                 var wantedGapY = opponentGapBase * s
                 var gapY = Math.max(8, wantedGapY)
                 var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
@@ -280,7 +281,7 @@ Rectangle {
                 var selfTop = height - 12 - selfVisualH
                 var bottomY = (selfTop - selfGapY - visualH / 2) / Math.max(height, 1)
                 var centerY = (topY + bottomY) / 2
-                var radiusY = Math.max((visualH + gapY) / Math.max(height, 1), (bottomY - topY) / 2)
+                var radiusY = Math.max((visualH + gapY * 2.2) / Math.max(height, 1), (bottomY - topY) / 2)
 
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
@@ -289,15 +290,15 @@ Rectangle {
                 }
 
                 return {
-                    "BL":  point(135),
-                    "L":   point(180),
-                    "TLo": point(215),
-                    "TL":  point(245),
+                    "BL":  point(125),
+                    "L":   point(165),
+                    "TLo": point(205),
+                    "TL":  point(240),
                     "TC":  point(270),
-                    "TR":  point(295),
-                    "TRo": point(325),
-                    "R":   point(0),
-                    "BR":  point(45)
+                    "TR":  point(300),
+                    "TRo": point(335),
+                    "R":   point(15),
+                    "BR":  point(55)
                 }
             }
 
@@ -672,7 +673,10 @@ Rectangle {
                         // (Player 4–6) eng im Bogen → Einsatz/Icon unterhalb der Box
                         // anzeigen, damit der seitliche Bereich nicht mit den
                         // Nachbarboxen überlappt.
-                        betSide: (seatSlot.slot[1] < 0.30 && tableZone.wide) ? "bottom"
+                        betSide: tableZone.wide
+                               ? (seatSlot.slot[0] < 0.45 ? "left"
+                                  : seatSlot.slot[0] > 0.55 ? "right"
+                                  : "bottom")
                                : seatSlot.slot[0] < 0.45 ? "right"
                                : seatSlot.slot[0] > 0.55 ? "left"
                                : "bottom"

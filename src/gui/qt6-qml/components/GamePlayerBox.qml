@@ -144,7 +144,7 @@ Item {
                 color: "transparent"
                 radius: 6
                 border.color: "#FFD54A"
-                border.width: 2
+                border.width: 1
                 layer.enabled: root.isAtTurn
                 layer.effect: MultiEffect {
                     shadowEnabled: true
@@ -162,7 +162,7 @@ Item {
                 color: "transparent"
                 radius: 6
                 border.color: "#CCFFD54A"
-                border.width: 2
+                border.width: 1
             }
         }
 

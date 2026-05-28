@@ -45,6 +45,8 @@ class GameHandler : public QObject
     Q_PROPERTY(QStringList chatLog READ chatLog NOTIFY chatLogChanged)
     // true, sobald außer mir noch (mind.) ein menschlicher Spieler im Spiel ist
     Q_PROPERTY(bool hasHumanOpponents READ hasHumanOpponents NOTIFY hasHumanOpponentsChanged)
+    // true im Post-River, wenn der Mensch-Spieler seine Karten freiwillig zeigen kann
+    Q_PROPERTY(bool canShowCards READ canShowCards NOTIFY canShowCardsChanged)
 
 public:
     explicit GameHandler(QObject *parent = nullptr);
@@ -78,6 +80,7 @@ public:
     QStringList gameLog() const { return m_gameLog; }
     QStringList chatLog() const { return m_chatLog; }
     bool hasHumanOpponents() const { return m_hasHumanOpponents; }
+    bool canShowCards() const { return m_canShowCards; }
 
     // Zeilentyp für die Einfärbung des Spielverlaufs – Farben/Stil 1:1 wie der
     // Qt-Widgets-Client (Default-Tischstil).
@@ -132,6 +135,7 @@ public:
     Q_INVOKABLE void call();
     Q_INVOKABLE void raise(int amount = 0);
     Q_INVOKABLE void allIn();
+    Q_INVOKABLE void showMyCards();
 
 signals:
     void playersChanged();
@@ -146,6 +150,8 @@ signals:
     // Ausführung NICHT mehr am myTurn-Flankenwechsel (der z.B. ausbleibt, wenn der
     // Zug schon über den Action-Timer als aktiv markiert wurde).
     void meInActionTriggered();
+    void refreshActionTriggered();   // echte Spieler-Aktion (kein globaler Refresh)
+    void roundValuesReady();          // nach Rundenwechsel: frische Werte verfügbar
     void canActChanged();
     void callAmountChanged();
     void minRaiseAmountChanged();
@@ -159,6 +165,7 @@ signals:
     void gameLogChanged();
     void chatLogChanged();
     void hasHumanOpponentsChanged();
+    void canShowCardsChanged();
 
 protected:
     // App-weiter Filter: echte Nutzeraktivität (Maus/Tastatur) → ResetTimeout
@@ -212,6 +219,7 @@ private:
     QStringList m_gameLog;      // Live-Aktions-Log (Spielverlauf) für das Overlay
     QStringList m_chatLog;      // In-Game-Chat-Verlauf
     bool m_hasHumanOpponents = false;
+    bool m_canShowCards = false;
     // Showdown aktiv: erst dann dürfen Gegnerkarten aufgedeckt werden. Verhindert,
     // dass die (noch veraltete) playerNeedToShowCards-Liste während der River-
     // Setzrunde der nächsten Hand fälschlich Karten aufdeckt.

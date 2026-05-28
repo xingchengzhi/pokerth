@@ -958,6 +958,12 @@ Rectangle {
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: sendChatMessage()
                                 onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Tab) {
+                                        event.accepted = true
+                                        lobbyPage.tabComplete(chatInputCompact)
+                                    }
+                                }
                                 Keys.onUpPressed: (event) => {
                                     event.accepted = true
                                     if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
@@ -1286,6 +1292,12 @@ Rectangle {
                                 onAccepted: sendChatMessage()
                                 Keys.onReturnPressed: sendChatMessage()
                                 onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Tab) {
+                                        event.accepted = true
+                                        lobbyPage.tabComplete(chatInput)
+                                    }
+                                }
                                 Keys.onUpPressed: (event) => {
                                     event.accepted = true
                                     if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
@@ -1458,6 +1470,26 @@ Rectangle {
         else
             field.text = ""
         field.cursorPosition = field.text.length
+    }
+
+    // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen in der Lobby ergänzen.
+    function tabComplete(inputField) {
+        if (!Lobby) return
+        var full = inputField.text
+        var lastSpace = full.lastIndexOf(" ")
+        var prefix = full.substring(lastSpace + 1)
+        if (prefix.length === 0) return
+        var lower = prefix.toLowerCase()
+        for (var i = 0; i < Lobby.playerListModel.count; i++) {
+            var entry = Lobby.playerListEntry(i)
+            var n = entry.playerName || ""
+            if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
+                var suffix = (lastSpace < 0) ? ": " : " "
+                inputField.text = full.substring(0, lastSpace + 1) + n + suffix
+                inputField.cursorPosition = inputField.text.length
+                return
+            }
+        }
     }
 
     // ── Preview / Demo sequence ────────────────────────────────────────────
@@ -1651,6 +1683,7 @@ Rectangle {
         }
 
         function respond(accepted) {
+            console.log("[INVITE QML] respond: accepted=" + accepted + " gameId=" + inviteGameId)
             answered = true
             if (accepted)
                 Lobby.acceptGameInvitation(inviteGameId)
@@ -1658,7 +1691,11 @@ Rectangle {
                 Lobby.rejectGameInvitation(inviteGameId, 0)   // 0 = DENY_GAME_INVITATION_NO
             close()
         }
+        onOpened: {
+            console.log("[INVITE QML] popup opened: gameId=" + inviteGameId + " game=" + inviteGameName + " from=" + inviteFromName)
+        }
         onClosed: {
+            console.log("[INVITE QML] popup closed: answered=" + answered + " gameId=" + inviteGameId)
             // Ohne Auswahl geschlossen (Escape) → ablehnen, damit Server- und
             // Pending-State sauber zurückgesetzt werden.
             if (!answered)
@@ -1669,6 +1706,11 @@ Rectangle {
     Connections {
         target: Lobby
         function onGameInvitationReceived(gameId, gameName, fromName) {
+            console.log("[INVITE QML] onGameInvitationReceived: gameId=" + gameId + " game=" + gameName + " from=" + fromName)
+            // Slide-in-Panels einklappen, damit das Popup im Compact-Mode
+            // nicht verdeckt wird und korrekt bedienbar ist.
+            lobbyPage.showingPlayerList = false
+            lobbyPage.showingGameInfo = false
             inviteGamePopup.inviteGameId = gameId
             inviteGamePopup.inviteGameName = gameName
             inviteGamePopup.inviteFromName = fromName

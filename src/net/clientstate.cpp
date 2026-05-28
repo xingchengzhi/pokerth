@@ -1744,6 +1744,12 @@ ClientStateWaitJoin::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		client->GetCallback().SignalNetClientNotification(failureCode);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
 		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
+		qDebug() << "[INVITE] ClientStateWaitJoin: InviteNotifyMessage received"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "playeridbywhom=" << netInvNotify.playeridbywhom()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "myPlayerId=" << client->GetGuiPlayerId()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
 		if (netInvNotify.playeridwho() == client->GetGuiPlayerId()) {
 			client->GetCallback().SignalSelfGameInvitation(netInvNotify.gameid(), netInvNotify.playeridbywhom());
 		}
@@ -1790,10 +1796,20 @@ ClientStateWaitGame::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		client->SetState(ClientStateSynchronizeStart::Instance());
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
 		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
-		client->GetCallback().SignalPlayerGameInvitation(
-			netInvNotify.gameid(),
-			netInvNotify.playeridwho(),
-			netInvNotify.playeridbywhom());
+		qDebug() << "[INVITE] ClientStateWaitGame: InviteNotifyMessage received"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "playeridbywhom=" << netInvNotify.playeridbywhom()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "myPlayerId=" << client->GetGuiPlayerId()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
+		if (netInvNotify.playeridwho() == client->GetGuiPlayerId()) {
+			client->GetCallback().SignalSelfGameInvitation(netInvNotify.gameid(), netInvNotify.playeridbywhom());
+		} else {
+			client->GetCallback().SignalPlayerGameInvitation(
+				netInvNotify.gameid(),
+				netInvNotify.playeridwho(),
+				netInvNotify.playeridbywhom());
+		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_RejectInvNotifyMessage) {
 		const RejectInvNotifyMessage &netRejNotify = tmpPacket->GetMsg()->rejectinvnotifymessage();
 		client->GetCallback().SignalRejectedGameInvitation(
@@ -1870,6 +1886,12 @@ ClientStateSynchronizeStart::InternalHandlePacket(boost::shared_ptr<ClientThread
 		client->SetState(ClientStateWaitStart::Instance());
 		// Forward the game start message to the next state.
 		client->GetState().HandlePacket(client, tmpPacket);
+	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
+		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
+		qDebug() << "[INVITE] ClientStateSynchronizeStart: InviteNotifyMessage DROPPED"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
 	}
 }
 

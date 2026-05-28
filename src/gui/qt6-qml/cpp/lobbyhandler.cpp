@@ -1341,25 +1341,49 @@ void LobbyHandler::invitePlayer(unsigned playerId)
     m_session->invitePlayerToCurrentGame(playerId);
 }
 
+bool LobbyHandler::isPlayerInAnyGame(unsigned playerId) const
+{
+    if (!m_session || playerId == 0)
+        return false;
+    const int count = m_gameListModel.rowCount();
+    for (int i = 0; i < count; ++i) {
+        const unsigned gameId = m_gameListModel.data(
+            m_gameListModel.index(i), GameListModel::GameIdRole).toUInt();
+        const ::GameInfo gameInfo = m_session->getClientGameInfo(gameId);
+        for (const unsigned pid : gameInfo.players) {
+            if (pid == playerId)
+                return true;
+        }
+    }
+    return false;
+}
+
 // ── Eingehende Spiel-Einladungen (Invite-Only-Spiele) ──────────────────────
 void LobbyHandler::onSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
 {
+    qDebug() << "[INVITE] onSelfGameInvitation: gameId=" << gameId << "fromPlayerId=" << playerIdFrom
+             << "pendingInviteGameId=" << m_pendingInviteGameId
+             << "ignored=" << isPlayerIgnored(playerIdFrom)
+             << "session=" << (m_session ? "ok" : "NULL");
     if (!m_session)
         return;
     // Absender auf der Ignore-Liste ODER es ist bereits ein Einladungs-Popup
     // offen → automatisch mit "busy" ablehnen (wie der Qt-Widgets-Client).
     if (isPlayerIgnored(playerIdFrom) || m_pendingInviteGameId != 0) {
+        qDebug() << "[INVITE] → auto-rejecting with BUSY (ignored or popup already open)";
         m_session->rejectGameInvitation(gameId, DENY_GAME_INVITATION_BUSY);
         return;
     }
     m_pendingInviteGameId = gameId;
     const QString gameName = QString::fromStdString(m_session->getClientGameInfo(gameId).name);
     const QString fromName = QString::fromStdString(m_session->getClientPlayerInfo(playerIdFrom).playerName);
+    qDebug() << "[INVITE] → emitting gameInvitationReceived: game=" << gameName << "from=" << fromName;
     emit gameInvitationReceived(static_cast<int>(gameId), gameName, fromName);
 }
 
 void LobbyHandler::acceptGameInvitation(unsigned gameId)
 {
+    qDebug() << "[INVITE] acceptGameInvitation: gameId=" << gameId << "pendingWas=" << m_pendingInviteGameId;
     if (m_pendingInviteGameId == gameId)
         m_pendingInviteGameId = 0;
     if (!m_session)
@@ -1369,6 +1393,7 @@ void LobbyHandler::acceptGameInvitation(unsigned gameId)
 
 void LobbyHandler::rejectGameInvitation(unsigned gameId, int reason)
 {
+    qDebug() << "[INVITE] rejectGameInvitation: gameId=" << gameId << "reason=" << reason << "pendingWas=" << m_pendingInviteGameId;
     if (m_pendingInviteGameId == gameId)
         m_pendingInviteGameId = 0;
     if (!m_session)

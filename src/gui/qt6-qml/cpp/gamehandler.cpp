@@ -727,6 +727,8 @@ void GameHandler::onRefreshAction(int playerId, int playerAction)
     // (nicht bei globalem Refresh) den Aktionssound abspielen.
     if (playerId < 0 || playerAction <= 0 || playerAction > 6)
         return;
+    // Echte Spieler-Aktion (CHECK/CALL/FOLD/BET/RAISE/ALLIN): Signal an QML
+    emit refreshActionTriggered();
     if (!m_config || m_config->readConfigInt("PlayGameActions") == 0)
         return;
 
@@ -774,7 +776,16 @@ void GameHandler::onRefreshGameLabels(int gameState)
     default: newPhase = "";        break;
     }
 
-    if (newPhase != m_phaseText) {
+    const bool phaseChanged = (newPhase != m_phaseText);
+    if (phaseChanged) {
+        // Vor Phasenwechsel myTurn zurücksetzen: onNextRoundCleanGui kommt via
+        // QueuedConnection u.U. erst nach dieser synchronen Methode. Ohne Reset
+        // wäre m_myTurn noch true → QML myTurnNow=true → Buttons enabled mit
+        // veralteten Werten aus der vorherigen Runde.
+        if (m_myTurn) {
+            m_myTurn = false;
+            emit myTurnChanged();
+        }
         m_phaseText = newPhase;
         emit phaseTextChanged();
     }
@@ -791,6 +802,11 @@ void GameHandler::onRefreshGameLabels(int gameState)
     }
 
     computeCallAndRaiseAmounts();
+    // Nach computeCallAndRaiseAmounts() sind alle Werte der neuen Runde korrekt
+    // (switchRounds() ist bereits abgeschlossen). QML kann die Vorauswahl nun
+    // freischalten – unabhängig davon, ob callAmountChanged gefeuert hat.
+    if (phaseChanged)
+        emit roundValuesReady();
 }
 
 void GameHandler::onMeInAction()
@@ -987,6 +1003,10 @@ void GameHandler::onNextRoundCleanGui()
     // Showdown beenden, bevor die Spielerdaten neu gebaut werden → Karten zu.
     m_showdownActive = false;
     m_allInRevealed = false;
+    if (m_canShowCards) {
+        m_canShowCards = false;
+        emit canShowCardsChanged();
+    }
     refreshPlayerData();
     // Button-Zustand auffrischen: zum Hand-Ende/-Start ist getMyAction() noch
     // die letzte Aktion (!= NONE) → Buttons inaktiv, bis die Engine zur neuen
@@ -1154,6 +1174,14 @@ void GameHandler::allIn()
 
     doActionDone();
     onRefreshPot();
+}
+
+void GameHandler::showMyCards()
+{
+    if (!m_canShowCards) return;
+    if (m_session) m_session->showMyCards();
+    m_canShowCards = false;
+    emit canShowCardsChanged();
 }
 
 // ─── Local game startup ──────────────────────────────────────────────────────
@@ -1387,6 +1415,29 @@ void GameHandler::onShowdown()
     for (auto it = activeList->begin(); it != activeList->end(); ++it) {
         if ((*it)->getMyCash() == 0)
             appendGameLog(QString::fromStdString((*it)->getMyName()) + " sits out", LogSitOut);
+    }
+
+    // 4) "Show"-Button: Mensch-Spieler (Sitz 0) kann seine Karten freiwillig zeigen,
+    //    wenn er nicht gefoldet hat und nicht zeigen MUSS (Logik 1:1 aus dem
+    //    Qt-Widgets-Client, gameTableImpl::postRiverRunAnimation2).
+    bool newCanShow = false;
+    auto seatsList = hand->getSeatsList();
+    if (seatsList && !seatsList->empty()) {
+        auto humanPlayer = seatsList->front(); // seat 0
+        if (humanPlayer->getMyActiveStatus()
+            && humanPlayer->getMyAction() != PLAYER_ACTION_FOLD) {
+            if (nonFold == 1) {
+                // Gewonnen ohne Showdown – kann zeigen
+                newCanShow = true;
+            } else if (nonFold > 1 && !humanPlayer->checkIfINeedToShowCards()) {
+                // Mehrere aktive Spieler, Mensch muss aber nicht zeigen – kann freiwillig zeigen
+                newCanShow = true;
+            }
+        }
+    }
+    if (newCanShow != m_canShowCards) {
+        m_canShowCards = newCanShow;
+        emit canShowCardsChanged();
     }
 }
 

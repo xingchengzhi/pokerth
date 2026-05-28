@@ -240,6 +240,8 @@ void QmlGuiInterface::SignalNetClientRemovedFromGame(int notificationId)
 
 void QmlGuiInterface::SignalSelfGameInvitation(unsigned gameId, unsigned playerIdFrom)
 {
+    qDebug() << "[INVITE] SignalSelfGameInvitation received: gameId=" << gameId << "fromPlayerId=" << playerIdFrom
+             << "lobbyHandler=" << (m_lobbyHandler ? "ok" : "NULL");
     if (m_lobbyHandler) {
         QMetaObject::invokeMethod(m_lobbyHandler, [this, gameId, playerIdFrom]() {
             m_lobbyHandler->onSelfGameInvitation(gameId, playerIdFrom);

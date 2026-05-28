@@ -45,7 +45,10 @@ ItemDelegate {
                                         + (Math.max(0, actionCount - 1) * actionSpacing)
 
     readonly property bool isSelf: Lobby && targetPlayerId === Lobby.myPlayerId
+    // gameListRevision als reaktive Abhängigkeit: erzwingt Neuauswertung
+    // wenn Spieler einem Spiel beitreten oder es verlassen.
     readonly property bool canInvite: Lobby && Lobby.canInviteFromCurrentGame && !isSelf && !guestPlayer
+        && (Lobby.gameListRevision >= 0 && !Lobby.isPlayerInAnyGame(targetPlayerId))
     readonly property bool canAdminModerate: Lobby && Lobby.isCurrentPlayerAdmin && !isSelf
     readonly property bool canShowPlayerStats: !guestPlayer
     readonly property bool canIgnore: !isSelf && !guestPlayer && !playerIgnored

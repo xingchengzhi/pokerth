@@ -1195,21 +1195,37 @@ Rectangle {
 
             // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──
             property string preAction: ""        // "", "fold", "call", "raise", "allin"
+            // Vorauswahl-Freigabe: false nach eigenem Zug oder Rundenwechsel,
+            // bis wieder eine aggressive Gegner-Aktion kommt oder mein Zug beginnt.
+            property bool preSelectEnabled: true
+            // Direkt nach Rundenwechsel true, bis erste echte Spieler-Aktion bestätigt
+            property bool roundJustChanged: false
             // Reset bei Handwechsel oder Showdown
             property int lastHandNumber: -1
             Connections {
                 target: GameTable
                 function onHandNumberChanged() {
-                    if (GameTable && GameTable.handNumber !== lastHandNumber) {
-                        preAction = ""
-                        lastHandNumber = GameTable.handNumber
-                        console.log("[ACTDBG] preAction Reset: Neue Hand " + lastHandNumber)
+                    if (GameTable && GameTable.handNumber !== actionBar.lastHandNumber) {
+                        actionBar.preAction = ""
+                        actionBar.preSelectEnabled = true   // neue Hand → Vorauswahl freischalten
+                        actionBar.lastHandNumber = GameTable.handNumber
+                        console.log("[ACTDBG] preAction Reset: Neue Hand " + actionBar.lastHandNumber)
                     }
                 }
                 function onPhaseTextChanged() {
-                    if (GameTable && GameTable.phaseText === "Showdown") {
-                        preAction = ""
+                    if (!GameTable) return
+                    if (GameTable.phaseText === "Showdown") {
+                        actionBar.preAction = ""
                         console.log("[ACTDBG] preAction Reset: Showdown")
+                    } else if (GameTable.phaseText !== "Preflop") {
+                        // Flop/Turn/River: Rundenwechsel → Vorauswahl sperren bis erste Spieler-Aktion
+                        actionBar.preAction = ""
+                        actionBar.preSelectEnabled = false
+                        actionBar.roundJustChanged = true
+                        console.log("[ACTDBG] preSelectEnabled=false: Rundenwechsel →", GameTable.phaseText)
+                    } else {
+                        actionBar.preSelectEnabled = true   // Preflop = neue Hand
+                        actionBar.roundJustChanged = false
                     }
                 }
             }
@@ -1306,11 +1322,12 @@ Rectangle {
             Connections {
                 target: GameTable
                 function onMyTurnChanged() {
-                    // Nur den Raise-Wert an den aktuellen Spielzustand anpassen.
-                    // Die Ausführung der vorgemerkten/automatischen Aktion erfolgt
-                    // in onMeInActionTriggered (maßgeblicher Engine-Callback), NICHT
-                    // hier am Flankenwechsel – sonst wird sie verschluckt, wenn der
-                    // Zug bereits über den Action-Timer als aktiv markiert wurde.
+                    // Eigener Zug beginnt → Vorauswahl immer freischalten.
+                    // Ausführung der vorgemerkten/automatischen Aktion in onMeInActionTriggered.
+                    if (GameTable.myTurn) {
+                        actionBar.preSelectEnabled = true
+                        actionBar.roundJustChanged = false
+                    }
                     actionBar.syncRaiseAmount()
                 }
                 function onMeInActionTriggered() {
@@ -1341,8 +1358,32 @@ Rectangle {
                         actionBar.preAction = ""
                         actionBar.runPreAction(a)
                     }
+                    // Nach eigenem Zug: Vorauswahl sperren bis aggressive Gegner-Aktion
+                    actionBar.preSelectEnabled = false
+                    actionBar.roundJustChanged = false
+                }
+                function onRoundValuesReady() {
+                    // Werte sind jetzt korrekt (nach computeCallAndRaiseAmounts()).
+                    // Buttons absichtlich NICHT freischalten: erst die erste echte
+                    // Spieler-Aktion (onRefreshActionTriggered) oder mein eigener
+                    // Zug (onMyTurnChanged) darf die Buttons aktivieren.
+                }
+                function onRefreshActionTriggered() {
+                    // Erste Spieler-Aktion der neuen Runde → Buttons freischalten
+                    if (actionBar.roundJustChanged) {
+                        actionBar.roundJustChanged = false
+                        actionBar.preSelectEnabled = true
+                    } else if (GameTable.callAmount > 0 && !GameTable.myTurn) {
+                        // Gegner hat gesetzt/erhöht → Vorauswahl freischalten.
+                        // callAmountChanged allein taugt nicht: feuert auch nach
+                        // eigener Aktion (onRefreshSet/Pot/Cash) mit veralteten Werten.
+                        actionBar.preSelectEnabled = true
+                    }
                 }
                 function onCallAmountChanged() {
+                    // KEIN preSelectEnabled=true hier: callAmountChanged feuert bei
+                    // jedem computeCallAndRaiseAmounts()-Aufruf (onRefreshSet/Pot/Cash)
+                    // auch mit veralteten Werten → Freischalten nur in onRefreshActionTriggered.
                     // Sicherheit: vorgemerkter Call/Check verfällt, wenn sich der Call-Betrag ändert
                     if (actionBar.preAction === "call" && GameTable.callAmount !== actionBar.preCallAmount)
                         actionBar.preAction = ""
@@ -1532,24 +1573,31 @@ Rectangle {
                             }
                         }
 
-                        // All-In – bündig an die Pot-Buttons
+                        // All-In / Show – bündig an die Pot-Buttons
+                        // Im Post-River: zeigt "Show"-Button wenn der Spieler seine Karten
+                        // freiwillig zeigen kann (temporär als Ersatz für All-In).
                         Rectangle {
                             id: allInBtn
                             readonly property bool preChecked: actionBar.preAction === "allin"
+                            readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
                             Layout.preferredHeight: 28
                             radius: 5
-                            opacity: actionBar.canAct ? 1.0 : 0.4
-                            color: allInArea.containsPress ? Qt.lighter(Config.Theme.colorAllInBottom, 1.35)
-                                 : allInArea.containsMouse ? Config.Theme.colorAllInTop
-                                 : Config.Theme.colorAllInBottom
-                            border.color: allInBtn.preChecked ? "#FFD700" : Config.Theme.colorAllInEdge
-                            border.width: allInBtn.preChecked ? 2 : 1
-                            scale: (allInArea.pressed && actionBar.canAct) ? 0.95 : 1.0
+                            opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
+                            color: allInArea.containsPress
+                                 ? Qt.lighter(isShowMode ? "#2d6e2d" : Config.Theme.colorAllInBottom, 1.35)
+                                 : allInArea.containsMouse
+                                 ? (isShowMode ? "#3a8f3a" : Config.Theme.colorAllInTop)
+                                 : (isShowMode ? "#2d6e2d" : Config.Theme.colorAllInBottom)
+                            border.color: isShowMode ? "#80FF90"
+                                        : allInBtn.preChecked ? "#FFD700"
+                                        : Config.Theme.colorAllInEdge
+                            border.width: (isShowMode || allInBtn.preChecked) ? 2 : 1
+                            scale: (allInArea.pressed && ((actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled)) || isShowMode)) ? 0.95 : 1.0
                             Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
                             Text {
                                 anchors.centerIn: parent
-                                text: qsTr("All-In")
+                                text: allInBtn.isShowMode ? qsTr("Show") : qsTr("All-In")
                                 color: "#FFFFFF"
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 12
@@ -1558,10 +1606,15 @@ Rectangle {
                             MouseArea {
                                 id: allInArea
                                 anchors.fill: parent
-                                enabled: actionBar.canAct
-                                cursorShape: actionBar.canAct ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                enabled: (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled)) || allInBtn.isShowMode
+                                cursorShape: ((actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled)) || allInBtn.isShowMode) ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 hoverEnabled: true
-                                onClicked: actionBar.clickAction("allin")
+                                onClicked: {
+                                    if (allInBtn.isShowMode)
+                                        GameTable.showMyCards()
+                                    else
+                                        actionBar.clickAction("allin")
+                                }
                             }
                         }
 
@@ -1686,11 +1739,9 @@ Rectangle {
                             topColor: Config.Theme.colorFoldTop
                             bottomColor: Config.Theme.colorFoldBottom
                             edgeColor: Config.Theme.colorFoldEdge
-                            // Immer klickbar wenn ICH am Zug bin (myTurnNow); sonst
-                            // nur im Vorwahl-Fenster (canAct, durch Rundenwechsel/
-                            // bereits-gehandelt gated). So sperrt das Gating nie den
-                            // echten Zug → keine verpassten Aktionen mehr.
-                            armed: myTurnNow || actionBar.canAct
+                            // myTurnNow gatet nie den echten Zug; preSelectEnabled sperrt
+                            // die Vorauswahl nach eigenem Zug/Rundenwechsel.
+                            armed: myTurnNow || (actionBar.canAct && actionBar.preSelectEnabled)
                         }
 
                         ActionButton {
@@ -1701,7 +1752,7 @@ Rectangle {
                             topColor: Config.Theme.colorCallTop
                             bottomColor: Config.Theme.colorCallBottom
                             edgeColor: Config.Theme.colorCallEdge
-                            armed: myTurnNow || actionBar.canAct
+                            armed: myTurnNow || (actionBar.canAct && actionBar.preSelectEnabled)
                         }
 
                         ActionButton {
@@ -1713,7 +1764,7 @@ Rectangle {
                             bottomColor: Config.Theme.colorRaiseBottom
                             edgeColor: Config.Theme.colorRaiseEdge
                             highlight: true     // primäre Aktion betonen
-                            armed: (myTurnNow || actionBar.canAct) && actionBar.raiseAvailable
+                            armed: (myTurnNow || (actionBar.canAct && actionBar.preSelectEnabled)) && actionBar.raiseAvailable
                         }
                     }
                 }

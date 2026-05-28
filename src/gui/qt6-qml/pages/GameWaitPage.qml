@@ -79,6 +79,33 @@ Rectangle {
         chatInput.cursorPosition = chatInput.text.length
     }
 
+    function rebuildChat() {
+        if (typeof Lobby === "undefined" || !Lobby) return
+        if (Lobby.chatLog.length === 0) return
+        var html = Lobby.chatLog.join("<br/>")
+        waitChatArea.text = html
+        waitChatArea.cursorPosition = waitChatArea.length
+    }
+
+    // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen im Spiel ergänzen.
+    function tabComplete() {
+        var full = chatInput.text
+        var lastSpace = full.lastIndexOf(" ")
+        var prefix = full.substring(lastSpace + 1)
+        if (prefix.length === 0) return
+        var lower = prefix.toLowerCase()
+        var plist = gameWaitPage.players
+        for (var i = 0; i < plist.length; i++) {
+            var n = plist[i].playerName || ""
+            if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
+                var suffix = (lastSpace < 0) ? ": " : " "
+                chatInput.text = full.substring(0, lastSpace + 1) + n + suffix
+                chatInput.cursorPosition = chatInput.text.length
+                return
+            }
+        }
+    }
+
     Connections {
         target: Lobby
         function onRemovedFromGame(reason) {
@@ -107,6 +134,13 @@ Rectangle {
                 playerListFilterWide.currentIndex = Lobby.playerListFilterMode
             gameWaitPage.resetPlayerListDelegates()
         }
+        function onChatLogChanged() {
+            gameWaitPage.rebuildChat()
+        }
+    }
+
+    Component.onCompleted: {
+        rebuildChat()
     }
 
     // ── Compact: Player list panel (slides in from left) ─────────────────
@@ -570,70 +604,46 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.verticalStretchFactor: gameWaitPage.showEmojiPicker ? 2 : 1
-                    Layout.minimumHeight: 200
+                    Layout.minimumHeight: gameWaitPage.showEmojiPicker ? 150 : 80
                     color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
-                    radius: 6
+                    radius: 5
+                    clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 4
+                        anchors.margins: 5
+                        spacing: 5
 
                         Label {
                             text: qsTr("Lobby Chat")
                             font.family: Config.StaticData.loadedFont.font.family
                             font.bold: true
-                            font.pixelSize: 13
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        ListView {
-                            id: chatList
+                        ScrollView {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: 0
                             clip: true
-                            model: (typeof Lobby !== "undefined" && Lobby) ? Lobby.chatLog : []
-                            boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar {}
-                            onCountChanged: positionViewAtEnd()
-                            spacing: 3
-                            delegate: Item {
-                                required property var modelData
-                                width: ListView.view.width
-                                implicitHeight: bubble.height
 
-                                Rectangle {
-                                    id: bubble
-                                    width: parent.width
-                                    height: msgText.implicitHeight + 6
-                                    radius: 8
-                                    color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
-
-                                    Text {
-                                        id: msgText
-                                        anchors {
-                                            left: parent.left; right: parent.right; top: parent.top
-                                            leftMargin: 8; rightMargin: 8; topMargin: 3
-                                        }
-                                        text: modelData
-                                        textFormat: Text.RichText
-                                        wrapMode: Text.WordWrap
-                                        color: Config.StaticData.palette.secondary.col100
-                                        font.family: Config.StaticData.loadedFont.font.family
-                                        font.pixelSize: 12
-                                        lineHeight: 1.0
-                                        onLinkActivated: (link) => Qt.openUrlExternally(link)
-                                    }
-                                }
+                            TextArea {
+                                id: waitChatArea
+                                readOnly: true
+                                wrapMode: TextEdit.Wrap
+                                textFormat: TextEdit.RichText
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 12
+                                color: Config.StaticData.palette.secondary.col200
+                                background: Rectangle { color: "transparent" }
+                                text: qsTr("Welcome to PokerTH Lobby!<br/>Chat messages will appear here...")
                             }
                         }
 
                         EmojiPicker {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 2 * 38 + 12 + 8
-                            rows: 2
+                            // 2 Zeilen à 38 px + 2×6 px Innenabstand = 88 px (vertikal scrollend)
+                            Layout.preferredHeight: 2 * 38 + 2 * 6
                             visible: gameWaitPage.showEmojiPicker
                             onPicked: (emoji) => {
                                 chatInput.insert(chatInput.cursorPosition, emoji)
@@ -682,6 +692,12 @@ Rectangle {
                                 onAccepted: gameWaitPage.sendChatMessage()
                                 Keys.onReturnPressed: gameWaitPage.sendChatMessage()
                                 onTextEdited: gameWaitPage.chatHistoryIndex = 0
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Tab) {
+                                        event.accepted = true
+                                        gameWaitPage.tabComplete()
+                                    }
+                                }
                                 Keys.onUpPressed: (event) => {
                                     event.accepted = true
                                     if (gameWaitPage.chatHistoryIndex + 1 <= gameWaitPage.chatHistory.length)
@@ -702,7 +718,7 @@ Rectangle {
                                 Layout.maximumWidth: 44
                                 Layout.preferredHeight: 36
                                 Layout.maximumHeight: 44
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest) && chatInput.text.trim().length > 0
+                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
                                 onClicked: gameWaitPage.sendChatMessage()
                                 background: Item {}
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }

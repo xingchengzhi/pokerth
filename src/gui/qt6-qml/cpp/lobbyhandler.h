@@ -240,6 +240,7 @@ public slots:
                                int playerActionTimeout, int delayBetweenHands);
     Q_INVOKABLE void kickPlayer(unsigned playerId);
     Q_INVOKABLE void invitePlayer(unsigned playerId);
+    Q_INVOKABLE bool isPlayerInAnyGame(unsigned playerId) const;
     Q_INVOKABLE void adminBanPlayer(unsigned playerId);
     Q_INVOKABLE void sendPrivateMessage(unsigned targetPlayerId, const QString &message);
     Q_INVOKABLE QVariantMap playerListEntry(int row) const;

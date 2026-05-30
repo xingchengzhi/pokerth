@@ -209,6 +209,26 @@ Rectangle {
                 return Math.max(c, 1)
             }
 
+            // Maximale Spielerzahl seit Spielbeginn – wird für boxScale genutzt,
+            // damit ausscheidende Spieler die Box-Größe NICHT verändern.
+            // Nur nach oben angepasst (wenn neue Spieler dazukommen) oder
+            // zurückgesetzt (wenn das Spiel endet, d. h. seatCount auf 1 fällt).
+            property int _peakSeatCount: 1
+            property bool _gameWasActive: false
+            onSeatCountChanged: {
+                if (seatCount > 1) {
+                    if (seatCount > _peakSeatCount) {
+                        _peakSeatCount = seatCount
+                    }
+                    _gameWasActive = true
+                } else if (_gameWasActive) {
+                    // Spiel beendet: Peak zurücksetzen, damit das nächste Spiel
+                    // mit seiner eigenen Spielerzahl skaliert.
+                    _peakSeatCount = 1
+                    _gameWasActive = false
+                }
+            }
+
             // Breiter Tisch (Querformat) vs. hoher Tisch (Hochformat) – die
             // Spieler-Slots ordnen sich je nach Seitenverhältnis automatisch um.
             readonly property bool wide: width >= height
@@ -247,7 +267,9 @@ Rectangle {
                 : 4
             readonly property real boxScale: {
                 if (width <= 0 || height <= 0) return 1.0
-                var oppCnt = seatCount - 1
+                // Für die Skalierungsberechnung den Peak-Wert nutzen, damit
+                // ausscheidende Spieler die Box-Größe nicht verändern.
+                var oppCnt = _peakSeatCount - 1
                 var s
 
                 // Strategie: Box-Skala = MAXIMUM, das alle geometrischen

@@ -200,6 +200,9 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_localGameExitRequested = false;
     m_game = game;
     m_leftPlayers.clear();
+    // Ausstehende Busted-Player-Timer aus dem vorigen Spiel verwerfen.
+    qDeleteAll(m_bustedLocalTimers);
+    m_bustedLocalTimers.clear();
     // Reset state for new game
     m_pot = 0;
     m_phaseText = "Preflop";
@@ -506,6 +509,9 @@ void GameHandler::refreshPlayerData()
 
     m_players = newPlayers;
     emit playersChanged();
+
+    // Lokales Spiel: Spieler mit 0 Coins nach 10 Sekunden ausblenden.
+    checkBustedLocalPlayers();
 }
 
 void GameHandler::refreshPotData()
@@ -958,6 +964,46 @@ void GameHandler::onNetClientPlayerLeft(unsigned uniquePlayerId)
     emit playersChanged();
 }
 
+void GameHandler::checkBustedLocalPlayers()
+{
+    // Nur im lokalen Spiel (kein Netzwerk-Client).
+    if (!m_session || m_session->isNetworkClientRunning()) return;
+    if (!m_game) return;
+
+    PlayerList seats = m_game->getSeatsList();
+    for (auto it = seats->begin(); it != seats->end(); ++it) {
+        int id = (*it)->getMyID();
+        // Sitz 0 = menschlicher Spieler, nie automatisch ausblenden.
+        if (id <= 0) continue;
+        // Leere Sitze überspringen.
+        if ((*it)->getMyName().empty()) continue;
+
+        unsigned uid = (*it)->getMyUniqueID();
+        // Bereits verlassen → kein Timer nötig.
+        if (m_leftPlayers.contains(uid)) continue;
+
+        if ((*it)->getMyCash() == 0) {
+            // Noch kein Timer für diesen Spieler: 10-Sekunden-Verzögerung starten.
+            if (!m_bustedLocalTimers.contains(uid)) {
+                QTimer *t = new QTimer(this);
+                t->setSingleShot(true);
+                connect(t, &QTimer::timeout, this, [this, uid]() {
+                    m_bustedLocalTimers.remove(uid);
+                    m_leftPlayers.insert(uid);
+                    refreshPlayerData();
+                });
+                m_bustedLocalTimers.insert(uid, t);
+                t->start(10000);
+            }
+        } else {
+            // Spieler hat wieder Chips (z. B. Rebuy) → laufenden Timer verwerfen.
+            if (m_bustedLocalTimers.contains(uid)) {
+                delete m_bustedLocalTimers.take(uid);
+            }
+        }
+    }
+}
+
 void GameHandler::onBlindsSet(int smallBlind)
 {
     if (localGameCallbacksBlocked()) return;
@@ -1243,6 +1289,10 @@ void GameHandler::endLocalGame()
 
     m_localGameExitRequested = true;
     m_game.reset();
+
+    // Ausstehende Busted-Player-Timer abbrechen.
+    qDeleteAll(m_bustedLocalTimers);
+    m_bustedLocalTimers.clear();
 
     if (m_myTurn) {
         m_myTurn = false;

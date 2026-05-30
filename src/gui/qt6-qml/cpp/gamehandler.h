@@ -183,6 +183,9 @@ private:
     void refreshBoardCards();
     void refreshPotData();
     void computeCallAndRaiseAmounts();
+    // Lokales Spiel: Spieler mit 0 Coins nach 10 Sekunden aus der Anzeige
+    // entfernen (analog zu onNetClientPlayerLeft bei Online-Spielen).
+    void checkBustedLocalPlayers();
     // True, wenn der menschliche Spieler (Sitz 0) gerade agieren kann (in der
     // Hand, nicht all-in/gefoldet, Cash > 0, aktiv). Engine-basiert.
     bool humanCanAct() const;
@@ -251,6 +254,10 @@ private:
     // Unique-IDs von Spielern, die das Netzwerkspiel verlassen haben.
     // Ihr Sitz wird in refreshPlayerData() als leer dargestellt.
     QSet<unsigned> m_leftPlayers;
+    // Lokales Spiel: laufende 10-Sekunden-Timer für Spieler mit 0 Coins.
+    // Schlüssel = Unique-Player-ID; nach Ablauf wird der Spieler wie ein
+    // verlassener Online-Spieler behandelt (Sitz ausgeblendet).
+    QMap<unsigned, QTimer*> m_bustedLocalTimers;
 };
 
 #endif // GAMEHANDLER_H

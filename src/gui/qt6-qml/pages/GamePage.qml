@@ -217,47 +217,133 @@ Rectangle {
             // nicht nur die absolute Breite, sondern wie viel zusätzliche Breite
             // bei gleicher Höhe entsteht: dadurch reagieren die Boxen sichtbar
             // schneller beim Ziehen von Portrait nach Wide.
-            readonly property int oppBaseHeight: wide ? 80 : 64
-            readonly property int oppBaseWidth: wide ? 125 : 107
-            readonly property int selfBaseWidth: wide ? 168 : 154
-            readonly property int selfBaseHeight: wide ? oppBaseHeight : 82
+            // Basis-Maße: in Portrait ist die Gegner-Box NIEDRIGER (71 statt
+            // 80), weil sonst der quadratische Avatar (= topRow.height) zu
+            // breit wird und die Karten horizontal aus der cardsLane raus-
+            // hängen. Mit 71 wird topRow ≈ 45 → 2 Karten + Avatar passen
+            // bequem nebeneinander. In Landscape wird der 2-zeilige Footer
+            // genutzt, dort reicht 80 problemlos.
+            readonly property int oppBaseHeight: wide ? 80 : 71
+            readonly property int oppBaseWidth: 125
+            // Self-Box im Portrait schmaler – der quadratische Avatar passt nun
+            // bündiger an die Karten und die Außenabstände sind nicht mehr zu
+            // groß (das schafft Platz für das D-Icon daneben).
+            readonly property int selfBaseWidth: wide ? 168 : 144
+            readonly property int selfBaseHeight: wide ? 80 : 71
             readonly property real opponentGapBase: 10
             readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
             readonly property real selfGapBase: opponentGapBase * 2
-            readonly property real selfBadgeGapBase: 22
+            // Vertikales Sicherheits-Padding zwischen Bottom-Seats und Self-Box.
+            // Kleiner als zuvor (22 → 14), damit die Ellipse mehr vertikalen
+            // Platz beanspruchen kann und die Bottom-Seats Richtung Self-Box
+            // wandern.
+            readonly property real selfBadgeGapBase: 14
             readonly property real sideBadgeGapBase: 48
             readonly property int landscapeRowCount: seatCount <= 4 ? 1
                 : seatCount <= 6 ? 2
                 : seatCount <= 8 ? 3
                 : 4
             readonly property real boxScale: {
-                if (!wide || height <= 0) return 1.0
+                if (width <= 0 || height <= 0) return 1.0
+                var oppCnt = seatCount - 1
+                var s
 
-                var ratioGain = Math.max(0, width / height - 1.0)
-                var s = Math.min(1.48, 1.0 + ratioGain * 0.42)
+                // Strategie: Box-Skala = MAXIMUM, das alle geometrischen
+                // Constraints erfüllt. Dadurch füllen die Boxen den
+                // verfügbaren Tisch optimal aus – breite Fenster bekommen
+                // große Boxen (vertikale Reihenpassung als Obergrenze),
+                // schmale Fenster bekommen automatisch kleinere Boxen
+                // (Slot-Sichtbarkeit als Obergrenze). Kein künstlicher
+                // ref/700-Boden mehr, der breite Fenster auf der kleineren
+                // Dimension klein hielt.
+                if (wide) {
+                    // Landscape-Cap: Iteration über ALLE benachbarten Sitzpaare
+                    // der symmetrischen Ellipse (siehe buildLandscapeSlots).
+                    // Für jedes Paar genügt es, dass x ODER y getrennt sind —
+                    // das tightste Paar bestimmt den maximalen boxScale.
+                    var sideMarginBase = Math.max(18, width * 0.025) + sideBadgeGapBase
+                    var radiusXBudget = Math.max(0.22,
+                        0.5 - (sideMarginBase + oppBaseWidth / 2) / width)
+                    var approxRy = 0.30
+                    var gap = 10
+                    var capHoriz = 100
 
-                // Vertikal muss Platz für die tatsächlich benötigten Gegner-Reihen,
-                // einen größeren Self-Abstand und die visuell skalierte Self-Box bleiben.
-                var verticalCap = (height - 24)
-                    / (landscapeRowCount * oppBaseHeight
-                        + Math.max(0, landscapeRowCount - 1) * opponentGapBase
-                        + Math.max(selfGapBase, selfBadgeGapBase) + selfBaseHeight)
-                return Math.max(1.0, Math.min(s, verticalCap))
+                    if (oppCnt >= 2) {
+                        // Selber Halsketten-Algorithmus wie in
+                        // buildLandscapeSlots() – Self mit Gewichtung
+                        // selfWeight, Gegner gleichmäßig verteilt.
+                        var selfWeightCap = 0.5
+                        var stepDeg = 360 / (oppCnt + selfWeightCap)
+                        var firstAngle = 90 + (selfWeightCap * stepDeg + stepDeg) / 2
+                        for (var iPair = 1; iPair < oppCnt; iPair++) {
+                            var a1 = (firstAngle + (iPair - 1) * stepDeg) * Math.PI / 180
+                            var a2 = a1 + stepDeg * Math.PI / 180
+                            var dcosP = Math.abs(Math.cos(a1) - Math.cos(a2))
+                            var dsinP = Math.abs(Math.sin(a1) - Math.sin(a2))
+                            var sxP = (dcosP * radiusXBudget * width - gap) / oppBaseWidth
+                            var syP = (dsinP * approxRy * height - gap) / oppBaseHeight
+                            capHoriz = Math.min(capHoriz, Math.max(sxP, syP))
+                        }
+                    }
+
+                    // Maximaler s-Wert, der den Pair-Cap erfüllt. Obergrenze
+                    // 2.2 gibt Fullscreen genug Box-Größe ohne die Community
+                    // zu erdrücken.
+                    s = Math.min(capHoriz, 2.2)
+                } else {
+                    // Portrait-Caps: Slot-Positionen statisch (L_*/R_* bei
+                    // x = 0.14/0.86, TC bei y = 0.075). Die Community-Card-
+                    // Reihe ist nicht mehr Teil des boxScale-Caps – sie
+                    // adaptiert sich stattdessen über `communityScale` an den
+                    // verfügbaren Mittelplatz (siehe oben), damit narrow
+                    // portrait nicht künstlich gekappt wird.
+                    var sideHorizCap = (0.14 * width - 4) * 2 / oppBaseWidth
+                    var topVerticalCap = (0.075 * height - 4) * 2 / oppBaseHeight
+                    var rowSepCap = 0.135 * height / oppBaseHeight
+                    s = Math.min(sideHorizCap, topVerticalCap, rowSepCap, 1.85)
+                }
+
+                // Lesbarkeits-Boden – Schrift/Karten skalieren mit, dürfen aber
+                // nicht beliebig klein werden.
+                return Math.max(0.55, s)
             }
             readonly property real oppScale: boxScale
+            // Community-Karten-Skala: Standard 0.95·boxScale (gibt etwas
+            // Sicherheits-Padding zu den Box-Badges). Im Portrait wird die
+            // Skala zusätzlich nach UNTEN begrenzt, falls die skalierten
+            // Seitenspalten zu wenig Mittelplatz übrig lassen – so passt die
+            // Community auch in narrow-portrait Fenster, ohne die boxScale
+            // künstlich klein zu halten.
+            readonly property real communityScale: {
+                var base = boxScale * 0.95
+                if (wide) return base
+                var sideColRightEdge = 0.14 * width + oppBaseWidth * boxScale / 2
+                var maxCommunityHalfW = width / 2 - sideColRightEdge - 10
+                var maxCommunityW = Math.max(0, maxCommunityHalfW * 2)
+                var maxScale = maxCommunityW / 250
+                return Math.max(0.55, Math.min(base, maxScale))
+            }
 
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
             // Hochformat: 3 oben, Rest an den Seiten nach unten.
+            // Vertikale Anordnung mit identischen Innen-Gaps oben/unten
+            // (TL↔L_upper = L_lower↔L_bottom = 0.135). Die Mitte zwischen
+            // L_upper und L_lower (0.305) bleibt absichtlich größer und ist
+            // reserviert für den Community-Karten-Bereich. So sind Player
+            // 1↔2 und Player 3↔4 (bzw. 8↔9 und 6↔7) jeweils identisch
+            // beabstandet (User-Wunsch Symmetrie).
+            // Spalten-x bei 0.14 (statt 0.15) damit Boxen in mittleren
+            // Portrait-Größen etwas weiter außen sitzen.
             readonly property var slotPosPortrait: ({
-                "L_bottom": [0.18, 0.72],
-                "L_lower":  [0.18, 0.59],
-                "L_upper":  [0.18, 0.32],
-                "TL":       [0.18, 0.19],
-                "TC":       [0.50, 0.055],
-                "TR":       [0.82, 0.19],
-                "R_upper":  [0.82, 0.32],
-                "R_lower":  [0.82, 0.59],
-                "R_bottom": [0.82, 0.72]
+                "L_bottom": [0.14, 0.785],
+                "L_lower":  [0.14, 0.65],
+                "L_upper":  [0.14, 0.345],
+                "TL":       [0.14, 0.21],
+                "TC":       [0.50, 0.075],
+                "TR":       [0.86, 0.21],
+                "R_upper":  [0.86, 0.345],
+                "R_lower":  [0.86, 0.65],
+                "R_bottom": [0.86, 0.785]
             })
             // Querformat: Slot-Abstände werden aus visueller Boxgröße,
             // Spieleranzahl und Self-Abstand berechnet statt als offene Ellipse
@@ -276,12 +362,21 @@ Rectangle {
                 var gapY = Math.max(8, wantedGapY)
                 var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
                 var sideX = (sideMargin + visualW / 2) / Math.max(width, 1)
+                // radiusX so groß wie möglich (Seiten-Sitze landen am Rand).
+                // Top-Trio passt durch den boxScale-Cap (siehe boxScale oben)
+                // automatisch in dieses Bogenstück, ohne dass wir radiusX hier
+                // weiter aufblasen müssen (sonst rutschen Seiten-Sitze raus).
                 var radiusX = Math.max(0.22, 0.5 - sideX)
-                var topY = (12 + visualH / 2) / Math.max(height, 1)
-                var selfTop = height - 12 - selfVisualH
+                // Top- und Bottom-Rand bewusst klein – die offene Ellipse
+                // soll möglichst viel vertikalen Platz beanspruchen, damit
+                // bei mittlerer Skalierung Player 2↔3 (L↔TLo) genug Luft
+                // bekommen.
+                var topY = (4 + visualH / 2) / Math.max(height, 1)
+                var selfTop = height - 4 - selfVisualH
                 var bottomY = (selfTop - selfGapY - visualH / 2) / Math.max(height, 1)
                 var centerY = (topY + bottomY) / 2
-                var radiusY = Math.max((visualH + gapY * 2.2) / Math.max(height, 1), (bottomY - topY) / 2)
+                var radiusY = Math.max((visualH + gapY * 2.2) / Math.max(height, 1),
+                                        (bottomY - topY) / 2)
 
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
@@ -289,17 +384,37 @@ Rectangle {
                             centerY + radiusY * Math.sin(radians)]
                 }
 
-                return {
-                    "BL":  point(125),
-                    "L":   point(165),
-                    "TLo": point(205),
-                    "TL":  point(240),
-                    "TC":  point(270),
-                    "TR":  point(300),
-                    "TRo": point(335),
-                    "R":   point(15),
-                    "BR":  point(55)
+                // Kreis öffnet sich nach oben:
+                //   – TL/TR bei 230°/310° (statt 240°/300°) → mehr horizontaler
+                //     Abstand zur TC, TL/TR rücken in y-Richtung etwas tiefer.
+                //   – TLo/TRo bei 200°/340° (statt 205°/335°) → fast vertikal
+                //     mit L/R, dadurch mehr y-Abstand zur TL/TR.
+                // BL/BR auf 120°/60° (statt 125°/55°): sin steigt 0.819→0.866
+                // → Bottom-Sitze rücken ca. 5 % von radiusY weiter Richtung
+                // Self-Box, der vertikale Leerraum unter ihnen schrumpft.
+                // Halsketten-Modell: Self ist eine "größere Perle" am unteren
+                // Bodenpunkt der Ellipse mit angularer Gewichtung relativ zu
+                // einer Gegner-"Perle" (selfWeight). Die N Gegner verteilen
+                // sich GLEICHMÄSSIG auf den restlichen Bogen.
+                //
+                // selfWeight steuert, wie viel angulare Bogenlänge die Self
+                // beansprucht. Kleiner = Gegner rücken näher an die Self.
+                // 0.5 = halbe Bogenlänge einer Gegnerbox – damit die
+                // Halskette „eng" sitzt, ohne dass die BL/BR-Boxen den
+                // Self-Box-Rand horizontal berühren.
+                //
+                // Disconnectet ein Spieler, ändert sich N → automatische,
+                // saubere Re-Verteilung über die unten generierten Winkel.
+                var opps = Math.max(1, seatCount - 1)
+                var selfWeight = 0.5
+                var dOpp = 360 / (opps + selfWeight)
+                var dSelf = selfWeight * dOpp
+                var firstOppAngle = 90 + (dSelf + dOpp) / 2
+                var slots = {}
+                for (var i = 1; i <= opps; i++) {
+                    slots["opp" + i] = point(firstOppAngle + (i - 1) * dOpp)
                 }
+                return slots
             }
 
             // Slot-Reihenfolge je nach Gegnerzahl M – symmetrisch links/rechts verteilt,
@@ -315,27 +430,34 @@ Rectangle {
                 8: ["L_bottom", "L_lower", "L_upper", "TL", "TR", "R_upper", "R_lower", "R_bottom"],
                 9: ["L_bottom", "L_lower", "L_upper", "TL", "TC", "TR", "R_upper", "R_lower", "R_bottom"]
             })
-            readonly property var slotSeqLandscape: ({
-                1: ["TC"],
-                2: ["TL", "TR"],
-                3: ["TL", "TC", "TR"],
-                4: ["TLo", "TL", "TR", "TRo"],
-                5: ["TLo", "TL", "TC", "TR", "TRo"],
-                6: ["L", "TLo", "TL", "TR", "TRo", "R"],
-                7: ["L", "TLo", "TL", "TC", "TR", "TRo", "R"],
-                8: ["BL", "L", "TLo", "TL", "TR", "TRo", "R", "BR"],
-                9: ["BL", "L", "TLo", "TL", "TC", "TR", "TRo", "R", "BR"]
-            })
+            // Slot-Reihenfolge für Wide-Screen: dynamische Namen passen zur
+            // dynamischen Slot-Generierung in buildLandscapeSlots() –
+            // Sitz N(==i) erhält "opp" + i. Symmetrische Verteilung erfolgt
+            // automatisch über die in buildLandscapeSlots() berechneten Winkel.
+            readonly property var slotSeqLandscape: {
+                var dict = {}
+                for (var n = 1; n <= 9; n++) {
+                    var seq = []
+                    for (var i = 1; i <= n; i++) seq.push("opp" + i)
+                    dict[n] = seq
+                }
+                return dict
+            }
             readonly property var slotSeq: wide ? slotSeqLandscape : slotSeqPortrait
 
             readonly property real landscapeEllipseCenterY: {
+                // GEOMETRISCHE Mitte der Ellipse in Pixeln – exakt dieselbe
+                // Berechnung wie in buildLandscapeSlots() (topY/bottomY,
+                // centerY = (topY+bottomY)/2). Hier ist der visuelle Tisch-
+                // mittelpunkt und damit der natürliche Ort für die Community-
+                // Karten der Halsketten-Anordnung.
                 var s = boxScale
                 var visualH = oppBaseHeight * s
                 var selfVisualH = selfBaseHeight * s
                 var gapY = Math.max(8, opponentGapBase * s)
                 var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
-                var topY = 12 + visualH / 2
-                var selfTop = height - 12 - selfVisualH
+                var topY = 4 + visualH / 2
+                var selfTop = height - 4 - selfVisualH
                 var bottomY = selfTop - selfGapY - visualH / 2
                 return (topY + bottomY) / 2
             }
@@ -351,8 +473,16 @@ Rectangle {
             }
             readonly property real selfVisualTopY:
                 selfBox.y + selfBox.height / 2 - selfBox.height * boxScale / 2
+            // Community-Karten-Position:
+            //   – Wide-Screen: GEOMETRISCHES Zentrum der Halsketten-Ellipse
+            //     (landscapeEllipseCenterY). Die Karten sitzen exakt in der
+            //     Mitte des ovalen Tisches, umringt von den Gegner-„Perlen".
+            //   – Portrait: weiterhin Mittelpunkt zwischen oberster Gegner-
+            //     Box-Unterkante und Self-Box-Oberkante – passt zur statischen
+            //     3-Säulen-Anordnung.
             readonly property real communityCenterY:
-                wide ? landscapeEllipseCenterY : (topOpponentBottomY + selfVisualTopY) / 2
+                wide ? landscapeEllipseCenterY
+                     : (topOpponentBottomY + selfVisualTopY) / 2
 
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Item {
@@ -373,11 +503,12 @@ Rectangle {
                 width: cardRow.width
                 height: cardRow.height
                 z: 0
-                // Wächst mit der Fensterbreite wie die Gegner-Boxen; Kartenhöhe
-                // maximal = Höhe der Self-Box (Basis 64 × oppScale → max 82).
-                // Skalierung um die Mitte, damit die Position erhalten bleibt.
+                // Skaliert dezenter als die Gegner-Boxen (Faktor 0.85), damit
+                // bei großen Fenstern Box-Badges nicht in den Karten-Bereich
+                // hineinragen.  Skalierung um die Mitte, damit die Position
+                // erhalten bleibt.
                 transformOrigin: Item.Center
-                scale: tableZone.oppScale
+                scale: tableZone.communityScale
 
                 // Inline-Komponente für einen einzelnen Board-Card-Slot
                 // Karten-Seitenverhältnis 120:168 (≈0,714) – Karte = Platzhalter (1:1)
@@ -691,7 +822,11 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 // Querformat: etwas mehr Luft zwischen Self-Box und Action-Panel
                 // (12 px) als unten zum Bildschirmrand (8 px).
-                anchors.bottomMargin: tableZone.wide ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
+                // Wide-Screen: Self-Box rückt etwas näher an die Ellipse heran
+                // (Basis 30 statt 12 → ~18 px höher), damit der vertikale
+                // Abstand zwischen Bottom-Sitzen und Self-Box geringer wird.
+                // Portrait bleibt unverändert (anker bottom 20 px).
+                anchors.bottomMargin: tableZone.wide ? 30 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
                 // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)

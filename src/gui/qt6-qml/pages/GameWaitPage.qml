@@ -411,7 +411,10 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.verticalStretchFactor: 2
+                    // Karte nimmt den gesamten Restplatz (Chat hat feste Höhe);
+                    // schrumpft, wenn der Emoji-Picker den Chat erweitert – so
+                    // rutscht der "Leave Game"-Button nicht aus dem Bild.
+                    Layout.minimumHeight: 0
                     color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
                     radius: 6
 
@@ -603,8 +606,13 @@ Rectangle {
                 // ── Game-Chat ──────────────────────────────────────────────
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumHeight: gameWaitPage.showEmojiPicker ? 150 : 80
+                    // Feste Höhe (kein fillHeight): ~5 sichtbare Chatzeilen +
+                    // Label + Eingabezeile. Beim Öffnen des Emoji-Pickers
+                    // wächst die Höhe um die Picker-Höhe (88) + Spacing – die
+                    // Game-Info-Karte darüber schrumpft entsprechend, die
+                    // Action-Buttons bleiben sichtbar.
+                    Layout.preferredHeight: gameWaitPage.showEmojiPicker ? 270 : 175
+                    Layout.minimumHeight: Layout.preferredHeight
                     color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
                     radius: 5
                     clip: true

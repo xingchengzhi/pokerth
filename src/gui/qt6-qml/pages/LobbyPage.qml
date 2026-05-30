@@ -863,6 +863,23 @@ Rectangle {
                                         lobbyPage.showingGameInfo = true
                                     }
                                 }
+
+                                // Compact-Lobby: Doppelklick auf eine Spielzeile
+                                // tritt dem Spiel direkt bei (wie der "Join Game"-
+                                // Button). selectedGame ist durch onClicked oben
+                                // bereits auf die geklickte Zeile gesetzt.
+                                onDoubleClicked: {
+                                    if (!Config.Responsive.compact) return
+                                    if (!Lobby || Lobby.isInGame) return
+                                    if (!lobbyPage.selectedGame || !lobbyPage.selectedGameJoinable) return
+                                    if (lobbyPage.selectedGame.isPrivate) {
+                                        joinPasswordPopup.pendingGameId = lobbyPage.selectedGame.gameId
+                                        joinPasswordPopup.open()
+                                    } else {
+                                        Lobby.joinGame(lobbyPage.selectedGame.gameId, "")
+                                    }
+                                    lobbyPage.showingGameInfo = false
+                                }
                             }
                         }
                     }

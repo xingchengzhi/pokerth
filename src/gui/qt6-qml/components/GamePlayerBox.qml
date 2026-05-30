@@ -216,16 +216,21 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
 
                 readonly property int cardSpacing: 3
-                readonly property int cardH: height
-                // Original-Seitenverhältnis der Karten (SVG-viewBox 120×168, wie der
-                // Community-Cards-Bereich) → Höhe beibehalten, Breite ergibt sich daraus.
-                readonly property int cardW: Math.round(cardH * 120 / 168)
+                // Original-Seitenverhältnis der Karten 120×168. Karten dürfen
+                // weder die verfügbare Breite NOCH die verfügbare Höhe der
+                // Lane überschreiten – sonst hingen sie über den Box-Rand.
+                readonly property int cardWByHeight: Math.round(height * 120 / 168)
+                readonly property int cardWByWidth: Math.max(0,
+                    Math.floor((width - cardSpacing) / 2))
+                readonly property int cardW: Math.min(cardWByHeight, cardWByWidth)
+                readonly property int cardH: Math.round(cardW * 168 / 120)
                 readonly property int totalW: cardW * 2 + cardSpacing
                 readonly property int sx: (width - totalW) / 2
+                readonly property int sy: (height - cardH) / 2
 
                 Rectangle {
                     x: parent.sx
-                    y: 0
+                    y: parent.sy
                     width: parent.cardW
                     height: parent.cardH
                     color: "transparent"
@@ -234,7 +239,7 @@ Item {
 
                 Rectangle {
                     x: parent.sx + parent.cardW + parent.cardSpacing
-                    y: 0
+                    y: parent.sy
                     width: parent.cardW
                     height: parent.cardH
                     color: "transparent"

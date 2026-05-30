@@ -634,10 +634,29 @@ void QmlGuiInterface::postRiverRunAnimation1()
 
     // Start the next hand after a pause so the user can see the result
     // (Gewinner + aufgedeckte Karten + Gewinner-Hand etwas länger zeigen).
-    QTimer::singleShot(5500, gh, [gh, session]() {
+    //
+    // ACHTUNG: Im NETZWERK-Spiel startet der SERVER die nächste Hand über
+    // `Type_HandStartMessage` (siehe clientstate.cpp:initHand/startHand).
+    // Wenn wir hier nach 5.5s zusätzlich `onNextRoundCleanGui` + initHand +
+    // startHand aufrufen, doppeln wir den Hand-Setup. Schlimmer:
+    // `onNextRoundCleanGui` ruft synchron `onDisableMyButtons()` auf
+    // (gamehandler.cpp:1040). Wenn der Server die neue Hand schneller
+    // startet als der Timer abläuft (UTG-Spot → eigene Action liegt fast
+    // immer innerhalb 5.5s nach Showdown), feuert dieser Timer MITTEN in
+    // den eigenen Zug, setzt `m_myTurn = false` und legt die Aktions-
+    // Buttons tot. Resultat: User kann nicht klicken, Server-Timeout
+    // führt zum Auto-Fold („die Hand vor meinem BB reagiert nicht auf
+    // actions"). Daher: bei Netzwerkspielen überlässt der Client die
+    // Hand-Transition komplett dem Server.
+    boost::shared_ptr<Session> sessionForTimer = session;
+    const bool isNetwork = sessionForTimer && sessionForTimer->isNetworkClientRunning();
+    if (isNetwork) {
+        return;
+    }
+    QTimer::singleShot(5500, gh, [gh, sessionForTimer]() {
         QMetaObject::invokeMethod(gh, "onNextRoundCleanGui", Qt::DirectConnection);
-        if (session) {
-            auto game = session->getCurrentGame();
+        if (sessionForTimer) {
+            auto game = sessionForTimer->getCurrentGame();
             if (game) {
                 game->initHand();
                 game->startHand();

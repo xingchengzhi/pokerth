@@ -888,7 +888,8 @@ void GameHandler::onStartTimeoutAnimation(int playerNum, int timeoutSec)
     // Log VOR dem Guard, damit blockierte Aufrufe sichtbar sind
     if (playerNum == 0)
         qDebug() << "[ACTDBG] onStartTimeout(0) blocked=" << localGameCallbacksBlocked()
-                 << "myTurn=" << m_myTurn << "humanCanAct=" << humanCanAct() << "tSeat=" << m_timeoutSeatId;
+                 << "myTurn=" << m_myTurn << "humanCanAct=" << humanCanAct()
+                 << "tSeat=" << m_timeoutSeatId << "timeoutSec=" << timeoutSec;
     if (localGameCallbacksBlocked()) return;
 
     // Fortschrittsbalken (Ersatz fürs Action-Badge) für den gerade aktiven Sitz.
@@ -1099,13 +1100,23 @@ void GameHandler::onDealRiverCard()
 
 void GameHandler::fold()
 {
-    if (!m_game || !m_session || !isMyTurnToAct()) return;
+    qDebug() << "[FOLDDBG] fold() entry"
+             << "myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId
+             << "isMyTurnToAct=" << isMyTurnToAct();
+    if (!m_game || !m_session || !isMyTurnToAct()) {
+        qDebug() << "[FOLDDBG] fold() EARLY-RETURN";
+        return;
+    }
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
     auto seats = hand->getSeatsList();
     if (!seats || seats->empty()) return;
     auto humanPlayer = seats->front();
+
+    qDebug() << "[FOLDDBG] fold() pre-dispatch"
+             << "myButton=" << humanPlayer->getMyButton()
+             << "round=" << (int)hand->getCurrentRound();
 
     humanPlayer->setMyAction(PLAYER_ACTION_FOLD, true);
     humanPlayer->setMyTurn(false);
@@ -1116,7 +1127,15 @@ void GameHandler::fold()
 
 void GameHandler::call()
 {
-    if (!m_game || !m_session || !isMyTurnToAct()) return;
+    qDebug() << "[CALLDBG] call() entry"
+             << "myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId
+             << "isMyTurnToAct=" << isMyTurnToAct();
+    if (!m_game || !m_session || !isMyTurnToAct()) {
+        qDebug() << "[CALLDBG] call() EARLY-RETURN (game=" << (m_game ? 1 : 0)
+                 << " session=" << (m_session ? 1 : 0)
+                 << " turn=" << isMyTurnToAct() << ")";
+        return;
+    }
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -1129,6 +1148,14 @@ void GameHandler::call()
     int highestSet = bero->getHighestSet();
     int humanSet = humanPlayer->getMySet();
 
+    qDebug() << "[CALLDBG] call() pre-dispatch"
+             << "humanSet=" << humanSet << "highestSet=" << highestSet
+             << "humanCash=" << humanPlayer->getMyCash()
+             << "myButton=" << humanPlayer->getMyButton()
+             << "(1=D,2=SB,3=BB)"
+             << "round=" << (int)hand->getCurrentRound()
+             << "myAction=" << humanPlayer->getMyAction();
+
     if (highestSet == 0 || humanSet >= highestSet) {
         // Check – entweder kein Einsatz gesetzt (highestSet == 0) ODER der
         // eigene Einsatz entspricht bereits dem höchsten (klassischer Fall:
@@ -1136,15 +1163,19 @@ void GameHandler::call()
         // explizit PLAYER_ACTION_CHECK; ein CALL ohne tatsächliche Chip-
         // Bewegung würde verworfen → Timeout mit Default-Action.
         humanPlayer->setMyAction(PLAYER_ACTION_CHECK, true);
+        qDebug() << "[CALLDBG] call() -> CHECK branch";
     } else if (humanPlayer->getMyCash() + humanSet <= highestSet) {
         // All-in call
         humanPlayer->setMySet(humanPlayer->getMyCash());
         humanPlayer->setMyCash(0);
         humanPlayer->setMyAction(PLAYER_ACTION_ALLIN, true);
+        qDebug() << "[CALLDBG] call() -> ALLIN branch lastRelSet=" << humanPlayer->getMyLastRelativeSet();
     } else {
         // Regular call
         humanPlayer->setMySet(highestSet - humanSet);
         humanPlayer->setMyAction(PLAYER_ACTION_CALL, true);
+        qDebug() << "[CALLDBG] call() -> CALL branch lastRelSet=" << humanPlayer->getMyLastRelativeSet()
+                 << "newMySet=" << humanPlayer->getMySet();
     }
 
     humanPlayer->setMyTurn(false);
@@ -1157,7 +1188,13 @@ void GameHandler::call()
 
 void GameHandler::raise(int amount)
 {
-    if (!m_game || !m_session || !isMyTurnToAct()) return;
+    qDebug() << "[RAISEDBG] raise() entry amount=" << amount
+             << "myTurn=" << m_myTurn << "tSeat=" << m_timeoutSeatId
+             << "isMyTurnToAct=" << isMyTurnToAct();
+    if (!m_game || !m_session || !isMyTurnToAct()) {
+        qDebug() << "[RAISEDBG] raise() EARLY-RETURN";
+        return;
+    }
 
     auto hand = m_game->getCurrentHand();
     if (!hand) return;
@@ -1171,7 +1208,17 @@ void GameHandler::raise(int amount)
     if (amount <= 0) {
         amount = m_minRaiseAmount;
     }
-    if (amount <= 0) return; // nothing to raise
+    if (amount <= 0) {
+        qDebug() << "[RAISEDBG] raise() amount<=0 after minRaise fallback (m_minRaiseAmount=" << m_minRaiseAmount << ") ABORT";
+        return;
+    }
+    qDebug() << "[RAISEDBG] raise() pre-dispatch amount=" << amount
+             << "humanSet=" << humanPlayer->getMySet()
+             << "humanCash=" << humanPlayer->getMyCash()
+             << "highestSet=" << bero->getHighestSet()
+             << "minRaiseEngine=" << bero->getMinimumRaise()
+             << "myButton=" << humanPlayer->getMyButton()
+             << "round=" << (int)hand->getCurrentRound();
 
     int tempCash = humanPlayer->getMyCash();
 

@@ -1068,6 +1068,19 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_TimeoutWarningMessage) {
 		const TimeoutWarningMessage &tmpTimeout = tmpPacket->GetMsg()->timeoutwarningmessage();
 		client->GetCallback().SignalNetClientShowTimeoutDialog((NetTimeoutReason)tmpTimeout.timeoutreason(), tmpTimeout.remainingseconds());
+	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_YourActionRejectedMessage) {
+		// Server hat unsere Aktion abgelehnt – im Client bisher völlig
+		// ignoriert (kein Handler-Zweig, kein Log). Genau dieser stille
+		// Verlust ist der gesuchte UTG/SB-preflop-Bug-Indikator.
+		const YourActionRejectedMessage &rej = tmpPacket->GetMsg()->youractionrejectedmessage();
+		qDebug() << "[REJECT] YourActionRejected"
+		         << "gamestate=" << (int)rej.gamestate()
+		         << "(0=Pre,1=F,2=T,3=R)"
+		         << "youraction=" << (int)rej.youraction()
+		         << "(1=FOLD,2=CHK,3=CALL,4=BET,5=RAISE,6=ALLIN)"
+		         << "yourbet=" << (int)rej.yourrelativebet()
+		         << "reason=" << (int)rej.rejectionreason()
+		         << "(1=INVALID_STATE,2=NOT_YOUR_TURN,3=NOT_ALLOWED)";
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_ChatMessage) {
 		// Chat message - display it in the GUI.
 		const ChatMessage &netMessage = tmpPacket->GetMsg()->chatmessage();
@@ -2410,8 +2423,15 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetGui().refreshGroupbox(tmpPlayer->getMyID(), 3);
 
 		// Refresh GUI
-		if (tmpPlayer->getMyID() == 0)
+		if (tmpPlayer->getMyID() == 0) {
+			qDebug() << "[PADDBG] PAD-for-me triggers disableMyButtons"
+			         << "padAction=" << (int)netActionDone.playeraction()
+			         << "padGameState=" << (int)netActionDone.gamestate()
+			         << "(0=Pre,1=F,2=T,3=R,4=PreSB,5=PreBB)"
+			         << "totalBet=" << (int)netActionDone.totalplayerbet()
+			         << "highestSet=" << (int)netActionDone.highestset();
 			client->GetGui().disableMyButtons();
+		}
 		client->GetGui().refreshAction(tmpPlayer->getMyID(), tmpPlayer->getMyAction());
 		client->GetGui().refreshPot();
 		client->GetGui().refreshSet();

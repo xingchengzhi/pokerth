@@ -217,6 +217,16 @@ ClientThread::SendPlayerAction()
 		netMyAction->set_myrelativebet(myPlayer->getMyLastRelativeSet());
 	else
 		netMyAction->set_myrelativebet(0);
+	qDebug() << "[SENDACT] MyActionRequest -> server"
+	         << "handnum=" << netMyAction->handnum()
+	         << "gamestate=" << (int)netMyAction->gamestate()
+	         << "(0=Pre,1=F,2=T,3=R)"
+	         << "myaction=" << (int)netMyAction->myaction()
+	         << "(1=FOLD,2=CHK,3=CALL,4=BET,5=RAISE,6=ALLIN)"
+	         << "myrelativebet=" << (int)netMyAction->myrelativebet()
+	         << "| local mySet=" << myPlayer->getMySet()
+	         << "myCash=" << myPlayer->getMyCash()
+	         << "myButton=" << myPlayer->getMyButton();
 	// Just dump the packet.
 	boost::asio::post(*m_ioService, boost::bind(&ClientThread::SendSessionPacket, shared_from_this(), packet));
 }

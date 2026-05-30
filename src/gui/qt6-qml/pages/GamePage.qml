@@ -1523,9 +1523,18 @@ Rectangle {
                 // (timeoutSeatId === 0) – auch wenn das myTurn-Flag noch nicht
                 // gesetzt sein sollte. Dann SOFORT ausführen, sonst nur vormerken.
                 var myTurnNow = GameTable.myTurn || GameTable.timeoutSeatId === 0
-                console.log("[ACTDBG] click", which, "myTurn=", GameTable.myTurn,
-                            "tSeat=", GameTable.timeoutSeatId, "canAct=", GameTable.canAct,
-                            "pre=", preAction)
+                var p0btnDbg = GameTable.players.length > 0 ? GameTable.players[0]["button"] : -1
+                console.log("[ACTDBG] click", which,
+                            "myTurn=", GameTable.myTurn,
+                            "tSeat=", GameTable.timeoutSeatId,
+                            "canAct=", GameTable.canAct,
+                            "callAmt=", GameTable.callAmount,
+                            "preSel=", preSelectEnabled,
+                            "p0btn=", p0btnDbg,
+                            "(1=D,2=SB,3=BB)",
+                            "phase=", GameTable.phaseText,
+                            "pre=", preAction,
+                            "→ myTurnNow=", myTurnNow)
                 if (myTurnNow) {
                     preAction = ""
                     fireAction(which)
@@ -1592,9 +1601,19 @@ Rectangle {
                     // bzw. automatische Aktion ausführen. Dieser Callback kommt bei
                     // jedem eigenen Zug verlässlich (auch wenn m_myTurn schon true
                     // war) → keine verschluckten Aktionen mehr.
-                    console.log("[ACTDBG] meInActionTriggered pre=", actionBar.preAction,
-                                "mode=", actionBar.playingMode, "myTurn=", GameTable.myTurn,
-                                "tSeat=", GameTable.timeoutSeatId)
+                    var p0btnDbg2 = GameTable.players.length > 0 ? GameTable.players[0]["button"] : -1
+                    console.log("[ACTDBG] meInActionTriggered",
+                                "pre=", actionBar.preAction,
+                                "preCallAmt=", actionBar.preCallAmount,
+                                "mode=", actionBar.playingMode,
+                                "myTurn=", GameTable.myTurn,
+                                "tSeat=", GameTable.timeoutSeatId,
+                                "callAmt=", GameTable.callAmount,
+                                "p0btn=", p0btnDbg2,
+                                "(1=D,2=SB,3=BB)",
+                                "phase=", GameTable.phaseText,
+                                "canAct=", GameTable.canAct,
+                                "preSel=", actionBar.preSelectEnabled)
                     actionBar.syncRaiseAmount()
 
                     // BB-Option erkennen: ich bin BB (button=3), callAmount=0 (niemand
@@ -1636,14 +1655,26 @@ Rectangle {
                         // eigener Aktion (onRefreshSet/Pot/Cash) mit veralteten Werten.
                         actionBar.preSelectEnabled = true
                     }
+                    // Sicherheit: vorgemerkter Call verfällt nur bei einer ECHTEN
+                    // Gegner-Aktion (FOLD/CHECK/CALL/BET/RAISE/ALLIN), die den Call-
+                    // Betrag verändert hat. refreshActionTriggered feuert
+                    // ausschließlich für solche Aktionen — Blind-Posts (preflop
+                    // SB→BB) lösen dieses Signal NICHT aus, sodass eine
+                    // Vorauswahl während des Blindings nicht mehr stillschweigend
+                    // gelöscht wird (war Auslöser für „UTG-preflop ohne Reaktion,
+                    // Timeout mit Default-Action").
+                    if (actionBar.preAction === "call"
+                        && GameTable.callAmount !== actionBar.preCallAmount)
+                        actionBar.preAction = ""
                 }
                 function onCallAmountChanged() {
                     // KEIN preSelectEnabled=true hier: callAmountChanged feuert bei
                     // jedem computeCallAndRaiseAmounts()-Aufruf (onRefreshSet/Pot/Cash)
                     // auch mit veralteten Werten → Freischalten nur in onRefreshActionTriggered.
-                    // Sicherheit: vorgemerkter Call/Check verfällt, wenn sich der Call-Betrag ändert
-                    if (actionBar.preAction === "call" && GameTable.callAmount !== actionBar.preCallAmount)
-                        actionBar.preAction = ""
+                    // Den Pre-Action-Sicherheits-Check führen wir bewusst NICHT
+                    // mehr hier aus, sondern in onRefreshActionTriggered (s.o.) —
+                    // sonst löschten Blind-Posts (callAmount 0→SB→BB) jede
+                    // UTG-Pre-Action.
                     actionBar.syncRaiseAmount()
                 }
                 function onMinRaiseAmountChanged() {
@@ -1866,7 +1897,13 @@ Rectangle {
                                 enabled: (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled)) || allInBtn.isShowMode
                                 cursorShape: ((actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled)) || allInBtn.isShowMode) ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 hoverEnabled: true
+                                onPressed: function(mouse) {
+                                    console.log("[ACTDBG] AllIn MouseArea press",
+                                                "enabled=", allInArea.enabled,
+                                                "myTurn=", GameTable ? GameTable.myTurn : "n/a")
+                                }
                                 onClicked: {
+                                    console.log("[ACTDBG] AllIn MouseArea click isShow=", allInBtn.isShowMode)
                                     if (allInBtn.isShowMode)
                                         GameTable.showMyCards()
                                     else
@@ -1929,6 +1966,11 @@ Rectangle {
                         readonly property bool myTurnNow: GameTable !== null && GameTable.myTurn
                         readonly property bool preChecked: ab.actionKey !== "" && actionBar.preAction === ab.actionKey
 
+                        onArmedChanged: console.log("[ACTDBG] armed", ab.actionKey, "→", ab.armed,
+                                                    "(myTurn=", GameTable ? GameTable.myTurn : "n/a",
+                                                    "canAct=", actionBar.canAct,
+                                                    "preSel=", actionBar.preSelectEnabled, ")")
+
                         radius: 9
                         border.width: (ab.preChecked || (ab.highlight && ab.armed)) ? 2 : 1
                         border.color: ab.preChecked ? "#FFD700" : (ab.armed ? edgeColor : "#3a3a3a")
@@ -1979,7 +2021,18 @@ Rectangle {
                             hoverEnabled: true
                             enabled: ab.armed
                             cursorShape: ab.armed ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: actionBar.clickAction(ab.actionKey)
+                            onPressed: function(mouse) {
+                                console.log("[ACTDBG] MouseArea press", ab.actionKey,
+                                            "armed=", ab.armed,
+                                            "myTurn=", GameTable ? GameTable.myTurn : "n/a",
+                                            "canAct=", GameTable ? GameTable.canAct : "n/a",
+                                            "preSel=", actionBar.preSelectEnabled,
+                                            "btn=", mouse.button)
+                            }
+                            onClicked: {
+                                console.log("[ACTDBG] MouseArea click", ab.actionKey)
+                                actionBar.clickAction(ab.actionKey)
+                            }
                         }
                     }
 

@@ -1081,18 +1081,23 @@ void GameHandler::call()
     if (!bero) return;
 
     int highestSet = bero->getHighestSet();
+    int humanSet = humanPlayer->getMySet();
 
-    if (highestSet == 0) {
-        // Check (no bet to call)
+    if (highestSet == 0 || humanSet >= highestSet) {
+        // Check – entweder kein Einsatz gesetzt (highestSet == 0) ODER der
+        // eigene Einsatz entspricht bereits dem höchsten (klassischer Fall:
+        // BB-Option preflop, alle haben gelimpt). Server erwartet hier
+        // explizit PLAYER_ACTION_CHECK; ein CALL ohne tatsächliche Chip-
+        // Bewegung würde verworfen → Timeout mit Default-Action.
         humanPlayer->setMyAction(PLAYER_ACTION_CHECK, true);
-    } else if (humanPlayer->getMyCash() + humanPlayer->getMySet() <= highestSet) {
+    } else if (humanPlayer->getMyCash() + humanSet <= highestSet) {
         // All-in call
         humanPlayer->setMySet(humanPlayer->getMyCash());
         humanPlayer->setMyCash(0);
         humanPlayer->setMyAction(PLAYER_ACTION_ALLIN, true);
     } else {
         // Regular call
-        humanPlayer->setMySet(highestSet - humanPlayer->getMySet());
+        humanPlayer->setMySet(highestSet - humanSet);
         humanPlayer->setMyAction(PLAYER_ACTION_CALL, true);
     }
 

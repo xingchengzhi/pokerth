@@ -259,39 +259,65 @@ Rectangle {
                 // ref/700-Boden mehr, der breite Fenster auf der kleineren
                 // Dimension klein hielt.
                 if (wide) {
-                    // Landscape-Cap: Iteration über ALLE benachbarten Sitzpaare
-                    // der symmetrischen Ellipse (siehe buildLandscapeSlots).
-                    // Für jedes Paar genügt es, dass x ODER y getrennt sind —
-                    // das tightste Paar bestimmt den maximalen boxScale.
-                    var sideMarginBase = Math.max(18, width * 0.025) + sideBadgeGapBase
-                    var radiusXBudget = Math.max(0.22,
-                        0.5 - (sideMarginBase + oppBaseWidth / 2) / width)
-                    var approxRy = 0.30
-                    var gap = 10
-                    var capHoriz = 100
+                    // Landscape-Cap per Bisektion: maximaler boxScale, für den
+                    // ALLE benachbarten Ellipsen-Sitzpaare entweder horizontal
+                    // ODER vertikal voneinander getrennt bleiben.
+                    //
+                    // WICHTIG: jeder Probepunkt rechnet `radiusX`/`radiusY`
+                    // mit den exakt gleichen s-abhängigen Formeln wie
+                    // `buildLandscapeSlots()`. Frühere statische Schätzwerte
+                    // (`sideMarginBase` ohne s-Faktor, `approxRy = 0.30`)
+                    // unterschätzten den BL/BR-Pair-Bedarf bei großen s →
+                    // bei 9–10 Spielern und sehr breitem Fenster überlappten
+                    // die Boxen, obwohl die alte Cap-Formel noch grünes
+                    // Licht gab.
+                    var gap = 12
+                    var selfWeightCap = 0.5
+                    var stepDeg = oppCnt >= 1 ? 360 / (oppCnt + selfWeightCap) : 360
+                    var firstAngle = 90 + (selfWeightCap * stepDeg + stepDeg) / 2
 
-                    if (oppCnt >= 2) {
-                        // Selber Halsketten-Algorithmus wie in
-                        // buildLandscapeSlots() – Self mit Gewichtung
-                        // selfWeight, Gegner gleichmäßig verteilt.
-                        var selfWeightCap = 0.5
-                        var stepDeg = 360 / (oppCnt + selfWeightCap)
-                        var firstAngle = 90 + (selfWeightCap * stepDeg + stepDeg) / 2
+                    function feasibleAt(sTest) {
+                        if (oppCnt < 2) return true
+                        var sideMargin = Math.max(18, width * 0.025) + sideBadgeGapBase * sTest
+                        var visualW = oppBaseWidth * sTest
+                        var visualH = oppBaseHeight * sTest
+                        var selfVisualH = selfBaseHeight * sTest
+                        var gapY = Math.max(8, opponentGapBase * sTest)
+                        var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * sTest)
+                        var radiusXpix = Math.max(0.22 * width,
+                                                   0.5 * width - sideMargin - visualW / 2)
+                        var topYpix = 4 + visualH / 2
+                        var bottomYpix = height - 4 - selfVisualH - selfGapY - visualH / 2
+                        var radiusYpix = Math.max(visualH + gapY * 2.2,
+                                                   (bottomYpix - topYpix) / 2)
+                        if (radiusYpix <= 0 || radiusXpix <= 0) return false
+                        var xNeeded = sTest * oppBaseWidth + gap
+                        var yNeeded = sTest * oppBaseHeight + gap
                         for (var iPair = 1; iPair < oppCnt; iPair++) {
                             var a1 = (firstAngle + (iPair - 1) * stepDeg) * Math.PI / 180
                             var a2 = a1 + stepDeg * Math.PI / 180
-                            var dcosP = Math.abs(Math.cos(a1) - Math.cos(a2))
-                            var dsinP = Math.abs(Math.sin(a1) - Math.sin(a2))
-                            var sxP = (dcosP * radiusXBudget * width - gap) / oppBaseWidth
-                            var syP = (dsinP * approxRy * height - gap) / oppBaseHeight
-                            capHoriz = Math.min(capHoriz, Math.max(sxP, syP))
+                            var dcos = Math.abs(Math.cos(a1) - Math.cos(a2))
+                            var dsin = Math.abs(Math.sin(a1) - Math.sin(a2))
+                            if (dcos * radiusXpix < xNeeded
+                                && dsin * radiusYpix < yNeeded)
+                                return false
                         }
+                        return true
                     }
 
-                    // Maximaler s-Wert, der den Pair-Cap erfüllt. Obergrenze
-                    // 2.2 gibt Fullscreen genug Box-Größe ohne die Community
-                    // zu erdrücken.
-                    s = Math.min(capHoriz, 2.2)
+                    var lo = 0.55, hi = 2.2
+                    if (oppCnt < 2) {
+                        s = hi
+                    } else if (!feasibleAt(lo)) {
+                        s = lo
+                    } else {
+                        for (var iter = 0; iter < 14; iter++) {
+                            var mid = (lo + hi) / 2
+                            if (feasibleAt(mid)) lo = mid
+                            else hi = mid
+                        }
+                        s = lo
+                    }
                 } else {
                     // Portrait-Caps: Slot-Positionen statisch (L_*/R_* bei
                     // x = 0.14/0.86, TC bei y = 0.075). Die Community-Card-

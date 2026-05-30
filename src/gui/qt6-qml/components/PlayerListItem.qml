@@ -24,8 +24,14 @@ ItemDelegate {
     readonly property bool guestPlayer: !!playerEntry.isGuest
     readonly property string playerCountryCode: playerEntry.countryCode || ""
 
+    // Wide-Screen → Aktionen als Icons inline rechts vom Namen, kein Collapse.
+    // Portrait → bestehendes Expand/Collapse mit gestapelten Buttons.
+    readonly property bool wideLayout: Config.Responsive.landscape
+
     width: listView.width
-    height: visible ? ((expanded && hasActions) ? expandedHeight : rowHeight) : 0
+    height: visible
+            ? ((!wideLayout && expanded && hasActions) ? expandedHeight : rowHeight)
+            : 0
 
     property bool expanded: false
     readonly property bool playerIgnored: {
@@ -72,7 +78,17 @@ ItemDelegate {
                 playerItem.expanded = false
         }
     }
-    
+
+    // Wenn das Layout in Wide-Screen wechselt, eventuell offenen Expander
+    // schließen – sonst bliebe der Item-Container unnötig hoch beim Resize.
+    onWideLayoutChanged: {
+        if (wideLayout) {
+            expanded = false
+            if (listView.expandedPlayerIndex === playerItem.index)
+                listView.expandedPlayerIndex = -1
+        }
+    }
+
     Behavior on height {
         NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
     }
@@ -113,7 +129,51 @@ ItemDelegate {
                 elide: Text.ElideRight
             }
 
-            // Expander caret
+            // Wide-Screen: Action-Icons inline, rechtsbündig.
+            Row {
+                id: wideActionsRow
+                visible: playerItem.wideLayout && playerItem.hasActions
+                spacing: 2
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+
+                PlayerActionIcon {
+                    visible: playerItem.canInvite
+                    source: "qrc:/resources/personAdd.svg"
+                    baseColor: playerItem.inviteColor
+                    tooltipText: qsTr("Invite to Game")
+                    onTriggered: { if (Lobby) Lobby.invitePlayer(playerItem.targetPlayerId) }
+                }
+                PlayerActionIcon {
+                    visible: playerItem.canIgnore
+                    source: "qrc:/resources/block.svg"
+                    baseColor: playerItem.ignoreColor
+                    tooltipText: qsTr("Ignore player")
+                    onTriggered: { if (Lobby) Lobby.ignorePlayer(playerItem.targetPlayerId) }
+                }
+                PlayerActionIcon {
+                    visible: playerItem.canUnignore
+                    source: "qrc:/resources/checkCircle.svg"
+                    baseColor: playerItem.ignoreColor
+                    tooltipText: qsTr("Unignore player")
+                    onTriggered: { if (Lobby) Lobby.unignorePlayer(playerItem.targetPlayerId) }
+                }
+                PlayerActionIcon {
+                    visible: playerItem.canShowPlayerStats
+                    source: "qrc:/resources/barChart.svg"
+                    baseColor: playerItem.statsColor
+                    tooltipText: qsTr("Show player stats")
+                    onTriggered: { if (Lobby) Lobby.showPlayerStats(playerItem.targetPlayerId) }
+                }
+                PlayerActionIcon {
+                    visible: playerItem.canAdminModerate
+                    source: "qrc:/resources/gavel.svg"
+                    baseColor: playerItem.banColor
+                    tooltipText: qsTr("Total kickban")
+                    onTriggered: { if (Lobby) Lobby.adminBanPlayer(playerItem.targetPlayerId) }
+                }
+            }
+
+            // Portrait: Expander-Caret (Wide-Screen blendet ihn aus).
             VectorImage {
                 id: expanderCaret
                 source: "qrc:/resources/caretLeft.svg"
@@ -123,7 +183,7 @@ ItemDelegate {
                 Layout.preferredHeight: 16
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 fillMode: VectorImage.PreserveAspectFit
-                visible: hasActions
+                visible: !playerItem.wideLayout && hasActions
 
                 MultiEffect {
                     source: expanderCaret
@@ -146,9 +206,9 @@ ItemDelegate {
             }
         }
         
-        // Action buttons (expanded)
+        // Portrait: Action-Buttons (aufgeklappt)
         ColumnLayout {
-            visible: expanded && hasActions
+            visible: !playerItem.wideLayout && expanded && hasActions
             Layout.fillWidth: true
             Layout.topMargin: 5
             spacing: 3

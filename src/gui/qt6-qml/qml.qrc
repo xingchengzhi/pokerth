@@ -11,6 +11,7 @@
         <file>components/GamePlayerBox.qml</file>
         <file>components/GamePlayerSelfBox.qml</file>
         <file>components/EmojiPicker.qml</file>
+        <file>components/PlayerActionIcon.qml</file>
         <file>components/PlayerListItem.qml</file>
         <file>components/GuiSettings.qml</file>
         <file>components/InternetGameSettings.qml</file>
@@ -46,8 +47,11 @@
         <file>pages/GameWaitPage.qml</file>
         <file>pages/LobbyPage.qml</file>
         <file>resources/arrowUpLeft.svg</file>
+        <file>resources/barChart.svg</file>
+        <file>resources/block.svg</file>
         <file>resources/cardBackground.svg</file>
         <file>resources/caretLeft.svg</file>
+        <file>resources/checkCircle.svg</file>
         <file>resources/checkSquare.svg</file>
         <file>resources/chip.svg</file>
         <file>resources/chipStack.svg</file>
@@ -60,6 +64,7 @@
         <file>resources/download.svg</file>
         <file>resources/gameBackground.svg</file>
         <file>resources/gamePage.svg</file>
+        <file>resources/gavel.svg</file>
         <file>resources/gameTableHD.png</file>
         <file>resources/gameTableUHD.png</file>
         <file>resources/globe.svg</file>
@@ -67,6 +72,7 @@
         <file>resources/monitor.svg</file>
         <file>resources/network.svg</file>
         <file>resources/palette.svg</file>
+        <file>resources/personAdd.svg</file>
         <file>resources/plugsConnected.svg</file>
         <file>resources/pokerth.svg</file>
         <file>resources/power.svg</file>

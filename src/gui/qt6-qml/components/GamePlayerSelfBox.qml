@@ -130,8 +130,9 @@ Rectangle {
 
     // ── Karten – zentriert über der Infozeile ────────────────────────────────
     // Horizontale Abstände einheitlich: linker Außenrand = Abstand Avatar↔Karten
-    // = rechter Außenrand = hMargin.
-    readonly property int hMargin: 6
+    // = rechter Außenrand = hMargin. Gleiches Maß (4) wie bei den Gegnerboxen
+    // (GamePlayerBox.hMargin), damit Außenränder visuell konsistent sind.
+    readonly property int hMargin: 4
     // Vertikale Abstände einheitlich: oberer Außenrand = Abstand Karten↔Text
     // = unterer Außenrand = vMargin.
     readonly property int vMargin: 4

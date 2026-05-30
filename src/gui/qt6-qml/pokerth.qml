@@ -22,6 +22,11 @@ ApplicationWindow {
     property SideMenu sideMenu: SideMenu {}
     width: 390
     height: 844
+    // Initiale Portrait-Breite als untere Schranke – das Fenster darf nicht
+    // schmaler werden als der Standard-Portrait-Modus, damit das Layout
+    // (Slot-Spalten, Self-Box, Action-Buttons) immer komplett ins Bild passt.
+    minimumWidth: 390
+    minimumHeight: 600
     // TRY to center the window, doesn't work on my Ubuntu but should work on other platforms.
     visible: true
     title: qsTr("PokerTH - v2.1.0preview")

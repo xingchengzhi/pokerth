@@ -225,10 +225,12 @@ Rectangle {
             // genutzt, dort reicht 80 problemlos.
             readonly property int oppBaseHeight: wide ? 80 : 71
             readonly property int oppBaseWidth: 125
-            // Self-Box im Portrait schmaler – der quadratische Avatar passt nun
-            // bündiger an die Karten und die Außenabstände sind nicht mehr zu
-            // groß (das schafft Platz für das D-Icon daneben).
-            readonly property int selfBaseWidth: wide ? 168 : 144
+            // Self-Box-Breite = Avatar + gap + 2·Karten + spacing + 2·hMargin.
+            // Mit hMargin=4 (analog zur Gegnerbox), damit der Außenrand bei
+            // Self und Gegner-Boxen visuell identisch ist.
+            //   Portrait : selfHeight=71 → cardH=47, cardW=34, totalW=123, box=131
+            //   Landscape: selfHeight=80 → cardH=56, cardW=40, totalW=144, box=152
+            readonly property int selfBaseWidth: wide ? 152 : 131
             readonly property int selfBaseHeight: wide ? 80 : 71
             readonly property real opponentGapBase: 10
             readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
@@ -297,7 +299,7 @@ Rectangle {
                     // adaptiert sich stattdessen über `communityScale` an den
                     // verfügbaren Mittelplatz (siehe oben), damit narrow
                     // portrait nicht künstlich gekappt wird.
-                    var sideHorizCap = (0.14 * width - 4) * 2 / oppBaseWidth
+                    var sideHorizCap = (0.15 * width - 4) * 2 / oppBaseWidth
                     var topVerticalCap = (0.075 * height - 4) * 2 / oppBaseHeight
                     var rowSepCap = 0.135 * height / oppBaseHeight
                     s = Math.min(sideHorizCap, topVerticalCap, rowSepCap, 1.85)
@@ -308,20 +310,22 @@ Rectangle {
                 return Math.max(0.55, s)
             }
             readonly property real oppScale: boxScale
-            // Community-Karten-Skala: Standard 0.95·boxScale (gibt etwas
-            // Sicherheits-Padding zu den Box-Badges). Im Portrait wird die
-            // Skala zusätzlich nach UNTEN begrenzt, falls die skalierten
-            // Seitenspalten zu wenig Mittelplatz übrig lassen – so passt die
-            // Community auch in narrow-portrait Fenster, ohne die boxScale
-            // künstlich klein zu halten.
+            // Community-Karten-Skala:
+            //   – Wide-Screen: 0.95·boxScale (gibt Sicherheits-Padding zu den
+            //     Box-Badges).
+            //   – Portrait: LANGSAMERES Wachstum als die opp-Boxen (Faktor 0.7)
+            //     plus Floor 0.7 — die Community-Reihe ist bei kleinem Portrait
+            //     also relativ größer und wächst bei breiteren Fenstern nur
+            //     gedämpft mit. Adaptiver Cap stellt sicher, dass die Karten
+            //     die Seitenspalten nicht horizontal berühren.
             readonly property real communityScale: {
-                var base = boxScale * 0.95
-                if (wide) return base
-                var sideColRightEdge = 0.14 * width + oppBaseWidth * boxScale / 2
-                var maxCommunityHalfW = width / 2 - sideColRightEdge - 10
+                if (wide) return boxScale * 0.95
+                var target = Math.max(0.7, boxScale * 0.7)
+                var sideColRightEdge = 0.15 * width + oppBaseWidth * boxScale / 2
+                var maxCommunityHalfW = width / 2 - sideColRightEdge - 4
                 var maxCommunityW = Math.max(0, maxCommunityHalfW * 2)
                 var maxScale = maxCommunityW / 250
-                return Math.max(0.55, Math.min(base, maxScale))
+                return Math.max(0.55, Math.min(target, maxScale))
             }
 
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
@@ -335,15 +339,15 @@ Rectangle {
             // Spalten-x bei 0.14 (statt 0.15) damit Boxen in mittleren
             // Portrait-Größen etwas weiter außen sitzen.
             readonly property var slotPosPortrait: ({
-                "L_bottom": [0.14, 0.785],
-                "L_lower":  [0.14, 0.65],
-                "L_upper":  [0.14, 0.345],
-                "TL":       [0.14, 0.21],
+                "L_bottom": [0.15, 0.785],
+                "L_lower":  [0.15, 0.65],
+                "L_upper":  [0.15, 0.345],
+                "TL":       [0.15, 0.21],
                 "TC":       [0.50, 0.075],
-                "TR":       [0.86, 0.21],
-                "R_upper":  [0.86, 0.345],
-                "R_lower":  [0.86, 0.65],
-                "R_bottom": [0.86, 0.785]
+                "TR":       [0.85, 0.21],
+                "R_upper":  [0.85, 0.345],
+                "R_lower":  [0.85, 0.65],
+                "R_bottom": [0.85, 0.785]
             })
             // Querformat: Slot-Abstände werden aus visueller Boxgröße,
             // Spieleranzahl und Self-Abstand berechnet statt als offene Ellipse
@@ -489,14 +493,16 @@ Rectangle {
                 id: communityArea
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                // Portrait: mittig zwischen oberen (0.32·H) und unteren Seiten-Boxen
-                // (0.59·H); die per seatNudge gespreizten unteren Boxen verschieben
-                // den Mittelpunkt um (14−4)/2 = 5px nach unten.
-                // Widescreen: im Mittelpunkt derselben Ellipse, auf der die
-                // Gegnerboxen um den Community-Bereich liegen.
+                // Portrait: mittig zwischen oberen (0.345·H = L_upper/R_upper)
+                // und unteren Seiten-Boxen (0.65·H = L_lower/R_lower); die
+                // per seatNudge gespreizten unteren Boxen verschieben den
+                // Mittelpunkt um (14−4)/2 = 5px nach unten:
+                //   midpoint = (0.345+0.65)/2 = 0.4975 → offset = -0.0025·H + 5
+                // Widescreen: im Mittelpunkt der Halsketten-Ellipse, auf der
+                // die Gegnerboxen um die Community herum liegen.
                 anchors.verticalCenterOffset: tableZone.wide
                     ? tableZone.communityCenterY - tableZone.height / 2
-                    : -tableZone.height * 0.045 + 5
+                    : -tableZone.height * 0.0025 + 5
                 // Größe = nur die Kartenreihe; das Winning-Hand-Badge liegt als
                 // Overlay darunter und zählt NICHT zur Größe → die Karten bleiben
                 // zentriert und rutschen nicht nach oben, wenn das Badge erscheint.
@@ -822,11 +828,16 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 // Querformat: etwas mehr Luft zwischen Self-Box und Action-Panel
                 // (12 px) als unten zum Bildschirmrand (8 px).
-                // Wide-Screen: Self-Box rückt etwas näher an die Ellipse heran
-                // (Basis 30 statt 12 → ~18 px höher), damit der vertikale
-                // Abstand zwischen Bottom-Sitzen und Self-Box geringer wird.
-                // Portrait bleibt unverändert (anker bottom 20 px).
-                anchors.bottomMargin: tableZone.wide ? 30 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
+                // Wide-Screen: Self-Box liegt 12 px über dem Action-Panel.
+                // Die Halsketten-Ellipse hat ihre eigene `selfGapY`-basierte
+                // Untergrenze; der Abstand zwischen den Bottom-Sitzen und der
+                // Self-Box wird dadurch automatisch komfortabel breit, ohne
+                // dass die Self-Box selbst zu weit vom Action-Panel weg
+                // wandert.  Der `selfBaseHeight·(boxScale-1)/2`-Anteil hält
+                // die visuelle Unterkante bei jedem Scale konstant 12 px
+                // über parent.bottom.
+                // Portrait bleibt unverändert bei 20 px.
+                anchors.bottomMargin: tableZone.wide ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
                 // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)

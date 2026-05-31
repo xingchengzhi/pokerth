@@ -341,16 +341,70 @@ Rectangle {
                         s = lo
                     }
                 } else {
-                    // Portrait-Caps: Slot-Positionen statisch (L_*/R_* bei
-                    // x = 0.14/0.86, TC bei y = 0.075). Die Community-Card-
-                    // Reihe ist nicht mehr Teil des boxScale-Caps – sie
-                    // adaptiert sich stattdessen über `communityScale` an den
-                    // verfügbaren Mittelplatz (siehe oben), damit narrow
-                    // portrait nicht künstlich gekappt wird.
-                    var sideHorizCap = (0.15 * width - 4) * 2 / oppBaseWidth
-                    var topVerticalCap = (0.075 * height - 4) * 2 / oppBaseHeight
-                    var rowSepCap = 0.135 * height / oppBaseHeight
-                    s = Math.min(sideHorizCap, topVerticalCap, rowSepCap, 1.85)
+                    // Portrait-Cap per Bisektion (analog Wide-Screen). Die
+                    // Slot-Positionen sind in Portrait statisch (slotPosPortrait),
+                    // daher gehen sie hier nur als Konstanten in die feasibility-
+                    // Probe ein. Constraints:
+                    //   • Wand links/rechts:  Seitenspalten x=0.15/0.85
+                    //   • Wand oben:          TC bei y=0.075
+                    //   • Wand unten:         Bottom-Reihe (L_bottom/R_bottom
+                    //                         bei y=0.785) darf die Self-Box
+                    //                         (bottomMargin=20) nicht berühren.
+                    //   • Paar-Trennung:      benachbarte Sitze in
+                    //                         slotSeqPortrait[oppCnt] müssen
+                    //                         entweder horizontal ODER vertikal
+                    //                         genug Abstand zueinander haben.
+                    // Der frühere statische Cap konnte den Self-Box-Wandabstand
+                    // nicht modellieren; in breitem Portrait überlappten Bottom-
+                    // Reihe und Self-Box potentiell.
+                    var gapP = 8
+                    var seqP = slotSeqPortrait[oppCnt] || []
+                    var posP = slotPosPortrait
+
+                    function feasibleAtP(sTest) {
+                        if (sTest <= 0) return false
+                        var visualW = oppBaseWidth * sTest
+                        var visualH = oppBaseHeight * sTest
+                        var selfVisualH = selfBaseHeight * sTest
+
+                        // Wand-Checks
+                        if (visualW > 2 * (0.15 * width - 4)) return false
+                        if (visualH > 2 * (0.075 * height - 4)) return false
+                        // Self-Box vs. Bottom-Reihe:
+                        //   self_top    = height - 20 - selfVisualH
+                        //   bottom_kant = 0.785*height + visualH/2
+                        //   Abstand     = self_top - bottom_kant
+                        //              = 0.215*height - 20 - selfVisualH - visualH/2
+                        if (0.215 * height - 20 - selfVisualH - visualH / 2 < gapP)
+                            return false
+
+                        // Paar-Trennung
+                        if (seqP.length < 2) return true
+                        var xNeeded = sTest * oppBaseWidth + gapP
+                        var yNeeded = sTest * oppBaseHeight + gapP
+                        for (var i = 0; i < seqP.length - 1; i++) {
+                            var a = posP[seqP[i]]
+                            var b = posP[seqP[i + 1]]
+                            if (!a || !b) continue
+                            var dxPix = Math.abs(a[0] - b[0]) * width
+                            var dyPix = Math.abs(a[1] - b[1]) * height
+                            if (dxPix < xNeeded && dyPix < yNeeded)
+                                return false
+                        }
+                        return true
+                    }
+
+                    var loP = 0.55, hiP = 1.85
+                    if (!feasibleAtP(loP)) {
+                        s = loP
+                    } else {
+                        for (var iterP = 0; iterP < 14; iterP++) {
+                            var midP = (loP + hiP) / 2
+                            if (feasibleAtP(midP)) loP = midP
+                            else hiP = midP
+                        }
+                        s = loP
+                    }
                 }
 
                 // Lesbarkeits-Boden – Schrift/Karten skalieren mit, dürfen aber

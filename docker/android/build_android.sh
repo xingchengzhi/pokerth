@@ -20,6 +20,7 @@ ARCH=${ANDROID_ARCH:-x64}
 # fi
 BUILD_TYPE=Release
 API_LEVEL=${ANDROID_API_LEVEL:-35}
+TARGET=${TARGET:-pokerth_qml-client}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -202,10 +203,19 @@ fi
 mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
 mkdir -p "$ANDROID_BUILD_DIR/res/values"
 
+# Package-Name pro Target trennen, damit qml-Build und widget-Build sich auf
+# einem Gerät nicht gegenseitig überschreiben (jedes APK braucht eine
+# eindeutige applicationId).
+if [[ $TARGET == "pokerth_qml-client" ]]; then
+  PACKAGE_NAME="org.pokerth.qml"
+else
+  PACKAGE_NAME="org.pokerth.widget"
+fi
+
 # Erstelle immer das dynamische AndroidManifest.xml mit korrektem lib_name und Version
 cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
 <?xml version="1.0"?>
-<manifest package="org.pokerth.widget"
+<manifest package="$PACKAGE_NAME"
           xmlns:android="http://schemas.android.com/apk/res/android"
           android:versionName="2.0.7"
           android:versionCode="20"
@@ -233,7 +243,7 @@ cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
         <activity
             android:name="org.qtproject.qt.android.bindings.QtActivity"
             android:label="PokerTH"
-            android:screenOrientation="landscape"
+            android:screenOrientation="fullUser"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"

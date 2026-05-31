@@ -129,7 +129,9 @@ Rectangle {
         // 1. Status-Leiste: Spielphase | Pott | Hand-Nummer
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            // Im landscapeCompact knapper (28 statt 40) — schafft ~12 px mehr
+            // tableZone-Höhe für die Halsketten-Ellipse.
+            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 28 : 40
             color: Qt.rgba(0, 0, 0, 0.78)
 
             RowLayout {
@@ -140,7 +142,7 @@ Rectangle {
                     text: GameTable ? GameTable.phaseText : qsTr("Preflop")
                     color: "#FFFFFF"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 14
+                    font.pixelSize: Config.Responsive.landscapeCompact ? 11 : 14
                     font.weight: Font.DemiBold
                     font.letterSpacing: 0.6
                 }
@@ -152,7 +154,7 @@ Rectangle {
                         text: qsTr("Pot: $%1").arg(GameTable ? GameTable.pot : 0)
                         color: "#99D500"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 15
+                        font.pixelSize: Config.Responsive.landscapeCompact ? 12 : 15
                         font.bold: true
                         font.letterSpacing: 0.3
                     }
@@ -161,7 +163,7 @@ Rectangle {
                         text: qsTr("Total: $%1").arg(GameTable ? GameTable.totalPot : 0)
                         color: "#7aa800"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: 11
+                        font.pixelSize: Config.Responsive.landscapeCompact ? 9 : 11
                         font.weight: Font.Medium
                         font.letterSpacing: 0.3
                     }
@@ -171,7 +173,7 @@ Rectangle {
                     text: qsTr("Hand %1").arg(GameTable ? GameTable.handNumber : 1)
                     color: "#bdbdbd"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 12
+                    font.pixelSize: Config.Responsive.landscapeCompact ? 10 : 12
                     font.weight: Font.Medium
                     font.letterSpacing: 0.5
                 }
@@ -326,13 +328,23 @@ Rectangle {
                         // über die obere tableZone-Kante hinaus.
                         var radiusYpix = (bottomYpix - topYpix) / 2
                         if (radiusYpix <= 0 || radiusXpix <= 0) return false
+                        // Selber Lower-Half-Squash wie in buildLandscapeSlots()
+                        // (siehe dort). Bisection muss die echten Paarabstände
+                        // sehen, sonst lässt sie ein zu großes boxScale durch.
+                        var lowerSquashCap = Config.Responsive.landscapeCompact ? 0.3 : 1.0
+                        function effSin(rad) {
+                            var v = Math.sin(rad)
+                            if (v > 0 && lowerSquashCap !== 1.0)
+                                v = Math.pow(v, lowerSquashCap)
+                            return v
+                        }
                         var xNeeded = sTest * oppBaseWidth + gap
                         var yNeeded = sTest * oppBaseHeight + gap
                         for (var iPair = 1; iPair < oppCnt; iPair++) {
                             var a1 = (firstAngle + (iPair - 1) * stepDeg) * Math.PI / 180
                             var a2 = a1 + stepDeg * Math.PI / 180
                             var dcos = Math.abs(Math.cos(a1) - Math.cos(a2))
-                            var dsin = Math.abs(Math.sin(a1) - Math.sin(a2))
+                            var dsin = Math.abs(effSin(a1) - effSin(a2))
                             if (dcos * radiusXpix < xNeeded
                                 && dsin * radiusYpix < yNeeded)
                                 return false
@@ -506,10 +518,22 @@ Rectangle {
                 // Boxen kleiner werden.
                 var radiusY = (bottomY - topY) / 2
 
+                // Lower-Half-Squash im landscapeCompact: für sin > 0 (= untere
+                // Ellipsenhälfte) wird sin durch sin^0.3 ersetzt → alle unteren
+                // Gegnerboxen rücken nahe an bottomY (also nahe an die Self-
+                // Box). Top-Hälfte (sin < 0) bleibt unverändert.
+                //   sin=0.40 → 0.77, sin=0.88 → 0.96, sin=1.0 → 1.0
+                // Dadurch kleben die Side-Lower-Paare (Player 2↔3, 7↔8) nicht
+                // mehr in der Tisch-Mitte, sondern hängen entlang einer
+                // flacheren Bogen-Linie nahe der Self-Box.
+                var lowerSquash = Config.Responsive.landscapeCompact ? 0.3 : 1.0
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
+                    var sinV = Math.sin(radians)
+                    if (sinV > 0 && lowerSquash !== 1.0)
+                        sinV = Math.pow(sinV, lowerSquash)
                     return [0.5 + radiusX * Math.cos(radians),
-                            centerY + radiusY * Math.sin(radians)]
+                            centerY + radiusY * sinV]
                 }
 
                 // Kreis öffnet sich nach oben:
@@ -1533,12 +1557,16 @@ Rectangle {
             //  • Preflop oder schon gesetzt → "Raise $X"; postflop ohne Einsatz → "Bet $X"
             readonly property bool canCheck: GameTable !== null && GameTable.callAmount === 0
             readonly property bool isPreflop: GameTable !== null && GameTable.phaseText === "Preflop"
+            // landscapeCompact: einzeilig („Call $X" statt „Call\n$X"). Spart
+            // vertikalen Platz im 30-px-Action-Row und die Schrift kann etwas
+            // größer/lesbarer bleiben.
+            readonly property string _amountSep: Config.Responsive.landscapeCompact ? " " : "\n"
             readonly property string checkCallText: GameTable === null ? qsTr("Call")
-                : (canCheck ? qsTr("Check") : qsTr("Call") + "\n$" + GameTable.callAmount)
+                : (canCheck ? qsTr("Check") : qsTr("Call") + _amountSep + "$" + GameTable.callAmount)
             readonly property string betRaiseText: {
                 if (GameTable === null) return qsTr("Raise")
                 var word = (!isPreflop && canCheck) ? qsTr("Bet") : qsTr("Raise")
-                return raiseAvailable ? (word + "\n$" + raiseAmount) : word
+                return raiseAvailable ? (word + _amountSep + "$" + raiseAmount) : word
             }
 
             // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──

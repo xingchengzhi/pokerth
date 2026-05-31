@@ -305,7 +305,16 @@ Rectangle {
                         var visualH = oppBaseHeight * sTest
                         var selfVisualH = selfBaseHeight * sTest
                         var gapY = Math.max(8, opponentGapBase * sTest)
-                        var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * sTest)
+                        // Im landscapeCompact ziehen wir die untere Ellipsen-
+                        // Hälfte näher an die Self-Box: das verschafft den
+                        // Seiten-Paaren mehr vertikalen Spielraum (sonst kleben
+                        // Player 7↔8 / 2↔3 visuell zusammen). selfBadgeGapBase
+                        // bleibt als Minimum, damit Bet-/Action-Badges
+                        // unterhalb der Bottom-Reihe nicht ins Self-Avatar
+                        // hineinragen.
+                        var selfGapY = Config.Responsive.landscapeCompact
+                            ? Math.max(8, selfBadgeGapBase * sTest * 0.5)
+                            : Math.max(gapY * 2, selfBadgeGapBase * sTest)
                         var radiusXpix = Math.max(0.22 * width,
                                                    0.5 * width - sideMargin - visualW / 2)
                         var topYpix = 4 + visualH / 2
@@ -470,7 +479,10 @@ Rectangle {
                 var sideMargin = Math.max(18, width * 0.025) + sideBadgeGapBase * s
                 var wantedGapY = opponentGapBase * s
                 var gapY = Math.max(8, wantedGapY)
-                var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
+                // Im landscapeCompact: halbierte selfGapY (s. Bisection-Comment).
+                var selfGapY = Config.Responsive.landscapeCompact
+                    ? Math.max(8, selfBadgeGapBase * s * 0.5)
+                    : Math.max(gapY * 2, selfBadgeGapBase * s)
                 var sideX = (sideMargin + visualW / 2) / Math.max(width, 1)
                 // radiusX so groß wie möglich (Seiten-Sitze landen am Rand).
                 // Top-Trio passt durch den boxScale-Cap (siehe boxScale oben)
@@ -571,7 +583,9 @@ Rectangle {
                 var visualH = oppBaseHeight * s
                 var selfVisualH = selfBaseHeight * s
                 var gapY = Math.max(8, opponentGapBase * s)
-                var selfGapY = Math.max(gapY * 2, selfBadgeGapBase * s)
+                var selfGapY = Config.Responsive.landscapeCompact
+                    ? Math.max(8, selfBadgeGapBase * s * 0.5)
+                    : Math.max(gapY * 2, selfBadgeGapBase * s)
                 var topY = 4 + visualH / 2
                 var selfTop = height - 4 - selfVisualH
                 var bottomY = selfTop - selfGapY - visualH / 2
@@ -596,9 +610,21 @@ Rectangle {
             //   – Portrait: weiterhin Mittelpunkt zwischen oberster Gegner-
             //     Box-Unterkante und Self-Box-Oberkante – passt zur statischen
             //     3-Säulen-Anordnung.
+            // Community-Karten Y-Achse:
+            //   – Wide regulär:        geometrische Ellipsen-Mitte.
+            //   – landscapeCompact:    zwischen Unterkante der obersten Gegner-
+            //                           Boxen und Oberkante der Self-Box; die
+            //                           untere Ellipsen-Hälfte wurde näher an
+            //                           die Self-Box gezogen, ihr Schwerpunkt
+            //                           liegt entsprechend weiter unten — die
+            //                           Karten würden sonst mitwandern. Mit
+            //                           dieser Formel sitzen sie wieder optisch
+            //                           in der Tisch-Mitte.
+            //   – Portrait:            ebenfalls (topOpponentBottomY + selfVisualTopY)/2.
             readonly property real communityCenterY:
-                wide ? landscapeEllipseCenterY
-                     : (topOpponentBottomY + selfVisualTopY) / 2
+                wide && !Config.Responsive.landscapeCompact
+                    ? landscapeEllipseCenterY
+                    : (topOpponentBottomY + selfVisualTopY) / 2
 
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Item {
@@ -2025,7 +2051,7 @@ Rectangle {
                     // beansprucht (sonst überlappt die obere Sitzreihe die
                     // Pot-/Hand-Status-Leiste).
                     height: Config.Responsive.landscapeCompact
-                            ? 36
+                            ? 30
                             : (Config.Theme.compact ? 64 : 54)
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
@@ -2077,10 +2103,14 @@ Rectangle {
                             text: ab.label
                             color: "#F0F0F0"
                             font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 15
+                            // landscapeCompact: kleinere Schrift + engere
+                            // Zeilenhöhe, damit „Call\n$20" / „Raise\n$40" in
+                            // die schlankere Button-Reihe (30 px) passen, ohne
+                            // dass die Schrift den oberen / unteren Rand berührt.
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 12 : 15
                             font.bold: true
                             font.letterSpacing: 0.5
-                            lineHeight: 0.95
+                            lineHeight: Config.Responsive.landscapeCompact ? 0.85 : 0.95
                         }
 
                         // kleiner "vorgemerkt"-Punkt oben rechts

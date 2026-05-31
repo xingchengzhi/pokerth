@@ -36,6 +36,16 @@ ApplicationWindow {
     visible: true
     title: qsTr("PokerTH - v2.1.0preview")
 
+    // Android hardware back button: intercept close and navigate back instead
+    // of destroying the QML scene while background threads are still running.
+    onClosing: (close) => {
+        if (mainStackView.depth > 1) {
+            close.accepted = false
+            navigateBackFromTopBar()
+        }
+        // depth === 1: allow close → app.exec() returns → proper C++ cleanup
+    }
+
     // Keep Responsive singleton in sync with the actual window dimensions
     onWidthChanged: {
         Config.Responsive.windowWidth = width

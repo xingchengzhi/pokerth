@@ -85,7 +85,7 @@ qt_add_translations(pokerth_qml-client
 if(ANDROID)
     qt_add_executable(pokerth_qml-client MANUAL_FINALIZATION ${POKERTH_QML_CLIENT_SRC})
     target_include_directories(pokerth_qml-client PRIVATE "${Protobuf_INCLUDE_DIR}")
-    target_link_libraries(pokerth_qml-client PUBLIC "${Protobuf_LIBRARIES}")
+    target_link_libraries(pokerth_qml-client PUBLIC protobuf::libprotobuf)
 else()
     add_executable(pokerth_qml-client ${POKERTH_QML_CLIENT_SRC})
 endif()

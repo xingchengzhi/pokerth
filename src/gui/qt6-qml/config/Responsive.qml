@@ -23,7 +23,11 @@ QtObject {
     // desktop        >= 1400 wide
     readonly property bool phonePortrait:  portrait  && windowWidth  < 600
     readonly property bool phoneLandscape: landscape && windowHeight < 600
-    readonly property bool compact:        windowWidth < 600
+    // compact = „nutze mobile Layout-Variante" (Icon-Strip statt Side-Menü,
+    // schmälere Margins, Drawer-Navigation etc.). Greift sowohl bei schmalem
+    // Portrait (klassisch) als auch im Phone-Landscape (landscapeCompact),
+    // wo wenig vertikaler Platz für die Standard-Layouts ist.
+    readonly property bool compact:        windowWidth < 600 || landscapeCompact
     readonly property bool tablet:         windowWidth >= 900  && windowWidth < 1400
     readonly property bool desktop:        windowWidth >= 1400
 
@@ -38,7 +42,7 @@ QtObject {
         landscape
         && windowHeight > 0
         && (windowWidth / windowHeight) > 1.85
-        && windowHeight < 1100
+        && windowHeight < 1300
 
     // Convenience: number of columns for a simple grid
     readonly property int columns: compact ? 1 : tablet ? 2 : 3

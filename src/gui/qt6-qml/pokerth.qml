@@ -20,8 +20,13 @@ ApplicationWindow {
     // portraitMode is now provided by Config.Responsive.portrait
     property StartPage startPage: StartPage {}
     property SideMenu sideMenu: SideMenu {}
-    width: 390
-    height: 844
+    // Start-Auflösung = Phone-Landscape eines typischen Testgeräts (2316×1080).
+    // Damit lässt sich das landscapeCompact-Layout am Desktop/AppImage testen,
+    // ohne extra eine APK zu bauen. Beim Komponenten-Aufbau wird die Größe auf
+    // den verfügbaren Bildschirm geclampt (Notebooks mit < 2316 px Breite würden
+    // sonst Teile des Fensters außerhalb des sichtbaren Bereichs öffnen).
+    width: 2316
+    height: 1080
     // Initiale Portrait-Breite als untere Schranke – das Fenster darf nicht
     // schmaler werden als der Standard-Portrait-Modus, damit das Layout
     // (Slot-Spalten, Self-Box, Action-Buttons) immer komplett ins Bild passt.
@@ -42,6 +47,20 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        // Aspect-erhaltender Clamp auf den verfügbaren Bildschirm. 2316×1080
+        // ist die Phone-Landscape-Testgröße (Aspect 2.144); auf Notebooks mit
+        // 1920×1080 oder 2560×1440 würde das Fenster sonst entweder rausragen
+        // oder sein Seitenverhältnis verlieren — beides hebelt den
+        // landscapeCompact-Modus aus (Aspect-Schwelle 1.85).
+        if (screen) {
+            var maxW = screen.width  - 20
+            var maxH = screen.height - 60   // Taskleiste/Titelbar
+            var scale = Math.min(maxW / width, maxH / height, 1.0)
+            if (scale < 1.0) {
+                width  = Math.max(minimumWidth,  Math.floor(width  * scale))
+                height = Math.max(minimumHeight, Math.floor(height * scale))
+            }
+        }
         Config.Responsive.windowWidth  = width
         Config.Responsive.windowHeight = height
         Config.Theme.windowWidth       = width

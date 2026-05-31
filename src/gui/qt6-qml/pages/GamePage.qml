@@ -183,13 +183,6 @@ Rectangle {
             id: tableZone
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // Sicherheitsnetz: skalierte Player-Boxen werden um die Slot-Mitte
-            // herum gezeichnet (transformOrigin: Item.Center, scale = boxScale).
-            // Die Item-Bounding-Box ist die ungescalete Größe — wenn der
-            // Geometrie-Cap zu großzügig ist, ragt der visuelle Box-Inhalt über
-            // die tableZone hinaus und überlappt die Status-Bar darüber. clip
-            // hält das verlässlich innerhalb der Zone.
-            clip: true
 
             // Grüne Tischgrafik füllt die gesamte Zone. Unten am Bild liegt der
             // hölzerne Tischrand → Crop am unteren Rand ausrichten, damit dieser
@@ -1759,9 +1752,14 @@ Rectangle {
             Rectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                // Querformat: 8 px Abstand zum unteren Bildschirmrand (Tisch zeigt
-                // sich darunter durch).
-                anchors.bottomMargin: tableZone.wide ? 8 : 0
+                // Querformat: kleiner Abstand zum unteren Bildschirmrand
+                // (Tisch zeigt sich darunter durch). Im landscapeCompact ist
+                // die actionBar selbst nur noch `+2` höher als ihr Inhalt,
+                // daher hier 2 statt 8 verwenden — sonst rutschen die
+                // Action-Buttons unter den Panel-Hintergrund.
+                anchors.bottomMargin: tableZone.wide
+                                      ? (Config.Responsive.landscapeCompact ? 2 : 8)
+                                      : 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: actionBar.panelWidth
                 color: Qt.rgba(0, 0, 0, 0.82)

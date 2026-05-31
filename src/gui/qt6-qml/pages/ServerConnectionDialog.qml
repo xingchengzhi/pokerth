@@ -65,6 +65,24 @@ Rectangle {
         }
     }
 
+    Flickable {
+        id: serverConnScroller
+        anchors.fill: parent
+        contentWidth: serverConnScroller.width
+        contentHeight: serverConnScrollContent.height
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
+
+        ScrollBar.vertical: ScrollBar {
+            policy: serverConnScroller.contentHeight > serverConnScroller.height
+                    ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+        }
+
+        Item {
+            id: serverConnScrollContent
+            width: serverConnScroller.width
+            height: Math.max(serverConnScroller.height, 360)
+
     ColumnLayout {
         anchors.fill: parent
 
@@ -295,6 +313,8 @@ Rectangle {
                     Item { Layout.fillHeight: true }
                 }
             }
+        }
+    }
         }
     }
 }

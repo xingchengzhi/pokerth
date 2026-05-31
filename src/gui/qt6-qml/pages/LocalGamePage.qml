@@ -33,7 +33,30 @@ Rectangle {
         return qsTr("Small Blind: $%1  •  Erhöhen %2  •  %3").arg(fsb).arg(raise).arg(mode)
     }
 
+    Flickable {
+        id: scroller
+        anchors.fill: parent
+        contentWidth: scroller.width
+        contentHeight: scrollContent.height
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
+
+        ScrollBar.vertical: ScrollBar {
+            policy: scroller.contentHeight > scroller.height
+                    ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+        }
+
+        Item {
+            id: scrollContent
+            width: scroller.width
+            // Min-Höhe = Viewport (damit fillHeight-Spacer das vertikale
+            // Zentrieren halten), aber wachsen sobald der Layout-Inhalt
+            // mehr Platz braucht → dann scrollt der Flickable.
+            height: Math.max(scroller.height,
+                             pageColumn.implicitHeight + Config.Theme.margin * 2)
+
     ColumnLayout {
+        id: pageColumn
         anchors.fill: parent
         anchors.margins: Config.Theme.margin
         spacing: Config.Theme.spacing
@@ -298,5 +321,7 @@ Rectangle {
         }
 
         Item { Layout.fillHeight: true }
+    }
+        }
     }
 }

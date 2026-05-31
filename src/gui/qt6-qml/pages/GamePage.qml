@@ -310,8 +310,12 @@ Rectangle {
                                                    0.5 * width - sideMargin - visualW / 2)
                         var topYpix = 4 + visualH / 2
                         var bottomYpix = height - 4 - selfVisualH - selfGapY - visualH / 2
-                        var radiusYpix = Math.max(visualH + gapY * 2.2,
-                                                   (bottomYpix - topYpix) / 2)
+                        // Wie buildLandscapeSlots(): radiusY = nur (bottomY-topY)/2.
+                        // Kein Max mit (visualH + gapY*2.2): das würde den
+                        // Vertikalradius künstlich aufblasen → Bisection würde
+                        // grünes Licht geben, das Layout zeichnet aber Boxen
+                        // über die obere tableZone-Kante hinaus.
+                        var radiusYpix = (bottomYpix - topYpix) / 2
                         if (radiusYpix <= 0 || radiusXpix <= 0) return false
                         var xNeeded = sTest * oppBaseWidth + gap
                         var yNeeded = sTest * oppBaseHeight + gap
@@ -481,8 +485,14 @@ Rectangle {
                 var selfTop = height - 4 - selfVisualH
                 var bottomY = (selfTop - selfGapY - visualH / 2) / Math.max(height, 1)
                 var centerY = (topY + bottomY) / 2
-                var radiusY = Math.max((visualH + gapY * 2.2) / Math.max(height, 1),
-                                        (bottomY - topY) / 2)
+                // radiusY STRIKT auf das verfügbare Bahn-Stück begrenzen:
+                // sonst kann das Top-Slot-Center bei `centerY - radiusY` unter
+                // den `topY`-Wert rutschen → Box-Visual wird über die tableZone
+                // hinaus gezeichnet und überlappt die Status-Bar. Falls der
+                // resultierende radiusY zu klein für die nötige Paartrennung
+                // ist, sorgt der boxScale-Cap (Bisection) dafür, dass die
+                // Boxen kleiner werden.
+                var radiusY = (bottomY - topY) / 2
 
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
@@ -1794,7 +1804,7 @@ Rectangle {
                         // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
@@ -1838,7 +1848,7 @@ Rectangle {
                         Slider {
                             id: raiseSlider
                             Layout.fillWidth: true
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 18 : 26
                             Layout.alignment: Qt.AlignVCenter
                             enabled: actionBar.raiseAvailable
                             opacity: enabled ? 1.0 : 0.45
@@ -1891,7 +1901,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
+                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -1929,7 +1939,7 @@ Rectangle {
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
                             radius: 5
                             opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
                             color: allInArea.containsPress
@@ -1978,7 +1988,7 @@ Rectangle {
                         ComboBox {
                             id: playingModeCombo
                             Layout.preferredWidth: 132
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
@@ -2015,7 +2025,7 @@ Rectangle {
                     // beansprucht (sonst überlappt die obere Sitzreihe die
                     // Pot-/Hand-Status-Leiste).
                     height: Config.Responsive.landscapeCompact
-                            ? 40
+                            ? 36
                             : (Config.Theme.compact ? 64 : 54)
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und

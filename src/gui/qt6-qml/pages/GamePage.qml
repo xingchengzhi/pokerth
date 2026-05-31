@@ -183,6 +183,13 @@ Rectangle {
             id: tableZone
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Sicherheitsnetz: skalierte Player-Boxen werden um die Slot-Mitte
+            // herum gezeichnet (transformOrigin: Item.Center, scale = boxScale).
+            // Die Item-Bounding-Box ist die ungescalete Größe — wenn der
+            // Geometrie-Cap zu großzügig ist, ragt der visuelle Box-Inhalt über
+            // die tableZone hinaus und überlappt die Status-Bar darüber. clip
+            // hält das verlässlich innerhalb der Zone.
+            clip: true
 
             // Grüne Tischgrafik füllt die gesamte Zone. Unten am Bild liegt der
             // hölzerne Tischrand → Crop am unteren Rand ausrichten, damit dieser
@@ -1471,7 +1478,8 @@ Rectangle {
             Layout.fillWidth: true
             // Höhe wächst dynamisch mit dem Inhalt (Querformat: +8 px, damit das
             // Panel mit 8 px Abstand über dem unteren Bildschirmrand schwebt).
-            Layout.preferredHeight: actionBarCol.implicitHeight + (tableZone.wide ? 8 : 0)
+            Layout.preferredHeight: actionBarCol.implicitHeight
+                                    + (tableZone.wide ? (Config.Responsive.landscapeCompact ? 2 : 8) : 0)
 
             // Querformat: Inhalt auf die (skalierte) Breite des Community-Cards-
             // Bereichs begrenzen und zentrieren – sonst wird u. a. der Slider viel
@@ -1771,9 +1779,9 @@ Rectangle {
                 Column {
                     id: raiseSection
                     width: parent.width
-                    spacing: 4
-                    topPadding: 5
-                    bottomPadding: 3
+                    spacing: Config.Responsive.landscapeCompact ? 2 : 4
+                    topPadding: Config.Responsive.landscapeCompact ? 2 : 5
+                    bottomPadding: Config.Responsive.landscapeCompact ? 1 : 3
                     leftPadding: 8
                     rightPadding: 8
                     visible: GameTable !== null
@@ -1788,7 +1796,7 @@ Rectangle {
                         // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            Layout.preferredHeight: 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
@@ -1832,7 +1840,7 @@ Rectangle {
                         Slider {
                             id: raiseSlider
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
                             Layout.alignment: Qt.AlignVCenter
                             enabled: actionBar.raiseAvailable
                             opacity: enabled ? 1.0 : 0.45
@@ -1885,7 +1893,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                Layout.preferredHeight: 28
+                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -1923,7 +1931,7 @@ Rectangle {
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
-                            Layout.preferredHeight: 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
                             radius: 5
                             opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
                             color: allInArea.containsPress
@@ -1972,7 +1980,7 @@ Rectangle {
                         ComboBox {
                             id: playingModeCombo
                             Layout.preferredWidth: 132
-                            Layout.preferredHeight: 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 22 : 28
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
@@ -2003,8 +2011,14 @@ Rectangle {
                 Item {
                     width: parent.width
                     // Touch-freundlich: auf schmalen (mobilen) Fenstern höher, damit
-                    // die Buttons gut in der Daumenzone liegen.
-                    height: Config.Theme.compact ? 64 : 54
+                    // die Buttons gut in der Daumenzone liegen. Im Phone-Landscape
+                    // wird die Reihe deutlich flacher gehalten, damit die Action-Bar
+                    // insgesamt weniger als 25 % der vertikalen Bildschirmhöhe
+                    // beansprucht (sonst überlappt die obere Sitzreihe die
+                    // Pot-/Hand-Status-Leiste).
+                    height: Config.Responsive.landscapeCompact
+                            ? 40
+                            : (Config.Theme.compact ? 64 : 54)
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
                     // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
@@ -2091,8 +2105,13 @@ Rectangle {
                     }
 
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5
-                                  bottomMargin: Config.Theme.compact ? 9 : 5 }
+                        anchors {
+                            fill: parent; leftMargin: 8; rightMargin: 8
+                            topMargin: Config.Responsive.landscapeCompact ? 2 : 5
+                            bottomMargin: Config.Responsive.landscapeCompact
+                                          ? 2
+                                          : (Config.Theme.compact ? 9 : 5)
+                        }
                         spacing: 8
 
                         ActionButton {

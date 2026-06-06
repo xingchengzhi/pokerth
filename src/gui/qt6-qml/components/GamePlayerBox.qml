@@ -173,7 +173,7 @@ Item {
         Row {
             id: topRow
             width: parent.width - 2 * playerBox.hMargin
-            height: root.wideLayout ? (parent.height - 36) : (parent.height - 26)
+            height: root.wideLayout ? (parent.height - 40) : (parent.height - 28)
             x: playerBox.hMargin
             y: 4
             spacing: playerBox.hMargin
@@ -252,7 +252,7 @@ Item {
         Row {
             visible: !root.wideLayout
             width: parent.width - 2 * playerBox.hMargin
-            height: 13
+            height: 15
             x: playerBox.hMargin
             y: parent.height - height - topRow.y
 
@@ -261,7 +261,7 @@ Item {
                 horizontalAlignment: Text.AlignLeft
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 10
+                font.pixelSize: 12
                 font.weight: Font.DemiBold
                 font.letterSpacing: 0.3
                 elide: Text.ElideRight
@@ -273,7 +273,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 color: Config.Theme.colorAccent
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 10
+                font.pixelSize: 12
                 font.bold: true
                 text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }
@@ -284,7 +284,7 @@ Item {
             id: infoBar
             visible: root.wideLayout
             width: parent.width - 2 * playerBox.hMargin
-            height: 28
+            height: 32
             x: playerBox.hMargin
             y: parent.height - height - topRow.y
 
@@ -296,7 +296,7 @@ Item {
                 horizontalAlignment: Text.AlignLeft
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 11
+                font.pixelSize: 13
                 font.weight: Font.DemiBold
                 font.letterSpacing: 0.3
                 elide: Text.ElideRight
@@ -321,7 +321,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 color: Config.Theme.colorAccent
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 11
+                font.pixelSize: 13
                 font.bold: true
                 text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }

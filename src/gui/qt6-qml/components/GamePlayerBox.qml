@@ -173,7 +173,7 @@ Item {
         Row {
             id: topRow
             width: parent.width - 2 * playerBox.hMargin
-            height: root.wideLayout ? (parent.height - 40) : (parent.height - 28)
+            height: root.wideLayout ? (parent.height - 44) : (parent.height - 28)
             x: playerBox.hMargin
             y: 4
             spacing: playerBox.hMargin
@@ -284,7 +284,7 @@ Item {
             id: infoBar
             visible: root.wideLayout
             width: parent.width - 2 * playerBox.hMargin
-            height: 32
+            height: 36
             x: playerBox.hMargin
             y: parent.height - height - topRow.y
 
@@ -296,7 +296,7 @@ Item {
                 horizontalAlignment: Text.AlignLeft
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 13
+                font.pixelSize: 15
                 font.weight: Font.DemiBold
                 font.letterSpacing: 0.3
                 elide: Text.ElideRight
@@ -321,7 +321,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 color: Config.Theme.colorAccent
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 13
+                font.pixelSize: 15
                 font.bold: true
                 text: root.seatData && root.seatData.name !== "" ? "$" + root.seatData.stack : ""
             }
@@ -533,8 +533,8 @@ Item {
             }
 
             Image {
-                width: 16
-                height: 16
+                width: 20
+                height: 20
                 anchors.verticalCenter: parent.verticalCenter
                 source: "qrc:resources/chipStack.svg"
                 fillMode: Image.PreserveAspectFit
@@ -544,7 +544,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 11
+                font.pixelSize: 13
                 font.bold: true
                 text: "$" + root.bet
             }
@@ -554,8 +554,8 @@ Item {
         Image {
             id: buttonImg
             visible: root.button > 0
-            width: 26
-            height: 26
+            width: 32
+            height: 32
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
                ? (betGroup.width - width)

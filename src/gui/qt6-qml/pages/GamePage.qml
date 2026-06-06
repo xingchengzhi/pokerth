@@ -395,12 +395,13 @@ Rectangle {
                         // Wand-Checks
                         if (visualW > 2 * (0.15 * width - 4)) return false
                         if (visualH > 2 * (0.075 * height - 4)) return false
-                        // Self-Box vs. Bottom-Reihe:
-                        //   self_top    = height - 20 - selfVisualH
-                        //   bottom_kant = 0.785*height + visualH/2
-                        //   Abstand     = self_top - bottom_kant
-                        //              = 0.215*height - 20 - selfVisualH - visualH/2
-                        if (0.215 * height - 20 - selfVisualH - visualH / 2 < gapP)
+                        // Self-Box vs. Bottom-Reihe (L_bottom/R_bottom bei oppCnt>=8).
+                        // seatNudge=+14 für diese Slots wird berücksichtigt:
+                        //   self_top    = height - 4 - selfVisualH  (scale-kompensierbares bottomMargin)
+                        //   bottom_kant = 0.785*height + 14 + visualH/2
+                        //   Abstand     = 0.215*height - 18 - selfVisualH - visualH/2
+                        //   Constraint  = Abstand >= gapP  →  0.215*H - 26 - ... >= 0
+                        if (oppCnt >= 8 && 0.215 * height - 26 - selfVisualH - visualH / 2 < gapP)
                             return false
 
                         // Paar-Trennung
@@ -804,7 +805,7 @@ Rectangle {
                         spacing: 4
                         Image {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 13; height: 13
+                            width: 16; height: 16
                             source: "../resources/chipStack.svg"
                             fillMode: Image.PreserveAspectFit
                         }
@@ -853,8 +854,8 @@ Rectangle {
                    + (communityArea.height * communityArea.scale) / 2
                    + (tableZone.wide ? 8 : 6) * communityArea.scale
                 width: winHandLabel.implicitWidth + 22
-                height: 26
-                radius: 13
+                height: Math.max(20, Math.round(26 * tableZone.communityScale))
+                radius: height / 2
                 color: Qt.rgba(0.05, 0.24, 0.05, 0.92)
                 border.color: "#FFD700"
                 border.width: 1
@@ -878,7 +879,7 @@ Rectangle {
                           ? GameTable.winningHandText : ""
                     color: "#FFD700"
                     font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: 14
+                    font.pixelSize: Math.max(10, Math.round(14 * tableZone.communityScale))
                     font.bold: true
                 }
 
@@ -998,8 +999,12 @@ Rectangle {
                 // wandert.  Der `selfBaseHeight·(boxScale-1)/2`-Anteil hält
                 // die visuelle Unterkante bei jedem Scale konstant 12 px
                 // über parent.bottom.
-                // Portrait bleibt unverändert bei 20 px.
-                anchors.bottomMargin: tableZone.wide ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2 : 20
+                // Scale-kompensierbares bottomMargin: visueller Unterrand der Box
+                // bleibt bei konstantem Abstand (wide: 12 px, portrait: 4 px)
+                // über dem tableZone-Rand, unabhängig vom boxScale.
+                anchors.bottomMargin: tableZone.wide
+                    ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2
+                    :  4 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
                 // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)
@@ -1841,9 +1846,9 @@ Rectangle {
                 Column {
                     id: raiseSection
                     width: parent.width
-                    spacing: Config.Responsive.landscapeCompact ? 2 : 4
-                    topPadding: Config.Responsive.landscapeCompact ? 2 : 5
-                    bottomPadding: Config.Responsive.landscapeCompact ? 1 : 3
+                    spacing: Config.Responsive.landscapeCompact ? 2 : 3
+                    topPadding: Config.Responsive.landscapeCompact ? 2 : 4
+                    bottomPadding: Config.Responsive.landscapeCompact ? 1 : 2
                     leftPadding: 8
                     rightPadding: 8
                     visible: GameTable !== null
@@ -1858,7 +1863,7 @@ Rectangle {
                         // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
@@ -1955,7 +1960,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
+                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -1993,7 +1998,7 @@ Rectangle {
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
                             radius: 5
                             opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
                             color: allInArea.containsPress
@@ -2042,7 +2047,7 @@ Rectangle {
                         ComboBox {
                             id: playingModeCombo
                             Layout.preferredWidth: 132
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 28
+                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
@@ -2080,7 +2085,7 @@ Rectangle {
                     // Pot-/Hand-Status-Leiste).
                     height: Config.Responsive.landscapeCompact
                             ? 30
-                            : (Config.Theme.compact ? 64 : 54)
+                            : (Config.Theme.compact ? 56 : 54)
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
                     // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
@@ -2176,7 +2181,7 @@ Rectangle {
                             topMargin: Config.Responsive.landscapeCompact ? 2 : 5
                             bottomMargin: Config.Responsive.landscapeCompact
                                           ? 2
-                                          : (Config.Theme.compact ? 9 : 5)
+                                          : (Config.Theme.compact ? 6 : 5)
                         }
                         spacing: 8
 

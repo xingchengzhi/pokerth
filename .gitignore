@@ -68,3 +68,4 @@ preview/.preview_view_mode
 preview/.preview_view_mode_stop
 docker/android/android-build-release-unsigned.apk
 docker/android/my.keystore
+docker/android/PokerTH-arm64-release.apk

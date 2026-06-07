@@ -614,6 +614,45 @@ Rectangle {
             }
             readonly property var slotSeq: wide ? slotSeqLandscape : slotSeqPortrait
 
+            // zoomContent.transformOrigin == TopLeft, x=(1−sc)·w/2 + panX
+            // → Bildschirmmitte auf Content-Punkt (cx,cy): panX = w − cx·sc
+            function _panToPoint(cx, cy) {
+                var sc = zoomFactor
+                var maxX = (sc - 1) * width  / 2
+                var maxY = (sc - 1) * height / 2
+                _zoomPanX = Math.max(-maxX, Math.min(maxX, width  - cx * sc))
+                _zoomPanY = Math.max(-maxY, Math.min(maxY, height - cy * sc))
+            }
+            function _panToSeat(seatIdx) {
+                var slot = slotForSeat(seatIdx)
+                if (!slot) return
+                _panToPoint(width * slot.x, height * slot.y + slot.nudge)
+            }
+
+            function slotForSeat(seatIdx) {
+                if (!GameTable || seatIdx <= 0) return null
+                var players = GameTable.players
+                var oppOrder = 0
+                for (var i = 1; i <= seatIdx && i < players.length; i++)
+                    if (players[i].name !== "") oppOrder++
+                if (oppOrder < 1) return null
+                var seatCount = 0
+                for (var j = 0; j < players.length; j++)
+                    if (players[j].name !== "") seatCount++
+                var seq = slotSeq[seatCount - 1]
+                if (!seq || oppOrder > seq.length) return null
+                var name = seq[oppOrder - 1]
+                var pos = slotPos[name]
+                if (!pos) return null
+                var nudge = wide ? 0
+                    : (name === "L_lower" || name === "L_bottom"
+                       || name === "R_lower" || name === "R_bottom") ? 14
+                    : (name === "L_upper" || name === "TL"
+                       || name === "R_upper" || name === "TR") ? -4
+                    : 0
+                return { x: pos[0], y: pos[1], nudge: nudge }
+            }
+
             readonly property real landscapeEllipseCenterY: {
                 // GEOMETRISCHE Mitte der Ellipse in Pixeln – exakt dieselbe
                 // Berechnung wie in buildLandscapeSlots() (topY/bottomY,
@@ -1087,9 +1126,39 @@ Rectangle {
                     function onMyTurnChanged() {
                         if (!tableZone.zoomActive || !GameTable || !GameTable.myTurn)
                             return
-                        // Maximaler Downward-Pan zeigt die Self-Box (Content-Unterrand)
                         tableZone._zoomPanY = -(tableZone.zoomFactor - 1) * zoomLayer.height / 2
                         tableZone._zoomPanX = 0
+                    }
+                    function onTimeoutChanged() {
+                        if (!tableZone.zoomActive || !GameTable || zoomPanner.active) return
+                        var seatId = GameTable.timeoutSeatId
+                        if (seatId <= 0) return
+                        tableZone._panToSeat(seatId)
+                    }
+                    function onPlayersChanged() {
+                        if (!tableZone.zoomActive || !GameTable || zoomPanner.active) return
+                        var players = GameTable.players
+                        for (var i = 1; i < players.length; i++) {
+                            if (players[i].name !== "" && players[i].myTurn) {
+                                tableZone._panToSeat(i)
+                                return
+                            }
+                        }
+                    }
+                    function onBoardCardsChanged() {
+                        if (!tableZone.zoomActive || !GameTable || zoomPanner.active) return
+                        if (GameTable.boardCardCount <= 0) return
+                        tableZone._panToPoint(tableZone.width / 2, tableZone.communityCenterY)
+                    }
+                    function onWinningHandTextChanged() {
+                        if (!tableZone.zoomActive || !GameTable || zoomPanner.active) return
+                        if (!GameTable.winningHandText) return
+                        // Mittelpunkt zwischen Community-Karten-Mitte und Self-Box-Mitte:
+                        // Beide Bereiche gleichzeitig mit ~20px Rand sichtbar.
+                        var selfCY = tableZone.selfVisualTopY
+                                     + tableZone.selfBaseHeight * tableZone.boxScale / 2
+                        var cy = (tableZone.communityCenterY + selfCY) / 2
+                        tableZone._panToPoint(tableZone.width / 2, cy)
                     }
                 }
             } // zoomLayer
@@ -1227,7 +1296,10 @@ Rectangle {
                         clip: true
                         model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.gameLog : []
                         boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar {}
+                        ScrollBar.vertical: ScrollBar {
+                            policy: logList.contentHeight > logList.height + 4
+                                    ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                        }
                         onCountChanged: positionViewAtEnd()
                         delegate: Text {
                             required property var modelData
@@ -1420,7 +1492,10 @@ Rectangle {
                         clip: true
                         model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog : []
                         boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar {}
+                        ScrollBar.vertical: ScrollBar {
+                            policy: chatList.contentHeight > chatList.height + 4
+                                    ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                        }
                         onCountChanged: positionViewAtEnd()
                         spacing: 3
                         delegate: Item {
@@ -2130,6 +2205,9 @@ Rectangle {
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
                             currentIndex: actionBar.playingMode
                             onActivated: (index) => gamePage.applyPlayingMode(index)
+                            // Popup nach oben öffnen – verhindert, dass er hinter
+                            // der Android-Navigationsleiste verschwindet.
+                            popup.y: -popup.implicitHeight
 
                             contentItem: Text {
                                 leftPadding: 8

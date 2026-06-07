@@ -538,7 +538,10 @@ Rectangle {
                             model: gameWaitPage.players
                             spacing: 4
                             boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar {}
+                            ScrollBar.vertical: ScrollBar {
+                                policy: playerList.contentHeight > playerList.height + 4
+                                        ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                            }
 
                             delegate: Rectangle {
                                 required property var modelData

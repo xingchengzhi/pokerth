@@ -64,14 +64,12 @@ SpinBox {
         Behavior on color { ColorAnimation { duration: 120 } }
 
         VectorImage {
-            id: minusIcon
             anchors.centerIn: parent
             width: 14
             height: 14
             source: "../resources/minus.svg"
-            MultiEffect {
-                source: minusIcon
-                anchors.fill: minusIcon
+            layer.enabled: true
+            layer.effect: MultiEffect {
                 colorization: 1.0
                 colorizationColor: control.down.pressed
                     ? Config.Theme.colorOnAccent
@@ -103,14 +101,12 @@ SpinBox {
         Behavior on color { ColorAnimation { duration: 120 } }
 
         VectorImage {
-            id: plusIcon
             anchors.centerIn: parent
             width: 14
             height: 14
             source: "../resources/plus.svg"
-            MultiEffect {
-                source: plusIcon
-                anchors.fill: plusIcon
+            layer.enabled: true
+            layer.effect: MultiEffect {
                 colorization: 1.0
                 colorizationColor: control.up.pressed
                     ? Config.Theme.colorOnAccent

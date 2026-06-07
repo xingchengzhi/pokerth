@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
+import QtQuick.VectorImage
 
 import "../config" as Config
 import "../components"
@@ -19,14 +20,21 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
     }
 
-    // Im landscapeCompact (Phone-Landscape) müssen die Buttons in das knappe
-    // vertikale Budget passen – Höhe / Padding gehen runter, und die ganze
-    // Sektion wird in einen Flickable gesteckt, falls trotzdem mal Inhalt
-    // überläuft (z. B. wenn Sprach-Strings länger sind als auf Deutsch).
     readonly property bool denseLayout: Config.Responsive.landscapeCompact
+    readonly property bool isLandscape: width > height
     readonly property real buttonHeight: denseLayout ? 30 : Config.Theme.touchTarget
     readonly property real outerMargin:  denseLayout ? 4  : Config.Theme.margin
     readonly property real innerSpacing: denseLayout ? 4  : Config.Theme.spacing
+
+    // Logo-Größe passt sich dem verfügbaren vertikalen Platz an, damit
+    // Landscape-Modus nie vertikal scrollt.
+    readonly property real logoSize: {
+        if (denseLayout)                 return 50   // Phone-Landscape (landscapeCompact)
+        if (isLandscape)                 return 80   // reguläres Landscape (Tablet/Desktop)
+        if (Config.Responsive.compact)   return 110  // Portrait-Phone
+        return 140                                   // Portrait Desktop/Tablet
+    }
+    readonly property real logoSpacing: denseLayout ? 6 : isLandscape ? 12 : 20
 
     Flickable {
         id: startScroll
@@ -39,18 +47,22 @@ Rectangle {
         Item {
             id: startContent
             width: startScroll.width
-            // Mindesthöhe = Viewport, damit der Inhalt vertikal zentriert
-            // bleibt solange er reinpasst.
-            implicitHeight: Math.max(startScroll.height, startPageMainButtonsBox.height + startPage.outerMargin * 2)
+            // Mindesthöhe = Viewport → Inhalt bleibt vertikal zentriert,
+            // solange er passt. Landscape-Logos sind klein genug, dass
+            // implicitHeight immer ≤ startScroll.height bleibt.
+            implicitHeight: Math.max(startScroll.height,
+                                     startPageMainButtonsBox.height + startPage.outerMargin * 2)
 
+            // ── Overlay-Box: enthält Logo + Navigations-Buttons ──────────────
             Rectangle {
                 id: startPageMainButtonsBox
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(parent.width - startPage.outerMargin * 2, 320)
-                height: startPageMainButtons.implicitHeight + startPage.outerMargin * 2
+                width: Math.min(startContent.width - startPage.outerMargin * 2, 320)
+                height: startBoxContent.implicitHeight + startPage.outerMargin * 2
                 color: "transparent"
 
+                // Halb-transparenter Hintergrund über dem gesamten Bereich
                 Rectangle {
                     anchors.fill: parent
                     color: Config.StaticData.palette.secondary.col700
@@ -58,47 +70,62 @@ Rectangle {
                     radius: 5
                 }
 
-                ColumnLayout {
-                    id: startPageMainButtons
+                Column {
+                    id: startBoxContent
                     anchors {
                         left: parent.left; right: parent.right; top: parent.top
                         margins: startPage.outerMargin
                     }
-                    spacing: startPage.innerSpacing
+                    spacing: startPage.logoSpacing
 
-                    CustomButton {
-                        text: qsTr("Internetspiel")
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: startPage.buttonHeight
-                        onClicked: mainStackView.push("ServerConnectionDialog.qml")
+                    // ── PokerTH-Logo ─────────────────────────────────────────
+                    VectorImage {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width:  startPage.logoSize
+                        height: startPage.logoSize
+                        source: "../resources/pokerth.svg"
                     }
 
-                    CustomButton {
-                        text: qsTr("Lokales Spiel starten")
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: startPage.buttonHeight
-                        onClicked: mainStackView.push("LocalGamePage.qml")
-                    }
+                    // ── Navigations-Buttons ───────────────────────────────────
+                    ColumnLayout {
+                        id: startPageMainButtons
+                        width: parent.width
+                        spacing: startPage.innerSpacing
 
-                    CustomButton {
-                        text: qsTr("Netzwerkspiel erstellen")
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: startPage.buttonHeight
-                        onClicked: mainStackView.push("NetworkGameCreatePage.qml")
-                    }
+                        CustomButton {
+                            text: qsTr("Internetspiel")
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: startPage.buttonHeight
+                            onClicked: mainStackView.push("ServerConnectionDialog.qml")
+                        }
 
-                    CustomButton {
-                        text: qsTr("Netzwerkspiel beitreten")
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: startPage.buttonHeight
-                        onClicked: mainStackView.push("NetworkGameEnterPage.qml")
-                    }
+                        CustomButton {
+                            text: qsTr("Lokales Spiel starten")
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: startPage.buttonHeight
+                            onClicked: mainStackView.push("LocalGamePage.qml")
+                        }
 
-                    CustomButton {
-                        text: qsTr("Logs")
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: startPage.buttonHeight
-                        onClicked: mainStackView.push("LogsPage.qml")
+                        CustomButton {
+                            text: qsTr("Netzwerkspiel erstellen")
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: startPage.buttonHeight
+                            onClicked: mainStackView.push("NetworkGameCreatePage.qml")
+                        }
+
+                        CustomButton {
+                            text: qsTr("Netzwerkspiel beitreten")
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: startPage.buttonHeight
+                            onClicked: mainStackView.push("NetworkGameEnterPage.qml")
+                        }
+
+                        CustomButton {
+                            text: qsTr("Logs")
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: startPage.buttonHeight
+                            onClicked: mainStackView.push("LogsPage.qml")
+                        }
                     }
                 }
             }

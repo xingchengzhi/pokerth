@@ -288,7 +288,10 @@ Rectangle {
                         clip: true
                         model: networkGameEnterPage.profiles
                         boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar {}
+                        ScrollBar.vertical: ScrollBar {
+                            policy: profileList.contentHeight > profileList.height + 4
+                                    ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                        }
 
                         delegate: ItemDelegate {
                             id: profileDelegate

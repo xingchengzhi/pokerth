@@ -19,6 +19,7 @@ DEVCONTAINER_DIR="$SCRIPT_DIR/.devcontainer"
 IMAGE_NAME="pokerth-android-builder:arm64"
 ARCH="arm64-v8a"
 NO_CACHE="${1:-}"
+BUILD_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "=== PokerTH Android APK – Docker-Build (arm64-v8a) ==="
 echo "Projekt-Root:  $PROJECT_ROOT"
@@ -84,8 +85,8 @@ if [ -z "$APK_FILE" ]; then
     exit 1
 fi
 
-cp -v "$APK_FILE" "$SCRIPT_DIR/"
-DEST_APK="$SCRIPT_DIR/$(basename "$APK_FILE")"
+DEST_APK="$SCRIPT_DIR/pokerth-qml_${ARCH}_${BUILD_TIMESTAMP}.apk"
+cp -v "$APK_FILE" "$DEST_APK"
 
 echo ""
 echo "=== Fertig! ==="
@@ -94,7 +95,3 @@ echo ""
 echo "Nächster Schritt – APK signieren (außerhalb Docker):"
 echo "  cd docker/android/"
 echo "  apksigner sign --ks my.keystore --ks-key-alias app $(basename "$DEST_APK")"
-echo ""
-echo "Optional mit zipalign vorher:"
-echo "  zipalign -v 4 $(basename "$DEST_APK") PokerTH-arm64-release.apk"
-echo "  apksigner sign --ks my.keystore --ks-key-alias app PokerTH-arm64-release.apk"

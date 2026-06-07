@@ -138,7 +138,10 @@ Rectangle {
                     model: logsPage.files
                     currentIndex: logsPage.selectedIndex
                     boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: ScrollBar {}
+                    ScrollBar.vertical: ScrollBar {
+                        policy: fileList.contentHeight > fileList.height + 4
+                                ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                    }
 
                     delegate: ItemDelegate {
                         id: fileDelegate

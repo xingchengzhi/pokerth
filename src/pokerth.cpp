@@ -56,6 +56,7 @@
 #include "gui/qt6-qml/cpp/loghandler.h"
 #include "gui/qt6-qml/cpp/networkgamehandler.h"
 #include "gui/qt6-qml/cpp/qmlguiinterface.h"
+#include "gui/qt6-qml/cpp/screenhelper.h"
 
 int main(int argc, char *argv[])
 {
@@ -165,8 +166,10 @@ int main(int argc, char *argv[])
 
     SettingsManager settingsMgr(myConfig);
     LanguageManager langMgr(&engine);
+    ScreenHelper screenHelper;
     engine.rootContext()->setContextProperty("SettingsManager", &settingsMgr);
     engine.rootContext()->setContextProperty("LanguageManager", &langMgr);
+    engine.rootContext()->setContextProperty("ScreenHelper", &screenHelper);
     engine.rootContext()->setContextProperty("ServerConnection", connectionHandler);
     engine.rootContext()->setContextProperty("Lobby", lobbyHandler);
     engine.rootContext()->setContextProperty("GameTable", gameHandler);

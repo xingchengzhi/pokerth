@@ -21,6 +21,7 @@ ARCH=${ANDROID_ARCH:-x64}
 BUILD_TYPE=Release
 API_LEVEL=${ANDROID_API_LEVEL:-35}
 TARGET=${TARGET:-pokerth_qml-client}
+BUILD_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -203,75 +204,28 @@ fi
 mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
 mkdir -p "$ANDROID_BUILD_DIR/res/values"
 
-# Package-Name pro Target trennen, damit qml-Build und widget-Build sich auf
-# einem Gerät nicht gegenseitig überschreiben (jedes APK braucht eine
-# eindeutige applicationId).
+# Package-Name, Version und Orientierung pro Target.
+VERSION_NAME="2.0.7"
+VERSION_CODE="20"
 if [[ $TARGET == "pokerth_qml-client" ]]; then
   PACKAGE_NAME="org.pokerth.qml"
+  SCREEN_ORIENTATION="fullUser"
 else
   PACKAGE_NAME="org.pokerth.widget"
+  SCREEN_ORIENTATION="landscape"
 fi
 
-# Erstelle immer das dynamische AndroidManifest.xml mit korrektem lib_name und Version
-cat > "$ANDROID_BUILD_DIR/AndroidManifest.xml" <<MANIFEST
-<?xml version="1.0"?>
-<manifest package="$PACKAGE_NAME"
-          xmlns:android="http://schemas.android.com/apk/res/android"
-          android:versionName="2.0.7"
-          android:versionCode="20"
-          android:installLocation="auto">
-
-    <uses-sdk
-        android:minSdkVersion="28"
-        android:targetSdkVersion="$API_LEVEL"/>
-
-    <supports-screens
-        android:largeScreens="true"
-        android:normalScreens="true"
-        android:anyDensity="true"
-        android:smallScreens="true"/>
-
-    <application
-        android:hardwareAccelerated="true"
-        android:name="org.qtproject.qt.android.bindings.QtApplication"
-        android:label="PokerTH"
-        android:icon="@drawable/ic_launcher"
-        android:extractNativeLibs="true"
-        android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"> <!-- ← FIX -->
-
-        <activity
-            android:name="org.qtproject.qt.android.bindings.QtActivity"
-            android:label="PokerTH"
-            android:screenOrientation="fullUser"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize"
-            android:exported="true"
-            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density">
-
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="$TARGET"/>
-
-            <meta-data
-                android:name="android.app.extract_android_style"
-                android:value="minimal"/>
-
-        </activity>
-    </application>
-
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
-</manifest>
-MANIFEST
-
-echo "Created dynamic AndroidManifest.xml with lib_name=$TARGET"
+# Generiere AndroidManifest.xml aus Template und schreibe es direkt in
+# ANDROID_SOURCE_DIR, damit androiddeployqt immer die aktuelle Version liest.
+MANIFEST_TEMPLATE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/AndroidManifest.xml.template"
+if [[ ! -f "$MANIFEST_TEMPLATE" ]]; then
+  echo "ERROR: Manifest-Template nicht gefunden: $MANIFEST_TEMPLATE"
+  exit 1
+fi
+export PACKAGE_NAME VERSION_NAME VERSION_CODE API_LEVEL TARGET SCREEN_ORIENTATION
+envsubst '${PACKAGE_NAME} ${VERSION_NAME} ${VERSION_CODE} ${API_LEVEL} ${TARGET} ${SCREEN_ORIENTATION}' \
+  < "$MANIFEST_TEMPLATE" > "$ANDROID_SOURCE_DIR/AndroidManifest.xml"
+echo "AndroidManifest.xml generiert: package=$PACKAGE_NAME version=$VERSION_NAME/$VERSION_CODE lib=$TARGET"
 
 # Finde .so-Datei - suche sowohl nach lib${TARGET}.so als auch nach Varianten
 SO_FILE=$(find "$BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)
@@ -355,15 +309,31 @@ set -e
 echo ""
 echo "androiddeployqt exit code: $DEPLOYQT_EXIT"
 
-# Kopiere PokerTH Icon NACH androiddeployqt, da es das Verzeichnis neu anlegt
+# Generiere App-Icon aus pokerth.svg in alle Mipmap-Dichten (NACH androiddeployqt,
+# da androiddeployqt res/ neu anlegt und eigene Icons überschreiben würde).
 echo ""
-echo "Copying PokerTH icon after androiddeployqt..."
-mkdir -p "$ANDROID_BUILD_DIR/res/drawable"
-cp -v "${ROOT}/pokerth/data/gfx/gui/misc/windowicon_transparent.png" "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
-if [[ -f "$ANDROID_BUILD_DIR/res/drawable/ic_launcher.png" ]]; then
-  echo "Icon successfully copied to: $ANDROID_BUILD_DIR/res/drawable/ic_launcher.png"
+echo "Generating PokerTH mipmap icons from pokerth.svg..."
+ICON_SVG="${PWD}/src/gui/qt6-qml/resources/pokerth.svg"
+if [[ ! -f "$ICON_SVG" ]]; then
+  echo "WARNING: $ICON_SVG not found – skipping icon generation"
+elif ! command -v rsvg-convert &>/dev/null; then
+  echo "WARNING: rsvg-convert not found – skipping icon generation (install librsvg2-bin)"
 else
-  echo "WARNING: Failed to copy icon"
+  declare -A MIPMAP_SIZES=(
+    [mipmap-mdpi]=48
+    [mipmap-hdpi]=72
+    [mipmap-xhdpi]=96
+    [mipmap-xxhdpi]=144
+    [mipmap-xxxhdpi]=192
+  )
+  for MIPMAP in "${!MIPMAP_SIZES[@]}"; do
+    SIZE="${MIPMAP_SIZES[$MIPMAP]}"
+    DEST_DIR="$ANDROID_BUILD_DIR/res/$MIPMAP"
+    mkdir -p "$DEST_DIR"
+    rsvg-convert -w "$SIZE" -h "$SIZE" "$ICON_SVG" -o "$DEST_DIR/ic_launcher.png"
+    echo "  $MIPMAP/ic_launcher.png  (${SIZE}×${SIZE})"
+  done
+  echo "Icon generation complete."
 fi
 
 # Prüfe und patche gradle.properties (nicht build.gradle!)
@@ -426,17 +396,20 @@ echo "Looking for generated APK..."
 APK_FILE=$(find "$ANDROID_BUILD_DIR" -type f -name "*.apk" | grep -E "(release|debug)" | grep -v "unaligned" | head -n1)
 
 if [[ -n "$APK_FILE" ]]; then
+  FINAL_APK="${TARGET}_${VERSION_NAME}_${ARCH}_${BUILD_TIMESTAMP}.apk"
+  cp -v "$APK_FILE" "$FINAL_APK"
+
   echo ""
   echo "======================================"
   echo "APK created successfully!"
-  echo "Location: $APK_FILE"
-  
+  echo "Output: $FINAL_APK"
+
   if command -v aapt >/dev/null 2>&1; then
     echo ""
     echo "APK Info:"
-    aapt dump badging "$APK_FILE" | grep -E "package|sdkVersion|targetSdkVersion"
+    aapt dump badging "$FINAL_APK" | grep -E "package|sdkVersion|targetSdkVersion"
   fi
-  
+
   echo "======================================"
 else
   echo "WARNING: Could not find generated APK"

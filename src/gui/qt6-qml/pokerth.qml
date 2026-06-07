@@ -254,6 +254,9 @@ ApplicationWindow {
                     topBarSettingsIcon.visible = true;
                     topBarMenuIcon.source = "resources/caretLeft.svg";
                 }
+                // Bildschirm während Spiel und Warteraum wach halten (Android:
+                // FLAG_KEEP_SCREEN_ON via JNI). Beim Verlassen freigeben.
+                ScreenHelper.setKeepScreenOn(isGame || isGameWait);
             }
         }
     }
@@ -291,5 +294,21 @@ ApplicationWindow {
     Connections {
         target: mainStackView
         Component.onDestruction: topBarMenuIcon.source = mainStackView.depth === 1 ? "resources/threeLines.svg" : "resources/caretLeft.svg"
+    }
+
+    // Re-apply FLAG_KEEP_SCREEN_ON when the app returns to the foreground.
+    // Android may clear window flags during lifecycle transitions (pause/resume),
+    // so we can't rely solely on the one-time call from onCurrentItemChanged.
+    Connections {
+        target: Qt.application
+        function onStateChanged() {
+            if (Qt.application.state === Qt.ApplicationActive) {
+                var item = mainStackView.currentItem
+                ScreenHelper.setKeepScreenOn(
+                    item !== null &&
+                    (item.objectName === "gamePage" || item.objectName === "gameWaitPage")
+                )
+            }
+        }
     }
 }

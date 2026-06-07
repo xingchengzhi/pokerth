@@ -367,6 +367,11 @@
         <translation>Internationale Pokerausdrücke (Check, Call, Raise) nicht übersetzen</translation>
     </message>
     <message>
+        <location filename="../components/GuiSettings.qml" line="227"/>
+        <source>Tischzoom aktivieren (Wischen &amp; Zoomen, nur Mobilmodus)</source>
+        <translation>Tischzoom aktivieren (Wischen &amp; Zoomen, nur Mobilmodus)</translation>
+    </message>
+    <message>
         <location filename="../components/GuiSettings.qml" line="254"/>
         <source>Fokus ins Einsatz-Eingabefeld setzen, wenn Sie an der Reihe sind</source>
         <translation>Fokus ins Einsatz-Eingabefeld setzen, wenn Sie an der Reihe sind</translation>

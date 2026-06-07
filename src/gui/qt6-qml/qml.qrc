@@ -82,6 +82,8 @@
         <file>resources/NotoColorEmoji-OFL.txt</file>
         <file>resources/minus.svg</file>
         <file>resources/plus.svg</file>
+        <file>resources/zoomIn.svg</file>
+        <file>resources/zoomOut.svg</file>
         <file>resources/send.svg</file>
         <file>resources/settings.svg</file>
         <file>resources/spade.svg</file>

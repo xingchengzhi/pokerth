@@ -367,6 +367,11 @@
         <translation>Do not translate international poker terms (Check, Call, Raise)</translation>
     </message>
     <message>
+        <location filename="../components/GuiSettings.qml" line="227"/>
+        <source>Tischzoom aktivieren (Wischen &amp; Zoomen, nur Mobilmodus)</source>
+        <translation>Enable table zoom (swipe &amp; zoom, mobile mode only)</translation>
+    </message>
+    <message>
         <location filename="../components/GuiSettings.qml" line="254"/>
         <source>Fokus ins Einsatz-Eingabefeld setzen, wenn Sie an der Reihe sind</source>
         <translation>Set focus to bet input when it&apos;s your turn</translation>

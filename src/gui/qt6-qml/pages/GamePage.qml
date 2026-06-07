@@ -456,6 +456,22 @@ Rectangle {
                 return Math.max(0.55, Math.min(target, maxScale))
             }
 
+            // ── Lupe: Zoom + Pan der Gegnerzone (compact-only) ──────────────────
+            property bool  zoomActive: false
+            readonly property real zoomFactor: 2.0
+            property real  _zoomPanX: 0
+            property real  _zoomPanY: 0
+            // Schwenk-Animation beim Loslassen/Zurücksetzen; deaktiviert während
+            // des aktiven Drags, damit der Finger ohne Verzögerung verfolgt wird.
+            Behavior on _zoomPanX {
+                enabled: !zoomPanner.active
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
+            Behavior on _zoomPanY {
+                enabled: !zoomPanner.active
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
+
             // Feste Slot-Positionen (Mittelpunkt der Box als Anteil 0..1 der Zone).
             // Hochformat: 3 oben, Rest an den Seiten nach unten.
             // Vertikale Anordnung mit identischen Innen-Gaps oben/unten
@@ -650,6 +666,35 @@ Rectangle {
                 wide && !Config.Responsive.landscapeCompact
                     ? landscapeEllipseCenterY
                     : (topOpponentBottomY + selfVisualTopY) / 2
+
+            // ── Zoom-Layer: Gegner + Community – skalierbar + schwenkbar ─────────
+            // actionBar und gameBackground liegen AUSSERHALB und bleiben fix.
+            // selfBox ist jetzt INNERHALB des zoom-fähigen Layers.
+            Item {
+                id: zoomLayer
+                anchors.fill: parent
+                clip: true
+
+                Item {
+                    id: zoomContent
+                    // Volle tableZone-Höhe (nicht zoomLayer.height), damit alle
+                    // Slot-Positionen (tableZone.height * slot[1]) und der
+                    // communityArea-verticalCenter-Anker korrekt bleiben.
+                    width:  tableZone.width
+                    height: tableZone.height
+                    transformOrigin: Item.TopLeft
+                    scale: tableZone.zoomActive ? tableZone.zoomFactor : 1.0
+                    // Zentriert den Zoom-Pivot auf die Mitte der sichtbaren
+                    // Gegnerzone (zoomLayer.height/2); der (1−scale)-Term
+                    // kompensiert automatisch beim Rauszoomen.
+                    x: (1.0 - scale) * (zoomLayer.width  / 2)
+                       + (tableZone.zoomActive ? tableZone._zoomPanX : 0)
+                    y: (1.0 - scale) * (zoomLayer.height / 2)
+                       + (tableZone.zoomActive ? tableZone._zoomPanY : 0)
+
+                    Behavior on scale {
+                        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                    }
 
             // ── Gemeinschaftskarten + Pot – im oberen Tischbereich ───────────────
             Item {
@@ -984,38 +1029,70 @@ Rectangle {
                 }
             }
 
-            // ── Eigene Box (Sitz 0): unten in der Mitte verankert ────────────────
+            // ── Eigene Box: skaliert jetzt mit dem Zoom-Layer ────────────────────
             GamePlayerSelfBox {
                 id: selfBox
                 z: 1
                 anchors.bottom: parent.bottom
-                // Querformat: etwas mehr Luft zwischen Self-Box und Action-Panel
-                // (12 px) als unten zum Bildschirmrand (8 px).
-                // Wide-Screen: Self-Box liegt 12 px über dem Action-Panel.
-                // Die Halsketten-Ellipse hat ihre eigene `selfGapY`-basierte
-                // Untergrenze; der Abstand zwischen den Bottom-Sitzen und der
-                // Self-Box wird dadurch automatisch komfortabel breit, ohne
-                // dass die Self-Box selbst zu weit vom Action-Panel weg
-                // wandert.  Der `selfBaseHeight·(boxScale-1)/2`-Anteil hält
-                // die visuelle Unterkante bei jedem Scale konstant 12 px
-                // über parent.bottom.
-                // Scale-kompensierbares bottomMargin: visueller Unterrand der Box
-                // bleibt bei konstantem Abstand (wide: 12 px, portrait: 4 px)
-                // über dem tableZone-Rand, unabhängig vom boxScale.
                 anchors.bottomMargin: tableZone.wide
                     ? 12 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2
                     :  4 + tableZone.selfBaseHeight * (tableZone.boxScale - 1) / 2
                 anchors.horizontalCenter: parent.horizontalCenter
-                // Schmaler: Inhalt füllt die Box ohne überschüssige Ränder
-                // (6 + Avatar 60 + 6 + Karten [2×43+4=90] + 6 = 168)
                 width: tableZone.selfBaseWidth
-                // Kompakter: keine überschüssige Höhe
-                // (4 + Avatar/Karten 60 + 4 + Text 16 + 4 = 88)
                 height: tableZone.selfBaseHeight
                 transformOrigin: Item.Center
                 scale: tableZone.boxScale
                 maxAvatarSize: tableZone.wide ? 60 : 54
             }
+
+                } // zoomContent
+
+                // Drag-to-Pan: Finger-Delta direkt auf _zoomPanX/Y übertragen.
+                // Wird nur im compact-Modus und bei aktivem Zoom zugelassen, damit
+                // normale Tisch-Interaktionen unverändert funktionieren.
+                DragHandler {
+                    id: zoomPanner
+                    target: null
+                    enabled: tableZone.zoomActive && Config.Responsive.compact
+
+                    property point _startPt
+                    property real  _startX
+                    property real  _startY
+
+                    onActiveChanged: {
+                        if (active) {
+                            _startPt = centroid.position
+                            _startX  = tableZone._zoomPanX
+                            _startY  = tableZone._zoomPanY
+                        }
+                    }
+                    onCentroidChanged: {
+                        if (!active) return
+                        var dx   = centroid.position.x - _startPt.x
+                        var dy   = centroid.position.y - _startPt.y
+                        // Schwenk-Grenzen: Content-Rand darf gerade bis zum
+                        // Bildschirmrand reichen → max = (zoom−1)·halfSize
+                        var maxX = (tableZone.zoomFactor - 1) * zoomLayer.width  / 2
+                        var maxY = (tableZone.zoomFactor - 1) * zoomLayer.height / 2
+                        tableZone._zoomPanX = Math.max(-maxX, Math.min(maxX, _startX + dx))
+                        tableZone._zoomPanY = Math.max(-maxY, Math.min(maxY, _startY + dy))
+                    }
+                }
+
+                // Auto-Zentrierung: Wenn der Spieler am Zug ist und der Zoom aktiv
+                // ist, wird automatisch auf die Self-Box-Zone geschwenkt, damit
+                // Handkarten und Action-Bereich sofort sichtbar sind.
+                Connections {
+                    target: (typeof GameTable !== "undefined") ? GameTable : null
+                    function onMyTurnChanged() {
+                        if (!tableZone.zoomActive || !GameTable || !GameTable.myTurn)
+                            return
+                        // Maximaler Downward-Pan zeigt die Self-Box (Content-Unterrand)
+                        tableZone._zoomPanY = -(tableZone.zoomFactor - 1) * zoomLayer.height / 2
+                        tableZone._zoomPanX = 0
+                    }
+                }
+            } // zoomLayer
 
             // ── Spielverlauf (Log) + Chat – Umschalt-Icons + Overlays ──────────
             property bool showLog: false
@@ -2221,6 +2298,57 @@ Rectangle {
                             armed: (myTurnNow || (actionBar.canAct && actionBar.preSelectEnabled)) && actionBar.raiseAvailable
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // ── Lupe-Button ──────────────────────────────────────────────────────────
+    // Direktes Kind von gamePage (nicht tableZone), damit der Button im
+    // Landscape-Modus am unteren Bildschirmrand erscheint – also neben der
+    // Action-Box, nicht über ihr. z:200 legt ihn über alle ColumnLayout-Elemente.
+    // Kein layer.enabled/Shadow auf dem Rectangle – vermeidet Interferenz
+    // zwischen verschachtelten MultiEffects, die die Icon-Kolorierung bricht.
+    Rectangle {
+        id: zoomToggle
+        visible: Config.Responsive.compact && Config.Parameters.tableZoomEnabled
+        z: 200
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.bottom: parent.bottom
+        // Portrait: 8 px über Unterkante Action-Bar (= 8 px über tableZone.bottom)
+        // Landscape: 8 px vom echten Bildschirmrand (= neben der schmalen Action-Box)
+        anchors.bottomMargin: tableZone.wide ? 8 : (8 + actionBar.height)
+        width: 36; height: 36; radius: 18
+        color: tableZone.zoomActive ? Config.Theme.colorAccent : Qt.rgba(0, 0, 0, 0.50)
+
+        onVisibleChanged: {
+            if (!visible) {
+                tableZone.zoomActive = false
+                tableZone._zoomPanX = 0
+                tableZone._zoomPanY = 0
+            }
+        }
+
+        VectorImage {
+            anchors.centerIn: parent
+            width: 22; height: 22
+            source: tableZone.zoomActive ? "../resources/zoomOut.svg" : "../resources/zoomIn.svg"
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorization: 1.0
+                colorizationColor: tableZone.zoomActive ? "#101010" : "#FFFFFF"
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                tableZone.zoomActive = !tableZone.zoomActive
+                if (!tableZone.zoomActive) {
+                    tableZone._zoomPanX = 0
+                    tableZone._zoomPanY = 0
                 }
             }
         }

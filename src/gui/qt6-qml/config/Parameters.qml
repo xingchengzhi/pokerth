@@ -16,6 +16,8 @@ Settings {
     property bool disableSplashScreenOnStartupCheckbox: false
     property bool doNotTranslatePokerTermsCheckbox: true
 
+    property bool tableZoomEnabled: true
+
     // From the networkTab ColumnLayout
     property bool showCountryFlagOnAvatarCheckbox: true
     property bool showNetworkStatusColorOnAvatarCheckbox: true

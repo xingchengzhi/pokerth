@@ -223,6 +223,22 @@ Rectangle {
                             color: parent.palette.windowText
                         }
                     }
+
+                    CheckBox {
+                        visible: Config.Responsive.compact
+                        height: visible ? implicitHeight : 0
+                        Layout.fillWidth: true
+                        text: qsTr("Tischzoom aktivieren (Wischen & Zoomen, nur Mobilmodus)")
+                        checked: Config.Parameters.tableZoomEnabled
+                        onCheckedChanged: Config.Parameters.tableZoomEnabled = checked
+                        contentItem: Text {
+                            text: parent.text
+                            wrapMode: Text.Wrap
+                            leftPadding: parent.indicator.width + parent.spacing
+                            verticalAlignment: Text.AlignVCenter
+                            color: parent.palette.windowText
+                        }
+                    }
                     } // ColumnLayout
                 }
 

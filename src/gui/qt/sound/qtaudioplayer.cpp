@@ -281,7 +281,17 @@ void QtAudioPlayer::initAudio()
 #endif
     } else {
         // Auto-detect best backend
-#ifdef Q_OS_LINUX
+#ifdef Q_OS_ANDROID
+        // Android: use the software mixer with a reduced buffer (~50ms).
+        // QSoundEffect has no polyphony — a second sound can cut off the
+        // first mid-playback.  The software mixer mixes all voices into
+        // one continuous stream and avoids that problem.
+        // A smaller buffer (vs. the 200ms default) removes the audible
+        // playback delay while still preventing underruns on AAudio.
+        // Q_OS_ANDROID is also a subset of Q_OS_LINUX, so this check must
+        // come first to avoid falling into the Linux branch.
+        backend = AudioBackend::SoftwareMixerBackend;
+#elif defined(Q_OS_LINUX)
         // AppImage: QAudioSink may not work because the bundled glibc/libs
         // conflict with the host audio stack.  Use paplay via
         // startDetachedSafe() which restores the original LD_LIBRARY_PATH.
@@ -529,8 +539,11 @@ void QtAudioPlayer::initSoftwareMixerBackend(const QAudioDevice& device, float v
     // Small buffers cause underruns that trigger IdleState transitions,
     // cutting off sounds mid-playback (e.g. blinds_raises WAVs).
     // Use 600ms on Windows to prevent stuttering/clipping, 200ms elsewhere.
+    // Android uses 50ms — sufficient for AAudio without audible latency.
 #ifdef Q_OS_WIN
     mixerSink->setBufferSize(44100 * 4 * 3 / 5); // ~600ms for WASAPI
+#elif defined(Q_OS_ANDROID)
+    mixerSink->setBufferSize(44100 * 4 / 20);     // ~50ms for Android AAudio
 #else
     mixerSink->setBufferSize(44100 * 4 / 5);      // ~200ms for PulseAudio/CoreAudio
 #endif

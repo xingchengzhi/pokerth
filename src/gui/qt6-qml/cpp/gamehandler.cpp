@@ -205,6 +205,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_bustedLocalTimers.clear();
     // Reset state for new game
     m_pot = 0;
+    m_gameId = m_game ? m_game->getMyGameID() : 0;
     m_phaseText = "Preflop";
     m_handNumber = 0;
     m_myTurn = false;
@@ -229,6 +230,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     refreshPlayerData();
 
     emit potChanged();
+    emit gameIdChanged();
     emit phaseTextChanged();
     emit handNumberChanged();
     emit myTurnChanged();

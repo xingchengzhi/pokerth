@@ -25,6 +25,7 @@ class GameHandler : public QObject
 
     Q_PROPERTY(QVariantList players READ players NOTIFY playersChanged)
     Q_PROPERTY(int pot READ pot NOTIFY potChanged)
+    Q_PROPERTY(int gameId READ gameId NOTIFY gameIdChanged)
     Q_PROPERTY(QString phaseText READ phaseText NOTIFY phaseTextChanged)
     Q_PROPERTY(int handNumber READ handNumber NOTIFY handNumberChanged)
     Q_PROPERTY(bool myTurn READ myTurn NOTIFY myTurnChanged)
@@ -63,6 +64,7 @@ public:
     Q_INVOKABLE bool isLocalGameRunning() const;
     QVariantList players() const { return m_players; }
     int pot() const { return m_pot; }
+    int gameId() const { return m_gameId; }
     QString phaseText() const { return m_phaseText; }
     int handNumber() const { return m_handNumber; }
     bool myTurn() const { return m_myTurn; }
@@ -143,6 +145,7 @@ public:
 signals:
     void playersChanged();
     void potChanged();
+    void gameIdChanged();
     void phaseTextChanged();
     void handNumberChanged();
     void myTurnChanged();
@@ -208,6 +211,7 @@ private:
 
     QVariantList m_players;
     int m_pot = 0;
+    int m_gameId = 0;
     QString m_phaseText;
     int m_handNumber = 0;
     bool m_myTurn = false;

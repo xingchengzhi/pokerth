@@ -17,7 +17,10 @@ Item {
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
 
-    implicitWidth: 125
+    // Dynamische Breite: Außenrand = Avatar↔Karten = Karten↔Außenrand (hMargin=4, cardSpacing=3)
+    readonly property int _topRowH: height - (wideLayout ? 44 : 28)
+    readonly property int _cardW:   Math.round(_topRowH * 120 / 168)
+    implicitWidth: 3 * 4 + _topRowH + 2 * _cardW + 3
     implicitHeight: 80
 
     // Spielerdaten aus GameTable
@@ -516,12 +519,15 @@ Item {
          : root.betSide === "top"    ? -height - 7
          : (playerBox.height - height) / 2
 
-        // Einsatz – immer mittig (horizontal: Box-Mitte; Seiten: mittlerer Slot).
+        // Einsatz: horizontal allein → zentriert; horizontal mit Button → linksbündig
+        // (hMargin), damit Button rechts nicht überlappt. Seiten → zentriert.
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: (betGroup.width - width) / 2
+            x: betGroup.horizontal && root.button > 0
+               ? playerBox.hMargin
+               : (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
             // Chip „poppt" beim Setzen rein (Mikroanimation).

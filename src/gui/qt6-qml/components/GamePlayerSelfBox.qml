@@ -47,6 +47,10 @@ Rectangle {
     // Gesetzter Avatar (file://-URL) bzw. "" → Platzhalter
     readonly property string avatarSource: selfData && selfData.avatar !== undefined ? selfData.avatar : ""
 
+    // Im Landscape-Modus: 2-zeiliger Info-Bereich wie bei den Gegnerboxen
+    // (Name oben / Stack rechts unten). Im Portrait bleibt es 1-zeilig.
+    readonly property bool twoLineInfo: Config.Responsive.landscape
+
     color: "transparent"
 
     // Informationsdichte: gefoldet → dezent zurücknehmen, raus aus dem Spiel →
@@ -217,8 +221,10 @@ Rectangle {
         }
     }
 
-    // ── Name + Stack – unterer Außenrand = oberer Außenrand (cardsArea.topMargin) ──
-    Row {
+    // ── Name + Stack – unterer Info-Bereich ─────────────────────────────────────
+    // Portrait: 1-zeilig (Name links, Stack rechts), Landscape: 2-zeilig wie
+    // Gegnerbox (Name oben, Stack rechts unten). Höhe 18 → 32 im Landscape.
+    Item {
         id: bottomBar
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.vMargin
@@ -226,43 +232,88 @@ Rectangle {
         anchors.leftMargin: root.hMargin
         anchors.right: parent.right
         anchors.rightMargin: root.hMargin
-        height: 18
-        spacing: 5
+        height: root.twoLineInfo ? 32 : 18
 
-        Text {
-            id: playerName
-            width: (parent.width - parent.spacing) / 2
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignLeft
-            color: Config.StaticData.palette.secondary.col100
-            font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 15
-            font.weight: Font.DemiBold
-            font.letterSpacing: 0.3
-            elide: Text.ElideRight
-            text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
+        // Portrait: 1-zeilig
+        Row {
+            visible: !root.twoLineInfo
+            width: parent.width
+            height: parent.height
+            spacing: 5
+
+            Text {
+                width: (parent.width - parent.spacing) / 2
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignLeft
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.3
+                elide: Text.ElideRight
+                text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
+            }
+
+            Text {
+                width: (parent.width - parent.spacing) / 2
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignRight
+                color: Config.Theme.colorAccent
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+                text: root.selfData ? "$" + root.selfData.stack : "$0"
+            }
         }
 
-        Text {
-            id: playerStack
-            width: (parent.width - parent.spacing) / 2
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignRight
-            color: Config.Theme.colorAccent
-            font.family: Config.StaticData.loadedFont.font.family
-            font.pixelSize: 15
-            font.bold: true
-            text: root.selfData ? "$" + root.selfData.stack : "$0"
+        // Landscape: 2-zeilig (identisch zur Gegnerbox im wideLayout)
+        Item {
+            visible: root.twoLineInfo
+            width: parent.width
+            height: parent.height
+
+            Text {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                height: 16
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignLeft
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.3
+                elide: Text.ElideRight
+                text: root.selfData && root.selfData.name !== "" ? root.selfData.name : qsTr("Du")
+            }
+
+            Text {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                horizontalAlignment: Text.AlignRight
+                color: Config.Theme.colorAccent
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+                text: root.selfData ? "$" + root.selfData.stack : "$0"
+            }
         }
     }
 
-    // Action-Badge: INNERHALB der Box, unten, horizontal zentriert zwischen
-    // Nickname (links) und Stack (rechts) – auf Höhe der Infozeile.
+    // Action-Badge: zentriert über den Hole-Cards (identisch zu GamePlayerBox).
     Rectangle {
         id: actionBadge
         visible: root.actionText !== "" && !root.isWinner
-        anchors.horizontalCenter: bottomBar.horizontalCenter
-        anchors.verticalCenter: bottomBar.verticalCenter
+        // Kartenmitte: wie cardsArea aufgebaut – sx + avatar + gap + halbe Kartenbreite
+        readonly property real cardsCenterX: cardsArea.x
+                                             + cardsArea.sx
+                                             + cardsArea.avatarSize + cardsArea.gap
+                                             + cardsArea.cardsW / 2
+        readonly property real cardsCenterY: cardsArea.y + cardsArea.height / 2
+        x: cardsCenterX - width / 2
+        y: cardsCenterY - height / 2
         width: actionLabel.width + 16
         height: 18
         radius: 9
@@ -294,16 +345,15 @@ Rectangle {
         }
     }
 
-    // Action-Timeout: schlanker Fortschrittsbalken an Stelle des Action-Badges
-    // (Sitz 0 = ich), solange ich am Zug bin – zählt über die Timeout-Dauer runter.
+    // Action-Timeout: Fortschrittsbalken, ebenfalls zentriert über den Hole-Cards.
     Item {
         id: timeoutBar
         readonly property bool active: (typeof GameTable !== "undefined" && GameTable)
                                        && GameTable.timeoutSeatId === 0
         property real progress: 1.0
         visible: active && !root.isWinner && root.actionText === ""
-        anchors.horizontalCenter: bottomBar.horizontalCenter
-        anchors.verticalCenter: bottomBar.verticalCenter
+        x: actionBadge.cardsCenterX - width / 2
+        y: actionBadge.cardsCenterY - height / 2
         width: 56
         height: 7
         z: 26

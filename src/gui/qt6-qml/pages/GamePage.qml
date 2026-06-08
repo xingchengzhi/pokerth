@@ -138,44 +138,78 @@ Rectangle {
                 anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
                 spacing: 0
 
-                Text {
-                    text: GameTable ? GameTable.phaseText : qsTr("Preflop")
-                    color: "#FFFFFF"
-                    font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: Config.Responsive.landscapeCompact ? 11 : 14
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 0.6
+                // Links: Pot-Info (1:1 wie Widget-Client links neben den Community-Cards)
+                // "Total" = aufgelaufener Pot (getPot), "Bets" = laufende Einsätze dieser Runde (getSets)
+                Column {
+                    spacing: 0
+                    Row {
+                        spacing: 4
+                        Text {
+                            text: qsTr("Total:")
+                            color: "#9e9e9e"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 11 : 13
+                            font.weight: Font.Medium
+                        }
+                        Text {
+                            text: "$%1".arg(GameTable ? GameTable.pot : 0)
+                            color: "#99D500"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 11 : 13
+                            font.bold: true
+                        }
+                    }
+                    Row {
+                        spacing: 4
+                        Text {
+                            text: qsTr("Bets:")
+                            color: "#9e9e9e"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 10 : 11
+                            font.weight: Font.Medium
+                        }
+                        Text {
+                            text: "$%1".arg(GameTable ? (GameTable.totalPot - GameTable.pot) : 0)
+                            color: "#7aa800"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 10 : 11
+                            font.weight: Font.Medium
+                        }
+                    }
                 }
+
                 Item { Layout.fillWidth: true }
+
+                // Rechts: Phase + Game-ID + Hand-Nummer (1:1 wie Widget-Client rechts neben den Community-Cards)
                 Column {
                     spacing: 0
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Pot: $%1").arg(GameTable ? GameTable.pot : 0)
-                        color: "#99D500"
+                        text: GameTable ? GameTable.phaseText : qsTr("Preflop")
+                        color: "#FFFFFF"
                         font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: Config.Responsive.landscapeCompact ? 12 : 15
-                        font.bold: true
-                        font.letterSpacing: 0.3
+                        font.pixelSize: Config.Responsive.landscapeCompact ? 11 : 13
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.5
                     }
-                    Text {
+                    Row {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Total: $%1").arg(GameTable ? GameTable.totalPot : 0)
-                        color: "#7aa800"
-                        font.family: Config.StaticData.loadedFont.font.family
-                        font.pixelSize: Config.Responsive.landscapeCompact ? 9 : 11
-                        font.weight: Font.Medium
-                        font.letterSpacing: 0.3
+                        spacing: 8
+                        Text {
+                            text: qsTr("Game: %1").arg(GameTable ? GameTable.gameId : 0)
+                            color: "#9e9e9e"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 9 : 11
+                            font.weight: Font.Medium
+                        }
+                        Text {
+                            text: qsTr("Hand: %1").arg(GameTable ? GameTable.handNumber : 1)
+                            color: "#9e9e9e"
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: Config.Responsive.landscapeCompact ? 9 : 11
+                            font.weight: Font.Medium
+                        }
                     }
-                }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: qsTr("Hand %1").arg(GameTable ? GameTable.handNumber : 1)
-                    color: "#bdbdbd"
-                    font.family: Config.StaticData.loadedFont.font.family
-                    font.pixelSize: Config.Responsive.landscapeCompact ? 10 : 12
-                    font.weight: Font.Medium
-                    font.letterSpacing: 0.5
                 }
             }
         }
@@ -246,14 +280,24 @@ Rectangle {
             // bequem nebeneinander. In Landscape wird der 2-zeilige Footer
             // genutzt, dort reicht 80 problemlos.
             readonly property int oppBaseHeight: wide ? 80 : 71
-            readonly property int oppBaseWidth: 125
-            // Self-Box-Breite = Avatar + gap + 2·Karten + spacing + 2·hMargin.
-            // Mit hMargin=4 (analog zur Gegnerbox), damit der Außenrand bei
-            // Self und Gegner-Boxen visuell identisch ist.
-            //   Portrait : selfHeight=71 → cardH=47, cardW=34, totalW=123, box=131
-            //   Landscape: selfHeight=80 → cardH=56, cardW=40, totalW=144, box=152
-            readonly property int selfBaseWidth: wide ? 152 : 131
-            readonly property int selfBaseHeight: wide ? 80 : 71
+            // Breite dynamisch: Außenrand = Avatar↔Karten-Abstand = Karten↔Außenrand (= hMargin 4).
+            //   Landscape: topRow=36, cardW=26 → 3×4 + 36 + 2×26 + 3 = 103
+            //   Portrait : topRow=43, cardW=31 → 3×4 + 43 + 2×31 + 3 = 120
+            readonly property int oppBaseWidth: {
+                var rowH = oppBaseHeight - (wide ? 44 : 28)
+                var cw   = Math.round(rowH * 120 / 168)
+                return 3 * 4 + rowH + 2 * cw + 3
+            }
+            readonly property int selfBaseHeight: wide ? (Config.Responsive.landscapeCompact ? 90 : 80) : 71
+            // Self-Box-Breite dynamisch: identische Abstände wie Gegnerboxen.
+            //   Landscape: cardsH=36, cardW=26, avW=36 → 2×4 + 36 + 4 + 2×26 + 4 = 104
+            //   Portrait : cardsH=41, cardW=29, avW=41 → 2×4 + 41 + 4 + 2×29 + 4 = 115
+            readonly property int selfBaseWidth: {
+                var cH  = selfBaseHeight - 12 - (wide ? 32 : 18)
+                var cW  = Math.round(cH * 120 / 168)
+                var avS = Math.min(cH, 60)
+                return 2 * 4 + avS + 4 + cW * 2 + 4
+            }
             readonly property real opponentGapBase: 10
             readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
             readonly property real selfGapBase: opponentGapBase * 2

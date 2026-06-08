@@ -19,7 +19,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
 ARCH="$(uname -m)"
 APPDIR="${SCRIPT_DIR}/PokerTH-QML.AppDir"
-APPIMAGE_NAME="${APPIMAGE_NAME:-PokerTH-QML-${ARCH}-$(date +%Y%m%d).AppImage}"
+APPIMAGE_NAME="${APPIMAGE_NAME:-PokerTH-QML-${ARCH}-$(date +%Y%m%d_%H%M%S).AppImage}"
 
 echo "=== PokerTH QML-Client AppImage Erstellung ==="
 echo "Project Root: $PROJECT_ROOT"

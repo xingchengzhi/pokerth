@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
 DEPLOY_DIR="${SCRIPT_DIR}/pokerth-linux-binary"
-DEPLOY_NAME="pokerth-linux-$(uname -m)-$(date +%Y%m%d)"
+DEPLOY_NAME="pokerth-linux-$(uname -m)-$(date +%Y%m%d_%H%M%S)"
 DEPLOY_PARENT_DIR="$(dirname "$DEPLOY_DIR")"
 
 echo "=== PokerTH Binary Deploy Erstellung ==="

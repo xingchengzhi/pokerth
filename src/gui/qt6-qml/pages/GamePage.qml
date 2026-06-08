@@ -535,22 +535,33 @@ Rectangle {
                 // Boxen kleiner werden.
                 var radiusY = (bottomY - topY) / 2
 
-                // Lower-Half-Squash im landscapeCompact: für sin > 0 (= untere
-                // Ellipsenhälfte) wird sin durch sin^0.3 ersetzt → alle unteren
-                // Gegnerboxen rücken nahe an bottomY (also nahe an die Self-
-                // Box). Top-Hälfte (sin < 0) bleibt unverändert.
-                //   sin=0.40 → 0.77, sin=0.88 → 0.96, sin=1.0 → 1.0
-                // Dadurch kleben die Side-Lower-Paare (Player 2↔3, 7↔8) nicht
-                // mehr in der Tisch-Mitte, sondern hängen entlang einer
-                // flacheren Bogen-Linie nahe der Self-Box.
-                var lowerSquash = Config.Responsive.landscapeCompact ? 0.3 : 1.0
+                // lowerSquash (compact only): sin>0-Spieler via sin^0.3 nach
+                // bottomY gedrückt.
+                //
+                // sideGravity: Zusatz-Y proportional zu |cos| → Seitenspieler
+                // (|cos|→1) nach unten, TC (cos=0) bleibt. In compact-Mode nur
+                // für die obere Hälfte (sinV≤0), da lowerSquash die untere Hälfte
+                // bereits stark pusht und ein doppelter Push bottomY übersteigen
+                // würde.
+                //
+                // topCosSquash: obere Hälfte (sinV≤0) nutzt |cos|^topCosSquash →
+                // TL/TR (cos≈±0.62) horizontal näher an TC, reine Seitenspieler
+                // (cos≈±0.97) kaum verändert.
+                var lowerSquash        = Config.Responsive.landscapeCompact ? 0.3  : 1.0
+                var sideGravity        = 0.12
+                var topCosSquash       = 1.4
+                var gravityUpperOnly   = Config.Responsive.landscapeCompact
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
                     var sinV = Math.sin(radians)
+                    var cosV = Math.cos(radians)
                     if (sinV > 0 && lowerSquash !== 1.0)
                         sinV = Math.pow(sinV, lowerSquash)
-                    return [0.5 + radiusX * Math.cos(radians),
-                            centerY + radiusY * sinV]
+                    if (sinV <= 0 && cosV !== 0)
+                        cosV = (cosV < 0 ? -1 : 1) * Math.pow(Math.abs(cosV), topCosSquash)
+                    var yShift = (!gravityUpperOnly || sinV <= 0)
+                                 ? sideGravity * Math.abs(cosV) * radiusY : 0
+                    return [0.5 + radiusX * cosV, centerY + radiusY * sinV + yShift]
                 }
 
                 // Kreis öffnet sich nach oben:

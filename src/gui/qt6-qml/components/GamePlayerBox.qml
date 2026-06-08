@@ -509,11 +509,11 @@ Item {
         width: horizontal ? playerBox.width : Math.max(betW, btnW)
         height: horizontal ? Math.max(betH, btnH) : playerBox.height
 
-        x: root.betSide === "right" ? playerBox.width + 3
-         : root.betSide === "left"  ? -width - 3
+        x: root.betSide === "right" ? playerBox.width + 8
+         : root.betSide === "left"  ? -width - 8
          : 0
-        y: root.betSide === "bottom" ? playerBox.height + 2
-         : root.betSide === "top"    ? -height - 2
+        y: root.betSide === "bottom" ? playerBox.height + 7
+         : root.betSide === "top"    ? -height - 7
          : (playerBox.height - height) / 2
 
         // Einsatz – immer mittig (horizontal: Box-Mitte; Seiten: mittlerer Slot).

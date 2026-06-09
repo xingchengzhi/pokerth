@@ -363,12 +363,12 @@ Rectangle {
         x: 0
         y: -height - 2
 
-        // Einsatz – fester Slot mittig
+        // Einsatz – linksbündig
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: (betGroup.width - width) / 2
+            x: 0
             y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
             // Chip „poppt" beim Setzen rein (Mikroanimation).
@@ -380,8 +380,8 @@ Rectangle {
             }
 
             Image {
-                width: 20
-                height: 20
+                width: 16
+                height: 16
                 anchors.verticalCenter: parent.verticalCenter
                 source: "qrc:resources/chipStack.svg"
                 fillMode: Image.PreserveAspectFit
@@ -391,18 +391,18 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 13
+                font.pixelSize: 11
                 font.bold: true
                 text: "$" + root.bet
             }
         }
 
-        // Dealer/Blind-Button – fester Slot rechts
+        // Dealer/Blind-Button – rechtsbündig
         Image {
             id: buttonImg
             visible: root.button > 0
-            width: 32
-            height: 32
+            width: 24
+            height: 24
             fillMode: Image.PreserveAspectFit
             x: betGroup.width - width
             y: (betGroup.height - height) / 2

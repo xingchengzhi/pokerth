@@ -794,7 +794,11 @@ Rectangle {
             Item {
                 id: zoomLayer
                 anchors.fill: parent
-                clip: true
+                // Nur clippen wenn Zoom aktiv – ohne Zoom sollen Badge-Overlays
+                // (z.B. Winner-Badge bei Player 5 oben) über den tableZone-Rand
+                // hinausragen können. tableZone ist nach der StatusBar im Dokument,
+                // daher rendert der Overflow auf ihr.
+                clip: tableZone.zoomActive
 
                 Item {
                     id: zoomContent

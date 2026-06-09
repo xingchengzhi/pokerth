@@ -152,72 +152,16 @@ Rectangle {
         anchors.right: parent.right
         anchors.rightMargin: root.hMargin
 
-        readonly property int cardH: height
-        // Original-Seitenverhältnis der Karten (SVG-viewBox 120×168, wie der
-        // Community-Cards-Bereich) → Höhe beibehalten, Breite ergibt sich daraus.
-        readonly property int cardW: Math.round(cardH * 120 / 168)
-        readonly property int avatarSize: Math.min(cardH, root.maxAvatarSize)
-        readonly property int spacing: 4
-        readonly property int gap: root.hMargin
-        readonly property int cardsW: cardW * 2 + spacing
-        readonly property int totalW: avatarSize + gap + cardsW
-        readonly property int sx: (width - totalW) / 2
-
-        Rectangle {
-            id: selfAvatarBox
-            x: cardsArea.sx
-            y: (parent.height - height) / 2
-            width: cardsArea.avatarSize
-            height: cardsArea.avatarSize
-
-            Rectangle {
-                anchors.fill: parent
-                border.width: 1
-                border.color: Config.StaticData.palette.secondary.col200
-                color: Config.StaticData.palette.secondary.col700
-                opacity: 0.9
-                radius: 2
-            }
-
-            Image {
-                anchors.fill: parent
-                anchors.margins: 1
-                fillMode: root.avatarSource !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
-                source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
-                asynchronous: true
-                cache: true
-                // Raus aus dem Spiel → Avatar entsättigen.
-                layer.enabled: !root.playerActive
-                layer.effect: MultiEffect { saturation: -1.0 }
-            }
-        }
-
-        Rectangle {
-            x: cardsArea.sx + cardsArea.avatarSize + cardsArea.gap
-            y: (parent.height - height) / 2
-            width: cardsArea.cardW
-            height: cardsArea.cardH
-            color: "transparent"
-            // Raus aus dem Spiel (kein Geld mehr) → Karten ganz ausblenden;
-            // bei Fold (noch im Spiel) nur durchscheinend.
-            visible: root.playerActive
-            opacity: root.folded ? 0.3 : 1.0
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
-            CardImage { anchors.fill: parent; cardIndex: root.card0 }
-        }
-
-        Rectangle {
-            x: cardsArea.sx + cardsArea.avatarSize + cardsArea.gap + cardsArea.cardW + cardsArea.spacing
-            y: (parent.height - height) / 2
-            width: cardsArea.cardW
-            height: cardsArea.cardH
-            color: "transparent"
-            // Raus aus dem Spiel (kein Geld mehr) → Karten ganz ausblenden;
-            // bei Fold (noch im Spiel) nur durchscheinend.
-            visible: root.playerActive
-            opacity: root.folded ? 0.3 : 1.0
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
-            CardImage { anchors.fill: parent; cardIndex: root.card1 }
+        AvatarCardRow {
+            id: cardRow
+            anchors.centerIn: parent
+            height: parent.height
+            maxAvatarSize: root.maxAvatarSize
+            card0: root.card0
+            card1: root.card1
+            avatarSource: root.avatarSource
+            folded: root.folded
+            playerActive: root.playerActive
         }
     }
 
@@ -306,11 +250,7 @@ Rectangle {
     Rectangle {
         id: actionBadge
         visible: root.actionText !== "" && !root.isWinner
-        // Kartenmitte: wie cardsArea aufgebaut – sx + avatar + gap + halbe Kartenbreite
-        readonly property real cardsCenterX: cardsArea.x
-                                             + cardsArea.sx
-                                             + cardsArea.avatarSize + cardsArea.gap
-                                             + cardsArea.cardsW / 2
+        readonly property real cardsCenterX: cardsArea.x + cardRow.x + cardRow.cardsCenterX
         readonly property real cardsCenterY: cardsArea.y + cardsArea.height / 2
         x: cardsCenterX - width / 2
         y: cardsCenterY - height / 2

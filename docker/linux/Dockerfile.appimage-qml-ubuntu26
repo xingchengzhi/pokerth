@@ -82,7 +82,7 @@ RUN rm -f cmake/FindBoost.cmake \
 # --- AppImage erstellen (glibc-Version aus Build-Container im Namen) ---
 RUN chmod +x docker/linux/create_appimage_deploy_qml.sh \
     && GLIBC=$(ldd --version | awk 'NR==1{print $NF}') \
-    && export APPIMAGE_NAME="PokerTH-QML-glibc${GLIBC}-$(uname -m)-$(date +%Y%m%d).AppImage" \
+    && export APPIMAGE_NAME="PokerTH-QML-glibc${GLIBC}-$(uname -m)-$(date +%Y%m%d_%H%M%S).AppImage" \
     && docker/linux/create_appimage_deploy_qml.sh
 
 RUN mkdir -p /output \

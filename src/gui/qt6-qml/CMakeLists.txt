@@ -41,6 +41,7 @@ set(QML_FILES
     components/CustomTabBar.qml
     components/CustomToggle.qml
     components/CustomSpinBox.qml
+    components/AvatarCardRow.qml
     components/GamePlayerBox.qml
     components/GamePlayerSelfBox.qml
     components/EmojiPicker.qml

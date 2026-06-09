@@ -17,11 +17,11 @@ Item {
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
 
-    // Dynamische Breite: Außenrand = Avatar↔Karten = Karten↔Außenrand (hMargin=4, cardSpacing=3)
+    // Dynamische Breite: 2×hMargin(4) + AvatarCardRow.implicitWidth(avatarH+4+2·cardW+4)
     readonly property int _topRowH: height - (wideLayout ? 44 : 28)
     readonly property int _cardW:   Math.round(_topRowH * 120 / 168)
-    implicitWidth: 3 * 4 + _topRowH + 2 * _cardW + 3
-    implicitHeight: 80
+    implicitWidth: 2 * 4 + _topRowH + 4 + 2 * _cardW + 4
+    implicitHeight: 84
 
     // Spielerdaten aus GameTable
     readonly property var seatData: (typeof GameTable !== "undefined" && GameTable && GameTable.players.length > seatIndex)
@@ -72,9 +72,11 @@ Item {
             if (gp[i].playerName === pname) return gp[i].countryCode || ""
         return ""
     }
-    // Widescreen-Layout: Box ist groß genug für 2-zeilige Info (Name + Flagge/Cash)
-    // Nur im Querformat – Hochformat zeigt einzeilig mit voller Karten-/Avatar-Höhe.
-    readonly property bool wideLayout: Config.Responsive.landscape && height >= 76
+    // Widescreen-Layout: Box ist groß genug für 2-zeilige Info (Name + Flagge/Cash).
+    // Nutzt height >= 76 als Proxy für tableZone.wide (oppBaseHeight = wide ? 84 : 71).
+    // Bewusst NICHT Config.Responsive.landscape – die Tablezone kann breiter als
+    // hoch sein, auch wenn das Gesamtfenster (inkl. Toolbar) hochformat-mäßig ist.
+    readonly property bool wideLayout: height >= 76
 
     // Nur anzeigen wenn der Sitz besetzt ist
     visible: root.seatData !== null && root.seatData.name !== ""
@@ -91,6 +93,7 @@ Item {
         id: playerBox
         anchors.fill: parent
         color: "transparent"
+        property int hMargin: 4
 
         // Aktiver Spieler leicht „angehoben" → mehr Tiefe/Fokus (sanfter Übergang).
         scale: root.isAtTurn ? 1.04 : 1.0
@@ -169,86 +172,20 @@ Item {
             }
         }
 
-        // Avatar + Karten – horizontale Abstände einheitlich (linker Außenrand =
-        // Abstand Avatar↔Karten = rechter Außenrand = hMargin)
-        readonly property int hMargin: 4
-
-        Row {
-            id: topRow
-            width: parent.width - 2 * playerBox.hMargin
-            height: root.wideLayout ? (parent.height - 44) : (parent.height - 28)
+        // Avatar + Karten: AvatarCardRow garantiert cardH == topRowH (keine
+        // Rundungsdifferenz). Abstände: 4 px links, 4 px Avatar↔Karten,
+        // 4 px zwischen den Karten, 4 px rechts (= implicitWidth-Formel oben).
+        AvatarCardRow {
+            id: cardRow
             x: playerBox.hMargin
             y: 4
-            spacing: playerBox.hMargin
+            height: root.wideLayout ? (parent.height - 44) : (parent.height - 28)
 
-            Rectangle {
-                id: avatarBox
-                width: parent.height
-                height: parent.height
-
-                Rectangle {
-                    anchors.fill: parent
-                    border.width: 1
-                    border.color: Config.StaticData.palette.secondary.col200
-                    color: Config.StaticData.palette.secondary.col700
-                    opacity: 0.9
-                }
-
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    fillMode: root.avatarSource !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
-                    source: root.avatarSource !== "" ? root.avatarSource : "qrc:resources/pokerth.svg"
-                    asynchronous: true
-                    cache: true
-                    // Raus aus dem Spiel → Avatar entsättigen (klares "out"-Signal).
-                    layer.enabled: !root.isActive
-                    layer.effect: MultiEffect { saturation: -1.0 }
-                }
-            }
-
-            Item {
-                id: cardsLane
-                width: topRow.width - avatarBox.width - topRow.spacing
-                height: parent.height
-
-                // Raus aus dem Spiel (kein Geld mehr → inaktiv) → Karten ganz
-                // ausblenden; bei Fold (noch im Spiel) nur durchscheinend.
-                visible: root.isActive
-                opacity: root.folded ? 0.3 : 1.0
-                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
-
-                readonly property int cardSpacing: 3
-                // Original-Seitenverhältnis der Karten 120×168. Karten dürfen
-                // weder die verfügbare Breite NOCH die verfügbare Höhe der
-                // Lane überschreiten – sonst hingen sie über den Box-Rand.
-                readonly property int cardWByHeight: Math.round(height * 120 / 168)
-                readonly property int cardWByWidth: Math.max(0,
-                    Math.floor((width - cardSpacing) / 2))
-                readonly property int cardW: Math.min(cardWByHeight, cardWByWidth)
-                readonly property int cardH: Math.round(cardW * 168 / 120)
-                readonly property int totalW: cardW * 2 + cardSpacing
-                readonly property int sx: (width - totalW) / 2
-                readonly property int sy: (height - cardH) / 2
-
-                Rectangle {
-                    x: parent.sx
-                    y: parent.sy
-                    width: parent.cardW
-                    height: parent.cardH
-                    color: "transparent"
-                    CardImage { anchors.fill: parent; cardIndex: root.card0 }
-                }
-
-                Rectangle {
-                    x: parent.sx + parent.cardW + parent.cardSpacing
-                    y: parent.sy
-                    width: parent.cardW
-                    height: parent.cardH
-                    color: "transparent"
-                    CardImage { anchors.fill: parent; cardIndex: root.card1 }
-                }
-            }
+            card0: root.card0
+            card1: root.card1
+            avatarSource: root.avatarSource
+            folded: root.folded
+            playerActive: root.isActive
         }
 
         // Portrait: Name + Stack einzeilig
@@ -257,7 +194,7 @@ Item {
             width: parent.width - 2 * playerBox.hMargin
             height: 15
             x: playerBox.hMargin
-            y: parent.height - height - topRow.y
+            y: parent.height - height - 4
 
             Text {
                 width: parent.width / 2
@@ -289,7 +226,7 @@ Item {
             width: parent.width - 2 * playerBox.hMargin
             height: 36
             x: playerBox.hMargin
-            y: parent.height - height - topRow.y
+            y: parent.height - height - 4
 
             Text {
                 anchors.left: parent.left
@@ -406,14 +343,8 @@ Item {
             NumberAnimation { target: actionBadge; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutBack }
         }
 
-        readonly property real cardsCenterX: playerBox.x
-                            + topRow.x
-                            + cardsLane.x
-                            + cardsLane.sx
-                            + cardsLane.totalW / 2
-        readonly property real cardsCenterY: playerBox.y
-                            + topRow.y
-                            + topRow.height / 2
+        readonly property real cardsCenterX: playerBox.hMargin + cardRow.cardsCenterX
+        readonly property real cardsCenterY: cardRow.y + cardRow.height / 2
         x: cardsCenterX - width / 2
         y: cardsCenterY - height / 2
 
@@ -539,8 +470,8 @@ Item {
             }
 
             Image {
-                width: 20
-                height: 20
+                width: 16
+                height: 16
                 anchors.verticalCenter: parent.verticalCenter
                 source: "qrc:resources/chipStack.svg"
                 fillMode: Image.PreserveAspectFit
@@ -550,7 +481,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 color: Config.StaticData.palette.secondary.col100
                 font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 13
+                font.pixelSize: 11
                 font.bold: true
                 text: "$" + root.bet
             }
@@ -560,8 +491,8 @@ Item {
         Image {
             id: buttonImg
             visible: root.button > 0
-            width: 32
-            height: 32
+            width: 24
+            height: 24
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
                ? (betGroup.width - width)

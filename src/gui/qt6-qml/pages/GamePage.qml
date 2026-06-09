@@ -274,26 +274,30 @@ Rectangle {
             // bei gleicher Höhe entsteht: dadurch reagieren die Boxen sichtbar
             // schneller beim Ziehen von Portrait nach Wide.
             // Basis-Maße: in Portrait ist die Gegner-Box NIEDRIGER (71 statt
-            // 80), weil sonst der quadratische Avatar (= topRow.height) zu
+            // 84), weil sonst der quadratische Avatar (= topRow.height) zu
             // breit wird und die Karten horizontal aus der cardsLane raus-
             // hängen. Mit 71 wird topRow ≈ 45 → 2 Karten + Avatar passen
-            // bequem nebeneinander. In Landscape wird der 2-zeilige Footer
-            // genutzt, dort reicht 80 problemlos.
-            readonly property int oppBaseHeight: wide ? 80 : 71
-            // Breite dynamisch: Außenrand = Avatar↔Karten-Abstand = Karten↔Außenrand (= hMargin 4).
-            //   Landscape: topRow=36, cardW=26 → 3×4 + 36 + 2×26 + 3 = 103
-            //   Portrait : topRow=43, cardW=31 → 3×4 + 43 + 2×31 + 3 = 120
+            // bequem nebeneinander. In Landscape (84) ist der 2-zeilige
+            // Footer 44 px, topRow = 40 → Avatar/Karten sichtbar größer.
+            readonly property int oppBaseHeight: wide ? 84 : 71
+            // Breite dynamisch: 2×hMargin + AvatarCardRow.implicitWidth.
+            // AvatarCardRow: avatarH + gap(4) + 2·cardW + cardSpacing(4)
+            //   Landscape: topRow=40, cardW=29 → 2×4 + 40 + 4 + 2×29 + 4 = 114
+            //   Portrait : topRow=43, cardW=31 → 2×4 + 43 + 4 + 2×31 + 4 = 121
             readonly property int oppBaseWidth: {
                 var rowH = oppBaseHeight - (wide ? 44 : 28)
                 var cw   = Math.round(rowH * 120 / 168)
-                return 3 * 4 + rowH + 2 * cw + 3
+                return 2 * 4 + rowH + 4 + 2 * cw + 4
             }
-            readonly property int selfBaseHeight: wide ? (Config.Responsive.landscapeCompact ? 90 : 80) : 71
+            // selfBaseHeight im Wide-Non-Compact auf 84 (= oppBaseHeight):
+            // cardsArea.height = 84−12−32 = 40, selfBaseWidth = 114 = oppBaseWidth 114.
+            readonly property int selfBaseHeight: wide ? (Config.Responsive.landscapeCompact ? 90 : 84) : 71
             // Self-Box-Breite dynamisch: identische Abstände wie Gegnerboxen.
-            //   Landscape: cardsH=36, cardW=26, avW=36 → 2×4 + 36 + 4 + 2×26 + 4 = 104
+            //   Compact  : cardsH=46, cardW=33, avW=46 → 2×4 + 46 + 4 + 2×33 + 4 = 128
+            //   Landscape: cardsH=40, cardW=29, avW=40 → 2×4 + 40 + 4 + 2×29 + 4 = 114
             //   Portrait : cardsH=41, cardW=29, avW=41 → 2×4 + 41 + 4 + 2×29 + 4 = 115
             readonly property int selfBaseWidth: {
-                var cH  = selfBaseHeight - 12 - (wide ? 32 : 18)
+                var cH  = selfBaseHeight - 12 - (Config.Responsive.landscape ? 32 : 18)
                 var cW  = Math.round(cH * 120 / 168)
                 var avS = Math.min(cH, 60)
                 return 2 * 4 + avS + 4 + cW * 2 + 4
@@ -363,7 +367,12 @@ Rectangle {
                             : Math.max(gapY * 2, selfBadgeGapBase * sTest)
                         var radiusXpix = Math.max(0.22 * width,
                                                    0.5 * width - sideMargin - visualW / 2)
-                        var topYpix = 4 + visualH / 2
+                        // Im Compact-Landscape ragt die Bet-Badge von Player 5
+                        // (betSide="bottom") 39 Basis-Pixel unterhalb seiner Box heraus.
+                        // Diesen Bereich aus dem verfügbaren Ellipsen-Radius herausrechnen,
+                        // damit Community Cards nie durch eine Spielerbox verdeckt werden.
+                        var topBadgeExt = Config.Responsive.landscapeCompact ? 39 : 0
+                        var topYpix = 4 + visualH / 2 + topBadgeExt * sTest
                         var bottomYpix = height - 4 - selfVisualH - selfGapY - visualH / 2
                         // Wie buildLandscapeSlots(): radiusY = nur (bottomY-topY)/2.
                         // Kein Max mit (visualH + gapY*2.2): das würde den
@@ -372,23 +381,38 @@ Rectangle {
                         // über die obere tableZone-Kante hinaus.
                         var radiusYpix = (bottomYpix - topYpix) / 2
                         if (radiusYpix <= 0 || radiusXpix <= 0) return false
-                        // Selber Lower-Half-Squash wie in buildLandscapeSlots()
-                        // (siehe dort). Bisection muss die echten Paarabstände
-                        // sehen, sonst lässt sie ein zu großes boxScale durch.
-                        var lowerSquashCap = Config.Responsive.landscapeCompact ? 0.3 : 1.0
-                        function effSin(rad) {
-                            var v = Math.sin(rad)
-                            if (v > 0 && lowerSquashCap !== 1.0)
-                                v = Math.pow(v, lowerSquashCap)
-                            return v
+                        // Repliziert buildLandscapeSlots().point() vollständig –
+                        // lowerSquash + topCosSquash + sideGravity/yShift.
+                        // Ohne alle drei Korrekturen überschätzt die Bisection
+                        // den Paarabstand und lässt ein zu großes boxScale durch.
+                        var lowerSquashCap   = Config.Responsive.landscapeCompact ? 0.2 : 1.0
+                        var topCosSquash     = 1.4
+                        var sideGravity      = 0.12
+                        var gravityUpperOnly = Config.Responsive.landscapeCompact
+                        function slotVec(deg) {
+                            var rad  = deg * Math.PI / 180
+                            var sinV = Math.sin(rad)
+                            var cosV = Math.cos(rad)
+                            if (sinV > 0 && lowerSquashCap !== 1.0)
+                                sinV = Math.pow(sinV, lowerSquashCap)
+                            if (sinV <= 0 && Math.abs(cosV) > 1e-9)
+                                cosV = (cosV < 0 ? -1 : 1) * Math.pow(Math.abs(cosV), topCosSquash)
+                            var yShift = (!gravityUpperOnly || sinV <= 0)
+                                         ? sideGravity * Math.abs(cosV) : 0
+                            return [cosV, sinV + yShift]
                         }
-                        var xNeeded = sTest * oppBaseWidth + gap
+                        // Bet-Badges auf beiden Seiten einrechnen (chip+text+Abstand).
+                        // Ohne diesen Aufschlag erlaubt die Bisection zu große scales
+                        // und die Einsatz-Anzeige reicht in die Nachbarbox hinein.
+                        var xNeeded = sTest * (oppBaseWidth + sideBadgeGapBase) + gap
                         var yNeeded = sTest * oppBaseHeight + gap
                         for (var iPair = 1; iPair < oppCnt; iPair++) {
-                            var a1 = (firstAngle + (iPair - 1) * stepDeg) * Math.PI / 180
-                            var a2 = a1 + stepDeg * Math.PI / 180
-                            var dcos = Math.abs(Math.cos(a1) - Math.cos(a2))
-                            var dsin = Math.abs(effSin(a1) - effSin(a2))
+                            var d1 = firstAngle + (iPair - 1) * stepDeg
+                            var d2 = d1 + stepDeg
+                            var v1 = slotVec(d1)
+                            var v2 = slotVec(d2)
+                            var dcos = Math.abs(v1[0] - v2[0])
+                            var dsin = Math.abs(v1[1] - v2[1])
                             if (dcos * radiusXpix < xNeeded
                                 && dsin * radiusYpix < yNeeded)
                                 return false
@@ -396,7 +420,10 @@ Rectangle {
                         return true
                     }
 
-                    var lo = 0.55, hi = 2.2
+                    // Gemeinsames Limit für Gegnerboxen, Self-Box und Community-Badges:
+                    // 1.4 verhindert zu große Schrift und Bet-Überlappungen bei
+                    // Vollbild/maximiert; compact bleibt bei 1.9 (breiter, flacher).
+                    var lo = 0.55, hi = Config.Responsive.landscapeCompact ? 1.9 : 1.4
                     if (oppCnt < 2) {
                         s = hi
                     } else if (!feasibleAt(lo)) {
@@ -591,7 +618,7 @@ Rectangle {
                 // topCosSquash: obere Hälfte (sinV≤0) nutzt |cos|^topCosSquash →
                 // TL/TR (cos≈±0.62) horizontal näher an TC, reine Seitenspieler
                 // (cos≈±0.97) kaum verändert.
-                var lowerSquash        = Config.Responsive.landscapeCompact ? 0.3  : 1.0
+                var lowerSquash        = Config.Responsive.landscapeCompact ? 0.2  : 1.0
                 var sideGravity        = 0.12
                 var topCosSquash       = 1.4
                 var gravityUpperOnly   = Config.Responsive.landscapeCompact
@@ -1147,7 +1174,7 @@ Rectangle {
                 DragHandler {
                     id: zoomPanner
                     target: null
-                    enabled: tableZone.zoomActive && Config.Responsive.compact
+                    enabled: Qt.platform.os === "android" && tableZone.zoomActive && Config.Responsive.compact
 
                     property point _startPt
                     property real  _startX
@@ -2444,7 +2471,7 @@ Rectangle {
     // zwischen verschachtelten MultiEffects, die die Icon-Kolorierung bricht.
     Rectangle {
         id: zoomToggle
-        visible: Config.Responsive.compact && Config.Parameters.tableZoomEnabled
+        visible: Qt.platform.os === "android" && Config.Responsive.compact && Config.Parameters.tableZoomEnabled
         z: 200
         anchors.right: parent.right
         anchors.rightMargin: 8

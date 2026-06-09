@@ -347,19 +347,23 @@ Rectangle {
     }
 
     // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb der Box.
-    // Beide zusammen zentriert, nebeneinander – kein fester Slot, kein Überlapp.
-    Row {
+    // Einsatz zentriert, Button rechtsbündig mit Außenabstand.
+    Item {
         id: betGroup
         visible: root.bet > 0 || root.button > 0
         z: 25
-        spacing: 4
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: -height - 2
+        width: root.width
+        height: Math.max(root.bet > 0 ? betRow.height : 0,
+                         root.button > 0 ? buttonImg.height : 0)
+        x: 0
+        y: -height
 
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
             transformOrigin: Item.Center
             onVisibleChanged: if (visible) betPopSelf.restart()
             SequentialAnimation {
@@ -387,6 +391,8 @@ Rectangle {
             id: buttonImg
             visible: root.button > 0
             width: 24; height: 24
+            anchors.right: parent.right
+            anchors.rightMargin: 6
             anchors.verticalCenter: parent.verticalCenter
             fillMode: Image.PreserveAspectFit
             source: root.button === 1 ? "../resources/tableDealerPuck.svg"

@@ -422,9 +422,8 @@ Item {
     }
 
     // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – gruppiert.
-    // Oben/unten-Mitte (betSide top/bottom): Button rechts neben dem Einsatz,
-    // beides zusammen zentriert. Seiten (betSide left/right): Button unter dem
-    // Einsatz, beides vertikal zentriert.
+    // Oben/unten-Mitte (betSide top/bottom): beides zusammen zentriert über der Box.
+    // Seiten (betSide left/right): Button unter dem Einsatz, beides vertikal zentriert.
     Item {
         id: betGroup
         visible: root.bet > 0 || root.button > 0
@@ -436,29 +435,25 @@ Item {
         readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
 
-        // Oben/unten (z. B. Player 5): die Gruppe überspannt die volle Boxbreite,
-        // damit Einsatz und Button in FESTEN Slots sitzen (Einsatz mittig, Button
-        // rechts) und nicht verrutschen – unabhängig davon, ob ein Action-Badge
-        // aktiv ist. Seiten (left/right): volle Boxhöhe, Einsatz Mitte, Button unten.
-        width: horizontal ? playerBox.width : Math.max(betW, btnW)
+        // Oben/unten (z. B. Player 5): Gruppe so breit wie Inhalt, zentriert über Box.
+        // Seiten (left/right): volle Boxhöhe, Einsatz Mitte, Button unten.
+        width: horizontal
+               ? betW + (root.bet > 0 && root.button > 0 ? 4 : 0) + btnW
+               : Math.max(betW, btnW)
         height: horizontal ? Math.max(betH, btnH) : playerBox.height
 
         x: root.betSide === "right" ? playerBox.width + 8
          : root.betSide === "left"  ? -width - 8
-         : 0
+         : (playerBox.width - width) / 2
         y: root.betSide === "bottom" ? playerBox.height + 7
          : root.betSide === "top"    ? -height - 7
          : (playerBox.height - height) / 2
 
-        // Einsatz: horizontal allein → zentriert; horizontal mit Button → linksbündig
-        // (hMargin), damit Button rechts nicht überlappt. Seiten → zentriert.
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: betGroup.horizontal && root.button > 0
-               ? playerBox.hMargin
-               : (betGroup.width - width) / 2
+            x: betGroup.horizontal ? 0 : (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
             // Chip „poppt" beim Setzen rein (Mikroanimation).
@@ -495,7 +490,7 @@ Item {
             height: 24
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
-               ? (betGroup.width - width)
+               ? betW + (root.bet > 0 ? 4 : 0)
                : (root.betSide === "right" ? 0 : (betGroup.width - width))
             y: betGroup.horizontal
                ? (betGroup.height - height) / 2

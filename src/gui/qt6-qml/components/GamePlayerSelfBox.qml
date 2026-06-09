@@ -347,46 +347,32 @@ Rectangle {
     }
 
     // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button oberhalb der Box.
-    // FESTE Slots (wie bei Player 5): die Gruppe überspannt die volle Boxbreite →
-    // Einsatz mittig, Button rechts. So verrutscht nichts, egal welche Elemente
-    // gerade aktiv sind. (Das Action-Badge sitzt jetzt INNERHALB der Box, unten.)
-    Item {
+    // Beide zusammen zentriert, nebeneinander – kein fester Slot, kein Überlapp.
+    Row {
         id: betGroup
         visible: root.bet > 0 || root.button > 0
         z: 25
-
-        readonly property real betH: root.bet > 0 ? betRow.height : 0
-        readonly property real btnH: root.button > 0 ? buttonImg.height : 0
-
-        width: root.width
-        height: Math.max(betH, btnH)
-        x: 0
+        spacing: 4
+        anchors.horizontalCenter: parent.horizontalCenter
         y: -height - 2
 
-        // Einsatz – linksbündig
         Row {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: 0
-            y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
-            // Chip „poppt" beim Setzen rein (Mikroanimation).
             onVisibleChanged: if (visible) betPopSelf.restart()
             SequentialAnimation {
                 id: betPopSelf
                 NumberAnimation { target: betRow; property: "scale"; from: 0.5; to: 1.15; duration: 110; easing.type: Easing.OutQuad }
                 NumberAnimation { target: betRow; property: "scale"; to: 1.0; duration: 130; easing.type: Easing.OutBack }
             }
-
             Image {
-                width: 16
-                height: 16
+                width: 16; height: 16
                 anchors.verticalCenter: parent.verticalCenter
                 source: "qrc:resources/chipStack.svg"
                 fillMode: Image.PreserveAspectFit
             }
-
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 color: Config.StaticData.palette.secondary.col100
@@ -397,15 +383,12 @@ Rectangle {
             }
         }
 
-        // Dealer/Blind-Button – rechtsbündig
         Image {
             id: buttonImg
             visible: root.button > 0
-            width: 24
-            height: 24
+            width: 24; height: 24
+            anchors.verticalCenter: parent.verticalCenter
             fillMode: Image.PreserveAspectFit
-            x: betGroup.width - width
-            y: (betGroup.height - height) / 2
             source: root.button === 1 ? "../resources/tableDealerPuck.svg"
                   : root.button === 2 ? "../resources/tableSmallBlind.svg"
                   : root.button === 3 ? "../resources/tableBigBlind.svg"

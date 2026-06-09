@@ -356,7 +356,7 @@ Rectangle {
         height: Math.max(root.bet > 0 ? betRow.height : 0,
                          root.button > 0 ? buttonImg.height : 0)
         x: 0
-        y: -height - 8
+        y: -height - 6
 
         Row {
             id: betRow

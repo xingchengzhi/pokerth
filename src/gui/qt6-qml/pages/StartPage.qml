@@ -20,21 +20,43 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
     }
 
-    readonly property bool denseLayout: Config.Responsive.landscapeCompact
     readonly property bool isLandscape: width > height
-    readonly property real buttonHeight: denseLayout ? 30 : Config.Theme.touchTarget
-    readonly property real outerMargin:  denseLayout ? 4  : Config.Theme.margin
-    readonly property real innerSpacing: denseLayout ? 4  : Config.Theme.spacing
+    // denseLayout nur für echte Mobilgeräte (logische Höhe < 500px = Phone-Landscape).
+    // HiDPI-Desktops haben dort höhere logische Höhen trotz kleiner physischer Pixelzahl.
+    readonly property bool denseLayout: Config.Responsive.landscapeCompact && height < 500
+
+    // Horizontal padding inside box (fixed — keeps buttons wide enough for text)
+    readonly property real hPad: denseLayout ? 4 : 20
+    // Vertical padding inside box (scales with window height)
+    readonly property real vPad: {
+        if (denseLayout)   return 4
+        if (isLandscape)   return Math.max(14, Math.min(40, height * 0.034))
+        return Config.Theme.margin
+    }
+    readonly property real buttonHeight: {
+        if (denseLayout)   return 30
+        if (isLandscape)   return Math.max(42, Math.min(84, height * 0.075))
+        return Config.Theme.touchTarget
+    }
+    readonly property real innerSpacing: {
+        if (denseLayout)   return 4
+        if (isLandscape)   return Math.max(8, Math.min(26, height * 0.024))
+        return Config.Theme.spacing
+    }
 
     // Logo-Größe passt sich dem verfügbaren vertikalen Platz an, damit
     // Landscape-Modus nie vertikal scrollt.
     readonly property real logoSize: {
         if (denseLayout)                 return 50   // Phone-Landscape (landscapeCompact)
-        if (isLandscape)                 return 80   // reguläres Landscape (Tablet/Desktop)
+        if (isLandscape)                 return Math.max(60, Math.min(130, height * 0.13))
         if (Config.Responsive.compact)   return 110  // Portrait-Phone
         return 140                                   // Portrait Desktop/Tablet
     }
-    readonly property real logoSpacing: denseLayout ? 6 : isLandscape ? 12 : 20
+    readonly property real logoSpacing: {
+        if (denseLayout)   return 6
+        if (isLandscape)   return Math.max(10, Math.min(32, height * 0.028))
+        return 20
+    }
 
     Flickable {
         id: startScroll
@@ -51,15 +73,15 @@ Rectangle {
             // solange er passt. Landscape-Logos sind klein genug, dass
             // implicitHeight immer ≤ startScroll.height bleibt.
             implicitHeight: Math.max(startScroll.height,
-                                     startPageMainButtonsBox.height + startPage.outerMargin * 2)
+                                     startPageMainButtonsBox.height + startPage.vPad * 2)
 
             // ── Overlay-Box: enthält Logo + Navigations-Buttons ──────────────
             Rectangle {
                 id: startPageMainButtonsBox
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(startContent.width - startPage.outerMargin * 2, 320)
-                height: startBoxContent.implicitHeight + startPage.outerMargin * 2
+                width: Math.min(startContent.width - startPage.hPad * 2, 380)
+                height: startBoxContent.implicitHeight + startPage.vPad * 2
                 color: "transparent"
 
                 // Halb-transparenter Hintergrund über dem gesamten Bereich
@@ -74,7 +96,9 @@ Rectangle {
                     id: startBoxContent
                     anchors {
                         left: parent.left; right: parent.right; top: parent.top
-                        margins: startPage.outerMargin
+                        leftMargin: startPage.hPad
+                        rightMargin: startPage.hPad
+                        topMargin: startPage.vPad
                     }
                     spacing: startPage.logoSpacing
 

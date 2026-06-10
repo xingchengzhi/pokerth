@@ -306,10 +306,7 @@ Rectangle {
             readonly property real opponentHorizontalGapBase: opponentGapBase * 2.8
             readonly property real selfGapBase: opponentGapBase * 2
             // Vertikales Sicherheits-Padding zwischen Bottom-Seats und Self-Box.
-            // Kleiner als zuvor (22 → 14), damit die Ellipse mehr vertikalen
-            // Platz beanspruchen kann und die Bottom-Seats Richtung Self-Box
-            // wandern.
-            readonly property real selfBadgeGapBase: 14
+            readonly property real selfBadgeGapBase: 8
             readonly property real sideBadgeGapBase: 48
             readonly property int landscapeRowCount: seatCount <= 4 ? 1
                 : seatCount <= 6 ? 2
@@ -364,7 +361,7 @@ Rectangle {
                         // hineinragen.
                         var selfGapY = Config.Responsive.landscapeCompact
                             ? Math.max(8, selfBadgeGapBase * sTest * 0.5)
-                            : Math.max(gapY * 2, selfBadgeGapBase * sTest)
+                            : selfBadgeGapBase * sTest
                         var radiusXpix = Math.max(0.22 * width,
                                                    0.5 * width - sideMargin - visualW / 2)
                         // Im Compact-Landscape ragt die Bet-Badge von Player 5
@@ -387,7 +384,7 @@ Rectangle {
                         // den Paarabstand und lässt ein zu großes boxScale durch.
                         var lowerSquashCap   = Config.Responsive.landscapeCompact ? 0.2 : 1.0
                         var topCosSquash     = 1.4
-                        var sideGravity      = 0.12
+                        var sideGravity      = 0.25
                         var gravityUpperOnly = Config.Responsive.landscapeCompact
                         function slotVec(deg) {
                             var rad  = deg * Math.PI / 180
@@ -582,7 +579,7 @@ Rectangle {
                 // Im landscapeCompact: halbierte selfGapY (s. Bisection-Comment).
                 var selfGapY = Config.Responsive.landscapeCompact
                     ? Math.max(8, selfBadgeGapBase * s * 0.5)
-                    : Math.max(gapY * 2, selfBadgeGapBase * s)
+                    : selfBadgeGapBase * s
                 var sideX = (sideMargin + visualW / 2) / Math.max(width, 1)
                 // radiusX so groß wie möglich (Seiten-Sitze landen am Rand).
                 // Top-Trio passt durch den boxScale-Cap (siehe boxScale oben)
@@ -619,7 +616,7 @@ Rectangle {
                 // TL/TR (cos≈±0.62) horizontal näher an TC, reine Seitenspieler
                 // (cos≈±0.97) kaum verändert.
                 var lowerSquash        = Config.Responsive.landscapeCompact ? 0.2  : 1.0
-                var sideGravity        = 0.12
+                var sideGravity        = 0.25
                 var topCosSquash       = 1.4
                 var gravityUpperOnly   = Config.Responsive.landscapeCompact
                 function point(degrees) {
@@ -747,7 +744,7 @@ Rectangle {
                 var gapY = Math.max(8, opponentGapBase * s)
                 var selfGapY = Config.Responsive.landscapeCompact
                     ? Math.max(8, selfBadgeGapBase * s * 0.5)
-                    : Math.max(gapY * 2, selfBadgeGapBase * s)
+                    : selfBadgeGapBase * s
                 var topY = 4 + visualH / 2
                 var selfTop = height - 4 - selfVisualH
                 var bottomY = selfTop - selfGapY - visualH / 2

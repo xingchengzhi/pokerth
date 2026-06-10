@@ -36,7 +36,10 @@ class GameHandler : public QObject
     Q_PROPERTY(int totalPot READ totalPot NOTIFY totalPotChanged)
     Q_PROPERTY(int boardCardCount READ boardCardCount NOTIFY boardCardCountChanged)
     Q_PROPERTY(QVariantList boardCards READ boardCards NOTIFY boardCardsChanged)
-    Q_PROPERTY(int winnerSeatId READ winnerSeatId NOTIFY winnerSeatIdChanged)
+    // Liste aller Haupt-Pot-Gewinner-Sitze (mehrere bei Split-Pot). Der Widgets-
+    // Client zeigt das Winner-Label auf jedem nicht gefoldeten Spieler, der den
+    // Hauptpot gewonnen hat – Side-Pot-Gewinner bekommen KEIN Badge.
+    Q_PROPERTY(QVariantList winnerSeatIds READ winnerSeatIds NOTIFY winnerSeatIdsChanged)
     Q_PROPERTY(QString winningHandText READ winningHandText NOTIFY winningHandTextChanged)
     // Aktiver Action-Timeout: Sitz, der gerade am Zug ist (−1 = keiner) und die
     // Timeout-Dauer in Sekunden. Die Player-Box zeigt dafür anstelle des
@@ -76,7 +79,7 @@ public:
 
     int boardCardCount() const { return m_boardCardCount; }
     QVariantList boardCards() const { return m_boardCards; }
-    int winnerSeatId() const { return m_winnerSeatId; }
+    QVariantList winnerSeatIds() const { return m_winnerSeatIds; }
     QString winningHandText() const { return m_winningHandText; }
     int timeoutSeatId() const { return m_timeoutSeatId; }
     int timeoutSec() const { return m_timeoutSec; }
@@ -165,7 +168,7 @@ signals:
     void totalPotChanged();
     void boardCardCountChanged();
     void boardCardsChanged();
-    void winnerSeatIdChanged();
+    void winnerSeatIdsChanged();
     void winningHandTextChanged();
     void timeoutChanged();
     void gameLogChanged();
@@ -222,7 +225,7 @@ private:
     int m_totalPot = 0;
     int m_boardCardCount = 0;
     QVariantList m_boardCards;  // 5 slots: card index (0-51) or -1 if not dealt
-    int m_winnerSeatId = -1;
+    QVariantList m_winnerSeatIds;
     QString m_winningHandText;  // Name der Gewinner-Hand (nur während des Showdowns)
     int m_timeoutSeatId = -1;   // Sitz mit laufendem Action-Timeout (−1 = keiner)
     int m_timeoutSec = 0;       // Dauer des Action-Timeouts in Sekunden

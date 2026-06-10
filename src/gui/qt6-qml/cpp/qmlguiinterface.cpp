@@ -466,20 +466,30 @@ void QmlGuiInterface::logDealBoardCardsMsg(int roundID, int card1, int card2, in
 {
     if (!m_gameHandler)
         return;
+    // Kartenzahl wird – wie im Widgets-Client (guiLog::logDealBoardCardsMsg) –
+    // ausschließlich über die Runden-ID bestimmt (Flop=3, Turn=4, River=5).
+    // Nicht ausgeteilte Karten kommen als 0 herein (nicht -1), ein Wert-Check
+    // würde sie fälschlich als 2♦ einfügen.
     QString round;
+    QStringList cards;
     switch (roundID) {
-    case 1: round = QStringLiteral("Flop"); break;
-    case 2: round = QStringLiteral("Turn"); break;
-    case 3: round = QStringLiteral("River"); break;
+    case 1:
+        round = QStringLiteral("Flop");
+        cards << fmtCard(card1) << fmtCard(card2) << fmtCard(card3);
+        break;
+    case 2:
+        round = QStringLiteral("Turn");
+        cards << fmtCard(card1) << fmtCard(card2) << fmtCard(card3) << fmtCard(card4);
+        break;
+    case 3:
+        round = QStringLiteral("River");
+        cards << fmtCard(card1) << fmtCard(card2) << fmtCard(card3) << fmtCard(card4) << fmtCard(card5);
+        break;
     default:
         // Andere Runden-IDs (Post-River beim All-In-Runout) protokollieren das
         // volle Board erneut – redundant zur River-Zeile → nicht anzeigen.
         return;
     }
-    QStringList cards;
-    cards << fmtCard(card1) << fmtCard(card2) << fmtCard(card3);
-    if (card4 >= 0) cards << fmtCard(card4);
-    if (card5 >= 0) cards << fmtCard(card5);
     const QString msg = "--- " + round + " --- [" + cards.join(", ") + "]";
     QMetaObject::invokeMethod(m_gameHandler, "appendGameLog", Qt::QueuedConnection,
                               Q_ARG(QString, msg), Q_ARG(int, GameHandler::LogBoard));

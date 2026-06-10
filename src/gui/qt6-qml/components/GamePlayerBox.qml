@@ -37,7 +37,7 @@ Item {
     readonly property bool isAtTurn: root.isMyTurn
         || ((typeof GameTable !== "undefined" && GameTable) ? GameTable.timeoutSeatId === root.seatIndex : false)
     readonly property bool isActive: seatData ? seatData.active : false
-    readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === root.seatIndex
+    readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatIds.indexOf(root.seatIndex) !== -1
     readonly property int button: seatData && seatData.button !== undefined ? seatData.button : 0
     readonly property int bet: seatData && seatData.bet !== undefined ? seatData.bet : 0
     // Spieler hat gefoldet → Karten durchscheinend (wie im Qt-Widgets-Client)
@@ -228,15 +228,6 @@ Item {
             x: playerBox.hMargin
             y: parent.height - height - 4
 
-            Rectangle {
-                anchors.fill: parent
-                anchors.leftMargin: -playerBox.hMargin
-                anchors.rightMargin: -playerBox.hMargin
-                color: "#12151c"
-                opacity: 0.72
-                radius: 6
-            }
-
             Text {
                 anchors.left: parent.left
                 anchors.top: parent.top
@@ -307,7 +298,7 @@ Item {
         // Vertikal über bzw. unter der Box per explizitem y – ein bedingter
         // anchors-Wechsel mit `undefined` ist fragil (Anchor fällt weg → Badge
         // landet mittig in der Box). Unterhalb (winnerBelow) bzw. oberhalb.
-        y: root.winnerBelow ? (parent.height + 2) : (-height - 2)
+        y: root.winnerBelow ? (parent.height + 4) : (-height - 4)
         width: winnerLabel.width + 12
         height: 16
         radius: 8

@@ -70,6 +70,21 @@ Rectangle {
             win.visibility = Window.FullScreen
     }
 
+    // ── F-Tasten-Belegung der Gametable-Actions (1:1 aus dem Qt-Widgets-Client) ──
+    // F1–F4 lösen Fold/Call-Check/Bet-Raise/All-In aus; die Reihenfolge dreht sich
+    // bei AlternateFKeysUserActionMode (Einstellung "F-Tasten umkehren"):
+    //   normal:    F1 Fold · F2 Call/Check · F3 Bet/Raise · F4 All-In
+    //   alternate: F1 All-In · F2 Bet/Raise · F3 Call/Check · F4 Fold
+    // F5 deckt die eigenen Karten auf, F6/F7/F8 schalten den Spielmodus.
+    readonly property bool fKeysAlternate:
+        (typeof SettingsManager !== "undefined" && SettingsManager)
+        ? SettingsManager.readConfigInt("AlternateFKeysUserActionMode") !== 0 : false
+
+    function fKeyAction(which) {
+        if (actionBar)
+            actionBar.clickAction(which)
+    }
+
     Shortcut {
         sequence: "Alt+L"
         context: Qt.ApplicationShortcut
@@ -105,6 +120,56 @@ Rectangle {
         context: Qt.ApplicationShortcut
         enabled: gamePage.visible
         onActivated: gamePage.toggleFullscreenMode()
+    }
+
+    // ── Gametable-Actions: F-Tasten (siehe fKeysAlternate oben) ──
+    Shortcut {
+        sequence: "F1"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.fKeyAction(gamePage.fKeysAlternate ? "allin" : "fold")
+    }
+    Shortcut {
+        sequence: "F2"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.fKeyAction(gamePage.fKeysAlternate ? "raise" : "call")
+    }
+    Shortcut {
+        sequence: "F3"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.fKeyAction(gamePage.fKeysAlternate ? "call" : "raise")
+    }
+    Shortcut {
+        sequence: "F4"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.fKeyAction(gamePage.fKeysAlternate ? "fold" : "allin")
+    }
+    Shortcut {
+        sequence: "F5"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: if (GameTable && GameTable.canShowCards) GameTable.showMyCards()
+    }
+    Shortcut {
+        sequence: "F6"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(0)   // Manuell
+    }
+    Shortcut {
+        sequence: "F7"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(2)   // Auto Check/Fold
+    }
+    Shortcut {
+        sequence: "F8"
+        context: Qt.ApplicationShortcut
+        enabled: gamePage.visible
+        onActivated: gamePage.applyPlayingMode(1)   // Auto Check/Call
     }
 
     // gameBackground (Diamanten-Muster) entfernt – nicht mehr benötigt.
@@ -1377,7 +1442,35 @@ Rectangle {
                             policy: logList.contentHeight > logList.height + 4
                                     ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
                         }
-                        onCountChanged: positionViewAtEnd()
+                        // Auto-Scroll folgt neuen Einträgen, solange der Nutzer unten
+                        // ist. Scrollt er hoch, pausiert das Folgen und die Position
+                        // bleibt erhalten – auch wenn neue Zeilen ankommen (das Model
+                        // ist eine QVariantList, die bei jeder Änderung komplett ersetzt
+                        // wird → die View würde sonst auf contentY=0 zurückspringen).
+                        // Nach 3 s ohne Scroll-Bewegung (Timeout ggf. tunen) springt es
+                        // wieder ans Ende.
+                        property bool autoScroll: true
+                        property real savedContentY: 0
+                        Timer {
+                            id: logAutoScrollTimer
+                            interval: 3000
+                            onTriggered: { logList.autoScroll = true; logList.positionViewAtEnd() }
+                        }
+                        function restoreScroll() {
+                            contentY = Math.min(savedContentY, Math.max(0, contentHeight - height))
+                        }
+                        // Nur benutzergetriebene Bewegungen (moving = Drag/Flick/Wheel)
+                        // auswerten; programmatische Resets/Sprünge ignorieren.
+                        onContentYChanged: {
+                            if (!moving) return
+                            savedContentY = contentY
+                            if (atYEnd) { autoScroll = true; logAutoScrollTimer.stop() }
+                            else        { autoScroll = false; logAutoScrollTimer.restart() }
+                        }
+                        onCountChanged: {
+                            if (autoScroll) positionViewAtEnd()
+                            else Qt.callLater(restoreScroll)
+                        }
                         delegate: Text {
                             required property var modelData
                             width: ListView.view.width
@@ -1573,7 +1666,28 @@ Rectangle {
                             policy: chatList.contentHeight > chatList.height + 4
                                     ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
                         }
-                        onCountChanged: positionViewAtEnd()
+                        // Auto-Scroll: siehe logList – pausiert beim Hochscrollen,
+                        // bewahrt die Position bei neuen Zeilen, folgt nach 3 s wieder.
+                        property bool autoScroll: true
+                        property real savedContentY: 0
+                        Timer {
+                            id: chatAutoScrollTimer
+                            interval: 3000
+                            onTriggered: { chatList.autoScroll = true; chatList.positionViewAtEnd() }
+                        }
+                        function restoreScroll() {
+                            contentY = Math.min(savedContentY, Math.max(0, contentHeight - height))
+                        }
+                        onContentYChanged: {
+                            if (!moving) return
+                            savedContentY = contentY
+                            if (atYEnd) { autoScroll = true; chatAutoScrollTimer.stop() }
+                            else        { autoScroll = false; chatAutoScrollTimer.restart() }
+                        }
+                        onCountChanged: {
+                            if (autoScroll) positionViewAtEnd()
+                            else Qt.callLater(restoreScroll)
+                        }
                         spacing: 3
                         delegate: Item {
                             required property var modelData
@@ -2111,6 +2225,9 @@ Rectangle {
                                     if (!isNaN(v) && GameTable) {
                                         actionBar.raiseAmount = actionBar.clampRaiseAmount(v)
                                     }
+                                    // Enter im Raise-Feld löst Bet/Raise aus (wie der
+                                    // Qt-Widgets-Client: Enter bei fokussiertem Betrag).
+                                    actionBar.clickAction("raise")
                                 }
                                 // Text bleibt synchron mit raiseAmount (von Slider/%-Buttons)
                                 onActiveFocusChanged: {

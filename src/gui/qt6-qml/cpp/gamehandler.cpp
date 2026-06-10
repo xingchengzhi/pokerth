@@ -214,7 +214,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     m_maxRaiseAmount = 0;
     m_boardCardCount = 0;
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
-    m_winnerSeatId = -1;
+    m_winnerSeatIds.clear();
     m_winningHandText.clear();
     m_showdownActive = false;
     m_gameLog.clear();
@@ -239,7 +239,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
     emit maxRaiseAmountChanged();
     emit boardCardCountChanged();
     emit boardCardsChanged();
-    emit winnerSeatIdChanged();
+    emit winnerSeatIdsChanged();
     emit winningHandTextChanged();
 }
 
@@ -1052,9 +1052,9 @@ void GameHandler::onNextRoundCleanGui()
     m_boardCards = QVariantList{-1, -1, -1, -1, -1};
     emit boardCardCountChanged();
     emit boardCardsChanged();
-    if (m_winnerSeatId != -1) {
-        m_winnerSeatId = -1;
-        emit winnerSeatIdChanged();
+    if (!m_winnerSeatIds.isEmpty()) {
+        m_winnerSeatIds.clear();
+        emit winnerSeatIdsChanged();
     }
     if (!m_winningHandText.isEmpty()) {
         m_winningHandText.clear();
@@ -1431,31 +1431,55 @@ void GameHandler::onShowdown()
     refreshPlayerData();
     computeCallAndRaiseAmounts(); // Buttons sofort deaktivieren
 
-    // Find the winner seat ID from the board (pot is already distributed)
+    // Pot ist bereits verteilt. Gewinner ermitteln und Haupt-/Side-Pot exakt
+    // wie der Widgets-Client (gameTableImpl::postRiverRunAnimation3) trennen.
     std::list<unsigned> winners = board->getWinners();
-    int newWinner = -1;
+    auto activeList = hand->getActivePlayerList();
+    auto bero = hand->getCurrentBeRo();
 
-    auto seats = hand->getSeatsList();
-    for (auto it = seats->begin(); it != seats->end(); ++it) {
-        unsigned uid = (*it)->getMyUniqueID();
-        bool isWinner = std::find(winners.begin(), winners.end(), uid) != winners.end();
-        if (isWinner && (*it)->getLastMoneyWon() > 0) {
-            newWinner = (*it)->getMyID();
-            break;
+    // Side-Pot-Kriterium: bei All-In mit mehreren Geld-Gewinnern gewinnt der
+    // Spieler mit dem besten Blatt (höchster cardsValueInt) den Hauptpot, alle
+    // übrigen Gewinner einen Side-Pot. getAllInCondition() statt PLAYER_ACTION_ALLIN,
+    // da ResetPlayerActions() den All-In-Status zu Beginn jeder Setzrunde löscht.
+    const bool hasAllInPlayer = hand->getAllInCondition();
+    const int highestWinnerCardsValue = bero ? bero->getHighestCardsValue() : 0;
+    int winnersWithMoney = 0;
+    if (activeList) {
+        for (auto it = activeList->begin(); it != activeList->end(); ++it) {
+            const bool isW = std::find(winners.begin(), winners.end(), (*it)->getMyUniqueID()) != winners.end();
+            if (isW && (*it)->getLastMoneyWon() > 0)
+                ++winnersWithMoney;
         }
     }
+    auto isMainPotWinner = [&](const auto &p) -> bool {
+        const bool isW = std::find(winners.begin(), winners.end(), p->getMyUniqueID()) != winners.end();
+        const bool hasActuallyWon = isW && p->getLastMoneyWon() > 0;
+        if (p->getMyAction() == PLAYER_ACTION_FOLD || !hasActuallyWon)
+            return false;
+        if (hasAllInPlayer && winnersWithMoney > 1
+            && p->getMyCardsValueInt() < highestWinnerCardsValue)
+            return false; // Side-Pot-Gewinner
+        return true;
+    };
 
-    if (newWinner != m_winnerSeatId) {
-        m_winnerSeatId = newWinner;
-        emit winnerSeatIdChanged();
+    // Winner-Badge: jeder nicht gefoldete HAUPTPOT-Gewinner (mehrere bei Split-
+    // Pot). Side-Pot-Gewinner bekommen KEIN Badge – wie im Widgets-Client, der
+    // das "Winner"-Label nur für isMainPot-Gewinner setzt.
+    QVariantList newWinners;
+    if (activeList) {
+        for (auto it = activeList->begin(); it != activeList->end(); ++it)
+            if (isMainPotWinner(*it))
+                newWinners.append((*it)->getMyID());
+    }
+    if (newWinners != m_winnerSeatIds) {
+        m_winnerSeatIds = newWinners;
+        emit winnerSeatIdsChanged();
     }
 
     // Name der Gewinner-Hand ermitteln (wie label_WinningCombination im Widgets-
     // Client). Nur sinnvoll, wenn es einen echten Showdown gibt (mehr als ein
     // nicht gefoldeter Spieler) – andernfalls bleibt der Text leer.
     QString newHandText;
-    auto activeList = hand->getActivePlayerList();
-    auto bero = hand->getCurrentBeRo();
     int nonFold = 0;
     if (activeList) {
         for (auto it = activeList->begin(); it != activeList->end(); ++it)
@@ -1501,24 +1525,14 @@ void GameHandler::onShowdown()
 
     // 2) Gewinner – Haupt-/Side-Pot wie postRiverRunAnimation3. Echte Gewinner
     //    stehen in der winners-Liste UND haben tatsächlich Geld gewonnen.
-    const bool hasAllInPlayer = hand->getAllInCondition();
-    int winnersWithMoney = 0;
-    for (auto it = activeList->begin(); it != activeList->end(); ++it) {
-        const bool isW = std::find(winners.begin(), winners.end(), (*it)->getMyUniqueID()) != winners.end();
-        if (isW && (*it)->getLastMoneyWon() > 0)
-            ++winnersWithMoney;
-    }
-    const int highestWinnerCardsValue = bero ? bero->getHighestCardsValue() : 0;
+    //    hasAllInPlayer/winnersWithMoney/highestWinnerCardsValue oben berechnet.
     for (auto it = activeList->begin(); it != activeList->end(); ++it) {
         const bool isWinner = std::find(winners.begin(), winners.end(), (*it)->getMyUniqueID()) != winners.end();
         const bool hasActuallyWon = isWinner && (*it)->getLastMoneyWon() > 0;
         if ((*it)->getMyAction() == PLAYER_ACTION_FOLD || !hasActuallyWon)
             continue;
         // Bei All-In mit mehreren Gewinnern: bestes Blatt = Hauptpot, Rest Side-Pot.
-        bool isMainPot = true;
-        if (hasAllInPlayer && winnersWithMoney > 1
-            && (*it)->getMyCardsValueInt() < highestWinnerCardsValue)
-            isMainPot = false;
+        const bool isMainPot = isMainPotWinner(*it);
         QString msg = QString::fromStdString((*it)->getMyName())
                     + " wins $" + QString::number((*it)->getLastMoneyWon());
         if (!isMainPot)

@@ -22,7 +22,7 @@ Rectangle {
     // (timeoutSeatId === 0). Beides, damit der Highlight in BEIDEN Modi erscheint.
     readonly property bool isAtTurn: root.isMyTurn
         || ((typeof GameTable !== "undefined" && GameTable) ? GameTable.timeoutSeatId === 0 : false)
-    readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatId === 0
+    readonly property bool isWinner: typeof GameTable !== "undefined" && GameTable && GameTable.winnerSeatIds.indexOf(0) !== -1
     readonly property int button: selfData && selfData.button !== undefined ? selfData.button : 0
     readonly property int bet: selfData && selfData.bet !== undefined ? selfData.bet : 0
 

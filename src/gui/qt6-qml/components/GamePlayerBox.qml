@@ -422,7 +422,8 @@ Item {
     }
 
     // Einsatz (Chip + Betrag) + Dealer/Small-/Big-Blind-Button – gruppiert.
-    // Oben/unten-Mitte (betSide top/bottom): beides zusammen zentriert über der Box.
+    // Oben/unten-Mitte (betSide top/bottom): volle Boxbreite; Einsatz zentriert,
+    // Button rechtsbündig mit 6px Außenabstand – identisch zur Self-Box.
     // Seiten (betSide left/right): Button unter dem Einsatz, beides vertikal zentriert.
     Item {
         id: betGroup
@@ -435,16 +436,12 @@ Item {
         readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
 
-        // Oben/unten (z. B. Player 5): Gruppe so breit wie Inhalt, zentriert über Box.
-        // Seiten (left/right): volle Boxhöhe, Einsatz Mitte, Button unten.
-        width: horizontal
-               ? betW + (root.bet > 0 && root.button > 0 ? 4 : 0) + btnW
-               : Math.max(betW, btnW)
+        width: horizontal ? playerBox.width : Math.max(betW, btnW)
         height: horizontal ? Math.max(betH, btnH) : playerBox.height
 
         x: root.betSide === "right" ? playerBox.width + 8
          : root.betSide === "left"  ? -width - 8
-         : (playerBox.width - width) / 2
+         : 0
         y: root.betSide === "bottom" ? playerBox.height + 7
          : root.betSide === "top"    ? -height - 7
          : (playerBox.height - height) / 2
@@ -453,7 +450,7 @@ Item {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: betGroup.horizontal ? 0 : (betGroup.width - width) / 2
+            x: betGroup.horizontal ? (betGroup.width - width) / 2 : (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
             // Chip „poppt" beim Setzen rein (Mikroanimation).
@@ -482,7 +479,7 @@ Item {
             }
         }
 
-        // Dealer/Blind-Button – horizontal: fest am rechten Boxrand; Seiten: unterer Slot.
+        // Dealer/Blind-Button – horizontal: rechtsbündig 6px vom Boxrand; Seiten: unterer Slot.
         Image {
             id: buttonImg
             visible: root.button > 0
@@ -490,7 +487,7 @@ Item {
             height: 24
             fillMode: Image.PreserveAspectFit
             x: betGroup.horizontal
-               ? betW + (root.bet > 0 ? 4 : 0)
+               ? (betGroup.width - width - 6)
                : (root.betSide === "right" ? 0 : (betGroup.width - width))
             y: betGroup.horizontal
                ? (betGroup.height - height) / 2

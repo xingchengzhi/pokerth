@@ -107,8 +107,8 @@ Item {
             radius: 6
             opacity: 0.9
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.lighter(Config.StaticData.palette.secondary.col600, 1.18) }
-                GradientStop { position: 1.0; color: Config.StaticData.palette.secondary.col700 }
+                GradientStop { position: 0.0; color: Qt.lighter("#394150", 1.18) }
+                GradientStop { position: 1.0; color: "#1d222b" }
             }
             border.color: Qt.rgba(1, 1, 1, 0.06)
             border.width: 1
@@ -199,7 +199,7 @@ Item {
             Text {
                 width: parent.width / 2
                 horizontalAlignment: Text.AlignLeft
-                color: Config.StaticData.palette.secondary.col100
+                color: "#eff1f5"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
@@ -228,13 +228,22 @@ Item {
             x: playerBox.hMargin
             y: parent.height - height - 4
 
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: -playerBox.hMargin
+                anchors.rightMargin: -playerBox.hMargin
+                color: "#12151c"
+                opacity: 0.72
+                radius: 6
+            }
+
             Text {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.right: parent.right
                 anchors.rightMargin: 2
                 horizontalAlignment: Text.AlignLeft
-                color: Config.StaticData.palette.secondary.col100
+                color: "#eff1f5"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -471,7 +480,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                color: Config.StaticData.palette.secondary.col100
+                color: "#f0f0f0"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 11
                 font.bold: true

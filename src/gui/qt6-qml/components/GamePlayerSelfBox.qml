@@ -69,8 +69,8 @@ Rectangle {
         radius: 6
         opacity: 0.9
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.lighter(Config.StaticData.palette.secondary.col600, 1.18) }
-            GradientStop { position: 1.0; color: Config.StaticData.palette.secondary.col700 }
+            GradientStop { position: 0.0; color: Qt.lighter("#394150", 1.18) }
+            GradientStop { position: 1.0; color: "#1d222b" }
         }
         border.color: Qt.rgba(1, 1, 1, 0.06)
         border.width: 1
@@ -189,7 +189,7 @@ Rectangle {
                 width: (parent.width - parent.spacing) / 2
                 anchors.verticalCenter: parent.verticalCenter
                 horizontalAlignment: Text.AlignLeft
-                color: Config.StaticData.palette.secondary.col100
+                color: "#eff1f5"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -224,7 +224,7 @@ Rectangle {
                 height: 16
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignLeft
-                color: Config.StaticData.palette.secondary.col100
+                color: "#eff1f5"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -379,7 +379,7 @@ Rectangle {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                color: Config.StaticData.palette.secondary.col100
+                color: "#eff1f5"
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 11
                 font.bold: true

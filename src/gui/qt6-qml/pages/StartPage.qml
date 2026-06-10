@@ -84,11 +84,12 @@ Rectangle {
                 height: startBoxContent.implicitHeight + startPage.vPad * 2
                 color: "transparent"
 
-                // Halb-transparenter Hintergrund über dem gesamten Bereich
+                // Dunkler Hintergrund – immer dunkel damit der Kontrast zum Feuer-
+                // Hintergrund stimmt, unabhängig vom Hell/Dunkel-Theme.
                 Rectangle {
                     anchors.fill: parent
-                    color: Config.StaticData.palette.secondary.col700
-                    opacity: 0.8
+                    color: "#1d222b"
+                    opacity: 0.88
                     radius: 5
                 }
 

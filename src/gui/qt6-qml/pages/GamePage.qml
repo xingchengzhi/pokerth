@@ -107,13 +107,7 @@ Rectangle {
         onActivated: gamePage.toggleFullscreenMode()
     }
 
-    Image {
-        id: gameBackground
-        source: "../resources/gameBackground.svg"
-        fillMode: Image.PreserveAspectCrop
-        width: parent.width
-        height: parent.height
-    }
+    // gameBackground (Diamanten-Muster) entfernt – nicht mehr benötigt.
 
 
     // ── Tisch-Layout (Hoch- & Querformat) ─────────────────────────────────────

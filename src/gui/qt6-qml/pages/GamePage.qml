@@ -291,7 +291,7 @@ Rectangle {
             }
             // selfBaseHeight im Wide-Non-Compact auf 84 (= oppBaseHeight):
             // cardsArea.height = 84−12−32 = 40, selfBaseWidth = 114 = oppBaseWidth 114.
-            readonly property int selfBaseHeight: wide ? (Config.Responsive.landscapeCompact ? 90 : 84) : 71
+            readonly property int selfBaseHeight: wide ? 84 : 71
             // Self-Box-Breite dynamisch: identische Abstände wie Gegnerboxen.
             //   Compact  : cardsH=46, cardW=33, avW=46 → 2×4 + 46 + 4 + 2×33 + 4 = 128
             //   Landscape: cardsH=40, cardW=29, avW=40 → 2×4 + 40 + 4 + 2×29 + 4 = 114
@@ -1775,7 +1775,7 @@ Rectangle {
             // Höhe wächst dynamisch mit dem Inhalt (Querformat: +8 px, damit das
             // Panel mit 8 px Abstand über dem unteren Bildschirmrand schwebt).
             Layout.preferredHeight: actionBarCol.implicitHeight
-                                    + (tableZone.wide ? (Config.Responsive.landscapeCompact ? 2 : 8) : 0)
+                                    + (tableZone.wide ? 8 : 0)
 
             // Querformat: Inhalt auf die (skalierte) Breite des Community-Cards-
             // Bereichs begrenzen und zentrieren – sonst wird u. a. der Slider viel
@@ -1800,10 +1800,7 @@ Rectangle {
             //  • Preflop oder schon gesetzt → "Raise $X"; postflop ohne Einsatz → "Bet $X"
             readonly property bool canCheck: GameTable !== null && GameTable.callAmount === 0
             readonly property bool isPreflop: GameTable !== null && GameTable.phaseText === "Preflop"
-            // landscapeCompact: einzeilig („Call $X" statt „Call\n$X"). Spart
-            // vertikalen Platz im 30-px-Action-Row und die Schrift kann etwas
-            // größer/lesbarer bleiben.
-            readonly property string _amountSep: Config.Responsive.landscapeCompact ? " " : "\n"
+            readonly property string _amountSep: "\n"
             readonly property string checkCallText: GameTable === null ? qsTr("Call")
                 : (canCheck ? qsTr("Check") : qsTr("Call") + _amountSep + "$" + GameTable.callAmount)
             readonly property string betRaiseText: {
@@ -2064,9 +2061,7 @@ Rectangle {
                 // die actionBar selbst nur noch `+2` höher als ihr Inhalt,
                 // daher hier 2 statt 8 verwenden — sonst rutschen die
                 // Action-Buttons unter den Panel-Hintergrund.
-                anchors.bottomMargin: tableZone.wide
-                                      ? (Config.Responsive.landscapeCompact ? 2 : 8)
-                                      : 0
+                anchors.bottomMargin: tableZone.wide ? 8 : 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: actionBar.panelWidth
                 color: Qt.rgba(0, 0, 0, 0.82)
@@ -2084,9 +2079,9 @@ Rectangle {
                 Column {
                     id: raiseSection
                     width: parent.width
-                    spacing: Config.Responsive.landscapeCompact ? 2 : 3
-                    topPadding: Config.Responsive.landscapeCompact ? 2 : 4
-                    bottomPadding: Config.Responsive.landscapeCompact ? 1 : 2
+                    spacing: 3
+                    topPadding: 4
+                    bottomPadding: 2
                     leftPadding: 8
                     rightPadding: 8
                     visible: GameTable !== null
@@ -2101,7 +2096,7 @@ Rectangle {
                         // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
+                            Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
@@ -2145,7 +2140,7 @@ Rectangle {
                         Slider {
                             id: raiseSlider
                             Layout.fillWidth: true
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 18 : 26
+                            Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
                             enabled: actionBar.raiseAvailable
                             opacity: enabled ? 1.0 : 0.45
@@ -2198,7 +2193,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
+                                Layout.preferredHeight: 26
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -2236,7 +2231,7 @@ Rectangle {
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
+                            Layout.preferredHeight: 26
                             radius: 5
                             opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
                             color: allInArea.containsPress
@@ -2285,7 +2280,7 @@ Rectangle {
                         ComboBox {
                             id: playingModeCombo
                             Layout.preferredWidth: 132
-                            Layout.preferredHeight: Config.Responsive.landscapeCompact ? 20 : 26
+                            Layout.preferredHeight: 26
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
@@ -2318,15 +2313,7 @@ Rectangle {
                 // Dynamische Beschriftung + Aktivierung wie im Qt-Widgets-Client.
                 Item {
                     width: parent.width
-                    // Touch-freundlich: auf schmalen (mobilen) Fenstern höher, damit
-                    // die Buttons gut in der Daumenzone liegen. Im Phone-Landscape
-                    // wird die Reihe deutlich flacher gehalten, damit die Action-Bar
-                    // insgesamt weniger als 25 % der vertikalen Bildschirmhöhe
-                    // beansprucht (sonst überlappt die obere Sitzreihe die
-                    // Pot-/Hand-Status-Leiste).
-                    height: Config.Responsive.landscapeCompact
-                            ? 30
-                            : (Config.Theme.compact ? 56 : 54)
+                    height: Config.Theme.compact ? 56 : 54
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
                     // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
@@ -2377,14 +2364,10 @@ Rectangle {
                             text: ab.label
                             color: "#F0F0F0"
                             font.family: Config.StaticData.loadedFont.font.family
-                            // landscapeCompact: kleinere Schrift + engere
-                            // Zeilenhöhe, damit „Call\n$20" / „Raise\n$40" in
-                            // die schlankere Button-Reihe (30 px) passen, ohne
-                            // dass die Schrift den oberen / unteren Rand berührt.
-                            font.pixelSize: Config.Responsive.landscapeCompact ? 12 : 15
+                            font.pixelSize: 15
                             font.bold: true
                             font.letterSpacing: 0.5
-                            lineHeight: Config.Responsive.landscapeCompact ? 0.85 : 0.95
+                            lineHeight: 0.95
                         }
 
                         // kleiner "vorgemerkt"-Punkt oben rechts
@@ -2419,10 +2402,8 @@ Rectangle {
                     RowLayout {
                         anchors {
                             fill: parent; leftMargin: 8; rightMargin: 8
-                            topMargin: Config.Responsive.landscapeCompact ? 2 : 5
-                            bottomMargin: Config.Responsive.landscapeCompact
-                                          ? 2
-                                          : (Config.Theme.compact ? 6 : 5)
+                            topMargin: 5
+                            bottomMargin: Config.Theme.compact ? 6 : 5
                         }
                         spacing: 8
 

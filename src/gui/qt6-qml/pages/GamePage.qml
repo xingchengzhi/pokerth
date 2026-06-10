@@ -445,6 +445,7 @@ Rectangle {
                         var topCosSquash     = 1.4
                         var sideGravity      = 0.25
                         var gravityUpperOnly = Config.Responsive.landscapeCompact
+                        var lowerGravity     = Config.Responsive.landscapeCompact ? 0.0 : 0.15
                         function slotVec(deg) {
                             var rad  = deg * Math.PI / 180
                             var sinV = Math.sin(rad)
@@ -453,9 +454,11 @@ Rectangle {
                                 sinV = Math.pow(sinV, lowerSquashCap)
                             if (sinV <= 0 && Math.abs(cosV) > 1e-9)
                                 cosV = (cosV < 0 ? -1 : 1) * Math.pow(Math.abs(cosV), topCosSquash)
-                            var yShift = (!gravityUpperOnly || sinV <= 0)
-                                         ? sideGravity * Math.abs(cosV) : 0
-                            return [cosV, sinV + yShift]
+                            var vFactor = sinV
+                                        + ((!gravityUpperOnly || sinV <= 0) ? sideGravity * Math.abs(cosV) : 0)
+                                        + (sinV > 0 ? lowerGravity * sinV : 0)
+                            if (vFactor > 1.0) vFactor = 1.0
+                            return [cosV, vFactor]
                         }
                         // Bet-Badges auf beiden Seiten einrechnen (chip+text+Abstand).
                         // Ohne diesen Aufschlag erlaubt die Bisection zu große scales
@@ -678,6 +681,13 @@ Rectangle {
                 var sideGravity        = 0.25
                 var topCosSquash       = 1.4
                 var gravityUpperOnly   = Config.Responsive.landscapeCompact
+                // Untere Sitze (sinV>0, v. a. die Bottom-Boxen bem2/danielv) werden
+                // im normalen Landscape zusätzlich proportional zu sin Richtung
+                // bottomY gezogen – sonst sitzen sie zu hoch und zu nah an ihren
+                // oberen Nachbarn. Begrenzung auf bottomY (vFactor ≤ 1) hält den
+                // selfGapY-Abstand zur Self-Box ein. Im compact-Mode übernimmt
+                // das bereits lowerSquash.
+                var lowerGravity       = Config.Responsive.landscapeCompact ? 0.0 : 0.15
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
                     var sinV = Math.sin(radians)
@@ -686,9 +696,11 @@ Rectangle {
                         sinV = Math.pow(sinV, lowerSquash)
                     if (sinV <= 0 && cosV !== 0)
                         cosV = (cosV < 0 ? -1 : 1) * Math.pow(Math.abs(cosV), topCosSquash)
-                    var yShift = (!gravityUpperOnly || sinV <= 0)
-                                 ? sideGravity * Math.abs(cosV) * radiusY : 0
-                    return [0.5 + radiusX * cosV, centerY + radiusY * sinV + yShift]
+                    var vFactor = sinV
+                                + ((!gravityUpperOnly || sinV <= 0) ? sideGravity * Math.abs(cosV) : 0)
+                                + (sinV > 0 ? lowerGravity * sinV : 0)
+                    if (vFactor > 1.0) vFactor = 1.0   // nie unter bottomY (Self-Box)
+                    return [0.5 + radiusX * cosV, centerY + radiusY * vFactor]
                 }
 
                 // Kreis öffnet sich nach oben:

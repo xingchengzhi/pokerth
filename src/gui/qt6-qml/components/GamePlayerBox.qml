@@ -247,8 +247,8 @@ Item {
                 visible: root.countryCode !== ""
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
-                width: 18
-                height: 12
+                width: 22
+                height: 15
                 source: root.countryCode !== ""
                     ? "qrc:/resources/cflags/" + root.countryCode + ".svg" : ""
                 fillMode: Image.PreserveAspectFit

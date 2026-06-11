@@ -275,14 +275,18 @@ void GameHandler::appendChat(const QString &playerName, const QString &message)
 
     // Emoji-Reaktionen (Konvention des Web-Clients): "/emoji 🎉" bzw. legacy
     // "[R]🎉". Nicht in den Chat-Verlauf aufnehmen, sondern als Reaktions-
-    // Animation am Sitz des Absenders abspielen (Längen-Limits wie im
-    // Web-Client, damit normale Nachrichten nicht versehentlich matchen).
+    // Animation am Sitz des Absenders abspielen. Auf dem getrimmten Text
+    // prüfen (Clients können Whitespace anhängen); Längen-Limit großzügiger
+    // als im Web-Client (22 statt 18), damit auch ZWJ-/Variation-Selector-
+    // Sequenzen durchgehen – normale Nachrichten matchen trotzdem nicht.
+    const QString trimmedMsg = message.trimmed();
     QString reactionEmoji;
-    if (message.startsWith(QStringLiteral("/emoji ")) && message.size() < 18)
-        reactionEmoji = message.mid(7).trimmed();
-    else if (message.startsWith(QStringLiteral("[R]")) && message.size() < 12)
-        reactionEmoji = message.mid(3).trimmed();
+    if (trimmedMsg.startsWith(QStringLiteral("/emoji ")) && trimmedMsg.size() < 22)
+        reactionEmoji = trimmedMsg.mid(7).trimmed();
+    else if (trimmedMsg.startsWith(QStringLiteral("[R]")) && trimmedMsg.size() < 14)
+        reactionEmoji = trimmedMsg.mid(3).trimmed();
     if (!reactionEmoji.isEmpty()) {
+        qDebug() << "[REACT] incoming reaction from" << playerName << ":" << reactionEmoji;
         emit reactionReceived(playerName, reactionEmoji);
         return;
     }

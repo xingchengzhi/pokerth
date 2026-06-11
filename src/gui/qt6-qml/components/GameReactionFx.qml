@@ -123,6 +123,10 @@ Item {
             Text {
                 id: bigEmoji
                 text: burst.emoji
+                // Farb-Emojis ignorieren color; falls ein Glyph monochrom
+                // gerendert wird (Font-Fallback), erscheint er weiß statt
+                // schwarz (Tisch-Hintergrund ist dunkelgrün).
+                color: "#FFFFFF"
                 font.family: Config.StaticData.emojiFamily
                 font.pixelSize: 34
                 x: -width / 2

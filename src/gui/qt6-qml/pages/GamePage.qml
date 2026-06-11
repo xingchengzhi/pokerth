@@ -100,12 +100,16 @@ Rectangle {
             py = tableZone.height * slot.y + slot.nudge
                  - (tableZone.oppBaseHeight * tableZone.boxScale) / 2 - 6
         }
+        // Die Animation steigt ~200 px auf – bei Sitzen nahe der Tisch-
+        // Oberkante tiefer starten, sonst wird sie oben abgeschnitten.
+        py = Math.max(py, 205)
         reactionFx.play(emoji, px, py)
     }
 
     Connections {
-        target: (typeof GameTable !== "undefined" && GameTable) ? GameTable : null
+        target: GameTable
         function onReactionReceived(playerName, emoji) {
+            console.log("[REACT] received from", playerName, "->", emoji)
             var players = GameTable.players
             var idx = -1
             for (var i = 0; i < players.length; i++)
@@ -115,7 +119,13 @@ Rectangle {
                 && emoji === gamePage._lastOwnReactionEmoji
                 && Date.now() - gamePage._lastOwnReactionTime < 3000)
                 return
-            gamePage.playReactionAtSeat(Math.max(0, idx), emoji)
+            if (idx < 0) {
+                // Absender nicht am Tisch gefunden (z. B. Zuschauer):
+                // über der Tischmitte abspielen.
+                reactionFx.play(emoji, tableZone.width / 2, tableZone.communityCenterY - 40)
+                return
+            }
+            gamePage.playReactionAtSeat(idx, emoji)
         }
     }
 

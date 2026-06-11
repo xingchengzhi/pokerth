@@ -273,6 +273,20 @@ void GameHandler::appendChat(const QString &playerName, const QString &message)
 {
     if (message.isEmpty()) return;
 
+    // Emoji-Reaktionen (Konvention des Web-Clients): "/emoji 🎉" bzw. legacy
+    // "[R]🎉". Nicht in den Chat-Verlauf aufnehmen, sondern als Reaktions-
+    // Animation am Sitz des Absenders abspielen (Längen-Limits wie im
+    // Web-Client, damit normale Nachrichten nicht versehentlich matchen).
+    QString reactionEmoji;
+    if (message.startsWith(QStringLiteral("/emoji ")) && message.size() < 18)
+        reactionEmoji = message.mid(7).trimmed();
+    else if (message.startsWith(QStringLiteral("[R]")) && message.size() < 12)
+        reactionEmoji = message.mid(3).trimmed();
+    if (!reactionEmoji.isEmpty()) {
+        emit reactionReceived(playerName, reactionEmoji);
+        return;
+    }
+
     // Formatierung analog zum Lobby-Chat: /me-Aktion, Emojis, Erwähnung.
     const QString myNick = m_config ? QString::fromStdString(m_config->readConfigString("MyName")) : QString();
     const bool isAction = message.startsWith(QStringLiteral("/me "));

@@ -16,6 +16,11 @@ Item {
     // Seite, auf der Einsatz-Chip + Dealer/Blind-Button angezeigt werden:
     // "top" | "bottom" | "left" | "right". Default leitet sich aus 'up' ab.
     property string betSide: up ? "bottom" : "top"
+    // Geteilte Anzeige: Dealer/Blind-Button LINKS neben der Box, Einsatz
+    // RECHTS neben der Box – beides vertikal mittig. Für die oberste Box im
+    // landscapeCompact, deren Badge sonst unterhalb mit dem Pot-Badge
+    // kollidiert. Übersteuert betSide.
+    property bool betSplit: false
 
     // Dynamische Breite: 2×hMargin(4) + AvatarCardRow.implicitWidth(avatarH+4+2·cardW+4)
     readonly property int _topRowH: height - (wideLayout ? 44 : 28)
@@ -430,19 +435,22 @@ Item {
         visible: root.bet > 0 || root.button > 0
         z: 25
 
-        readonly property bool horizontal: root.betSide === "bottom" || root.betSide === "top"
+        readonly property bool split: root.betSplit
+        readonly property bool horizontal: !split && (root.betSide === "bottom" || root.betSide === "top")
         readonly property real betW: root.bet > 0 ? betRow.width : 0
         readonly property real betH: root.bet > 0 ? betRow.height : 0
         readonly property real btnW: root.button > 0 ? buttonImg.width : 0
         readonly property real btnH: root.button > 0 ? buttonImg.height : 0
 
-        width: horizontal ? playerBox.width : Math.max(betW, btnW)
+        width: (horizontal || split) ? playerBox.width : Math.max(betW, btnW)
         height: horizontal ? Math.max(betH, btnH) : playerBox.height
 
-        x: root.betSide === "right" ? playerBox.width + 8
+        x: split ? 0
+         : root.betSide === "right" ? playerBox.width + 8
          : root.betSide === "left"  ? -width - 8
          : 0
-        y: root.betSide === "bottom" ? playerBox.height + 7
+        y: split ? 0
+         : root.betSide === "bottom" ? playerBox.height + 7
          : root.betSide === "top"    ? -height - 7
          : (playerBox.height - height) / 2
 
@@ -450,7 +458,8 @@ Item {
             id: betRow
             visible: root.bet > 0
             spacing: 2
-            x: betGroup.horizontal ? (betGroup.width - width) / 2 : (betGroup.width - width) / 2
+            // split: Einsatz rechts NEBEN der Box; sonst innerhalb zentriert.
+            x: betGroup.split ? betGroup.width + 8 : (betGroup.width - width) / 2
             y: (betGroup.height - height) / 2
             transformOrigin: Item.Center
             // Chip „poppt" beim Setzen rein (Mikroanimation).
@@ -479,17 +488,20 @@ Item {
             }
         }
 
-        // Dealer/Blind-Button – horizontal: rechtsbündig 6px vom Boxrand; Seiten: unterer Slot.
+        // Dealer/Blind-Button – split: links NEBEN der Box; horizontal:
+        // rechtsbündig 6px vom Boxrand; Seiten: unterer Slot.
         Image {
             id: buttonImg
             visible: root.button > 0
             width: 24
             height: 24
             fillMode: Image.PreserveAspectFit
-            x: betGroup.horizontal
+            x: betGroup.split
+               ? -width - 8
+               : betGroup.horizontal
                ? (betGroup.width - width - 6)
                : (root.betSide === "right" ? 0 : (betGroup.width - width))
-            y: betGroup.horizontal
+            y: (betGroup.horizontal || betGroup.split)
                ? (betGroup.height - height) / 2
                : (betGroup.height * 5 / 6 - height / 2)
             source: root.button === 1 ? "../resources/tableDealerPuck.svg"

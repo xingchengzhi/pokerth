@@ -175,6 +175,9 @@ signals:
     void chatLogChanged();
     void hasHumanOpponentsChanged();
     void canShowCardsChanged();
+    // Emoji-Reaktion empfangen (Chat-Konvention "/emoji 🎉" des Web-Clients) –
+    // wird nicht im Chat angezeigt, sondern als Animation am Sitz abgespielt.
+    void reactionReceived(const QString &playerName, const QString &emoji);
 
 protected:
     // App-weiter Filter: echte Nutzeraktivität (Maus/Tastatur) → ResetTimeout

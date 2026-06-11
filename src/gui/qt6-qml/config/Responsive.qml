@@ -12,6 +12,12 @@ QtObject {
     property real windowWidth:  900
     property real windowHeight: 600
 
+    // Plattform: echte Mobilgeräte (Android/iOS) vs. Desktop. Wird gebraucht,
+    // um bei gleicher Fenstergeometrie (z. B. breites Aspect-Ratio) zwischen
+    // Touch-Layout (kompakte Action-Bar) und Desktop-Layout (große Buttons,
+    // selbst auf Ultrawide/HiDPI) zu unterscheiden.
+    readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
+
     // Orientation
     readonly property bool portrait:  windowHeight > windowWidth
     readonly property bool landscape: windowWidth >= windowHeight

@@ -70,6 +70,55 @@ Rectangle {
             win.visibility = Window.FullScreen
     }
 
+    // ── Emoji-Reaktionen (Port aus dem Web-Client) ───────────────────────────
+    // Gesendet wird über den Spiel-Chat mit der Web-Client-Konvention
+    // "/emoji 🎉"; empfangene Reaktionen fängt GameHandler::appendChat ab und
+    // meldet sie über reactionReceived. Eigene Reaktionen werden sofort lokal
+    // abgespielt – das Server-Echo wird per Zeitfenster dedupliziert.
+    property string _lastOwnReactionEmoji: ""
+    property double _lastOwnReactionTime: 0
+
+    function sendReaction(emoji) {
+        tableZone.showReactions = false
+        _lastOwnReactionEmoji = emoji
+        _lastOwnReactionTime = Date.now()
+        playReactionAtSeat(0, emoji)
+        if (GameTable)
+            GameTable.sendChat("/emoji " + emoji)
+    }
+
+    function playReactionAtSeat(seatIdx, emoji) {
+        var px, py
+        if (seatIdx <= 0) {
+            px = selfBox.x + selfBox.width / 2
+            py = selfBox.y + selfBox.height / 2
+                 - (selfBox.height * tableZone.boxScale) / 2 - 6
+        } else {
+            var slot = tableZone.slotForSeat(seatIdx)
+            if (!slot) return
+            px = tableZone.width * slot.x
+            py = tableZone.height * slot.y + slot.nudge
+                 - (tableZone.oppBaseHeight * tableZone.boxScale) / 2 - 6
+        }
+        reactionFx.play(emoji, px, py)
+    }
+
+    Connections {
+        target: (typeof GameTable !== "undefined" && GameTable) ? GameTable : null
+        function onReactionReceived(playerName, emoji) {
+            var players = GameTable.players
+            var idx = -1
+            for (var i = 0; i < players.length; i++)
+                if (players[i].name !== "" && players[i].name === playerName) { idx = i; break }
+            // Echo der eigenen, bereits lokal abgespielten Reaktion unterdrücken.
+            if (idx <= 0
+                && emoji === gamePage._lastOwnReactionEmoji
+                && Date.now() - gamePage._lastOwnReactionTime < 3000)
+                return
+            gamePage.playReactionAtSeat(Math.max(0, idx), emoji)
+        }
+    }
+
     // ── F-Tasten-Belegung der Gametable-Actions (1:1 aus dem Qt-Widgets-Client) ──
     // F1–F4 lösen Fold/Call-Check/Bet-Raise/All-In aus; die Reihenfolge dreht sich
     // bei AlternateFKeysUserActionMode (Einstellung "F-Tasten umkehren"):
@@ -348,7 +397,9 @@ Rectangle {
                 var cw   = Math.round(rowH * 120 / 168)
                 return 2 * 4 + rowH + 4 + 2 * cw + 4
             }
-            // selfBaseHeight im Wide-Non-Compact auf 84 (= oppBaseHeight):
+            // selfBaseHeight im Wide auf 84 (= oppBaseHeight): die Self-Box muss
+            // IMMER mindestens so groß sein wie die Gegnerboxen (beide skalieren
+            // mit demselben boxScale → base gleich halten).
             // cardsArea.height = 84−12−32 = 40, selfBaseWidth = 114 = oppBaseWidth 114.
             readonly property int selfBaseHeight: wide ? 84 : 71
             // Self-Box-Breite dynamisch: identische Abstände wie Gegnerboxen.
@@ -428,7 +479,8 @@ Rectangle {
                         // Diesen Bereich aus dem verfügbaren Ellipsen-Radius herausrechnen,
                         // damit Community Cards nie durch eine Spielerbox verdeckt werden.
                         var topBadgeExt = Config.Responsive.landscapeCompact ? 39 : 0
-                        var topYpix = 4 + visualH / 2 + topBadgeExt * sTest
+                        var topYpix = (Config.Responsive.landscapeCompact ? 0 : 4)
+                                      + visualH / 2 + topBadgeExt * sTest
                         var bottomYpix = height - 4 - selfVisualH - selfGapY - visualH / 2
                         // Wie buildLandscapeSlots(): radiusY = nur (bottomY-topY)/2.
                         // Kein Max mit (visualH + gapY*2.2): das würde den
@@ -446,6 +498,13 @@ Rectangle {
                         var sideGravity      = 0.25
                         var gravityUpperOnly = Config.Responsive.landscapeCompact
                         var lowerGravity     = Config.Responsive.landscapeCompact ? 0.0 : 0.15
+                        // Spiegelt die compact-Absenkung unterer Seiten-Sitze aus
+                        // buildLandscapeSlots().point() – sonst unterschätzt die
+                        // Bisection den vertikalen Paarabstand und cappt zu früh.
+                        var centerYpix    = (topYpix + bottomYpix) / 2
+                        var maxBottomYpix = (height - 4 - selfVisualH) + selfVisualH * 0.35 - visualH / 2
+                        var vMaxLowerP    = radiusYpix > 0 ? (maxBottomYpix - centerYpix) / radiusYpix : 1.0
+                        var selfClearXpix = selfBaseWidth * sTest / 2 + visualW / 2 + 12
                         function slotVec(deg) {
                             var rad  = deg * Math.PI / 180
                             var sinV = Math.sin(rad)
@@ -458,6 +517,10 @@ Rectangle {
                                         + ((!gravityUpperOnly || sinV <= 0) ? sideGravity * Math.abs(cosV) : 0)
                                         + (sinV > 0 ? lowerGravity * sinV : 0)
                             if (vFactor > 1.0) vFactor = 1.0
+                            if (Config.Responsive.landscapeCompact && sinV > 0
+                                && Math.abs(radiusXpix * cosV) > selfClearXpix
+                                && vMaxLowerP > vFactor)
+                                vFactor = vMaxLowerP
                             return [cosV, vFactor]
                         }
                         // Bet-Badges auf beiden Seiten einrechnen (chip+text+Abstand).
@@ -482,7 +545,7 @@ Rectangle {
                     // Gemeinsames Limit für Gegnerboxen, Self-Box und Community-Badges:
                     // 1.4 verhindert zu große Schrift und Bet-Überlappungen bei
                     // Vollbild/maximiert; compact bleibt bei 1.9 (breiter, flacher).
-                    var lo = 0.55, hi = Config.Responsive.landscapeCompact ? 1.9 : 1.4
+                    var lo = 0.55, hi = Config.Responsive.landscapeCompact ? 1.7 : 1.4
                     if (oppCnt < 2) {
                         s = hi
                     } else if (!feasibleAt(lo)) {
@@ -652,7 +715,9 @@ Rectangle {
                 // soll möglichst viel vertikalen Platz beanspruchen, damit
                 // bei mittlerer Skalierung Player 2↔3 (L↔TLo) genug Luft
                 // bekommen.
-                var topY = (4 + visualH / 2) / Math.max(height, 1)
+                // Compact: oberste Box bündig an die Tisch-Oberkante (0 statt 4) –
+                // schafft Luft zwischen ihrem Bet-Badge und dem Pot-Badge.
+                var topY = ((Config.Responsive.landscapeCompact ? 0 : 4) + visualH / 2) / Math.max(height, 1)
                 var selfTop = height - 4 - selfVisualH
                 var bottomY = (selfTop - selfGapY - visualH / 2) / Math.max(height, 1)
                 var centerY = (topY + bottomY) / 2
@@ -688,6 +753,16 @@ Rectangle {
                 // selfGapY-Abstand zur Self-Box ein. Im compact-Mode übernimmt
                 // das bereits lowerSquash.
                 var lowerGravity       = Config.Responsive.landscapeCompact ? 0.0 : 0.15
+                // Compact: Die Ecken links/rechts neben der Self-Box sind frei.
+                // Untere Seiten-Sitze, die horizontal an der Self-Box vorbeigehen,
+                // dürfen deshalb etwas unter bottomY absinken – das entzerrt die
+                // Seiten-Paare (z. B. Player 2↔3 / 7↔8) vertikal. Maximal bis die
+                // Box-Unterkante 35 % in die Self-Box-Höhe hineinragt: tiefer
+                // (bis zur Self-Unterkante) zerstört die Ellipsen-Optik, weil die
+                // Gegner dann auf/unter Self-Niveau liegen.
+                var maxBottomY = (selfTop + selfVisualH * 0.35 - visualH / 2) / Math.max(height, 1)
+                var vMaxLower  = radiusY > 0 ? (maxBottomY - centerY) / radiusY : 1.0
+                var selfClearX = (selfBaseWidth * s / 2 + visualW / 2 + 12) / Math.max(width, 1)
                 function point(degrees) {
                     var radians = degrees * Math.PI / 180
                     var sinV = Math.sin(radians)
@@ -700,6 +775,10 @@ Rectangle {
                                 + ((!gravityUpperOnly || sinV <= 0) ? sideGravity * Math.abs(cosV) : 0)
                                 + (sinV > 0 ? lowerGravity * sinV : 0)
                     if (vFactor > 1.0) vFactor = 1.0   // nie unter bottomY (Self-Box)
+                    if (Config.Responsive.landscapeCompact && sinV > 0
+                        && Math.abs(radiusX * cosV) > selfClearX
+                        && vMaxLower > vFactor)
+                        vFactor = vMaxLower
                     return [0.5 + radiusX * cosV, centerY + radiusY * vFactor]
                 }
 
@@ -1218,6 +1297,11 @@ Rectangle {
                                : seatSlot.slot[0] < 0.45 ? "right"
                                : seatSlot.slot[0] > 0.55 ? "left"
                                : "bottom"
+                        // landscapeCompact: bei der obersten Mitte-Box (Player 5)
+                        // würde das Badge unterhalb mit dem Pot-Badge kollidieren →
+                        // Button links, Einsatz rechts neben der Box anzeigen.
+                        betSplit: tableZone.wide && Config.Responsive.landscapeCompact
+                                  && seatSlot.slot[0] >= 0.45 && seatSlot.slot[0] <= 0.55
                     }
                 }
             }
@@ -1236,6 +1320,14 @@ Rectangle {
                 transformOrigin: Item.Center
                 scale: tableZone.boxScale
                 maxAvatarSize: tableZone.wide ? 60 : 54
+            }
+
+            // Emoji-Reaktions-Animationen – im Zoom-Layer, damit sie bei
+            // aktivem Zoom mit den Spielerboxen mitskalieren.
+            GameReactionFx {
+                id: reactionFx
+                anchors.fill: parent
+                z: 60
             }
 
                 } // zoomContent
@@ -1320,6 +1412,8 @@ Rectangle {
             // ── Spielverlauf (Log) + Chat – Umschalt-Icons + Overlays ──────────
             property bool showLog: false
             property bool showChat: false
+            // Emoji-Reaktions-Picker (Panel unter dem Toggle neben dem Chat-Icon)
+            property bool showReactions: false
 
             // Ungelesene Chat-Nachrichten: alles oberhalb von chatReadCount gilt als
             // ungelesen. Als gelesen markiert wird, sobald der Chat 2 s offen war
@@ -1883,16 +1977,98 @@ Rectangle {
                     }
                 }
             }
+
+            // ── Emoji-Reaktions-Picker: Toggle rechts neben dem Chat-Icon ──────
+            Rectangle {
+                id: reactionToggle
+                z: 200
+                anchors.top: parent.top
+                anchors.left: chatToggle.visible ? chatToggle.right : parent.left
+                anchors.leftMargin: chatToggle.visible ? 6 : 8
+                anchors.topMargin: 8
+                width: 34; height: 34; radius: 17
+                color: tableZone.showReactions ? Config.Theme.colorAccent : Qt.rgba(0, 0, 0, 0.45)
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "🎉"
+                    font.family: Config.StaticData.emojiFamily
+                    font.pixelSize: 17
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: tableZone.showReactions = !tableZone.showReactions
+                }
+            }
+
+            // Panel mit den Reaktions-Emojis (Grid, 6 Spalten – wie der
+            // Reaction-Picker des Web-Clients, dort 30 Emojis).
+            Rectangle {
+                id: reactionPanel
+                visible: tableZone.showReactions
+                z: 210
+                anchors.top: reactionToggle.bottom
+                anchors.topMargin: 6
+                anchors.left: parent.left
+                anchors.leftMargin: 8
+                width: reactionGrid.width + 16
+                height: reactionGrid.height + 16
+                radius: 8
+                color: Qt.rgba(0, 0, 0, 0.88)
+                border.color: Qt.rgba(1, 1, 1, 0.12)
+                border.width: 1
+
+                Grid {
+                    id: reactionGrid
+                    anchors.centerIn: parent
+                    columns: 6
+                    spacing: 3
+
+                    Repeater {
+                        model: ["🎉", "🥳", "👏", "🙌", "💪", "🤣",
+                                "😂", "😬", "🤦", "😴", "👍", "😎",
+                                "🤩", "👀", "🤔", "😱", "😡", "😤",
+                                "🔥", "😮", "💰", "💎", "🎰", "🍀",
+                                "🃏", "💀", "🤑", "🫵", "🫡", "🤫"]
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: 36; height: 36; radius: 6
+                            color: reactArea.containsPress ? Qt.rgba(1, 1, 1, 0.25)
+                                 : reactArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12)
+                                 : "transparent"
+                            scale: reactArea.containsMouse && !reactArea.containsPress ? 1.15 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 100 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: parent.modelData
+                                font.family: Config.StaticData.emojiFamily
+                                font.pixelSize: 19
+                            }
+                            MouseArea {
+                                id: reactArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: gamePage.sendReaction(parent.modelData)
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // 3. Action-Leiste: Raise-Controls + Fold / Call / Raise
         Item {
             id: actionBar
             Layout.fillWidth: true
-            // Höhe wächst dynamisch mit dem Inhalt (Querformat: +8 px, damit das
-            // Panel mit 8 px Abstand über dem unteren Bildschirmrand schwebt).
+            // Höhe wächst dynamisch mit dem Inhalt (Desktop-Querformat: +8 px,
+            // damit das Panel mit 8 px Abstand über dem unteren Bildschirmrand
+            // schwebt). Auf dem Phone (compactActions) sitzt das Panel bündig
+            // am unteren Bildschirmrand.
             Layout.preferredHeight: actionBarCol.implicitHeight
-                                    + (tableZone.wide ? 8 : 0)
+                                    + (tableZone.wide && !actionBar.compactActions ? 8 : 0)
 
             // Querformat: Inhalt auf die (skalierte) Breite des Community-Cards-
             // Bereichs begrenzen und zentrieren – sonst wird u. a. der Slider viel
@@ -1967,6 +2143,17 @@ Rectangle {
             property int playingMode: 0
 
             readonly property bool canAct: GameTable !== null && GameTable.canAct
+
+            // Kompakte Action-Bar nur auf echten Mobilgeräten mit knappem
+            // vertikalem Platz (Phone-Landscape). Auf dem Desktop bleiben die
+            // Buttons groß – auch bei breitem Aspect-Ratio (Ultrawide/HiDPI),
+            // wo landscapeCompact geometrisch ebenfalls greift.
+            readonly property bool compactActions:
+                Config.Responsive.landscapeCompact && Config.Responsive.isMobile
+            // Höhen der drei Action-Bar-Reihen.
+            readonly property int actionRowHeight: compactActions ? 40 : (Config.Theme.compact ? 56 : 54)
+            readonly property int raiseRowHeight:  compactActions ? 22 : 26
+
             // Während der Vorwahl zeigt der Fold-Button bei freiem Check "Check / Fold"
             // Vorwahl bei gratis Check: zweizeilig, damit auch längere Übersetzungen
             // (z. B. "Check / Se coucher") auf den Button passen.
@@ -2173,12 +2360,10 @@ Rectangle {
             Rectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                // Querformat: kleiner Abstand zum unteren Bildschirmrand
-                // (Tisch zeigt sich darunter durch). Im landscapeCompact ist
-                // die actionBar selbst nur noch `+2` höher als ihr Inhalt,
-                // daher hier 2 statt 8 verwenden — sonst rutschen die
-                // Action-Buttons unter den Panel-Hintergrund.
-                anchors.bottomMargin: tableZone.wide ? 8 : 0
+                // Desktop-Querformat: kleiner Abstand zum unteren Bildschirmrand
+                // (Tisch zeigt sich darunter durch). Phone (compactActions):
+                // Panel bündig am unteren Bildschirmrand.
+                anchors.bottomMargin: tableZone.wide && !actionBar.compactActions ? 8 : 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: actionBar.panelWidth
                 color: Qt.rgba(0, 0, 0, 0.82)
@@ -2213,7 +2398,7 @@ Rectangle {
                         // Betrag-Eingabe – links neben dem Slider
                         Rectangle {
                             Layout.preferredWidth: 78
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: actionBar.raiseRowHeight
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
                             color: actionBar.raiseAvailable ? "#1a2a1a" : "#171717"
@@ -2260,7 +2445,7 @@ Rectangle {
                         Slider {
                             id: raiseSlider
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: actionBar.raiseRowHeight
                             Layout.alignment: Qt.AlignVCenter
                             enabled: actionBar.raiseAvailable
                             opacity: enabled ? 1.0 : 0.45
@@ -2313,7 +2498,7 @@ Rectangle {
                                          ? SettingsManager.readConfigInt("ShowPotPercentButtons") !== 0
                                          : true
                                 Layout.preferredWidth: visible ? 38 : 0
-                                Layout.preferredHeight: 26
+                                Layout.preferredHeight: actionBar.raiseRowHeight
                                 radius: 5
                                 enabled: actionBar.raiseAvailable
                                 color: !enabled ? "#202020" : potBtnArea.containsPress ? "#2e7d32" : potBtnArea.containsMouse ? "#388e3c" : "#1b5e20"
@@ -2351,7 +2536,7 @@ Rectangle {
                             readonly property bool preChecked: actionBar.preAction === "allin"
                             readonly property bool isShowMode: typeof GameTable !== "undefined" && GameTable && GameTable.canShowCards
                             Layout.preferredWidth: 52
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: actionBar.raiseRowHeight
                             radius: 5
                             opacity: (isShowMode || (actionBar.canAct && (GameTable.myTurn || actionBar.preSelectEnabled))) ? 1.0 : 0.4
                             color: allInArea.containsPress
@@ -2400,7 +2585,7 @@ Rectangle {
                         ComboBox {
                             id: playingModeCombo
                             Layout.preferredWidth: 132
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: actionBar.raiseRowHeight
                             font.family: Config.StaticData.loadedFont.font.family
                             font.pixelSize: 11
                             model: [ qsTr("Manuell"), qsTr("Auto Check/Call"), qsTr("Auto Check/Fold") ]
@@ -2433,7 +2618,7 @@ Rectangle {
                 // Dynamische Beschriftung + Aktivierung wie im Qt-Widgets-Client.
                 Item {
                     width: parent.width
-                    height: Config.Theme.compact ? 56 : 54
+                    height: actionBar.actionRowHeight
 
                     // Wiederverwendbarer Aktions-Button mit Verlauf, dynamischem Text und
                     // Vorwahl-Zustand (goldener Rahmen = vorgemerkt).
@@ -2484,7 +2669,7 @@ Rectangle {
                             text: ab.label
                             color: "#F0F0F0"
                             font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 15
+                            font.pixelSize: actionBar.compactActions ? 12 : 15
                             font.bold: true
                             font.letterSpacing: 0.5
                             lineHeight: 0.95

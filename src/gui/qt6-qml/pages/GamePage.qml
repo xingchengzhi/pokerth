@@ -1435,6 +1435,25 @@ Rectangle {
             // Wird der Chat gedockt, ist das Overlay überflüssig.
             onDockedChatFitsChanged: if (dockedChatFits) showChat = false
 
+            // Minimale Höhe des gedockten Chats (= Action-Bar-Höhe minus Außenabstand).
+            readonly property real dockedChatMinH: actionBar.height - 8
+            // Maximale Höhe: so weit nach oben aufziehbar, bis die Unterkante der
+            // obersten Gegnerbox (+ 8 px Abstand) erreicht ist – keine Überlappung.
+            readonly property real dockedChatMaxH: {
+                if (!wide || !dockedChatFits) return dockedChatMinH
+                var s = oppScale
+                var visualH = oppBaseHeight * s
+                // Y-Mitte der obersten Gegnerbox (in tableZone-Koordinaten):
+                var topOppCenterY = (Config.Responsive.landscapeCompact ? 0 : 4) + visualH / 2
+                // Unterkante der obersten Box + 8 px Sicherheitsabstand:
+                var oppsBottom = topOppCenterY + visualH / 2 + 8
+                // Chat ist am unteren gamePage-Rand verankert.
+                // Max-Höhe = tableZone.height - oppsBottom + actionBar.height - 8
+                return Math.max(dockedChatMinH, height - oppsBottom + actionBar.height - 8)
+            }
+            // Vom Benutzer per Drag-Handle eingestellte Höhe; -1 = Standard.
+            property real dockedChatUserH: -1
+
             // Ungelesene Chat-Nachrichten: alles oberhalb von chatReadCount gilt als
             // ungelesen. Als gelesen markiert wird, sobald der Chat 2 s offen war
             // (chatReadTimer); danach gelten weitere Nachrichten bei offenem Chat
@@ -2394,200 +2413,6 @@ Rectangle {
                 radius: tableZone.wide ? 10 : 0
             }
 
-            // ── Permanenter Game-Chat: links neben der Action-Box, gleiche Höhe
-            // und vertikale Position (siehe tableZone.dockedChatFits). ──────────
-            Rectangle {
-                id: dockedChat
-                visible: tableZone.dockedChatFits
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: tableZone.wide && !actionBar.compactActions ? 8 : 0
-                anchors.left: parent.left
-                anchors.leftMargin: 8
-                width: tableZone.dockedChatW
-                radius: 10
-                // Hintergrund-Stil wie das Chat-Overlay (chatPanel).
-                color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
-                border.color: Config.StaticData.palette.secondary.col500
-                border.width: 1
-
-                property bool showEmojiPicker: false
-
-                // Permanent sichtbar → Nachrichten gelten sofort als gelesen.
-                onVisibleChanged: {
-                    if (visible && typeof GameTable !== "undefined" && GameTable)
-                        tableZone.chatReadCount = GameTable.chatLog.length
-                    if (!visible)
-                        showEmojiPicker = false
-                }
-
-                function sendMsg() {
-                    var t = dockedChatInput.text.trim()
-                    if (t === "" || typeof GameTable === "undefined" || !GameTable) return
-                    GameTable.sendChat(t)
-                    dockedChatInput.text = ""
-                }
-
-                // Emoji-Picker als Popup oberhalb der Box (innen wäre kein Platz).
-                Rectangle {
-                    visible: dockedChat.showEmojiPicker
-                    y: -height - 6
-                    width: parent.width
-                    height: 156
-                    radius: 10
-                    color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
-                    border.color: Config.StaticData.palette.secondary.col500
-                    border.width: 1
-
-                    EmojiPicker {
-                        anchors.fill: parent
-                        anchors.margins: 3
-                        onPicked: (emoji) => {
-                            dockedChatInput.insert(dockedChatInput.cursorPosition, emoji)
-                            dockedChatInput.forceActiveFocus()
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 4
-
-                    ListView {
-                        id: dockedChatList
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        spacing: 1
-                        model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog : []
-                        boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar {
-                            policy: dockedChatList.contentHeight > dockedChatList.height + 4
-                                    ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
-                        }
-                        // Auto-Scroll: gleiche Logik wie chatList (pausiert beim
-                        // Hochscrollen, Position bleibt erhalten, nach 15 s weiter).
-                        property bool autoScroll: true
-                        property real savedContentY: 0
-                        Timer {
-                            id: dockedAutoScrollTimer
-                            interval: 15000
-                            onTriggered: { dockedChatList.autoScroll = true; dockedChatList.positionViewAtEnd() }
-                        }
-                        function restoreScroll() {
-                            contentY = Math.min(savedContentY, Math.max(0, contentHeight - height))
-                        }
-                        onContentYChanged: {
-                            if (!moving) return
-                            savedContentY = contentY
-                            if (atYEnd) { autoScroll = true; dockedAutoScrollTimer.stop() }
-                            else        { autoScroll = false; dockedAutoScrollTimer.restart() }
-                        }
-                        onCountChanged: {
-                            if (autoScroll) positionViewAtEnd()
-                            else Qt.callLater(restoreScroll)
-                            if (dockedChat.visible && typeof GameTable !== "undefined" && GameTable)
-                                tableZone.chatReadCount = GameTable.chatLog.length
-                        }
-
-                        delegate: Item {
-                            required property var modelData
-                            width: ListView.view.width
-                            implicitHeight: dockedBubble.height
-
-                            Rectangle {
-                                id: dockedBubble
-                                width: parent.width
-                                height: dockedMsgText.implicitHeight + 4
-                                radius: 6
-                                color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
-
-                                Text {
-                                    id: dockedMsgText
-                                    anchors {
-                                        left: parent.left; right: parent.right; top: parent.top
-                                        leftMargin: 6; rightMargin: 6; topMargin: 2
-                                    }
-                                    text: modelData
-                                    textFormat: Text.RichText
-                                    wrapMode: Text.WordWrap
-                                    color: Config.StaticData.palette.secondary.col100
-                                    font.family: Config.StaticData.loadedFont.font.family
-                                    font.pixelSize: 11
-                                    lineHeight: 1.0
-                                    onLinkActivated: (link) => Qt.openUrlExternally(link)
-                                }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        // Emoji-Picker-Umschalter (wie im Chat-Overlay)
-                        Button {
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            onClicked: dockedChat.showEmojiPicker = !dockedChat.showEmojiPicker
-                            background: Rectangle {
-                                radius: 6
-                                color: dockedChat.showEmojiPicker
-                                       ? Config.StaticData.palette.secondary.col500 : "transparent"
-                            }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            contentItem: Text {
-                                text: "🙂"
-                                font.family: Config.StaticData.emojiFamily
-                                font.pixelSize: 15
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-
-                        TextField {
-                            id: dockedChatInput
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            placeholderText: qsTr("Nachricht …")
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 12
-                            color: Config.StaticData.palette.secondary.col100
-                            placeholderTextColor: Config.StaticData.palette.secondary.col400
-                            background: Rectangle {
-                                radius: 6
-                                color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.6)
-                            }
-                            onAccepted: dockedChat.sendMsg()
-                        }
-
-                        Button {
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            background: Item {}
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            // Grün eingefärbt wie der Send-Button in Lobby/GameWait.
-                            contentItem: Image {
-                                anchors.centerIn: parent
-                                width: 18; height: 18
-                                source: "../resources/send.svg"
-                                sourceSize: Qt.size(36, 36)
-                                fillMode: Image.PreserveAspectFit
-                                smooth: true
-                                antialiasing: true
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    colorization: 1.0
-                                    colorizationColor: Config.Theme.colorChatSend
-                                }
-                            }
-                            onClicked: dockedChat.sendMsg()
-                        }
-                    }
-                }
-            }
-
             Column {
                 id: actionBarCol
                 width: actionBar.panelWidth
@@ -2965,6 +2790,245 @@ Rectangle {
                             armed: (myTurnNow || (actionBar.canAct && actionBar.preSelectEnabled)) && actionBar.raiseAvailable
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // ── Permanenter Game-Chat: links neben der Action-Box ───────────────────
+    // Direktes Kind von gamePage (über dem ColumnLayout), damit er nach oben
+    // über die Action-Bar hinaus aufgezogen werden kann.
+    Rectangle {
+        id: dockedChat
+        visible: tableZone.dockedChatFits
+        z: 20
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 8
+        width: tableZone.dockedChatW
+        height: {
+            var h = tableZone.dockedChatUserH >= 0
+                    ? tableZone.dockedChatUserH : tableZone.dockedChatMinH
+            return Math.max(tableZone.dockedChatMinH,
+                            Math.min(tableZone.dockedChatMaxH, h))
+        }
+        radius: 10
+        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+        border.color: Config.StaticData.palette.secondary.col500
+        border.width: 1
+
+        property bool showEmojiPicker: false
+
+        onVisibleChanged: {
+            if (visible && typeof GameTable !== "undefined" && GameTable)
+                tableZone.chatReadCount = GameTable.chatLog.length
+            if (!visible)
+                showEmojiPicker = false
+        }
+
+        function sendMsg() {
+            var t = dockedChatInput.text.trim()
+            if (t === "" || typeof GameTable === "undefined" || !GameTable) return
+            GameTable.sendChat(t)
+            dockedChatInput.text = ""
+        }
+
+        // ── Größenänderungs-Handle (Ziehen nach oben) ────────────────────────
+        Item {
+            id: chatResizeHandle
+            anchors.top: parent.top
+            width: parent.width
+            height: 10
+            z: 10
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                width: 32
+                height: 3
+                radius: 2
+                color: resizeDragArea.containsMouse || resizeDragArea.pressed
+                       ? Config.Theme.colorAccent
+                       : Qt.rgba(1, 1, 1, 0.22)
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            MouseArea {
+                id: resizeDragArea
+                anchors.fill: parent
+                cursorShape: Qt.SizeVerCursor
+                hoverEnabled: true
+                property real pressGlobalY: 0
+                property real pressH: 0
+                onPressed: (mouse) => {
+                    pressGlobalY = mapToItem(gamePage, mouse.x, mouse.y).y
+                    pressH = dockedChat.height
+                }
+                onPositionChanged: (mouse) => {
+                    if (!pressed) return
+                    var curY = mapToItem(gamePage, mouse.x, mouse.y).y
+                    var delta = pressGlobalY - curY   // nach oben = positiv
+                    var newH = Math.max(tableZone.dockedChatMinH,
+                                       Math.min(tableZone.dockedChatMaxH,
+                                                pressH + delta))
+                    tableZone.dockedChatUserH = newH
+                }
+            }
+        }
+
+        // Emoji-Picker als Popup oberhalb der Box.
+        Rectangle {
+            visible: dockedChat.showEmojiPicker
+            y: -height - 6
+            width: parent.width
+            height: 156
+            radius: 10
+            color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+            border.color: Config.StaticData.palette.secondary.col500
+            border.width: 1
+
+            EmojiPicker {
+                anchors.fill: parent
+                anchors.margins: 3
+                onPicked: (emoji) => {
+                    dockedChatInput.insert(dockedChatInput.cursorPosition, emoji)
+                    dockedChatInput.forceActiveFocus()
+                }
+            }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 6
+            anchors.topMargin: 12   // Platz für den Resize-Handle
+            spacing: 4
+
+            ListView {
+                id: dockedChatList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 1
+                model: (typeof GameTable !== "undefined" && GameTable) ? GameTable.chatLog : []
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar {
+                    policy: dockedChatList.contentHeight > dockedChatList.height + 4
+                            ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                }
+                property bool autoScroll: true
+                property real savedContentY: 0
+                Timer {
+                    id: dockedAutoScrollTimer
+                    interval: 15000
+                    onTriggered: { dockedChatList.autoScroll = true; dockedChatList.positionViewAtEnd() }
+                }
+                function restoreScroll() {
+                    contentY = Math.min(savedContentY, Math.max(0, contentHeight - height))
+                }
+                onContentYChanged: {
+                    if (!moving) return
+                    savedContentY = contentY
+                    if (atYEnd) { autoScroll = true; dockedAutoScrollTimer.stop() }
+                    else        { autoScroll = false; dockedAutoScrollTimer.restart() }
+                }
+                onCountChanged: {
+                    if (autoScroll) positionViewAtEnd()
+                    else Qt.callLater(restoreScroll)
+                    if (dockedChat.visible && typeof GameTable !== "undefined" && GameTable)
+                        tableZone.chatReadCount = GameTable.chatLog.length
+                }
+
+                delegate: Item {
+                    required property var modelData
+                    width: ListView.view.width
+                    implicitHeight: dockedBubble.height
+
+                    Rectangle {
+                        id: dockedBubble
+                        width: parent.width
+                        height: dockedMsgText.implicitHeight + 4
+                        radius: 6
+                        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.55)
+
+                        Text {
+                            id: dockedMsgText
+                            anchors {
+                                left: parent.left; right: parent.right; top: parent.top
+                                leftMargin: 6; rightMargin: 6; topMargin: 2
+                            }
+                            text: modelData
+                            textFormat: Text.RichText
+                            wrapMode: Text.WordWrap
+                            color: Config.StaticData.palette.secondary.col100
+                            font.family: Config.StaticData.loadedFont.font.family
+                            font.pixelSize: 11
+                            lineHeight: 1.0
+                            onLinkActivated: (link) => Qt.openUrlExternally(link)
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Button {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    onClicked: dockedChat.showEmojiPicker = !dockedChat.showEmojiPicker
+                    background: Rectangle {
+                        radius: 6
+                        color: dockedChat.showEmojiPicker
+                               ? Config.StaticData.palette.secondary.col500 : "transparent"
+                    }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    contentItem: Text {
+                        text: "🙂"
+                        font.family: Config.StaticData.emojiFamily
+                        font.pixelSize: 15
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                TextField {
+                    id: dockedChatInput
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 28
+                    placeholderText: qsTr("Nachricht …")
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: 12
+                    color: Config.StaticData.palette.secondary.col100
+                    placeholderTextColor: Config.StaticData.palette.secondary.col400
+                    background: Rectangle {
+                        radius: 6
+                        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.6)
+                    }
+                    onAccepted: dockedChat.sendMsg()
+                }
+
+                Button {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    background: Item {}
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    contentItem: Image {
+                        anchors.centerIn: parent
+                        width: 18; height: 18
+                        source: "../resources/send.svg"
+                        sourceSize: Qt.size(36, 36)
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        antialiasing: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorization: 1.0
+                            colorizationColor: Config.Theme.colorChatSend
+                        }
+                    }
+                    onClicked: dockedChat.sendMsg()
                 }
             }
         }

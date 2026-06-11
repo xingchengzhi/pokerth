@@ -219,8 +219,6 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 		spinBox_androidUiScale->setSpecialValueText(tr("Auto"));
 		spinBox_androidUiScale->setToolTip(tr("0 = automatic scaling to fit screen.\n50-150 = manual percentage (requires restart)."));
 		// Insert into the Interface tab's first page layout.
-		// checkBox_disableChatEmoticons is the last checkbox in that section.
-		QWidget *interfacePage = checkBox_disableChatEmoticons->parentWidget();
 		if (interfacePage && interfacePage->layout()) {
 			QGridLayout *grid = qobject_cast<QGridLayout*>(interfacePage->layout());
 			if (grid) {
@@ -392,7 +390,6 @@ void settingsDialogImpl::prepareDialog()
 	checkBox_disableSplashscreen->setChecked(myConfig->readConfigInt("DisableSplashScreenOnStartup"));
 	checkBox_enableAccidentallyCallBlocker->setChecked(myConfig->readConfigInt("AccidentallyCallBlocker"));
 	checkBox_dontHideAvatarsOfIgnored->setChecked(myConfig->readConfigInt("DontHideAvatarsOfIgnored"));
-	checkBox_disableChatEmoticons->setChecked(myConfig->readConfigInt("DisableChatEmoticons"));
 
 #ifdef ANDROID
 	spinBox_androidUiScale->setValue(myConfig->readConfigInt("AndroidUiScalePercent"));
@@ -890,7 +887,6 @@ void settingsDialogImpl::isAccepted()
 	myConfig->writeConfigInt("EnableBetInputFocusSwitch", checkBox_enableBetInputFocusSwitch->isChecked());
 	myConfig->writeConfigInt("AccidentallyCallBlocker", checkBox_enableAccidentallyCallBlocker->isChecked());
 	myConfig->writeConfigInt("DontHideAvatarsOfIgnored", checkBox_dontHideAvatarsOfIgnored->isChecked());
-	myConfig->writeConfigInt("DisableChatEmoticons", checkBox_disableChatEmoticons->isChecked());
 
 #ifdef ANDROID
 	myConfig->writeConfigInt("AndroidUiScalePercent", spinBox_androidUiScale->value());

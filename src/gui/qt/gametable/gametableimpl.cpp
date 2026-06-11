@@ -47,6 +47,8 @@
 #include "mytimeoutlabel.h"
 #include "guilog.h"
 #include "chattools.h"
+#include "emojipicker.h"
+#include "reactionfx.h"
 #ifdef ANDROID
 #include "mobileinputhelper.h"
 #endif
@@ -87,7 +89,7 @@
 using namespace std;
 
 gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
-	: QMainWindow(parent), myChat(NULL), myConfig(c), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
+	: QMainWindow(parent), myChat(NULL), myConfig(c), myReactionPicker(nullptr), myReactionFx(nullptr), myLastOwnReactionTime(0), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
 {
 	int i;
 
@@ -552,11 +554,27 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	myChat = new ChatTools(tabs.lineEdit_ChatInput, myConfig, INGAME_CHAT, tabs.textBrowser_Chat);
 	myChat->setMyStyle(myGameTableStyle);
 	tabs.lineEdit_ChatInput->installEventFilter(this);
+	QLineEdit *reactionLineEdit = tabs.lineEdit_ChatInput;
 #else
 	myChat = new ChatTools(lineEdit_ChatInput, myConfig, INGAME_CHAT, textBrowser_Chat);
 	myChat->setMyStyle(myGameTableStyle);
 	lineEdit_ChatInput->installEventFilter(this);
+	QLineEdit *reactionLineEdit = lineEdit_ChatInput;
 #endif
+
+	// Emoji-Reaktionen: empfangene "/emoji"-Nachrichten als Animation am
+	// Sitz abspielen; eigener Reaktions-Picker (🎉) im Chat-Eingabefeld.
+	connect(myChat, SIGNAL(reactionReceived(QString,QString)), this, SLOT(showEmojiReaction(QString,QString)));
+	QAction *reactionAction = reactionLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🎉")),
+	                                                      QLineEdit::TrailingPosition);
+	reactionAction->setToolTip(tr("Send reaction"));
+	connect(reactionAction, &QAction::triggered, this, [this, reactionLineEdit]() {
+		if (!myReactionPicker) {
+			myReactionPicker = new EmojiPicker(reactionLineEdit, EmojiPicker::reactionEmojis(), 6);
+			connect(myReactionPicker, &EmojiPicker::picked, this, &gameTableImpl::sendEmojiReaction);
+		}
+		myReactionPicker->showAt(reactionLineEdit);
+	});
 
 	this->installEventFilter(this);
 
@@ -5084,4 +5102,72 @@ int gameTableImpl::getAndroidApiVersion()
 #endif
 #endif
     return api;
+}
+
+// ── Emoji-Reaktionen (Port aus QML-/Web-Client, Chat-Konvention "/emoji 🎉") ──
+
+void gameTableImpl::sendEmojiReaction(const QString &emoji)
+{
+	myLastOwnReactionEmoji = emoji;
+	myLastOwnReactionTime = QDateTime::currentMSecsSinceEpoch();
+
+	// Sofort lokal am eigenen Sitz (ID 0) abspielen …
+	playReactionAnimation(0, emoji);
+
+	// … und über den Spiel-Chat an die Mitspieler senden (das eigene
+	// Server-Echo wird in showEmojiReaction per Zeitfenster verworfen).
+	boost::shared_ptr<Session> session = myStartWindow->getSession();
+	if (session)
+		session->sendGameChatMessage(QString(QStringLiteral("/emoji ") + emoji).toUtf8().constData());
+}
+
+void gameTableImpl::showEmojiReaction(QString playerName, QString emoji)
+{
+	const QString myNick = QString::fromUtf8(myConfig->readConfigString("MyName").c_str());
+	if (playerName == myNick) {
+		// Echo der eigenen, bereits lokal abgespielten Reaktion unterdrücken.
+		if (emoji == myLastOwnReactionEmoji
+		    && QDateTime::currentMSecsSinceEpoch() - myLastOwnReactionTime < 3000)
+			return;
+		playReactionAnimation(0, emoji);
+		return;
+	}
+
+	// Sitz des Absenders ermitteln.
+	boost::shared_ptr<Session> session = myStartWindow->getSession();
+	if (!session || !session->getCurrentGame())
+		return;
+	PlayerList seatsList = session->getCurrentGame()->getSeatsList();
+	PlayerListConstIterator it_c;
+	for (it_c = seatsList->begin(); it_c != seatsList->end(); ++it_c) {
+		if (QString::fromUtf8((*it_c)->getMyName().c_str()) == playerName) {
+			playReactionAnimation((*it_c)->getMyID(), emoji);
+			return;
+		}
+	}
+}
+
+void gameTableImpl::playReactionAnimation(int seatId, const QString &emoji)
+{
+	if (seatId < 0 || seatId >= MAX_NUMBER_OF_PLAYERS)
+		return;
+	// Ganze Spielerbox als Anker (horizontal zentriert) – das Avatar-Label
+	// sitzt links in der Box und wäre als Anker seitlich versetzt.
+	QWidget *seatWidget = groupBoxArray[seatId];
+	if (!seatWidget)
+		seatWidget = playerAvatarLabelArray[seatId];
+	if (!seatWidget)
+		return;
+
+	// Overlay (lazy) über dem gesamten Fenster – spielt die 1:1 aus dem
+	// QML-Client portierte Choreografie ab (Pop/Aufstieg/Fade + Partikel).
+	QWidget *host = centralWidget() ? centralWidget() : static_cast<QWidget *>(this);
+	if (!myReactionFx)
+		myReactionFx = new ReactionFxOverlay(host);
+
+	QPoint anchor = seatWidget->mapTo(host, QPoint(seatWidget->width() / 2, 0)) - QPoint(0, 6);
+	// Die Animation steigt ~200 px auf – bei Sitzen nahe der Oberkante
+	// tiefer starten, sonst wird sie am Fensterrand abgeschnitten.
+	anchor.setY(qMax(anchor.y(), 200));
+	myReactionFx->play(emoji, anchor);
 }

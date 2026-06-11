@@ -318,13 +318,6 @@
                </property>
               </spacer>
              </item>
-             <item row="5" column="0">
-              <widget class="QCheckBox" name="checkBox_disableChatEmoticons">
-               <property name="text">
-                <string>Disable emoticons in the chat</string>
-               </property>
-              </widget>
-             </item>
              <item row="2" column="0">
               <widget class="QCheckBox" name="checkBox_enableBetInputFocusSwitch">
                <property name="text">

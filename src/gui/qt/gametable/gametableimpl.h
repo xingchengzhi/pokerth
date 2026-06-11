@@ -395,15 +395,27 @@ private slots:
 	void onScreenChanged(QScreen *screen);
 	void onScreenGeometryChanged(const QRect &geometry);
 	void onScreenDpiChanged(qreal dpi);
+	// Emoji-Reaktionen (Chat-Konvention "/emoji 🎉", kompatibel zu QML-/
+	// Web-Client): empfangene Reaktion am Sitz des Absenders abspielen
+	// bzw. eigene Reaktion senden.
+	void showEmojiReaction(QString playerName, QString emoji);
+	void sendEmojiReaction(const QString &emoji);
 
 private:
 	void applyPotFraction(double fraction);
 	void setPotButtonsEnabled(bool enabled);
+	void playReactionAnimation(int seatId, const QString &emoji);
 
 	boost::shared_ptr<GuiInterface> myServerGuiInterface;
 	guiLog *myGuiLog;
 	ChatTools *myChat;
 	ConfigFile *myConfig;
+
+	// Emoji-Reaktionen
+	class EmojiPicker *myReactionPicker;
+	class ReactionFxOverlay *myReactionFx;
+	QString myLastOwnReactionEmoji;
+	qint64 myLastOwnReactionTime;
 
 	//Timer
 	QTimer *potDistributeTimer;

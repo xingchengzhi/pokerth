@@ -373,13 +373,6 @@
                </property>
               </widget>
              </item>
-             <item row="6" column="0">
-              <widget class="QCheckBox" name="checkBox_disableChatEmoticons">
-               <property name="text">
-                <string>Disable emoticons in the chat</string>
-               </property>
-              </widget>
-             </item>
              <item row="1" column="0">
               <widget class="QCheckBox" name="checkBox_showPingStateInAvatar">
                <property name="text">

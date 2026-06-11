@@ -1437,19 +1437,36 @@ Rectangle {
 
             // Minimale Höhe des gedockten Chats (= Action-Bar-Höhe minus Außenabstand).
             readonly property real dockedChatMinH: actionBar.height - 8
-            // Maximale Höhe: so weit nach oben aufziehbar, bis die Unterkante der
-            // obersten Gegnerbox (+ 8 px Abstand) erreicht ist – keine Überlappung.
+            // Maximale Höhe: so weit nach oben aufziehbar, bis die Unterkante
+            // der untersten Gegnerbox, die horizontal mit dem Chat überlappt,
+            // (+ 8 px Abstand) erreicht ist – keine Überlappung garantiert.
             readonly property real dockedChatMaxH: {
                 if (!wide || !dockedChatFits) return dockedChatMinH
                 var s = oppScale
+                var visualW = oppBaseWidth  * s
                 var visualH = oppBaseHeight * s
-                // Y-Mitte der obersten Gegnerbox (in tableZone-Koordinaten):
-                var topOppCenterY = (Config.Responsive.landscapeCompact ? 0 : 4) + visualH / 2
-                // Unterkante der obersten Box + 8 px Sicherheitsabstand:
-                var oppsBottom = topOppCenterY + visualH / 2 + 8
-                // Chat ist am unteren gamePage-Rand verankert.
-                // Max-Höhe = tableZone.height - oppsBottom + actionBar.height - 8
-                return Math.max(dockedChatMinH, height - oppsBottom + actionBar.height - 8)
+                // Horizontaler Bereich des Chats in tableZone-Koordinaten
+                // (Chat ist links mit 8 px Abstand verankert, Breite = dockedChatW).
+                var chatLeft  = 8
+                var chatRight = 8 + dockedChatW
+                // Alle Landscape-Slots durchsuchen: welche Boxen überlappen horizontal?
+                var slots = slotPosLandscape
+                var maxH = height + actionBar.height - 8   // kein Limit → voll
+                for (var name in slots) {
+                    var pos     = slots[name]
+                    var boxCX   = width  * pos[0]
+                    var boxCY   = height * pos[1]
+                    var boxL    = boxCX - visualW / 2
+                    var boxR    = boxCX + visualW / 2
+                    // Überlapp nur prüfen, wenn Box im Chat-Bereich liegt.
+                    if (boxR <= chatLeft || boxL >= chatRight) continue
+                    // Unterkante der Box + 8 px Sicherheitsabstand:
+                    var boxBottom = boxCY + visualH / 2 + 8
+                    // Chat darf höchstens bis zur Unterkante dieser Box reichen.
+                    var limit = height - boxBottom + actionBar.height - 8
+                    if (limit < maxH) maxH = limit
+                }
+                return Math.max(dockedChatMinH, maxH)
             }
             // Vom Benutzer per Drag-Handle eingestellte Höhe; -1 = Standard.
             property real dockedChatUserH: -1

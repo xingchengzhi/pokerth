@@ -29,11 +29,18 @@ QtObject {
     // desktop        >= 1400 wide
     readonly property bool phonePortrait:  portrait  && windowWidth  < 600
     readonly property bool phoneLandscape: landscape && windowHeight < 600
-    // compact = „nutze mobile Layout-Variante" (Icon-Strip statt Side-Menü,
-    // schmälere Margins, Drawer-Navigation etc.). Greift sowohl bei schmalem
-    // Portrait (klassisch) als auch im Phone-Landscape (landscapeCompact),
-    // wo wenig vertikaler Platz für die Standard-Layouts ist.
-    readonly property bool compact:        windowWidth < 600 || landscapeCompact
+    // compact = „nutze mobile Layout-Variante" (Slide-in-Panels statt
+    // 3-Spalten-Layout in Lobby/GameWait, schmälere Margins etc.).
+    //   Mobile (Android/iOS): schmales Portrait ODER Phone-Landscape.
+    //   Desktop: NUR wenn die Fensterbreite nicht für das 3-Spalten-Layout
+    //   reicht (Spielerliste 200 + Spieleliste ~350 + Info/Chat 250 + Ränder).
+    //   Die Geometrie-Heuristik landscapeCompact greift hier bewusst NICHT –
+    //   breite Desktop-Fenster (Aspect > 1.85, z. B. HiDPI/Ultrawide) haben
+    //   trotzdem locker Platz für drei Spalten.
+    readonly property int  threeColumnMinWidth: 900
+    readonly property bool compact:
+        isMobile ? (windowWidth < 600 || landscapeCompact)
+                 : windowWidth < threeColumnMinWidth
     readonly property bool tablet:         windowWidth >= 900  && windowWidth < 1400
     readonly property bool desktop:        windowWidth >= 1400
 

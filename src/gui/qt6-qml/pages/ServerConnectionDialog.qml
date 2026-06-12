@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.VectorImage
 
 import "../config" as Config
 import "../components"
@@ -91,8 +92,8 @@ Rectangle {
             id: loginCard
             Layout.alignment: Qt.AlignCenter
             Layout.preferredWidth: Math.min(parent.width * 0.9, 360)
-            Layout.preferredHeight: Math.min(parent.height * 0.88, 500)
-            Layout.minimumHeight: 320
+            Layout.preferredHeight: Math.min(parent.height * 0.88, 560)
+            Layout.minimumHeight: 400
             color: "transparent"
 
             Rectangle {
@@ -102,10 +103,22 @@ Rectangle {
                 radius: 5
             }
 
+            // PokerTH-Logo oben in der Card – wie auf der StartPage.
+            VectorImage {
+                id: loginLogo
+                anchors.top: parent.top
+                anchors.topMargin: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 80
+                height: 80
+                source: "../resources/pokerth.svg"
+            }
+
             StackLayout {
                 id: mainStack
                 anchors.fill: parent
                 anchors.margins: 28
+                anchors.topMargin: 20 + 80 + 12   // Logo + Abstand
                 currentIndex: 0
 
                 // View 0: Auswahl

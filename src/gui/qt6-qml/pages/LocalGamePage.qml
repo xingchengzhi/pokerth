@@ -42,8 +42,12 @@ Rectangle {
         clip: true
 
         ScrollBar.vertical: ScrollBar {
-            policy: scroller.contentHeight > scroller.height
-                    ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+            // AlwaysOff statt AsNeeded: AsNeeded blendet die Bar bei jeder
+            // contentHeight-Änderung transient ein (mehrsekündiges Fade) –
+            // sichtbar als kurz aufblitzende Scrollbar beim Seitenaufbau,
+            // obwohl nichts zu scrollen ist.
+            policy: scroller.contentHeight > scroller.height + 1
+                    ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
         }
 
         Item {

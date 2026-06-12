@@ -169,13 +169,37 @@ Item {
 
         Repeater {
             model: gameItem.gamePlayers
-            delegate: Text {
-                width: playersCol.width - playersCol.leftPadding
-                text: "· " + (modelData.playerName || modelData.name || "")
-                font.family: Config.StaticData.loadedFont.font.family
-                font.pixelSize: 11
-                color: Config.StaticData.palette.secondary.col300
-                elide: Text.ElideRight
+            // Länderflagge + Name (wie die Spielerliste der Game-Info-Ansicht)
+            // statt einer Aufzählung mit vorangestelltem Punkt.
+            delegate: Item {
+                required property var modelData
+                width: playersCol.width - playersCol.leftPadding - 8
+                height: 18
+
+                Image {
+                    id: playerFlag
+                    visible: (parent.modelData.countryCode || "") !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18
+                    height: 14
+                    source: (parent.modelData.countryCode || "") !== ""
+                        ? "qrc:/resources/cflags/" + (parent.modelData.countryCode || "").toLowerCase() + ".svg"
+                        : ""
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                Text {
+                    anchors.left: playerFlag.visible ? playerFlag.right : parent.left
+                    anchors.leftMargin: playerFlag.visible ? 6 : 0
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: parent.modelData.playerName || parent.modelData.name || ""
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.pixelSize: 11
+                    color: Config.StaticData.palette.secondary.col300
+                    elide: Text.ElideRight
+                }
             }
         }
     }

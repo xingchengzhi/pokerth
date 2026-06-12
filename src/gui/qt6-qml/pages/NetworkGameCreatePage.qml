@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
+import QtQuick.VectorImage
 
 import "../config" as Config
 import "../components"
@@ -86,6 +87,10 @@ Rectangle {
         contentWidth: availableWidth
         clip: true
         visible: !networkGameCreatePage.connecting
+        // AlwaysOff statt transientem Default: sonst blitzt die Scrollbar beim
+        // Seitenaufbau sekundenlang auf, obwohl nichts zu scrollen ist.
+        ScrollBar.vertical.policy: scrollView.contentHeight > scrollView.height + 1
+                                   ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
 
         ColumnLayout {
             width: scrollView.availableWidth
@@ -106,6 +111,11 @@ Rectangle {
                         implicitWidth: 90
                         implicitHeight: 36
                         onClicked: mainStackView.pop()
+                    }
+                    VectorImage {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        source: "../resources/pokerth.svg"
                     }
                     Label {
                         Layout.fillWidth: true
@@ -399,6 +409,12 @@ Rectangle {
         spacing: 20
         visible: networkGameCreatePage.connecting
 
+        VectorImage {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 64
+            Layout.preferredHeight: 64
+            source: "../resources/pokerth.svg"
+        }
         BusyIndicator {
             running: networkGameCreatePage.connecting
             Layout.alignment: Qt.AlignHCenter

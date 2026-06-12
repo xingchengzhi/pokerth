@@ -2826,6 +2826,11 @@ void gameTableImpl::postRiverRunAnimation2()
 
 void gameTableImpl::postRiverRunAnimation3()
 {
+	// Stacks erst hier aktualisieren: der Winner-Badge erscheint in dieser
+	// Funktion – synchron mit der Pot-Verteilung sichtbar zu machen, wie es
+	// der Spieler erwartet. Ein früheres refreshCash() (z.B. nach der letzten
+	// Spieler-Aktion) würde die neuen Chips zeigen, bevor der Gewinner bekannt ist.
+	refreshCash();
 
 	boost::shared_ptr<HandInterface> currentHand = myStartWindow->getSession()->getCurrentGame()->getCurrentHand();
 

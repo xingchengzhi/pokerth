@@ -2698,10 +2698,10 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setWinners(winnerList);
 		curGame->getCurrentHand()->getBoard()->setPlayerNeedToShowCards(showList);
 
-		// CRITICAL: Force immediate GUI cash update to prevent race condition with next hand's HandStartMessage
-		// This ensures the GUI shows correct cash values before any animation or next hand processing
-		client->GetGui().refreshCash();
-		client->GetGui().refreshSet(); // Also refresh sets to clear any stale bet displays
+		// refreshSet() clears stale bet chips; refreshCash() is intentionally
+		// deferred to postRiverRunAnimation3() so that the stack update coincides
+		// with the Winner badge appearing (not before).
+		client->GetGui().refreshSet();
 		client->GetGui().waitForGuiUpdateDone();
 
 		// logging

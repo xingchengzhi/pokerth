@@ -931,6 +931,7 @@ Rectangle {
                             onPicked: (emoji) => {
                                 chatInputCompact.insert(chatInputCompact.cursorPosition, emoji)
                                 chatInputCompact.forceActiveFocus()
+                                lobbyPage.showEmojiPicker = false
                             }
                         }
 
@@ -974,7 +975,10 @@ Rectangle {
                                 }
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: sendChatMessage()
-                                onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                onTextEdited: {
+                                    lobbyPage.chatHistoryIndex = 0
+                                    lobbyPage.nickState.counter = 0
+                                }
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Tab) {
                                         event.accepted = true
@@ -1264,6 +1268,7 @@ Rectangle {
                             onPicked: (emoji) => {
                                 chatInput.insert(chatInput.cursorPosition, emoji)
                                 chatInput.forceActiveFocus()
+                                lobbyPage.showEmojiPicker = false
                             }
                         }
 
@@ -1308,7 +1313,10 @@ Rectangle {
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: sendChatMessage()
                                 Keys.onReturnPressed: sendChatMessage()
-                                onTextEdited: lobbyPage.chatHistoryIndex = 0
+                                onTextEdited: {
+                                    lobbyPage.chatHistoryIndex = 0
+                                    lobbyPage.nickState.counter = 0
+                                }
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Tab) {
                                         event.accepted = true
@@ -1490,22 +1498,20 @@ Rectangle {
     }
 
     // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen in der Lobby ergänzen.
+    // Tab-Vervollständigung mit Iteration (wie ChatTools im Widgets-Client):
+    // wiederholtes Tab zeigt den jeweils nächsten passenden Nick.
+    property var nickState: ({ counter: 0, base: "", matches: [] })
     function tabComplete(inputField) {
         if (!Lobby) return
-        var full = inputField.text
-        var lastSpace = full.lastIndexOf(" ")
-        var prefix = full.substring(lastSpace + 1)
-        if (prefix.length === 0) return
-        var lower = prefix.toLowerCase()
+        var nicks = []
         for (var i = 0; i < Lobby.playerListModel.count; i++) {
             var entry = Lobby.playerListEntry(i)
-            var n = entry.playerName || ""
-            if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
-                var suffix = (lastSpace < 0) ? ": " : " "
-                inputField.text = full.substring(0, lastSpace + 1) + n + suffix
-                inputField.cursorPosition = inputField.text.length
-                return
-            }
+            if (entry.playerName) nicks.push(entry.playerName)
+        }
+        var t = Config.StaticData.nickComplete(nickState, inputField.text, nicks)
+        if (t !== null) {
+            inputField.text = t
+            inputField.cursorPosition = t.length
         }
     }
 

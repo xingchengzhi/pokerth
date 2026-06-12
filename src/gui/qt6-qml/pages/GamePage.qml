@@ -106,6 +106,16 @@ Rectangle {
         reactionFx.play(emoji, px, py)
     }
 
+    // Alle belegten Sitznamen (für die Tab-Nick-Vervollständigung im Chat).
+    function gameNickList() {
+        var nicks = []
+        if (typeof GameTable !== "undefined" && GameTable)
+            for (var i = 0; i < GameTable.players.length; i++)
+                if (GameTable.players[i].name !== "")
+                    nicks.push(GameTable.players[i].name)
+        return nicks
+    }
+
     Connections {
         target: GameTable
         function onReactionReceived(playerName, emoji) {
@@ -1754,22 +1764,15 @@ Rectangle {
                 }
 
                 // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen ergänzen.
+                // Tab-Vervollständigung mit Iteration (wie Widgets-Client):
+                // wiederholtes Tab zeigt den jeweils nächsten passenden Nick.
+                property var nickState: ({ counter: 0, base: "", matches: [] })
                 function tabComplete() {
-                    if (typeof GameTable === "undefined" || !GameTable) return
-                    var full = chatInput.text
-                    var lastSpace = full.lastIndexOf(" ")
-                    var prefix = full.substring(lastSpace + 1)
-                    if (prefix.length === 0) return
-                    var lower = prefix.toLowerCase()
-                    for (var i = 0; i < GameTable.players.length; i++) {
-                        var n = GameTable.players[i].name
-                        if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
-                            // erstes Wort → mit ": " (Anrede), sonst mit Leerzeichen
-                            var suffix = (lastSpace < 0) ? ": " : " "
-                            chatInput.text = full.substring(0, lastSpace + 1) + n + suffix
-                            chatInput.cursorPosition = chatInput.text.length
-                            return
-                        }
+                    var t = Config.StaticData.nickComplete(nickState, chatInput.text,
+                                                           gamePage.gameNickList())
+                    if (t !== null) {
+                        chatInput.text = t
+                        chatInput.cursorPosition = t.length
                     }
                 }
 
@@ -1902,6 +1905,7 @@ Rectangle {
                         onPicked: (emoji) => {
                             chatInput.insert(chatInput.cursorPosition, emoji)
                             chatInput.forceActiveFocus()
+                            chatOverlay.showEmojiPicker = false
                         }
                     }
 
@@ -1944,8 +1948,12 @@ Rectangle {
                             }
                             onAccepted: chatOverlay.chatSend()
                             Keys.onReturnPressed: chatOverlay.chatSend()
-                            // Tippt der Nutzer, History-Navigation zurücksetzen.
-                            onTextEdited: chatOverlay.historyIndex = 0
+                            // Tippt der Nutzer: History-Navigation und
+                            // Tab-Iteration zurücksetzen.
+                            onTextEdited: {
+                                chatOverlay.historyIndex = 0
+                                chatOverlay.nickState.counter = 0
+                            }
                             // Tab = Namens-Vervollständigung; Hoch/Runter = History.
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Tab) {
@@ -2841,11 +2849,15 @@ Rectangle {
                             Math.min(tableZone.dockedChatMaxH, h))
         }
         radius: 10
-        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+        // Bewusst transparenter als das Chat-Overlay – der Tisch bleibt
+        // hinter dem permanenten Chat sichtbar.
+        color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.7)
         border.color: Config.StaticData.palette.secondary.col500
         border.width: 1
 
         property bool showEmojiPicker: false
+        // Tab-Vervollständigung mit Iteration (wie Widgets-Client).
+        property var nickState: ({ counter: 0, base: "", matches: [] })
 
         onVisibleChanged: {
             if (visible && typeof GameTable !== "undefined" && GameTable)
@@ -2911,16 +2923,20 @@ Rectangle {
             width: parent.width
             height: 156
             radius: 10
-            color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.95)
+            color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col700, 0.7)
             border.color: Config.StaticData.palette.secondary.col500
             border.width: 1
 
             EmojiPicker {
                 anchors.fill: parent
                 anchors.margins: 3
+                // Hintergrund/Rahmen kommen vom Popup-Wrapper.
+                color: "transparent"
+                border.width: 0
                 onPicked: (emoji) => {
                     dockedChatInput.insert(dockedChatInput.cursorPosition, emoji)
                     dockedChatInput.forceActiveFocus()
+                    dockedChat.showEmojiPicker = false
                 }
             }
         }
@@ -3034,6 +3050,18 @@ Rectangle {
                         color: Config.Theme.withAlpha(Config.StaticData.palette.secondary.col600, 0.6)
                     }
                     onAccepted: dockedChat.sendMsg()
+                    // Tab = Nick-Vervollständigung (statt Fokuswechsel zum
+                    // Senden-Button); wiederholtes Tab iteriert die Treffer.
+                    Keys.onTabPressed: (event) => {
+                        event.accepted = true
+                        var t = Config.StaticData.nickComplete(dockedChat.nickState,
+                                                               text, gamePage.gameNickList())
+                        if (t !== null) {
+                            text = t
+                            cursorPosition = t.length
+                        }
+                    }
+                    onTextEdited: dockedChat.nickState.counter = 0
                 }
 
                 Button {

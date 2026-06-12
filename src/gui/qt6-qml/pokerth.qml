@@ -20,13 +20,11 @@ ApplicationWindow {
     // portraitMode is now provided by Config.Responsive.portrait
     property StartPage startPage: StartPage {}
     property SideMenu sideMenu: SideMenu {}
-    // Start-Auflösung = Phone-Landscape eines typischen Testgeräts (2316×1080).
-    // Damit lässt sich das landscapeCompact-Layout am Desktop/AppImage testen,
-    // ohne extra eine APK zu bauen. Beim Komponenten-Aufbau wird die Größe auf
-    // den verfügbaren Bildschirm geclampt (Notebooks mit < 2316 px Breite würden
-    // sonst Teile des Fensters außerhalb des sichtbaren Bereichs öffnen).
-    width: 2316
-    height: 1080
+    // Start-Auflösung = Default-Größe des Qt-Widgets-Clients am Gametable
+    // (gametable.ui: 1024×621). Beim Komponenten-Aufbau wird die Größe
+    // zusätzlich auf den verfügbaren Bildschirm geclampt.
+    width: 1024
+    height: 621
     // Initiale Portrait-Breite als untere Schranke – das Fenster darf nicht
     // schmaler werden als der Standard-Portrait-Modus, damit das Layout
     // (Slot-Spalten, Self-Box, Action-Buttons) immer komplett ins Bild passt.

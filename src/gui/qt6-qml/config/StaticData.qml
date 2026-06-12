@@ -84,6 +84,35 @@ QtObject {
         return "qrc:resources/responsive-cards/" + ranks[ri] + suits[si] + ".svg"
     }
 
+    // Tab-Nick-Vervollständigung – Logik wie ChatTools::nickAutoCompletition
+    // im Qt-Widgets-Client: der erste Tab sammelt alle Nicks, die mit dem
+    // letzten Wort beginnen; jeder weitere Tab iteriert durch die Treffer.
+    // `state` ({counter, base, matches}) hält das aufrufende Eingabefeld und
+    // setzt bei Nutzereingabe counter=0 zurück (onTextEdited). Liefert den
+    // neuen Eingabetext oder null (kein Treffer).
+    function nickComplete(state, text, nicks) {
+        if (state.counter === 0) {
+            var words = text.split(" ")
+            var prefix = words[words.length - 1]
+            if (prefix === "") return null
+            var matches = []
+            for (var i = 0; i < nicks.length; i++) {
+                var n = nicks[i]
+                if (n && n.toLowerCase().indexOf(prefix.toLowerCase()) === 0)
+                    matches.push(n)
+            }
+            if (matches.length === 0) return null
+            words.pop()
+            state.base = words.join(" ")
+            state.matches = matches
+        }
+        if (!state.matches || state.matches.length === 0) return null
+        if (state.counter >= state.matches.length) state.counter = 0
+        var nick = state.matches[state.counter]
+        state.counter++
+        return state.base === "" ? nick + ": " : state.base + " " + nick + " "
+    }
+
     // Gibt eine kontrastgerechte Chart-Farbe zurück (hell in Dark-Mode, dunkel in Light-Mode)
     function chartColor(index, highlighted) {
         var c = Qt.color(chartColors[index % chartColors.length])

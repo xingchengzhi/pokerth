@@ -88,21 +88,18 @@ Rectangle {
     }
 
     // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen im Spiel ergänzen.
+    // Tab-Vervollständigung mit Iteration (wie ChatTools im Widgets-Client):
+    // wiederholtes Tab zeigt den jeweils nächsten passenden Nick.
+    property var nickState: ({ counter: 0, base: "", matches: [] })
     function tabComplete() {
-        var full = chatInput.text
-        var lastSpace = full.lastIndexOf(" ")
-        var prefix = full.substring(lastSpace + 1)
-        if (prefix.length === 0) return
-        var lower = prefix.toLowerCase()
+        var nicks = []
         var plist = gameWaitPage.players
-        for (var i = 0; i < plist.length; i++) {
-            var n = plist[i].playerName || ""
-            if (n !== "" && n.toLowerCase().indexOf(lower) === 0 && n.toLowerCase() !== lower) {
-                var suffix = (lastSpace < 0) ? ": " : " "
-                chatInput.text = full.substring(0, lastSpace + 1) + n + suffix
-                chatInput.cursorPosition = chatInput.text.length
-                return
-            }
+        for (var i = 0; i < plist.length; i++)
+            if (plist[i].playerName) nicks.push(plist[i].playerName)
+        var t = Config.StaticData.nickComplete(nickState, chatInput.text, nicks)
+        if (t !== null) {
+            chatInput.text = t
+            chatInput.cursorPosition = t.length
         }
     }
 
@@ -659,6 +656,7 @@ Rectangle {
                             onPicked: (emoji) => {
                                 chatInput.insert(chatInput.cursorPosition, emoji)
                                 chatInput.forceActiveFocus()
+                                gameWaitPage.showEmojiPicker = false
                             }
                         }
 
@@ -702,7 +700,10 @@ Rectangle {
                                 placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                                 onAccepted: gameWaitPage.sendChatMessage()
                                 Keys.onReturnPressed: gameWaitPage.sendChatMessage()
-                                onTextEdited: gameWaitPage.chatHistoryIndex = 0
+                                onTextEdited: {
+                                    gameWaitPage.chatHistoryIndex = 0
+                                    gameWaitPage.nickState.counter = 0
+                                }
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Tab) {
                                         event.accepted = true

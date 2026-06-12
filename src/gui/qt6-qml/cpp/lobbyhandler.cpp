@@ -7,6 +7,7 @@
 #include "chatemotes.h"
 #include "session.h"
 #include "configfile.h"
+#include "soundevents.h"
 #include "gamedata.h"
 #include "core/appimage_utils.h"
 
@@ -621,6 +622,7 @@ LobbyHandler::LobbyHandler(QObject *parent)
 
 LobbyHandler::~LobbyHandler()
 {
+	delete m_soundEvents;
 }
 
 void LobbyHandler::setSession(boost::shared_ptr<Session> session)
@@ -1069,6 +1071,28 @@ void LobbyHandler::sendChatMessage(const QString &message)
     }
 }
 
+void LobbyHandler::onGamePlayerJoined()
+{
+    // Benachrichtigungs-Sound wie der Widgets-Client (gamelobbydialogimpl /
+    // startnetworkgamedialogimpl): solange das Spiel nicht voll ist
+    // "playerconnected", beim letzten Spieler "onlinegameready" (das Spiel
+    // startet gleich darauf).
+    if (m_config && !m_config->readConfigInt("PlayNetworkGameNotification"))
+        return;
+    if (!m_session || m_currentGameId == 0)
+        return;
+    if (!m_soundEvents && m_config)
+        m_soundEvents = new SoundEvents(m_config);
+    if (!m_soundEvents)
+        return;
+    const GameInfo info = m_session->getClientGameInfo(m_currentGameId);
+    if (info.data.maxNumberOfPlayers > 0
+        && static_cast<int>(info.players.size()) >= info.data.maxNumberOfPlayers)
+        m_soundEvents->playSound("onlinegameready", 0);
+    else
+        m_soundEvents->playSound("playerconnected", 0);
+}
+
 void LobbyHandler::onLobbyChatMessage(const QString &playerName, const QString &message)
 {
     // Reload ignore list fresh on every message (matches chattools.cpp refreshIgnoreList pattern)
@@ -1132,10 +1156,15 @@ void LobbyHandler::onLobbyChatMessage(const QString &playerName, const QString &
     if (!m_config || !m_config->readConfigInt("DisableChatEmoticons"))
         styledMsg = checkForEmotes(styledMsg);
 
-    // Sound notification on mention (signal to QML)
+    // Sound notification on mention (wie chattools.cpp im Widgets-Client)
     if (isMention && playerName != myNick) {
-        if (!m_config || m_config->readConfigInt("PlayLobbyChatNotification"))
+        if (!m_config || m_config->readConfigInt("PlayLobbyChatNotification")) {
+            if (!m_soundEvents && m_config)
+                m_soundEvents = new SoundEvents(m_config);
+            if (m_soundEvents)
+                m_soundEvents->playSound("lobbychatnotify", 0);
             emit lobbyChatMentionDetected();
+        }
     }
 
     // Build final line

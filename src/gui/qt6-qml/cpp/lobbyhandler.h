@@ -17,6 +17,7 @@
 #include <boost/shared_ptr.hpp>
 
 class Session;
+class SoundEvents;
 class ConfigFile;
 struct GameInfo;
 
@@ -225,6 +226,9 @@ public slots:
     Q_INVOKABLE void joinGame(unsigned gameId, const QString &password);
     Q_INVOKABLE void leaveGame();
     void onSelfJoinedGame();
+    // Ein Spieler ist meinem aktuellen Spiel beigetreten → Benachrichtigungs-
+    // Sound (playerconnected bzw. onlinegameready, wenn das Spiel voll ist).
+    void onGamePlayerJoined();
     void onGameStarted();
     // reason = NTF_NET_REMOVED_* (socket_msg.h); wird an QML weitergereicht,
     // damit ein selbst angefordertes Verlassen (ON_REQUEST) anders navigiert
@@ -288,6 +292,7 @@ private:
     void pushChatLine(const QString &line);
 
     boost::shared_ptr<Session> m_session;
+    SoundEvents *m_soundEvents = nullptr;
     ConfigFile *m_config;
     
     PlayerListModel m_playerListModel;

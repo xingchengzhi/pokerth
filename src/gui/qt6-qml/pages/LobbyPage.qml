@@ -15,13 +15,6 @@ Rectangle {
     clip: true
     color: Config.StaticData.palette.secondary.col700
 
-    // Emoji-Picker über dem Chat-Eingabefeld ein-/ausblenden (compact + wide).
-    property bool showEmojiPicker: false
-
-    // Chat-History (gesendete Nachrichten, max. 50) + Navigationsindex.
-    property var chatHistory: []
-    property int chatHistoryIndex: 0
-
     // Mock data for development
     property int connectedPlayers: Lobby ? Lobby.playerListModel.count : 0
     property int runningGames: Lobby ? Lobby.gameListModel.runningCount : 0
@@ -906,124 +899,25 @@ Rectangle {
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        ScrollView {
+                        ChatBox {
+                            id: lobbyChatBoxCompact
+                            historyStore: Config.StaticData.lobbyChatHistory
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-
-                            TextArea {
-                                id: chatAreaCompact
-                                readOnly: true
-                                wrapMode: TextEdit.Wrap
-                                textFormat: TextEdit.RichText
-                                font.family: Config.StaticData.loadedFont.font.family
-                                font.pixelSize: 12
-                                color: Config.StaticData.palette.secondary.col200
-                                background: Rectangle { color: "transparent" }
-                                text: qsTr("Welcome to PokerTH Lobby!<br/>Chat messages will appear here...")
-                            }
-                        }
-
-                        EmojiPicker {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 140
-                            visible: lobbyPage.showEmojiPicker
-                            onPicked: (emoji) => {
-                                chatInputCompact.insert(chatInputCompact.cursorPosition, emoji)
-                                chatInputCompact.forceActiveFocus()
-                                lobbyPage.showEmojiPicker = false
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Button {
-                                Layout.preferredWidth: 36
-                                Layout.preferredHeight: 36
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                onClicked: lobbyPage.showEmojiPicker = !lobbyPage.showEmojiPicker
-                                background: Rectangle {
-                                    radius: 6
-                                    color: lobbyPage.showEmojiPicker
-                                           ? Config.StaticData.palette.secondary.col500 : "transparent"
-                                }
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                contentItem: Text {
-                                    text: "🙂"
-                                    font.family: Config.StaticData.emojiFamily
-                                    font.pixelSize: 20
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            TextField {
-                                id: chatInputCompact
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                placeholderText: (Lobby && Lobby.isMyPlayerGuest)
-                                                 ? qsTr("Guests cannot chat")
-                                                 : qsTr("Type your message...")
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                font.family: Config.StaticData.loadedFont.font.family
-                                color: Config.StaticData.palette.secondary.col200
-                                background: Rectangle {
-                                    color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.5)
-                                    radius: 3
-                                }
-                                placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
-                                onAccepted: sendChatMessage()
-                                onTextEdited: {
-                                    lobbyPage.chatHistoryIndex = 0
-                                    lobbyPage.nickState.counter = 0
-                                }
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Tab) {
-                                        event.accepted = true
-                                        lobbyPage.tabComplete(chatInputCompact)
+                            chatModel: (typeof Lobby !== "undefined" && Lobby) ? Lobby.chatLog : []
+                            nickList: {
+                                var nicks = []
+                                if (typeof Lobby !== "undefined" && Lobby)
+                                    for (var i = 0; i < Lobby.playerListModel.count; i++) {
+                                        var entry = Lobby.playerListEntry(i)
+                                        if (entry.playerName) nicks.push(entry.playerName)
                                     }
-                                }
-                                Keys.onUpPressed: (event) => {
-                                    event.accepted = true
-                                    if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
-                                        lobbyPage.chatHistoryIndex++
-                                    lobbyPage.showChatHistory(chatInputCompact, lobbyPage.chatHistoryIndex)
-                                }
-                                Keys.onDownPressed: (event) => {
-                                    event.accepted = true
-                                    if (lobbyPage.chatHistoryIndex - 1 >= 0)
-                                        lobbyPage.chatHistoryIndex--
-                                    lobbyPage.showChatHistory(chatInputCompact, lobbyPage.chatHistoryIndex)
-                                }
+                                return nicks
                             }
-
-                            Button {
-                                id: sendBtnCompact
-                                Layout.minimumWidth: 44
-                                Layout.preferredWidth: 44
-                                Layout.maximumWidth: 44
-                                Layout.preferredHeight: 36
-                                Layout.maximumHeight: 44
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                onClicked: sendChatMessage()
-                                background: Item {}
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                contentItem: Image {
-                                    width: 18
-                                    height: 18
-                                    anchors.centerIn: parent
-                                    source: "../resources/send.svg"
-                                    sourceSize: Qt.size(36, 36)
-                                    smooth: true
-                                    antialiasing: true
-                                    layer.enabled: true
-                                    layer.effect: MultiEffect {
-                                        colorization: 1.0
-                                        colorizationColor: Config.Theme.colorChatSend
-                                    }
-                                }
+                            pickerInlineHeight: 140
+                            onSendRequested: (text) => {
+                                if (typeof Lobby !== "undefined" && Lobby)
+                                    Lobby.sendChatMessage(text)
                             }
                         }
                     }
@@ -1243,125 +1137,25 @@ Rectangle {
                             color: Config.StaticData.palette.secondary.col200
                         }
 
-                        ScrollView {
+                        ChatBox {
+                            id: lobbyChatBoxWide
+                            historyStore: Config.StaticData.lobbyChatHistory
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-
-                            TextArea {
-                                id: chatArea
-                                readOnly: true
-                                wrapMode: TextEdit.Wrap
-                                textFormat: TextEdit.RichText
-                                font.family: Config.StaticData.loadedFont.font.family
-                                font.pixelSize: 12
-                                color: Config.StaticData.palette.secondary.col200
-                                background: Rectangle { color: "transparent" }
-                                text: qsTr("Welcome to PokerTH Lobby!<br/>Chat messages will appear here...")
-                            }
-                        }
-
-                        EmojiPicker {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 150
-                            visible: lobbyPage.showEmojiPicker
-                            onPicked: (emoji) => {
-                                chatInput.insert(chatInput.cursorPosition, emoji)
-                                chatInput.forceActiveFocus()
-                                lobbyPage.showEmojiPicker = false
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Button {
-                                Layout.preferredWidth: 36
-                                Layout.preferredHeight: 36
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                onClicked: lobbyPage.showEmojiPicker = !lobbyPage.showEmojiPicker
-                                background: Rectangle {
-                                    radius: 6
-                                    color: lobbyPage.showEmojiPicker
-                                           ? Config.StaticData.palette.secondary.col500 : "transparent"
-                                }
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                contentItem: Text {
-                                    text: "🙂"
-                                    font.family: Config.StaticData.emojiFamily
-                                    font.pixelSize: 20
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            TextField {
-                                id: chatInput
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                placeholderText: (Lobby && Lobby.isMyPlayerGuest)
-                                                 ? qsTr("Guests cannot chat")
-                                                 : qsTr("Type your message...")
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                font.family: Config.StaticData.loadedFont.font.family
-                                color: Config.StaticData.palette.secondary.col200
-                                background: Rectangle {
-                                    color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.5)
-                                    radius: 3
-                                }
-                                placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
-                                onAccepted: sendChatMessage()
-                                Keys.onReturnPressed: sendChatMessage()
-                                onTextEdited: {
-                                    lobbyPage.chatHistoryIndex = 0
-                                    lobbyPage.nickState.counter = 0
-                                }
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Tab) {
-                                        event.accepted = true
-                                        lobbyPage.tabComplete(chatInput)
+                            chatModel: (typeof Lobby !== "undefined" && Lobby) ? Lobby.chatLog : []
+                            nickList: {
+                                var nicks = []
+                                if (typeof Lobby !== "undefined" && Lobby)
+                                    for (var i = 0; i < Lobby.playerListModel.count; i++) {
+                                        var entry = Lobby.playerListEntry(i)
+                                        if (entry.playerName) nicks.push(entry.playerName)
                                     }
-                                }
-                                Keys.onUpPressed: (event) => {
-                                    event.accepted = true
-                                    if (lobbyPage.chatHistoryIndex + 1 <= lobbyPage.chatHistory.length)
-                                        lobbyPage.chatHistoryIndex++
-                                    lobbyPage.showChatHistory(chatInput, lobbyPage.chatHistoryIndex)
-                                }
-                                Keys.onDownPressed: (event) => {
-                                    event.accepted = true
-                                    if (lobbyPage.chatHistoryIndex - 1 >= 0)
-                                        lobbyPage.chatHistoryIndex--
-                                    lobbyPage.showChatHistory(chatInput, lobbyPage.chatHistoryIndex)
-                                }
+                                return nicks
                             }
-
-                            Button {
-                                id: sendBtnWide
-                                Layout.minimumWidth: 44
-                                Layout.preferredWidth: 44
-                                Layout.maximumWidth: 44
-                                Layout.preferredHeight: 36
-                                Layout.maximumHeight: 44
-                                enabled: !(Lobby && Lobby.isMyPlayerGuest)
-                                onClicked: sendChatMessage()
-                                background: Item {}
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                contentItem: Image {
-                                    width: 18
-                                    height: 18
-                                    anchors.centerIn: parent
-                                    source: "../resources/send.svg"
-                                    sourceSize: Qt.size(36, 36)
-                                    smooth: true
-                                    antialiasing: true
-                                    layer.enabled: true
-                                    layer.effect: MultiEffect {
-                                        colorization: 1.0
-                                        colorizationColor: Config.Theme.colorChatSend
-                                    }
-                                }
+                            pickerInlineHeight: 150
+                            onSendRequested: (text) => {
+                                if (typeof Lobby !== "undefined" && Lobby)
+                                    Lobby.sendChatMessage(text)
                             }
                         }
                     }
@@ -1447,73 +1241,14 @@ Rectangle {
     }
 
     // Accumulated HTML for the chat areas (avoids full-document reassignment)
-    property string _chatHtml: ""
-
-    // Lobby-Chat aus dem persistenten Handler-Verlauf (Lobby.chatLog) aufbauen.
-    // Dieser Verlauf wird beim Betreten/Verlassen eines Spiels NICHT geleert
-    // (wie im Qt-Widgets-Client), sodass die History nach Rückkehr in die Lobby
-    // erhalten bleibt – auch falls diese Seite/das TextArea neu erzeugt wurde.
-    function rebuildChat() {
-        if (typeof Lobby === "undefined" || !Lobby)
-            return
-        if (Lobby.chatLog.length === 0)
-            return   // noch keine Nachricht → Begrüßungstext stehen lassen
-        _chatHtml = Lobby.chatLog.join("<br/>")
-        chatArea.text = _chatHtml
-        chatAreaCompact.text = _chatHtml
-        // Auto-scroll to bottom
-        chatArea.cursorPosition = chatArea.length
-        chatAreaCompact.cursorPosition = chatAreaCompact.length
-    }
 
     Connections {
         target: Lobby
-        function onChatLogChanged() {
-            lobbyPage.rebuildChat()
-        }
         function onLobbyChatMentionDetected() {
             // TODO: play lobbychatnotify sound (requires SoundEffect + runtime path)
         }
     }
 
-    function sendChatMessage() {
-        var field = Config.Responsive.compact ? chatInputCompact : chatInput
-        var msg = field.text.trim()
-        if (msg !== "") {
-            Lobby.sendChatMessage(msg)
-            chatHistory.push(field.text)
-            if (chatHistory.length > 50) chatHistory.shift()
-            chatHistoryIndex = 0
-            field.text = ""
-        }
-    }
-
-    // Chat-History (Pfeil hoch/runter, wie im Qt-Widgets-Client; max. 50).
-    function showChatHistory(field, idx) {
-        if (idx > 0 && idx <= chatHistory.length)
-            field.text = chatHistory[chatHistory.length - idx]
-        else
-            field.text = ""
-        field.cursorPosition = field.text.length
-    }
-
-    // Tab-Vervollständigung: aktuelles Wort zu einem Spielernamen in der Lobby ergänzen.
-    // Tab-Vervollständigung mit Iteration (wie ChatTools im Widgets-Client):
-    // wiederholtes Tab zeigt den jeweils nächsten passenden Nick.
-    property var nickState: ({ counter: 0, base: "", matches: [] })
-    function tabComplete(inputField) {
-        if (!Lobby) return
-        var nicks = []
-        for (var i = 0; i < Lobby.playerListModel.count; i++) {
-            var entry = Lobby.playerListEntry(i)
-            if (entry.playerName) nicks.push(entry.playerName)
-        }
-        var t = Config.StaticData.nickComplete(nickState, inputField.text, nicks)
-        if (t !== null) {
-            inputField.text = t
-            inputField.cursorPosition = t.length
-        }
-    }
 
     // ── Preview / Demo sequence ────────────────────────────────────────────
     SequentialAnimation {
@@ -1749,6 +1484,5 @@ Rectangle {
         console.log("Game model count:", Lobby.gameListModel.rowCount())
         // Bereits vorhandenen Chat-Verlauf wiederherstellen (z.B. nach Rückkehr
         // aus einem Spiel).
-        rebuildChat()
     }
 }

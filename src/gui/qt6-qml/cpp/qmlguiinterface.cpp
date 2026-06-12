@@ -196,6 +196,9 @@ void QmlGuiInterface::SignalNetClientPlayerJoined(unsigned playerId, const std::
         const QString qPlayerName = QString::fromStdString(playerName);
         QMetaObject::invokeMethod(m_lobbyHandler, "updatePlayerName", Qt::QueuedConnection,
                                   Q_ARG(unsigned, playerId), Q_ARG(QString, qPlayerName), Q_ARG(bool, isGameAdmin));
+        // Benachrichtigungs-Sound (playerconnected / onlinegameready) – nach
+        // updatePlayerName eingereiht, damit die Spielerliste aktuell ist.
+        QMetaObject::invokeMethod(m_lobbyHandler, "onGamePlayerJoined", Qt::QueuedConnection);
     }
 }
 

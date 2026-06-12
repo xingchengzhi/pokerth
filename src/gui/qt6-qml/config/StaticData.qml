@@ -84,6 +84,13 @@ QtObject {
         return "qrc:resources/responsive-cards/" + ranks[ri] + suits[si] + ".svg"
     }
 
+    // Gemeinsame Chat-History des LOBBY-Kanals: Lobby-Chat (compact + wide)
+    // und GameWait-Chat senden alle über Lobby.sendChatMessage – ihre
+    // ChatBoxen binden dieses Array als historyStore und teilen sich damit
+    // die ↑/↓-History. (Der Game-Chat hat seinen eigenen Kanal und behält
+    // seine instanz-lokale History.)
+    readonly property var lobbyChatHistory: []
+
     // Tab-Nick-Vervollständigung – Logik wie ChatTools::nickAutoCompletition
     // im Qt-Widgets-Client: der erste Tab sammelt alle Nicks, die mit dem
     // letzten Wort beginnen; jeder weitere Tab iteriert durch die Treffer.

@@ -39,6 +39,7 @@
 #include "guiwrapper.h"
 #include "configfile.h"
 #include "gametableimpl.h"
+#include "soundevents.h"
 #include "newgamedialogimpl.h"
 #include "aboutpokerthimpl.h"
 #include "mymessagedialogimpl.h"
@@ -849,6 +850,13 @@ void startWindowImpl::showTimeoutDialog(int msgID, unsigned duration)
 		myTimeoutDialog->raise();
 		myTimeoutDialog->activateWindow();
 		myTimeoutDialog->startTimeout();
+
+		// Audio-Hinweis zum AFK-Countdown (Lobby wie ingame) – das Popup
+		// kann hinter anderen Fenstern liegen oder übersehen werden.
+		if(myGuiInterface && myGuiInterface->getMyW()
+		   && myGuiInterface->getMyW()->getMySoundEventHandler()) {
+			myGuiInterface->getMyW()->getMySoundEventHandler()->playSound("yourturn", 0);
+		}
 	}
 }
 

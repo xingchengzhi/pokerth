@@ -79,6 +79,12 @@ Rectangle {
             console.log("[NAV] GameWaitPage.onGameStarted → pushing GamePage")
             mainStackView.push("GamePage.qml")
         }
+        function onGameListFilterModeChanged() {
+            if (gameListFilterPanel.currentIndex !== Lobby.gameListFilterMode)
+                gameListFilterPanel.currentIndex = Lobby.gameListFilterMode
+            if (gameListFilterSidebar.currentIndex !== Lobby.gameListFilterMode)
+                gameListFilterSidebar.currentIndex = Lobby.gameListFilterMode
+        }
         function onPlayerListFilterModeChanged() {
             if (playerListFilterCompact.currentIndex !== Lobby.playerListFilterMode)
                 playerListFilterCompact.currentIndex = Lobby.playerListFilterMode
@@ -291,17 +297,23 @@ Rectangle {
                 color: Config.StaticData.palette.secondary.col500
             }
 
-            TextField {
-                id: gameListPanelSearchField
+            ComboBox {
+                id: gameListFilterPanel
                 Layout.fillWidth: true
-                placeholderText: qsTr("search game ...")
                 font.family: Config.StaticData.loadedFont.font.family
-                color: Config.StaticData.palette.secondary.col200
-                background: Rectangle {
-                    color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.3)
-                    radius: 3
+                model: [
+                    qsTr("No game list filter"),
+                    qsTr("Show open games"),
+                    qsTr("Show open & non-full games"),
+                    qsTr("Show open & non-full & non-private games"),
+                    qsTr("Show open & non-full & private games"),
+                    qsTr("Show open & non-full & ranking games")
+                ]
+                currentIndex: Lobby ? Lobby.gameListFilterMode : 0
+                onCurrentIndexChanged: {
+                    if (Lobby && Lobby.gameListFilterMode !== currentIndex)
+                        Lobby.gameListFilterMode = currentIndex
                 }
-                placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
             }
 
             ListView {
@@ -314,7 +326,7 @@ Rectangle {
                 delegate: GameListItem {
                     collapseResetCounter: gameWaitPage.gameListCollapseResetCounter
                     listView: waitPageGamePanelList
-                    searchFilter: gameListPanelSearchField.text
+                    searchFilter: ""
                     gameRevision: gameWaitPage.gameRev
                 }
             }
@@ -829,17 +841,23 @@ Rectangle {
                         horizontalAlignment: Text.AlignHCenter
                     }
 
-                    TextField {
-                        id: gameListSidebarSearchField
+                    ComboBox {
+                        id: gameListFilterSidebar
                         Layout.fillWidth: true
-                        placeholderText: qsTr("search game ...")
                         font.family: Config.StaticData.loadedFont.font.family
-                        color: Config.StaticData.palette.secondary.col200
-                        background: Rectangle {
-                            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.3)
-                            radius: 3
+                        model: [
+                            qsTr("No game list filter"),
+                            qsTr("Show open games"),
+                            qsTr("Show open & non-full games"),
+                            qsTr("Show open & non-full & non-private games"),
+                            qsTr("Show open & non-full & private games"),
+                            qsTr("Show open & non-full & ranking games")
+                        ]
+                        currentIndex: Lobby ? Lobby.gameListFilterMode : 0
+                        onCurrentIndexChanged: {
+                            if (Lobby && Lobby.gameListFilterMode !== currentIndex)
+                                Lobby.gameListFilterMode = currentIndex
                         }
-                        placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
                     }
 
                     ListView {
@@ -852,7 +870,7 @@ Rectangle {
                         delegate: GameListItem {
                             collapseResetCounter: gameWaitPage.gameListCollapseResetCounter
                             listView: waitPageGameSidebarList
-                            searchFilter: gameListSidebarSearchField.text
+                            searchFilter: ""
                             gameRevision: gameWaitPage.gameRev
                         }
                     }

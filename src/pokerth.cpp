@@ -298,6 +298,23 @@ int main(int argc, char *argv[])
 
 using namespace std;
 
+// In Qt6 HiDPI is always active. Low-resolution (1x) pixmaps are upscaled by
+// the widget paint engine. Without the SmoothPixmapTransform hint Qt uses
+// nearest-neighbor interpolation, which makes cards, avatars and action badges
+// look blocky. This proxy-style enables smooth (bilinear) interpolation for all
+// widget rendering that goes through QStyle::drawItemPixmap (i.e. every
+// QLabel::setPixmap call throughout the application).
+class SmoothPixmapStyle : public QProxyStyle {
+public:
+    explicit SmoothPixmapStyle(QStyle *base = nullptr) : QProxyStyle(base) {}
+    void drawItemPixmap(QPainter *p, const QRect &r, int alignment,
+                        const QPixmap &pm) const override
+    {
+        p->setRenderHint(QPainter::SmoothPixmapTransform, true);
+        QProxyStyle::drawItemPixmap(p, r, alignment, pm);
+    }
+};
+
 class startWindowImpl;
 class Game;
 
@@ -369,6 +386,10 @@ int main( int argc, char **argv )
 	a.setApplicationName("PokerTH");
 #else
 	QApplication a(argc, argv);
+	// Wrap the platform style so that all QLabel::setPixmap / drawItemPixmap
+	// calls use bilinear interpolation instead of nearest-neighbor when Qt6
+	// upscales 1x assets on HiDPI screens.
+	a.setStyle(new SmoothPixmapStyle(a.style()));
 
 	// single instance check using QLockFile
     QString lockPath = QDir::temp().absoluteFilePath("pokerth_client.lock");

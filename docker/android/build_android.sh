@@ -217,6 +217,9 @@ fi
 
 # Generiere AndroidManifest.xml aus Template und schreibe es direkt in
 # ANDROID_SOURCE_DIR, damit androiddeployqt immer die aktuelle Version liest.
+# Sicherstellen, dass das Verzeichnis existiert (z.B. fehlt src/gui/qt/android/
+# beim Widget-Client initial).
+mkdir -p "$ANDROID_SOURCE_DIR"
 MANIFEST_TEMPLATE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/AndroidManifest.xml.template"
 if [[ ! -f "$MANIFEST_TEMPLATE" ]]; then
   echo "ERROR: Manifest-Template nicht gefunden: $MANIFEST_TEMPLATE"
@@ -226,6 +229,16 @@ export PACKAGE_NAME VERSION_NAME VERSION_CODE API_LEVEL TARGET SCREEN_ORIENTATIO
 envsubst '${PACKAGE_NAME} ${VERSION_NAME} ${VERSION_CODE} ${API_LEVEL} ${TARGET} ${SCREEN_ORIENTATION}' \
   < "$MANIFEST_TEMPLATE" > "$ANDROID_SOURCE_DIR/AndroidManifest.xml"
 echo "AndroidManifest.xml generiert: package=$PACKAGE_NAME version=$VERSION_NAME/$VERSION_CODE lib=$TARGET"
+
+# Wenn das Package im Gradle-Cache noch unter einem anderen Namen gespeichert ist
+# (z.B. nach einem QML-Build), bricht AAPT mit "resource mipmap/ic_launcher not found"
+# ab. Gradle-Build-Cache leeren, damit ein sauberer Neubau erzwungen wird.
+CACHED_PKG_FILE="$ANDROID_BUILD_DIR/.last_package_name"
+if [[ -f "$CACHED_PKG_FILE" ]] && [[ "$(cat "$CACHED_PKG_FILE")" != "$PACKAGE_NAME" ]]; then
+  echo "Package-Name geändert ($(cat "$CACHED_PKG_FILE") → $PACKAGE_NAME) – lösche Gradle-Build-Cache."
+  rm -rf "$ANDROID_BUILD_DIR/build"
+fi
+echo "$PACKAGE_NAME" > "$CACHED_PKG_FILE"
 
 # Finde .so-Datei - suche sowohl nach lib${TARGET}.so als auch nach Varianten
 SO_FILE=$(find "$BUILD_DIR" -type f \( -name "lib${TARGET}.so" -o -name "lib${TARGET}_*.so" \) | head -n1)

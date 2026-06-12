@@ -40,6 +40,8 @@ Rectangle {
     // Portrait-mode overlay state
     property bool showingPlayerList: false
     property int playerListCollapseResetCounter: 0
+    property bool showingGameList: false
+    property int gameListCollapseResetCounter: 0
 
     function resetPlayerListDelegates() {
         playerListCollapseResetCounter += 1
@@ -212,6 +214,113 @@ Rectangle {
         }
     }
 
+    // ── Compact: Game list panel (slides in from right) ───────────────────
+    Rectangle {
+        id: gameListPanel
+        width: gameWaitPage.width
+        height: gameWaitPage.height
+        y: 0
+        x: gameWaitPage.showingGameList ? 0 : gameWaitPage.width
+        z: 3
+        color: Config.StaticData.palette.secondary.col700
+        visible: Config.Responsive.compact
+
+        Behavior on x {
+            NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+        }
+
+        Rectangle {
+            anchors { top: parent.top; bottom: parent.bottom; left: parent.left }
+            width: 1
+            color: Config.StaticData.palette.secondary.col500
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 6
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Label {
+                    text: qsTr("Game List")
+                    font.family: Config.StaticData.loadedFont.font.family
+                    font.bold: true
+                    font.pixelSize: 15
+                    color: Config.StaticData.palette.secondary.col200
+                    Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    width: 30
+                    height: 30
+                    radius: 4
+                    color: closeGameListPanelArea.containsMouse
+                           ? Config.StaticData.palette.secondary.col600
+                           : "transparent"
+
+                    Image {
+                        anchors.centerIn: parent
+                        width: 14
+                        height: 14
+                        source: "../resources/close.svg"
+                        sourceSize: Qt.size(28, 28)
+                        smooth: true
+                        antialiasing: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorization: 1.0
+                            colorizationColor: Config.Theme.colorTextSecondary
+                        }
+                    }
+
+                    MouseArea {
+                        id: closeGameListPanelArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: gameWaitPage.showingGameList = false
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Config.StaticData.palette.secondary.col500
+            }
+
+            TextField {
+                id: gameListPanelSearchField
+                Layout.fillWidth: true
+                placeholderText: qsTr("search game ...")
+                font.family: Config.StaticData.loadedFont.font.family
+                color: Config.StaticData.palette.secondary.col200
+                background: Rectangle {
+                    color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.3)
+                    radius: 3
+                }
+                placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
+            }
+
+            ListView {
+                id: waitPageGamePanelList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: Lobby ? Lobby.gameListProxyModel : null
+
+                delegate: GameListItem {
+                    collapseResetCounter: gameWaitPage.gameListCollapseResetCounter
+                    listView: waitPageGamePanelList
+                    searchFilter: gameListPanelSearchField.text
+                    gameRevision: gameWaitPage.gameRev
+                }
+            }
+        }
+    }
+
     // ── Main layout ────────────────────────────────────────────────────────
     ColumnLayout {
         anchors.fill: parent
@@ -273,6 +382,42 @@ Rectangle {
                 color: Config.StaticData.palette.secondary.col300
                 font.family: Config.StaticData.loadedFont.font.family
                 font.pixelSize: 12
+            }
+
+            // Compact: game list toggle button (top-right)
+            Rectangle {
+                visible: Config.Responsive.compact
+                implicitWidth: 38
+                implicitHeight: 38
+                radius: 5
+                color: gameListToggleArea.containsMouse
+                       ? Config.StaticData.palette.secondary.col600
+                       : Config.StaticData.palette.secondary.col700
+                border.color: Config.StaticData.palette.secondary.col500
+                border.width: 1
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 24
+                    height: 24
+                    source: "../resources/threeLines.svg"
+                    sourceSize: Qt.size(48, 48)
+                    smooth: true
+                    antialiasing: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorization: 1.0
+                        colorizationColor: Config.StaticData.palette.secondary.col200
+                    }
+                }
+
+                MouseArea {
+                    id: gameListToggleArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: gameWaitPage.showingGameList = !gameWaitPage.showingGameList
+                }
             }
         }
 
@@ -348,6 +493,7 @@ Rectangle {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.horizontalStretchFactor: 2
                 spacing: Config.Theme.spacing
 
                 // ── Game details card ──────────────────────────────────────
@@ -377,90 +523,103 @@ Rectangle {
                             Layout.fillWidth: true
                         }
 
-                        // Players X / max
-                        Label {
-                            text: qsTr("Players: %1 / %2")
-                                  .arg(players.length)
-                                  .arg(info.maxPlayers || 0)
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                        }
-
-                        // Spieltyp + Icon
-                        RowLayout {
+                        // 2-column info grid
+                        GridLayout {
+                            columns: 2
+                            rowSpacing: 6
+                            columnSpacing: 14
                             Layout.fillWidth: true
-                            spacing: 6
 
-                            Image {
-                                Layout.preferredWidth: 14
-                                Layout.preferredHeight: 14
-                                source: gameWaitPage.gameTypeIconSource(info.gameType || 1)
-                                sourceSize: Qt.size(28, 28)
-                                smooth: true; antialiasing: true
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    colorization: 1.0
-                                    colorizationColor: Config.StaticData.palette.secondary.col300
-                                }
-                            }
-
+                            // Players | Type
                             Label {
-                                text: qsTr("Type: %1").arg(Lobby ? Lobby.gameTypeText(info.gameType || 1) : "")
+                                text: qsTr("Players: %1 / %2")
+                                      .arg(players.length).arg(info.maxPlayers || 0)
                                 font.family: Config.StaticData.loadedFont.font.family
                                 font.pixelSize: 13
                                 color: Config.StaticData.palette.secondary.col200
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
                             }
-                        }
-
-                        Label {
-                            text: qsTr("Small blind: %1").arg(info.firstSmallBlind || 0)
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                        }
-
-                        Label {
-                            text: qsTr("Start cash: %1").arg(info.startMoney || 0)
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                        }
-
-                        Label {
-                            text: {
-                                var mode = info.raiseIntervalMode || 1
-                                if (mode === 1)
-                                    return qsTr("Blinds raise interval: %1 hands").arg(info.raiseEveryHands || 0)
-                                return qsTr("Blinds raise interval: %1 minutes").arg(info.raiseEveryMinutes || 0)
+                            RowLayout {
+                                spacing: 5
+                                Layout.fillWidth: true
+                                Image {
+                                    Layout.preferredWidth: 14
+                                    Layout.preferredHeight: 14
+                                    source: gameWaitPage.gameTypeIconSource(info.gameType || 1)
+                                    sourceSize: Qt.size(28, 28)
+                                    smooth: true; antialiasing: true
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: Config.StaticData.palette.secondary.col300
+                                    }
+                                }
+                                Label {
+                                    text: qsTr("Type: %1").arg(Lobby ? Lobby.gameTypeText(info.gameType || 1) : "")
+                                    font.family: Config.StaticData.loadedFont.font.family
+                                    font.pixelSize: 13
+                                    color: Config.StaticData.palette.secondary.col200
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
                             }
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                        }
 
-                        Label {
-                            text: qsTr("Blinds raise mode: %1").arg((info.raiseMode || 1) === 1
-                                  ? qsTr("double blinds") : qsTr("manual blinds order"))
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                            Layout.fillWidth: true
-                        }
+                            // Small blind | Start cash
+                            Label {
+                                text: qsTr("Small blind: %1").arg(info.firstSmallBlind || 0)
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Start cash: %1").arg(info.startMoney || 0)
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                            }
 
-                        Label {
-                            text: qsTr("Game timing: %1 sec (action)\n%2 sec (hand delay)")
-                                  .arg(info.playerActionTimeoutSec || 0)
-                                  .arg(info.delayBetweenHandsSec || 0)
-                            font.family: Config.StaticData.loadedFont.font.family
-                            font.pixelSize: 13
-                            color: Config.StaticData.palette.secondary.col200
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
+                            // Blinds interval | Blinds raise mode
+                            Label {
+                                text: {
+                                    var mode = info.raiseIntervalMode || 1
+                                    if (mode === 1)
+                                        return qsTr("Blinds raise interval: %1 hands").arg(info.raiseEveryHands || 0)
+                                    return qsTr("Blinds raise interval: %1 minutes").arg(info.raiseEveryMinutes || 0)
+                                }
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                            }
+                            Label {
+                                text: qsTr("Blinds raise mode: %1").arg((info.raiseMode || 1) === 1
+                                      ? qsTr("double blinds") : qsTr("manual blinds order"))
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                            }
+
+                            // Action timeout | Hand delay
+                            Label {
+                                text: qsTr("Action time: %1 sec").arg(info.playerActionTimeoutSec || 0)
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Hand delay: %1 sec").arg(info.delayBetweenHandsSec || 0)
+                                font.family: Config.StaticData.loadedFont.font.family
+                                font.pixelSize: 13
+                                color: Config.StaticData.palette.secondary.col200
+                                Layout.fillWidth: true
+                            }
                         }
 
                         // ── Spielerliste ─────────────────────────────────
@@ -557,7 +716,7 @@ Rectangle {
                     // wächst die Höhe um die Picker-Höhe (88) + Spacing – die
                     // Game-Info-Karte darüber schrumpft entsprechend, die
                     // Action-Buttons bleiben sichtbar.
-                    Layout.preferredHeight: waitChatBox.showEmojiPicker ? 270 : 175
+                    Layout.preferredHeight: waitChatBox.showEmojiPicker ? 230 : 140
                     Layout.minimumHeight: Layout.preferredHeight
                     color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
                     radius: 5
@@ -643,6 +802,58 @@ Rectangle {
                         Layout.fillWidth: true
                         onClicked: {
                             if (Lobby) Lobby.startGame(fillCpuCheck.checked)
+                        }
+                    }
+                }
+            }
+
+            // Wide: game list (right column)
+            Rectangle {
+                visible: !Config.Responsive.compact
+                Layout.preferredWidth: 220
+                Layout.fillHeight: true
+                color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.2)
+                radius: 5
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 5
+                    spacing: 5
+
+                    Label {
+                        text: qsTr("Game List")
+                        font.family: Config.StaticData.loadedFont.font.family
+                        font.bold: true
+                        color: Config.StaticData.palette.secondary.col200
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    TextField {
+                        id: gameListSidebarSearchField
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("search game ...")
+                        font.family: Config.StaticData.loadedFont.font.family
+                        color: Config.StaticData.palette.secondary.col200
+                        background: Rectangle {
+                            color: Qt.darker(Config.StaticData.palette.secondary.col700, 1.3)
+                            radius: 3
+                        }
+                        placeholderTextColor: Qt.lighter(Config.StaticData.palette.secondary.col200, 1.5)
+                    }
+
+                    ListView {
+                        id: waitPageGameSidebarList
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: Lobby ? Lobby.gameListProxyModel : null
+
+                        delegate: GameListItem {
+                            collapseResetCounter: gameWaitPage.gameListCollapseResetCounter
+                            listView: waitPageGameSidebarList
+                            searchFilter: gameListSidebarSearchField.text
+                            gameRevision: gameWaitPage.gameRev
                         }
                     }
                 }

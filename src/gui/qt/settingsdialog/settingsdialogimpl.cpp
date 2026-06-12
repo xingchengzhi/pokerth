@@ -219,6 +219,15 @@ settingsDialogImpl::settingsDialogImpl(QWidget *parent, ConfigFile *c, selectAva
 		spinBox_androidUiScale->setSpecialValueText(tr("Auto"));
 		spinBox_androidUiScale->setToolTip(tr("0 = automatic scaling to fit screen.\n50-150 = manual percentage (requires restart)."));
 		// Insert into the Interface tab's first page layout.
+		// wrapStackedWidgetPagesInScrollAreas() already ran, so widget(0) is a
+		// QScrollArea – we need to reach the original inner page to get its layout.
+		QWidget *interfacePage = nullptr;
+		if (stackedWidget->count() > 0) {
+			QWidget *w = stackedWidget->widget(0);
+			if (auto *sa = qobject_cast<QScrollArea*>(w))
+				w = sa->widget();
+			interfacePage = w;
+		}
 		if (interfacePage && interfacePage->layout()) {
 			QGridLayout *grid = qobject_cast<QGridLayout*>(interfacePage->layout());
 			if (grid) {

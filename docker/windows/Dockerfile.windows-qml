@@ -107,11 +107,7 @@ COPY . ${ROOT}/pokerth/
 # build_windows.sh versucht am Ende makensis mit installer.nsi (widget) –
 # das schlägt bei einem reinen QML-Build nicht ab (set -e fehlt dort),
 # daher läuft das Script sicher durch.
-RUN cd ${ROOT}/pokerth \
-    && bash docker/windows/build_windows.sh 2>&1 | tee /build.log \
-    ; STATUS=${PIPESTATUS[0]} \
-    ; grep -qE "Build (successful|failed)" /build.log \
-    ; test $STATUS -eq 0 || { tail -50 /build.log; exit 1; }
+RUN cd ${ROOT}/pokerth && bash docker/windows/build_windows.sh
 
 # ── NSIS-Installer für QML-Client ────────────────────────────────────────────
 RUN cd ${ROOT}/pokerth/docker/windows \

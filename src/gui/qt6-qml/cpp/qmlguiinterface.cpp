@@ -190,6 +190,31 @@ void QmlGuiInterface::SignalLobbyPlayerLeft(unsigned playerId)
     }
 }
 
+void QmlGuiInterface::SignalNetClientShowTimeoutDialog(NetTimeoutReason reason, unsigned remainingSec)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, "onTimeoutWarning", Qt::QueuedConnection,
+                                  Q_ARG(int, static_cast<int>(reason)),
+                                  Q_ARG(int, static_cast<int>(remainingSec)));
+    }
+}
+
+void QmlGuiInterface::SignalNetClientMsgBox(const std::string &msg)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, "onNetworkMessage", Qt::QueuedConnection,
+                                  Q_ARG(QString, QString::fromUtf8(msg.c_str())));
+    }
+}
+
+void QmlGuiInterface::SignalNetClientMsgBox(unsigned msgId)
+{
+    if (m_lobbyHandler) {
+        QMetaObject::invokeMethod(m_lobbyHandler, "onNetworkMessageId", Qt::QueuedConnection,
+                                  Q_ARG(unsigned, msgId));
+    }
+}
+
 void QmlGuiInterface::SignalNetClientPlayerJoined(unsigned playerId, const std::string &playerName, bool isGameAdmin)
 {
     if (m_lobbyHandler) {

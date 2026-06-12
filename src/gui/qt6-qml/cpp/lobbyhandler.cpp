@@ -8,6 +8,7 @@
 #include "session.h"
 #include "configfile.h"
 #include "soundevents.h"
+#include "net/socket_msg.h"
 #include "gamedata.h"
 #include "core/appimage_utils.h"
 
@@ -1091,6 +1092,62 @@ void LobbyHandler::onGamePlayerJoined()
         m_soundEvents->playSound("onlinegameready", 0);
     else
         m_soundEvents->playSound("playerconnected", 0);
+}
+
+void LobbyHandler::onTimeoutWarning(int reason, int remainingSec)
+{
+    // Audio-Hinweis: das Popup kann übersehen werden (Lobby wie ingame).
+    if (!m_soundEvents && m_config)
+        m_soundEvents = new SoundEvents(m_config);
+    if (m_soundEvents)
+        m_soundEvents->playSound("yourturn", 0);
+    emit timeoutWarningReceived(reason, remainingSec);
+}
+
+void LobbyHandler::resetNetworkTimeout()
+{
+    if (m_session)
+        m_session->resetNetworkTimeout();
+}
+
+void LobbyHandler::onNetworkMessage(const QString &message)
+{
+    emit networkMessageReceived(message);
+}
+
+void LobbyHandler::onNetworkMessageId(unsigned msgId)
+{
+    // Texte 1:1 wie startWindowImpl::networkMessage(unsigned).
+    QString msgText;
+    switch (msgId) {
+    case MSG_NET_AVATAR_REPORT_ACCEPTED:
+        msgText = tr("The avatar report was accepted by the server. Thank you."); break;
+    case MSG_NET_AVATAR_REPORT_DUP:
+        msgText = tr("This avatar was already reported by another player."); break;
+    case MSG_NET_AVATAR_REPORT_REJECTED:
+        msgText = tr("An error occurred while reporting the avatar."); break;
+    case MSG_NET_GAMENAME_REPORT_ACCEPTED:
+        msgText = tr("The game name report was accepted by the server. Thank you."); break;
+    case MSG_NET_GAMENAME_REPORT_DUP:
+        msgText = tr("This game name was already reported by another player."); break;
+    case MSG_NET_GAMENAME_REPORT_REJECTED:
+        msgText = tr("An error occurred while reporting the game name."); break;
+    case MSG_NET_ADMIN_REMOVE_GAME_ACCEPTED:
+        msgText = tr("The game was closed."); break;
+    case MSG_NET_ADMIN_REMOVE_GAME_REJECTED:
+        msgText = tr("The game could not be closed."); break;
+    case MSG_NET_ADMIN_BAN_PLAYER_ACCEPTED:
+        msgText = tr("The player was kicked and banned permanently."); break;
+    case MSG_NET_ADMIN_BAN_PLAYER_NODB:
+        msgText = tr("The player was kicked, but could not be banned because it was a guest player."); break;
+    case MSG_NET_ADMIN_BAN_PLAYER_DBERROR:
+        msgText = tr("The player was kicked, but could not be banned, \nbecause the nick could not be found in the database"); break;
+    case MSG_NET_ADMIN_BAN_PLAYER_REJECTED:
+        msgText = tr("The player could not be found."); break;
+    default:
+        return;   // unbekannte IDs nicht anzeigen (wie der Widgets-Client)
+    }
+    emit networkMessageReceived(msgText);
 }
 
 void LobbyHandler::onLobbyChatMessage(const QString &playerName, const QString &message)

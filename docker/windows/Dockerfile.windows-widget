@@ -95,11 +95,7 @@ COPY . ${ROOT}/pokerth/
 # ── Build: Kompilieren + DLLs sammeln + NSIS-Installer ───────────────────────
 # build_windows.sh läuft durch und erstellt am Ende PokerTH-VERSION-Setup.exe
 # mit dem Widget-Client (TARGET=pokerth_client).
-RUN cd ${ROOT}/pokerth \
-    && bash docker/windows/build_windows.sh 2>&1 | tee /build.log \
-    ; STATUS=${PIPESTATUS[0]} \
-    ; grep -qE "Build (successful|failed)" /build.log \
-    ; test $STATUS -eq 0 || { tail -50 /build.log; exit 1; }
+RUN cd ${ROOT}/pokerth && bash docker/windows/build_windows.sh
 
 # ── NSIS mit Zeitstempel-Dateiname ────────────────────────────────────────────
 RUN SCRIPT_DIR="${ROOT}/pokerth/docker/windows" \

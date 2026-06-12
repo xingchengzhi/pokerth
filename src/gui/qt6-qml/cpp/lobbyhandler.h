@@ -229,6 +229,11 @@ public slots:
     // Ein Spieler ist meinem aktuellen Spiel beigetreten → Benachrichtigungs-
     // Sound (playerconnected bzw. onlinegameready, wenn das Spiel voll ist).
     void onGamePlayerJoined();
+    // AFK-Timeout-Warnung des Servers (Lobby wie ingame) → QML-Popup + Beep.
+    void onTimeoutWarning(int reason, int remainingSec);
+    // Server-Meldung (Klartext bzw. msgId aus socket_msg.h) → QML-Info-Popup.
+    void onNetworkMessage(const QString &message);
+    void onNetworkMessageId(unsigned msgId);
     void onGameStarted();
     // reason = NTF_NET_REMOVED_* (socket_msg.h); wird an QML weitergereicht,
     // damit ein selbst angefordertes Verlassen (ON_REQUEST) anders navigiert
@@ -260,11 +265,15 @@ public slots:
     Q_INVOKABLE QString gameStatusText(int gameMode, int playerCount, int maxPlayers) const;
     Q_INVOKABLE void startGame(bool fillWithCpu = false);
     Q_INVOKABLE QVariantMap currentGameInfo() const;
+    // Countdown des AFK-Timeout-Popups stoppen (wie timeoutMsgBoxImpl::stopTimeout).
+    Q_INVOKABLE void resetNetworkTimeout();
 
 signals:
     void chatLineReady(const QString &formattedLine);
     void chatLogChanged();
     void lobbyChatMentionDetected();
+    void timeoutWarningReceived(int reason, int remainingSec);
+    void networkMessageReceived(QString message);
     // Eingehende Spiel-Einladung → QML zeigt ein Ja/Nein-Popup.
     void gameInvitationReceived(int gameId, const QString &gameName, const QString &fromName);
     void gameCreated(unsigned gameId);

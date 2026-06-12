@@ -297,6 +297,160 @@ ApplicationWindow {
     // Re-apply FLAG_KEEP_SCREEN_ON when the app returns to the foreground.
     // Android may clear window flags during lifecycle transitions (pause/resume),
     // so we can't rely solely on the one-time call from onCurrentItemChanged.
+    // ── AFK-Timeout-Warnung (Port von timeoutMsgBoxImpl, Lobby wie ingame) ──
+    // Erscheint global über allen Seiten; OK stoppt den Server-Countdown
+    // (resetNetworkTimeout). Der Beep kommt aus LobbyHandler::onTimeoutWarning.
+    Popup {
+        id: timeoutWarningPopup
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape
+
+        property int reason: 0          // NetTimeoutReason
+        property int remainingSec: 0
+        property bool expired: false
+
+        function show(theReason, sec) {
+            reason = theReason
+            remainingSec = sec
+            expired = false
+            open()
+        }
+
+        Timer {
+            interval: 1000
+            running: timeoutWarningPopup.opened && !timeoutWarningPopup.expired
+            repeat: true
+            onTriggered: {
+                if (timeoutWarningPopup.remainingSec > 0)
+                    timeoutWarningPopup.remainingSec--
+                if (timeoutWarningPopup.remainingSec <= 0)
+                    timeoutWarningPopup.expired = true
+            }
+        }
+
+        background: Rectangle {
+            color: Config.StaticData.palette.secondary.col700
+            border.color: Config.StaticData.palette.secondary.col400
+            border.width: 1
+            radius: 8
+        }
+
+        ColumnLayout {
+            spacing: 12
+            width: Math.min(mainWindow.width * 0.85, 380)
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Timeout Warning")
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                // Texte 1:1 wie timeoutMsgBoxImpl::timerRefresh.
+                text: {
+                    if (timeoutWarningPopup.expired)
+                        return timeoutWarningPopup.reason === 2
+                               ? qsTr("Timeout expired. You are being removed from the game.")
+                               : qsTr("Timeout expired. You will be disconnected.")
+                    if (timeoutWarningPopup.reason === 1)
+                        return qsTr("You are game-admin of an open game which will time out in %1 seconds.")
+                               .arg(timeoutWarningPopup.remainingSec)
+                    if (timeoutWarningPopup.reason === 2)
+                        return qsTr("You did not act in the game recently. You will be removed from the game in %1 seconds.")
+                               .arg(timeoutWarningPopup.remainingSec)
+                    return qsTr("Your connection is about to time out due to inactivity in %1 seconds.")
+                           .arg(timeoutWarningPopup.remainingSec)
+                }
+                color: Config.StaticData.palette.secondary.col200
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !timeoutWarningPopup.expired
+                text: qsTr("Please click \"OK\" to stop the countdown!")
+                color: Config.StaticData.palette.secondary.col300
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+            }
+            CustomButton {
+                Layout.fillWidth: true
+                text: qsTr("OK")
+                enabled: !timeoutWarningPopup.expired
+                onClicked: {
+                    Lobby.resetNetworkTimeout()
+                    timeoutWarningPopup.close()
+                }
+            }
+        }
+    }
+
+    // ── Server-Meldung (Port von startWindowImpl::networkMessage) ──────────
+    Popup {
+        id: networkMessagePopup
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        property string message: ""
+
+        background: Rectangle {
+            color: Config.StaticData.palette.secondary.col700
+            border.color: Config.StaticData.palette.secondary.col400
+            border.width: 1
+            radius: 8
+        }
+
+        ColumnLayout {
+            spacing: 12
+            width: Math.min(mainWindow.width * 0.85, 380)
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Server Message")
+                color: Config.StaticData.palette.secondary.col100
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 15
+                font.bold: true
+            }
+            Label {
+                Layout.fillWidth: true
+                text: networkMessagePopup.message
+                textFormat: Text.RichText
+                color: Config.StaticData.palette.secondary.col200
+                font.family: Config.StaticData.loadedFont.font.family
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+            }
+            CustomButton {
+                Layout.fillWidth: true
+                text: qsTr("Close")
+                onClicked: networkMessagePopup.close()
+            }
+        }
+    }
+
+    Connections {
+        target: Lobby
+        function onTimeoutWarningReceived(reason, remainingSec) {
+            timeoutWarningPopup.show(reason, remainingSec)
+        }
+        function onNetworkMessageReceived(message) {
+            networkMessagePopup.message = message
+            networkMessagePopup.open()
+        }
+    }
+
     Connections {
         target: Qt.application
         function onStateChanged() {

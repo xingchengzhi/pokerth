@@ -75,6 +75,7 @@ Rectangle {
                             TextField {
                                 id: myNicknameField
                                 Layout.fillWidth: true
+                                maximumLength: 64
                                 text: SettingsManager ? SettingsManager.readConfigString("MyName") : ""
                                 onEditingFinished: {
                                     if (SettingsManager) SettingsManager.writeConfigString("MyName", text.trim())
@@ -171,6 +172,7 @@ Rectangle {
                                 TextField {
                                     id: opponentNameField
                                     Layout.fillWidth: true
+                                    maximumLength: 64
                                     text: SettingsManager ? SettingsManager.readConfigString("Opponent" + (index + 1) + "Name") : ""
                                     onEditingFinished: {
                                         if (SettingsManager) SettingsManager.writeConfigString("Opponent" + (index + 1) + "Name", text.trim())

@@ -2297,6 +2297,13 @@ Rectangle {
                                 verticalAlignment: Qt.AlignVCenter
                                 inputMethodHints: Qt.ImhDigitsOnly
                                 validator: IntValidator { bottom: 0; top: 9999999 }
+                                // Live-Aktualisierung des Bet/Raise-Buttons während der Eingabe –
+                                // analog zu spinBoxBetValueChanged() im Qt-Widgets-Client.
+                                onTextChanged: {
+                                    var v = parseInt(text)
+                                    if (!isNaN(v) && actionBar.raiseAvailable)
+                                        actionBar.raiseAmount = actionBar.clampRaiseAmount(v)
+                                }
                                 onAccepted: {
                                     var v = parseInt(text)
                                     if (!isNaN(v) && GameTable) {

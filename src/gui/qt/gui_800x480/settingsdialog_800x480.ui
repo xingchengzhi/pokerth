@@ -2239,7 +2239,7 @@ p, li { white-space: pre-wrap; }
                 <set>Qt::ImhNoPredictiveText</set>
                </property>
                <property name="maxLength">
-                <number>12</number>
+                <number>64</number>
                </property>
               </widget>
              </item>
@@ -2331,7 +2331,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2467,7 +2467,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2625,7 +2625,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2739,7 +2739,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2970,7 +2970,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3088,7 +3088,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3224,7 +3224,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3360,7 +3360,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3496,7 +3496,7 @@ p, li { white-space: pre-wrap; }
                    <set>Qt::ImhNoPredictiveText</set>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>

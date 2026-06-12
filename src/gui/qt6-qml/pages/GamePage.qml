@@ -1984,11 +1984,9 @@ Rectangle {
 
             // ── Vorwahl (pre-selection): vor dem eigenen Zug eine Aktion vormerken ──
             property string preAction: ""        // "", "fold", "call", "raise", "allin"
-            // Vorauswahl-Freigabe: false nach eigenem Zug oder Rundenwechsel,
-            // bis wieder eine aggressive Gegner-Aktion kommt oder mein Zug beginnt.
+            // Vorauswahl-Freigabe: false nach eigenem Zug,
+            // true bei Rundenwechsel (onRoundValuesReady) oder Gegner-Aktion.
             property bool preSelectEnabled: true
-            // Direkt nach Rundenwechsel true, bis erste echte Spieler-Aktion bestätigt
-            property bool roundJustChanged: false
             // Reset bei Handwechsel oder Showdown
             property int lastHandNumber: -1
             Connections {
@@ -2007,14 +2005,13 @@ Rectangle {
                         actionBar.preAction = ""
                         console.log("[ACTDBG] preAction Reset: Showdown")
                     } else if (GameTable.phaseText !== "Preflop") {
-                        // Flop/Turn/River: Rundenwechsel → Vorauswahl sperren bis erste Spieler-Aktion
+                        // Flop/Turn/River: Vorauswahl zurücksetzen; Freischalten erfolgt
+                        // in onRoundValuesReady (nach computeCallAndRaiseAmounts) –
+                        // analog zum Widget-Client (updateMyButtonsState nach dealXCards2).
                         actionBar.preAction = ""
-                        actionBar.preSelectEnabled = false
-                        actionBar.roundJustChanged = true
-                        console.log("[ACTDBG] preSelectEnabled=false: Rundenwechsel →", GameTable.phaseText)
+                        console.log("[ACTDBG] preAction Reset: Rundenwechsel →", GameTable.phaseText)
                     } else {
                         actionBar.preSelectEnabled = true   // Preflop = neue Hand
-                        actionBar.roundJustChanged = false
                     }
                 }
             }
@@ -2133,10 +2130,8 @@ Rectangle {
                 function onMyTurnChanged() {
                     // Eigener Zug beginnt → Vorauswahl immer freischalten.
                     // Ausführung der vorgemerkten/automatischen Aktion in onMeInActionTriggered.
-                    if (GameTable.myTurn) {
+                    if (GameTable.myTurn)
                         actionBar.preSelectEnabled = true
-                        actionBar.roundJustChanged = false
-                    }
                     actionBar.syncRaiseAmount()
                 }
                 function onMeInActionTriggered() {
@@ -2159,17 +2154,6 @@ Rectangle {
                                 "preSel=", actionBar.preSelectEnabled)
                     actionBar.syncRaiseAmount()
 
-                    // BB-Option erkennen: ich bin BB (button=3), callAmount=0 (niemand
-                    // hat erhöht) und noch keine Gemeinschaftskarten (Preflop). In diesem
-                    // Fall verfällt jede Vorauswahl – der Spieler soll bewusst Check oder
-                    // Raise wählen können.
-                    var p0btn = GameTable.players.length > 0 ? GameTable.players[0]["button"] : 0
-                    var isBbOption = (p0btn === 3 && GameTable.callAmount === 0 && GameTable.boardCardCount === 0)
-                    if (isBbOption && actionBar.preAction !== "") {
-                        console.log("[BBDBG] BB-Option: Vorauswahl '" + actionBar.preAction + "' verworfen")
-                        actionBar.preAction = ""
-                    }
-
                     if (actionBar.playingMode === 2 || actionBar.playingMode === 1) {
                         gamePage.runAutoAction()
                     } else if (actionBar.preAction !== "") {       // Manuell: Vorwahl ausführen
@@ -2177,22 +2161,17 @@ Rectangle {
                         actionBar.preAction = ""
                         actionBar.runPreAction(a)
                     }
-                    // Nach eigenem Zug: Vorauswahl sperren bis aggressive Gegner-Aktion
+                    // Nach eigenem Zug: Vorauswahl sperren bis Gegner-Aktion oder Rundenwechsel
                     actionBar.preSelectEnabled = false
-                    actionBar.roundJustChanged = false
                 }
                 function onRoundValuesReady() {
-                    // Werte sind jetzt korrekt (nach computeCallAndRaiseAmounts()).
-                    // Buttons absichtlich NICHT freischalten: erst die erste echte
-                    // Spieler-Aktion (onRefreshActionTriggered) oder mein eigener
-                    // Zug (onMyTurnChanged) darf die Buttons aktivieren.
+                    // Werte nach Rundenwechsel sind jetzt korrekt (nach computeCallAndRaiseAmounts()).
+                    // Analog zum Widget-Client (updateMyButtonsState nach dealFlopCards2 etc.):
+                    // Vorauswahl sofort freischalten – nicht erst auf die erste Spieler-Aktion warten.
+                    actionBar.preSelectEnabled = true
                 }
                 function onRefreshActionTriggered() {
-                    // Erste Spieler-Aktion der neuen Runde → Buttons freischalten
-                    if (actionBar.roundJustChanged) {
-                        actionBar.roundJustChanged = false
-                        actionBar.preSelectEnabled = true
-                    } else if (GameTable.callAmount > 0 && !GameTable.myTurn) {
+                    if (GameTable.callAmount > 0 && !GameTable.myTurn) {
                         // Gegner hat gesetzt/erhöht → Vorauswahl freischalten.
                         // callAmountChanged allein taugt nicht: feuert auch nach
                         // eigener Aktion (onRefreshSet/Pot/Cash) mit veralteten Werten.

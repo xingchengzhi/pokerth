@@ -323,9 +323,9 @@ cat > "$APP_CONTENTS/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0.7</string>
+    <string>2.0.8</string>
     <key>CFBundleVersion</key>
-    <string>2.0.7</string>
+    <string>2.0.8</string>
     <key>CFBundleIconFile</key>
     <string>pokerth.icns</string>
     <key>NSHighResolutionCapable</key>

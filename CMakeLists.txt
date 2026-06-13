@@ -174,7 +174,8 @@ endif()
 target_link_libraries(pokerth_lib PUBLIC Qt6::Network)
 target_link_libraries(pokerth_lib PUBLIC pokerth_protocol)
 target_link_libraries(pokerth_lib PRIVATE Qt6::Xml Qt6::Sql)
-target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti)
+target_compile_options(pokerth_lib PUBLIC -fexceptions -frtti
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow>)
 target_compile_definitions(pokerth_lib PUBLIC ENABLE_IPV6 HAVE_OPENSSL BOOST_FILESYSTEM_DEPRECATED)
 
 

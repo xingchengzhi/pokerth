@@ -185,8 +185,10 @@ void Session::startInternetClient()
 	myGameType = GAME_TYPE_INTERNET;
 
 	myNetClient.reset(new ClientThread(*myGui, *myAvatarManager, myLog));
-#ifdef QML_CLIENT
+#if defined(QML_CLIENT) && QML_CLIENT_PRODUCTION_MODE
 	myNetClient->SetClientType(CLIENT_TYPE_QML);
+#else
+	myNetClient->SetClientType(CLIENT_TYPE_QT_WIDGET);
 #endif
 	bool useAvatarServer = myConfig->readConfigInt("UseAvatarServer") != 0;
 

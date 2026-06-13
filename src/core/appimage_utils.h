@@ -38,6 +38,8 @@
 #include <QDesktopServices>
 #include <QString>
 #include <QStringList>
+#include <QByteArray>
+#include <QFileInfo>
 #include <QLabel>
 #include <QTextBrowser>
 #include <QWidget>
@@ -78,6 +80,37 @@ inline bool isAppImage()
 }
 
 /**
+ * Returns true if the application runs with bundled libraries that are
+ * injected via LD_LIBRARY_PATH (AppImage *or* a self-contained tarball that
+ * ships its own Qt in a lib/ folder). In that case child host processes
+ * (xdg-open, kde-open, paplay, …) would inherit our bundled Qt/glibc and fail
+ * against the system versions, so their environment must be sanitized.
+ *
+ * Detection: any LD_LIBRARY_PATH entry that contains our bundled libQt6Core.
+ */
+inline bool runningWithBundledLibs()
+{
+#ifdef Q_OS_LINUX
+    if (isAppImage())
+        return true;
+    const QByteArray ld = qgetenv("LD_LIBRARY_PATH");
+    if (ld.isEmpty())
+        return false;
+    const QList<QByteArray> entries = ld.split(':');
+    for (const QByteArray &e : entries) {
+        if (e.isEmpty())
+            continue;
+        const QString dir = QString::fromLocal8Bit(e);
+        if (QFileInfo::exists(dir + "/libQt6Core.so.6"))
+            return true;
+    }
+    return false;
+#else
+    return false;
+#endif
+}
+
+/**
  * Returns the original LD_LIBRARY_PATH that was active before the AppImage
  * injected its own paths. The AppRun saves it as POKERTH_ORIG_LD_LIBRARY_PATH.
  * Returns empty string if not set.
@@ -100,7 +133,7 @@ inline QProcessEnvironment cleanProcessEnvironment()
 {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
 
-    if (!isAppImage()) {
+    if (!runningWithBundledLibs()) {
         return env;
     }
 
@@ -130,7 +163,7 @@ inline QProcessEnvironment cleanProcessEnvironment()
 inline bool openUrlSafe(const QUrl& url)
 {
 #ifdef Q_OS_LINUX
-    if (isAppImage()) {
+    if (runningWithBundledLibs()) {
         QProcess process;
         process.setProcessEnvironment(cleanProcessEnvironment());
         process.setProgram(QStringLiteral("xdg-open"));
@@ -152,7 +185,7 @@ inline bool openUrlSafe(const QUrl& url)
 inline bool startDetachedSafe(const QString& program, const QStringList& args)
 {
 #ifdef Q_OS_LINUX
-    if (isAppImage()) {
+    if (runningWithBundledLibs()) {
         QProcess process;
         process.setProcessEnvironment(cleanProcessEnvironment());
         process.setProgram(program);

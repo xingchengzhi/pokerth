@@ -8,7 +8,7 @@ import "../config" as Config
 
 Drawer {
     id: sideMenu
-    width: mainWindow.portraitMode ? mainWindow.width : mainWindow.width / 3
+    width: Config.Responsive.compact ? mainWindow.width : mainWindow.width / 3
     height: mainWindow.height - 38
     y: 38
 
@@ -33,7 +33,7 @@ Drawer {
         Label {
             id: sideMenuLabel
             color: Config.StaticData.palette.secondary.col200
-            text: qsTr("PokerTH - v2.0 alpha")
+            text: qsTr("PokerTH - v2.1.0preview")
             font.family: Config.StaticData.loadedFont.font.family
             Layout.alignment: Qt.AlignCenter
             Layout.bottomMargin: 24
@@ -63,7 +63,7 @@ Drawer {
 
                 color: Config.StaticData.palette.secondary.col500
                 width: parent.width
-                height: 36
+                height: Config.Theme.touchTarget
 
                 RowLayout {
                     anchors.fill: parent
@@ -130,31 +130,6 @@ Drawer {
 
     ListModel {
         id: sideMenuListItems
-        ListElement {
-            name: qsTr("Internetspiel")
-            icon: "globe"
-            source: "InternetGame"
-        }
-        ListElement {
-            name: qsTr("Lokales Spiel starten")
-            icon: "spade"
-            source: "LocalGame"
-        }
-        ListElement {
-            name: qsTr("Netzwerkspiel erstellen")
-            icon: "network"
-            source: "NetworkGameCreate"
-        }
-        ListElement {
-            name: qsTr("Netzwerkspiel beitreten")
-            icon: "plugsConnected"
-            source: "NetworkGameEnter"
-        }
-        ListElement {
-            name: qsTr("Einstellungen")
-            icon: "settings"
-            source: "Settings"
-        }
         ListElement {
             name: qsTr("Über PokerTH")
             icon: "user"

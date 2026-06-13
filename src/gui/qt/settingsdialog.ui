@@ -373,13 +373,6 @@
                </property>
               </widget>
              </item>
-             <item row="6" column="0">
-              <widget class="QCheckBox" name="checkBox_disableChatEmoticons">
-               <property name="text">
-                <string>Disable emoticons in the chat</string>
-               </property>
-              </widget>
-             </item>
              <item row="1" column="0">
               <widget class="QCheckBox" name="checkBox_showPingStateInAvatar">
                <property name="text">
@@ -2257,7 +2250,7 @@ p, li { white-space: pre-wrap; }
               </size>
              </property>
              <property name="maxLength">
-              <number>12</number>
+              <number>64</number>
              </property>
             </widget>
            </item>
@@ -2328,7 +2321,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2479,7 +2472,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2658,7 +2651,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -2781,7 +2774,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3039,7 +3032,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3166,7 +3159,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3317,7 +3310,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3468,7 +3461,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>
@@ -3619,7 +3612,7 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="maxLength">
-                   <number>12</number>
+                   <number>64</number>
                   </property>
                  </widget>
                 </item>

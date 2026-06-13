@@ -47,6 +47,8 @@
 #include "mytimeoutlabel.h"
 #include "guilog.h"
 #include "chattools.h"
+#include "emojipicker.h"
+#include "reactionfx.h"
 #ifdef ANDROID
 #include "mobileinputhelper.h"
 #endif
@@ -87,7 +89,7 @@
 using namespace std;
 
 gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
-	: QMainWindow(parent), myChat(NULL), myConfig(c), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
+	: QMainWindow(parent), myChat(NULL), myConfig(c), myReactionPicker(nullptr), myReactionButton(nullptr), myReactionFx(nullptr), myLastOwnReactionTime(0), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
 {
 	int i;
 
@@ -556,6 +558,55 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	myChat = new ChatTools(lineEdit_ChatInput, myConfig, INGAME_CHAT, textBrowser_Chat);
 	myChat->setMyStyle(myGameTableStyle);
 	lineEdit_ChatInput->installEventFilter(this);
+#endif
+
+	// Emoji-Reaktionen: empfangene "/emoji"-Nachrichten als Animation am Sitz
+	// abspielen.
+	connect(myChat, SIGNAL(reactionReceived(QString,QString)), this, SLOT(showEmojiReaction(QString,QString)));
+#ifdef Q_OS_ANDROID
+	// Android: Reaktions-Picker über einen Button oben links auf dem Spieltisch
+	// öffnen (wie im QML-Client) – nicht in der Chat-Zeile, damit er auch
+	// erreichbar ist, wenn der Chat in einem separaten Dialog liegt.
+	myReactionButton = new QToolButton(this);
+	const int reactBtnSize = 44;
+	const int reactIconSize = reactBtnSize - 12;
+	// Icon direkt in der Zielgröße rendern (scharf, nicht hochskaliert).
+	myReactionButton->setIcon(EmojiPicker::emojiIcon(QStringLiteral("🎉"), reactIconSize));
+	myReactionButton->setIconSize(QSize(reactIconSize, reactIconSize));
+	myReactionButton->setFixedSize(reactBtnSize, reactBtnSize);
+	myReactionButton->setAutoRaise(true);
+	myReactionButton->setCursor(Qt::PointingHandCursor);
+	myReactionButton->setToolTip(tr("Send reaction"));
+	// Kein Tastatur-Fokus → auf Touch-Geräten poppt keine virtuelle Tastatur auf.
+	myReactionButton->setFocusPolicy(Qt::NoFocus);
+	repositionReactionButton();
+	myReactionButton->show();
+	connect(myReactionButton, &QToolButton::clicked, this, [this]() {
+		if (!myReactionPicker) {
+			myReactionPicker = new EmojiPicker(this, EmojiPicker::reactionEmojis(), 6);
+			connect(myReactionPicker, &EmojiPicker::picked, this, &gameTableImpl::sendEmojiReaction);
+		}
+		myReactionPicker->showAt(myReactionButton);
+	});
+#else
+	// Desktop: Reaktions-Picker (🎉) wie bisher als Aktion in der Chat-Zeile.
+  #ifdef GUI_800x480
+	QLineEdit *reactionLineEdit = tabs.lineEdit_ChatInput;
+  #else
+	QLineEdit *reactionLineEdit = lineEdit_ChatInput;
+  #endif
+	// Größe passend zum vergrößerten Auslöser-Icon-Maß der Chat-Zeile (siehe
+	// ChatTools::setupEmojiPickerAction, BiggerActionIconStyle auf Desktop = 22).
+	QAction *reactionAction = reactionLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🎉"), 22),
+	                                                      QLineEdit::TrailingPosition);
+	reactionAction->setToolTip(tr("Send reaction"));
+	connect(reactionAction, &QAction::triggered, this, [this, reactionLineEdit]() {
+		if (!myReactionPicker) {
+			myReactionPicker = new EmojiPicker(reactionLineEdit, EmojiPicker::reactionEmojis(), 6);
+			connect(myReactionPicker, &EmojiPicker::picked, this, &gameTableImpl::sendEmojiReaction);
+		}
+		myReactionPicker->showAt(reactionLineEdit);
+	});
 #endif
 
 	this->installEventFilter(this);
@@ -2808,6 +2859,11 @@ void gameTableImpl::postRiverRunAnimation2()
 
 void gameTableImpl::postRiverRunAnimation3()
 {
+	// Stacks erst hier aktualisieren: der Winner-Badge erscheint in dieser
+	// Funktion – synchron mit der Pot-Verteilung sichtbar zu machen, wie es
+	// der Spieler erwartet. Ein früheres refreshCash() (z.B. nach der letzten
+	// Spieler-Aktion) würde die neuen Chips zeigen, bevor der Gewinner bekannt ist.
+	refreshCash();
 
 	boost::shared_ptr<HandInterface> currentHand = myStartWindow->getSession()->getCurrentGame()->getCurrentHand();
 
@@ -3683,6 +3739,7 @@ void gameTableImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
 	}
 #endif
 	refreshSpectatorsDisplay();
+	repositionReactionButton();
 	update();
 }
 
@@ -3693,6 +3750,7 @@ void gameTableImpl::onScreenDpiChanged(qreal /*dpi*/)
 		layout()->activate();
 	}
 	refreshSpectatorsDisplay();
+	repositionReactionButton();
 	update();
 }
 
@@ -5026,6 +5084,15 @@ void gameTableImpl::checkActionLabelPosition()
 #endif
 }
 
+void gameTableImpl::repositionReactionButton()
+{
+	// Oben links auf dem Spieltisch, mit kleinem Rand (analog QML-Client).
+	if (myReactionButton) {
+		myReactionButton->move(6, 6);
+		myReactionButton->raise();
+	}
+}
+
 void gameTableImpl::refreshSpectatorsDisplay()
 {
 	if (!myStartWindow || !myStartWindow->getSession()) {
@@ -5084,4 +5151,72 @@ int gameTableImpl::getAndroidApiVersion()
 #endif
 #endif
     return api;
+}
+
+// ── Emoji-Reaktionen (Port aus QML-/Web-Client, Chat-Konvention "/emoji 🎉") ──
+
+void gameTableImpl::sendEmojiReaction(const QString &emoji)
+{
+	myLastOwnReactionEmoji = emoji;
+	myLastOwnReactionTime = QDateTime::currentMSecsSinceEpoch();
+
+	// Sofort lokal am eigenen Sitz (ID 0) abspielen …
+	playReactionAnimation(0, emoji);
+
+	// … und über den Spiel-Chat an die Mitspieler senden (das eigene
+	// Server-Echo wird in showEmojiReaction per Zeitfenster verworfen).
+	boost::shared_ptr<Session> session = myStartWindow->getSession();
+	if (session)
+		session->sendGameChatMessage(QString(QStringLiteral("/emoji ") + emoji).toUtf8().constData());
+}
+
+void gameTableImpl::showEmojiReaction(QString playerName, QString emoji)
+{
+	const QString myNick = QString::fromUtf8(myConfig->readConfigString("MyName").c_str());
+	if (playerName == myNick) {
+		// Echo der eigenen, bereits lokal abgespielten Reaktion unterdrücken.
+		if (emoji == myLastOwnReactionEmoji
+		    && QDateTime::currentMSecsSinceEpoch() - myLastOwnReactionTime < 3000)
+			return;
+		playReactionAnimation(0, emoji);
+		return;
+	}
+
+	// Sitz des Absenders ermitteln.
+	boost::shared_ptr<Session> session = myStartWindow->getSession();
+	if (!session || !session->getCurrentGame())
+		return;
+	PlayerList seatsList = session->getCurrentGame()->getSeatsList();
+	PlayerListConstIterator it_c;
+	for (it_c = seatsList->begin(); it_c != seatsList->end(); ++it_c) {
+		if (QString::fromUtf8((*it_c)->getMyName().c_str()) == playerName) {
+			playReactionAnimation((*it_c)->getMyID(), emoji);
+			return;
+		}
+	}
+}
+
+void gameTableImpl::playReactionAnimation(int seatId, const QString &emoji)
+{
+	if (seatId < 0 || seatId >= MAX_NUMBER_OF_PLAYERS)
+		return;
+	// Ganze Spielerbox als Anker (horizontal zentriert) – das Avatar-Label
+	// sitzt links in der Box und wäre als Anker seitlich versetzt.
+	QWidget *seatWidget = groupBoxArray[seatId];
+	if (!seatWidget)
+		seatWidget = playerAvatarLabelArray[seatId];
+	if (!seatWidget)
+		return;
+
+	// Overlay (lazy) über dem gesamten Fenster – spielt die 1:1 aus dem
+	// QML-Client portierte Choreografie ab (Pop/Aufstieg/Fade + Partikel).
+	QWidget *host = centralWidget() ? centralWidget() : static_cast<QWidget *>(this);
+	if (!myReactionFx)
+		myReactionFx = new ReactionFxOverlay(host);
+
+	QPoint anchor = seatWidget->mapTo(host, QPoint(seatWidget->width() / 2, 0)) - QPoint(0, 6);
+	// Die Animation steigt ~200 px auf – bei Sitzen nahe der Oberkante
+	// tiefer starten, sonst wird sie am Fensterrand abgeschnitten.
+	anchor.setY(qMax(anchor.y(), 200));
+	myReactionFx->play(emoji, anchor);
 }

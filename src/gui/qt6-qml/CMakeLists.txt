@@ -22,9 +22,17 @@ set(POKERTH_QML_CLIENT_SRC ../../pokerth.cpp
     cpp/settingsmanager.cpp
     cpp/serverconnectionhandler.cpp
     cpp/lobbyhandler.cpp
-    cpp/qmlguiinterface.cpp)
+    cpp/gamehandler.cpp
+    cpp/loghandler.cpp
+    cpp/networkgamehandler.cpp
+    cpp/qmlguiinterface.cpp
+    cpp/screenhelper.cpp
+    ../qt/sound/soundevents.cpp
+    ../qt/sound/qtaudioplayer.cpp)
 
 qt_add_resources(POKERTH_QML_CLIENT_SRC qml.qrc)
+qt_add_resources(POKERTH_QML_CLIENT_SRC cflags.qrc)
+qt_add_resources(POKERTH_QML_CLIENT_SRC emotes.qrc)
 
 set(QML_FILES
     pokerth.qml
@@ -32,8 +40,11 @@ set(QML_FILES
     components/CustomComboBox.qml
     components/CustomTabBar.qml
     components/CustomToggle.qml
+    components/CustomSpinBox.qml
+    components/AvatarCardRow.qml
     components/GamePlayerBox.qml
     components/GamePlayerSelfBox.qml
+    components/EmojiPicker.qml
     components/GuiSettings.qml
     components/InternetGameSettings.qml
     components/LocalGameSettings.qml
@@ -56,7 +67,9 @@ set(QML_FILES
     pages/SettingsPage.qml
     pages/StartPage.qml
     config/StaticData.qml
-    config/Parameters.qml)
+    config/Parameters.qml
+    config/Responsive.qml
+    config/Theme.qml)
 
 set(TS_FILES
     i18n/pokerth_de_DE.ts
@@ -74,7 +87,7 @@ qt_add_translations(pokerth_qml-client
 if(ANDROID)
     qt_add_executable(pokerth_qml-client MANUAL_FINALIZATION ${POKERTH_QML_CLIENT_SRC})
     target_include_directories(pokerth_qml-client PRIVATE "${Protobuf_INCLUDE_DIR}")
-    target_link_libraries(pokerth_qml-client PUBLIC "${Protobuf_LIBRARIES}")
+    target_link_libraries(pokerth_qml-client PUBLIC protobuf::libprotobuf)
 else()
     add_executable(pokerth_qml-client ${POKERTH_QML_CLIENT_SRC})
 endif()
@@ -91,6 +104,7 @@ target_include_directories(pokerth_qml-client PUBLIC
     ../../engine/network_engine
     ../../net
     ../
+    ../qt/sound
     .
     cpp)
 
@@ -128,7 +142,12 @@ target_link_libraries(pokerth_qml-client PUBLIC pokerth_lib)
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_db)
 
 target_link_libraries(pokerth_qml-client PUBLIC pokerth_protocol)
-target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets)
+target_link_libraries(pokerth_qml-client PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Sql Qt6::Xml Qt6::Svg Qt6::QuickControls2 Qt6::Widgets Qt6::Multimedia)
+
+# Win32: WinMM (waveOut*) + Mswsock (AcceptEx via boost::asio)
+if(WIN32)
+    target_link_libraries(pokerth_qml-client PRIVATE winmm mswsock)
+endif()
 
 target_compile_definitions(pokerth_qml-client PUBLIC QML_CLIENT)
 

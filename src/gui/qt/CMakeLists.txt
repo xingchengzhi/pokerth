@@ -8,11 +8,13 @@ set(POKERTH_CLIENT_SRC ../../pokerth.cpp
     ../../core/loghelper_client.cpp
     ../../net/net_helper_client.cpp
     chattools/chattools.cpp
+    chattools/emojipicker.cpp
     guiwrapper.cpp
     qttools/qttoolswrapper.cpp
     qttools/qthelper/qthelper.cpp
     qttools/darkmodehelper.cpp
     gametable/gametableimpl.cpp
+    gametable/reactionfx.cpp
     gametable/mycardspixmaplabel.cpp
     gametable/mysetlabel.cpp
     gametable/myactionbutton.cpp

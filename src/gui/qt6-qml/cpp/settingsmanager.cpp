@@ -18,6 +18,7 @@
 
 #include "settingsmanager.h"
 #include "configfile.h"
+#include <QFileDialog>
 
 SettingsManager::SettingsManager(boost::shared_ptr<ConfigFile> config, QObject *parent)
     : QObject(parent), m_config(config)
@@ -130,7 +131,60 @@ void SettingsManager::writeConfigInt(const QString &key, int value)
     m_config->writeBuffer();
 }
 
+QStringList SettingsManager::readConfigStringList(const QString &key) const
+{
+    QStringList result;
+    for (const auto& s : m_config->readConfigStringList(key.toStdString()))
+        result << QString::fromStdString(s);
+    return result;
+}
+
+void SettingsManager::writeConfigStringList(const QString &key, const QStringList &list)
+{
+    std::list<std::string> stdList;
+    for (const auto& s : list)
+        stdList.push_back(s.toStdString());
+    m_config->writeConfigStringList(key.toStdString(), stdList);
+    m_config->writeBuffer();
+}
+
+QList<int> SettingsManager::readConfigIntList(const QString &key) const
+{
+    QList<int> result;
+    for (int v : m_config->readConfigIntList(key.toStdString()))
+        result << v;
+    return result;
+}
+
+void SettingsManager::writeConfigIntList(const QString &key, const QList<int> &list)
+{
+    std::list<int> stdList(list.begin(), list.end());
+    m_config->writeConfigIntList(key.toStdString(), stdList);
+    m_config->writeBuffer();
+}
+
 void SettingsManager::saveConfig()
 {
     m_config->writeBuffer();
+}
+
+void SettingsManager::resetToDefaults()
+{
+    m_config->resetToDefaults();
+    emit languageChanged();
+    emit styleChanged();
+    emit soundEnabledChanged();
+    emit disableSplashScreenChanged();
+    emit myNameChanged();
+    emit myAvatarChanged();
+}
+
+QString SettingsManager::pickImageFile(const QString &title)
+{
+    return QFileDialog::getOpenFileName(
+        nullptr,
+        title,
+        QString(),
+        tr("Images (*.png *.jpg *.jpeg *.gif *.bmp)")
+    );
 }

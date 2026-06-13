@@ -1066,6 +1066,19 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_TimeoutWarningMessage) {
 		const TimeoutWarningMessage &tmpTimeout = tmpPacket->GetMsg()->timeoutwarningmessage();
 		client->GetCallback().SignalNetClientShowTimeoutDialog((NetTimeoutReason)tmpTimeout.timeoutreason(), tmpTimeout.remainingseconds());
+	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_YourActionRejectedMessage) {
+		// Server hat unsere Aktion abgelehnt – im Client bisher völlig
+		// ignoriert (kein Handler-Zweig, kein Log). Genau dieser stille
+		// Verlust ist der gesuchte UTG/SB-preflop-Bug-Indikator.
+		const YourActionRejectedMessage &rej = tmpPacket->GetMsg()->youractionrejectedmessage();
+		qDebug() << "[REJECT] YourActionRejected"
+		         << "gamestate=" << (int)rej.gamestate()
+		         << "(0=Pre,1=F,2=T,3=R)"
+		         << "youraction=" << (int)rej.youraction()
+		         << "(1=FOLD,2=CHK,3=CALL,4=BET,5=RAISE,6=ALLIN)"
+		         << "yourbet=" << (int)rej.yourrelativebet()
+		         << "reason=" << (int)rej.rejectionreason()
+		         << "(1=INVALID_STATE,2=NOT_YOUR_TURN,3=NOT_ALLOWED)";
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_ChatMessage) {
 		// Chat message - display it in the GUI.
 		const ChatMessage &netMessage = tmpPacket->GetMsg()->chatmessage();
@@ -1353,7 +1366,12 @@ ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cl
 			InitMessage *netInit = init->GetMsg()->mutable_initmessage();
 			netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
 			netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-			netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
+			// Announce the version matching the client type. QML clients must
+			// send the QML version (the server's MIN_BUILD_ID_QML check uses it),
+			// otherwise a current server rejects them with "version not supported".
+			netInit->set_buildid(context.GetClientType() == CLIENT_TYPE_QML
+				? MAKE_BUILD_ID(CLIENT_TYPE_QML, QML_VERSION_MAJOR, QML_VERSION_MINOR, QML_VERSION_REVISION)
+				: MAKE_BUILD_ID(CLIENT_TYPE_QT_WIDGET, POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
 			if (!context.GetSessionGuid().empty()) {
 				netInit->set_mylastsessionid(context.GetSessionGuid());
 			}
@@ -1431,7 +1449,10 @@ ClientStateWaitEnterLogin::TimerLoop(const boost::system::error_code& ec, boost:
             InitMessage *netInit = init->GetMsg()->mutable_initmessage();
             netInit->mutable_requestedversion()->set_majorversion(NET_VERSION_MAJOR);
             netInit->mutable_requestedversion()->set_minorversion(NET_VERSION_MINOR);
-            netInit->set_buildid(MAKE_BUILD_ID(context.GetClientType(), POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
+            // Announce the version matching the client type (see above).
+            netInit->set_buildid(context.GetClientType() == CLIENT_TYPE_QML
+                ? MAKE_BUILD_ID(CLIENT_TYPE_QML, QML_VERSION_MAJOR, QML_VERSION_MINOR, QML_VERSION_REVISION)
+                : MAKE_BUILD_ID(CLIENT_TYPE_QT_WIDGET, POKERTH_VERSION_MAJOR, POKERTH_VERSION_MINOR, POKERTH_BETA_REVISION));
             
             // Include session GUID and server password BEFORE setting login type
             if (!context.GetSessionGuid().empty()) {
@@ -1734,6 +1755,12 @@ ClientStateWaitJoin::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		client->GetCallback().SignalNetClientNotification(failureCode);
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
 		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
+		qDebug() << "[INVITE] ClientStateWaitJoin: InviteNotifyMessage received"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "playeridbywhom=" << netInvNotify.playeridbywhom()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "myPlayerId=" << client->GetGuiPlayerId()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
 		if (netInvNotify.playeridwho() == client->GetGuiPlayerId()) {
 			client->GetCallback().SignalSelfGameInvitation(netInvNotify.gameid(), netInvNotify.playeridbywhom());
 		}
@@ -1780,10 +1807,20 @@ ClientStateWaitGame::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		client->SetState(ClientStateSynchronizeStart::Instance());
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
 		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
-		client->GetCallback().SignalPlayerGameInvitation(
-			netInvNotify.gameid(),
-			netInvNotify.playeridwho(),
-			netInvNotify.playeridbywhom());
+		qDebug() << "[INVITE] ClientStateWaitGame: InviteNotifyMessage received"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "playeridbywhom=" << netInvNotify.playeridbywhom()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "myPlayerId=" << client->GetGuiPlayerId()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
+		if (netInvNotify.playeridwho() == client->GetGuiPlayerId()) {
+			client->GetCallback().SignalSelfGameInvitation(netInvNotify.gameid(), netInvNotify.playeridbywhom());
+		} else {
+			client->GetCallback().SignalPlayerGameInvitation(
+				netInvNotify.gameid(),
+				netInvNotify.playeridwho(),
+				netInvNotify.playeridbywhom());
+		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_RejectInvNotifyMessage) {
 		const RejectInvNotifyMessage &netRejNotify = tmpPacket->GetMsg()->rejectinvnotifymessage();
 		client->GetCallback().SignalRejectedGameInvitation(
@@ -1860,6 +1897,12 @@ ClientStateSynchronizeStart::InternalHandlePacket(boost::shared_ptr<ClientThread
 		client->SetState(ClientStateWaitStart::Instance());
 		// Forward the game start message to the next state.
 		client->GetState().HandlePacket(client, tmpPacket);
+	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_InviteNotifyMessage) {
+		const InviteNotifyMessage &netInvNotify = tmpPacket->GetMsg()->invitenotifymessage();
+		qDebug() << "[INVITE] ClientStateSynchronizeStart: InviteNotifyMessage DROPPED"
+		         << "playeridwho=" << netInvNotify.playeridwho()
+		         << "gameid=" << netInvNotify.gameid()
+		         << "isSelf=" << (netInvNotify.playeridwho() == client->GetGuiPlayerId());
 	}
 }
 
@@ -2118,6 +2161,8 @@ ClientStateWaitHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 		// Start new hand.
 		client->GetGame()->getSeatsList()->front()->setMyCards(myCards);
 		client->GetGame()->initHand();
+		qDebug() << "[ACTDBG] initHand done, new handID=" << client->GetGame()->getCurrentHandID()
+		         << "player0Action=" << client->GetGame()->getSeatsList()->front()->getMyAction();
 		client->GetGame()->getCurrentHand()->setSmallBlind(netHandStart.smallblind());
 		client->GetGame()->getCurrentHand()->getCurrentBeRo()->setMinimumRaise(2 * netHandStart.smallblind());
 		client->GetGame()->startHand();
@@ -2270,6 +2315,18 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		}
 
 		tmpPlayer->setMyAction(PlayerAction(netActionDone.playeraction()));
+		if (tmpPlayer->getMyID() == 0) {
+			auto bero1 = curGame->getCurrentHand()->getCurrentBeRo();
+			qDebug() << "[ACTDBG] PAD->setAction(p0) action=" << (int)netActionDone.playeraction()
+			         << "padGameState=" << (int)netActionDone.gamestate()
+			         << "(0=Pre,1=F,2=T,3=R,4=SB,5=BB)"
+			         << "curHandID=" << curGame->getCurrentHandID()
+			         << "curRound=" << (int)curGame->getCurrentHand()->getCurrentRound()
+			         << "button=" << (int)tmpPlayer->getMyButton()
+			         << "bbPosId=" << (bero1 ? (int)bero1->getBigBlindPositionId() : -99)
+			         << "prevPlayerId=" << curGame->getCurrentHand()->getPreviousPlayerID()
+			         << "firstRound=" << (bero1 ? bero1->getFirstRound() : -1);
+		}
 		// CRITICAL: Only update set if we're still in the same game state
 		// After Flop/Turn/River, collectPot() has already been called and sets were cleared
 		// Don't restore sets from stale PlayersActionDoneMessage that arrive after card dealing
@@ -2364,8 +2421,15 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetGui().refreshGroupbox(tmpPlayer->getMyID(), 3);
 
 		// Refresh GUI
-		if (tmpPlayer->getMyID() == 0)
+		if (tmpPlayer->getMyID() == 0) {
+			qDebug() << "[PADDBG] PAD-for-me triggers disableMyButtons"
+			         << "padAction=" << (int)netActionDone.playeraction()
+			         << "padGameState=" << (int)netActionDone.gamestate()
+			         << "(0=Pre,1=F,2=T,3=R,4=PreSB,5=PreBB)"
+			         << "totalBet=" << (int)netActionDone.totalplayerbet()
+			         << "highestSet=" << (int)netActionDone.highestset();
 			client->GetGui().disableMyButtons();
+		}
 		client->GetGui().refreshAction(tmpPlayer->getMyID(), tmpPlayer->getMyAction());
 		client->GetGui().refreshPot();
 		client->GetGui().refreshSet();
@@ -2405,6 +2469,18 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		client->GetGui().startTimeoutAnimation(tmpPlayer->getMyID(), client->GetGameData().playerActionTimeoutSec);
 
 		if (tmpPlayer->getMyID() == 0) { // Is this the GUI player?
+			auto bero0 = curGame->getCurrentHand()->getCurrentBeRo();
+			qDebug() << "[BBDBG] PlayersTurnMessage seat0"
+			         << "msgGameState=" << (int)netPlayersTurn.gamestate()
+			         << "curRound=" << (int)curGame->getCurrentHand()->getCurrentRound()
+			         << "p0Action=" << (int)tmpPlayer->getMyAction()
+			         << "p0Button=" << (int)tmpPlayer->getMyButton()
+			         << "(1=D,2=SB,3=BB)"
+			         << "bbPosId=" << (bero0 ? (int)bero0->getBigBlindPositionId() : -99)
+			         << "prevPlayerId=" << curGame->getCurrentHand()->getPreviousPlayerID()
+			         << "firstRound=" << (bero0 ? bero0->getFirstRound() : -1)
+			         << "highestSet=" << (bero0 ? bero0->getHighestSet() : -1)
+			         << "p0Set=" << tmpPlayer->getMySet();
 			// Only allow action if player has cash and is not already All-In
 			if (tmpPlayer->getMyCash() > 0 || tmpPlayer->getMyAction() != PLAYER_ACTION_ALLIN) {
 				client->GetGui().meInAction();
@@ -2491,6 +2567,8 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 
 		// Set player numbers using the game start data slots.
 		unsigned numPlayers = netAllInShow.playersallin_size();
+		qDebug() << "[ALLIN] AllInShowCardsMessage received numPlayers=" << numPlayers
+		         << "round=" << (int)curGame->getCurrentHand()->getCurrentRound();
 		// Request player info for players if needed.
 		for (unsigned i = 0; i < numPlayers; i++) {
 			const AllInShowCardsMessage::PlayerAllIn &p = netAllInShow.playersallin(i);
@@ -2503,7 +2581,12 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 			tmpCards[0] = static_cast<int>(p.allincard1());
 			tmpCards[1] = static_cast<int>(p.allincard2());
 			tmpPlayer->setMyCards(tmpCards);
+			qDebug() << "[ALLIN]   seatId=" << tmpPlayer->getMyID()
+			         << "uniqueId=" << p.playerid()
+			         << "cards=" << tmpCards[0] << "/" << tmpCards[1]
+			         << "action=" << (int)tmpPlayer->getMyAction();
 		}
+		qDebug() << "[ALLIN] calling flipHolecardsAllIn()";
 		client->GetGui().flipHolecardsAllIn();
 		if(curGame->getCurrentHand()->getCurrentRound()<GAME_STATE_RIVER) {
 			client->GetClientLog()->logHoleCardsHandName(
@@ -2613,10 +2696,10 @@ ClientStateRunHand::InternalHandlePacket(boost::shared_ptr<ClientThread> client,
 		curGame->getCurrentHand()->getBoard()->setWinners(winnerList);
 		curGame->getCurrentHand()->getBoard()->setPlayerNeedToShowCards(showList);
 
-		// CRITICAL: Force immediate GUI cash update to prevent race condition with next hand's HandStartMessage
-		// This ensures the GUI shows correct cash values before any animation or next hand processing
-		client->GetGui().refreshCash();
-		client->GetGui().refreshSet(); // Also refresh sets to clear any stale bet displays
+		// refreshSet() clears stale bet chips; refreshCash() is intentionally
+		// deferred to postRiverRunAnimation3() so that the stack update coincides
+		// with the Winner badge appearing (not before).
+		client->GetGui().refreshSet();
 		client->GetGui().waitForGuiUpdateDone();
 
 		// logging

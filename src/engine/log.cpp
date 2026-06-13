@@ -35,9 +35,34 @@ Log::~Log()
     if (!sql.empty()) {
         exec_transaction();
     }
-    // Qt will automatically clean up QSqlDatabase connections on application exit
-    // Attempting to manually close/remove here can cause crashes during shutdown
-    // when Qt's SQL driver manager is already being destroyed
+    // Explicitly close and remove ALL database connections that belong to this
+    // Log instance. This must happen while QCoreApplication still exists.
+    // Leaving them open causes "QSqlDatabase requires a QCoreApplication"
+    // warnings (and a crash) when Qt's SQL subsystem tears down during
+    // ~QApplication because QCoreApplication::instance() is already nullptr
+    // at that point.
+    if (!myConnectionName.isEmpty()) {
+        const QString prefix = myConnectionName;
+        // Nur die Verbindung DIESES Threads dürfen wir öffnen/schließen. Für
+        // Verbindungen anderer Threads (z. B. der Netzwerk-ClientThread legt beim
+        // Loggen eine eigene an) würde QSqlDatabase::database() sonst
+        // "requested database does not belong to the calling thread" warnen –
+        // diese entfernen wir nur per Namen (removeDatabase prüft den Thread nicht).
+        const QString ownThreadConn =
+            QString("%1_thread_%2").arg(prefix).arg((qulonglong)QThread::currentThreadId());
+        const QStringList allConns = QSqlDatabase::connectionNames();
+        for (const QString &name : allConns) {
+            if (name == prefix || name.startsWith(prefix + "_thread_")) {
+                if (name == ownThreadConn) {
+                    // Handle vor removeDatabase() zerstören (sonst "still in use").
+                    QSqlDatabase db = QSqlDatabase::database(name, false);
+                    if (db.isOpen())
+                        db.close();
+                }
+                QSqlDatabase::removeDatabase(name);
+            }
+        }
+    }
 }
 
 QSqlDatabase

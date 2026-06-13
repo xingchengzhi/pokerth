@@ -64,13 +64,15 @@ Rectangle {
                 ScrollView {
                     id: gameTableTab
                     clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                     ColumnLayout {
                         width: parent.width
-                        spacing: 8
 
                         Label {
-                            text: qsTr("Spieltisch-Stil auswählen")
+                            Layout.fillWidth: true
+                            text: qsTr("Verfügbare Spieltisch-Stile:")
                             font.bold: true
                             color: Config.StaticData.palette.secondary.col200
                         }
@@ -103,13 +105,15 @@ Rectangle {
                 ScrollView {
                     id: cardsDeckTab
                     clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                     ColumnLayout {
                         width: parent.width
-                        spacing: 8
 
                         Label {
-                            text: qsTr("Kartenstapel-Stil auswählen")
+                            Layout.fillWidth: true
+                            text: qsTr("Verfügbare Kartenstapel-Stile:")
                             font.bold: true
                             color: Config.StaticData.palette.secondary.col200
                         }
@@ -142,13 +146,15 @@ Rectangle {
                 ScrollView {
                     id: cardsBackgroundTab
                     clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                     ColumnLayout {
                         width: parent.width
-                        spacing: 12
 
                         Label {
-                            text: qsTr("Kartenrückseite auswählen")
+                            Layout.fillWidth: true
+                            text: qsTr("Kartenrückseite wählen:")
                             font.bold: true
                             color: Config.StaticData.palette.secondary.col200
                         }

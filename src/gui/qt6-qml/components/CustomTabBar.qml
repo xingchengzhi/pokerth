@@ -26,10 +26,14 @@ TabBar {
 
             property bool isHovered: false
 
+            width: tabButtons.model.length > 0 ? Math.floor(customTabBar.width / tabButtons.model.length) : implicitWidth
             height: 24
             padding: 0
             contentItem: Text {
                 text: modelData
+                font.pointSize: 10
+                width: tabButton.width
+                elide: Text.ElideRight
                 color: customTabBar.currentIndex === index || tabButton.isHovered ? Config.StaticData.palette.secondary.col100 : Config.StaticData.palette.secondary.col200
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

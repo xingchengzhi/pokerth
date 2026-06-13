@@ -1649,6 +1649,12 @@ void gameLobbyDialogImpl::closeEvent(QCloseEvent *event)
 	//enable leave button again - it was disabled during waitxyzMsgBoxes
 	pushButton_Leave->setEnabled(true);
 	event->accept();
+	// Closing the window (e.g. the native macOS close button) must route
+	// through reject() so that QDialog::finished(Rejected) is emitted.
+	// On macOS the lobby dialog is shown non-modally and the network client
+	// is only terminated from that finished handler; without this the server
+	// keeps the session alive and the player can still be invited to games.
+	reject();
 }
 
 void gameLobbyDialogImpl::accept()

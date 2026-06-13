@@ -30,6 +30,7 @@
  *****************************************************************************/
 #include "chattools.h"
 #include "emojipicker.h"
+#include <QProxyStyle>
 #include "session.h"
 #include "configfile.h"
 #include "gametablestylereader.h"
@@ -42,6 +43,25 @@ using namespace std;
 
 namespace
 {
+
+// QLineEdit zeichnet Trailing-Action-Icons in PM_SmallIconSize (per Default
+// ~16px) – unabhängig von der Auflösung des übergebenen Icons. Dieser kleine
+// Proxy-Style hebt nur dieses Maß für das jeweilige Eingabefeld an, damit die
+// Emoji-Auslöser-Icons (🙂/🎉) größer und besser tippbar werden.
+class BiggerActionIconStyle : public QProxyStyle
+{
+public:
+	explicit BiggerActionIconStyle(int iconSize) : myIconSize(iconSize) {}
+	int pixelMetric(PixelMetric metric, const QStyleOption *option = nullptr,
+	                const QWidget *widget = nullptr) const override
+	{
+		if (metric == QStyle::PM_SmallIconSize)
+			return myIconSize;
+		return QProxyStyle::pixelMetric(metric, option, widget);
+	}
+private:
+	int myIconSize;
+};
 
 bool isEmojiCodepoint(uint cp)
 {
@@ -117,9 +137,22 @@ void ChatTools::setupEmojiPickerAction()
 {
 	if (!myLineEdit)
 		return;
+
+	// Auslöser-Icons im Eingabefeld vergrößern. Der Proxy-Style gilt für dieses
+	// Eingabefeld (und damit auch für das 🎉-Reaktions-Icon, das der Gametable
+	// auf Desktop in dasselbe Feld legt). Größe je nach Plattform.
+#ifdef Q_OS_ANDROID
+	const int triggerIconSize = 30;
+#else
+	const int triggerIconSize = 22;
+#endif
+	BiggerActionIconStyle *iconStyle = new BiggerActionIconStyle(triggerIconSize);
+	iconStyle->setParent(myLineEdit);   // Lebensdauer an das Eingabefeld koppeln
+	myLineEdit->setStyle(iconStyle);
+
 	// Emoji-Picker-Knopf im Eingabefeld (rechts) – einheitlich für
 	// Internet-Lobby, LAN-Lobby und Gametable-Chat.
-	QAction *emojiAction = myLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🙂")),
+	QAction *emojiAction = myLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🙂"), triggerIconSize),
 	                                             QLineEdit::TrailingPosition);
 	emojiAction->setToolTip(tr("Insert emoji"));
 	QObject::connect(emojiAction, &QAction::triggered, this, [this]() {
@@ -127,7 +160,11 @@ void ChatTools::setupEmojiPickerAction()
 			myEmojiPicker = new EmojiPicker(myLineEdit);
 			QObject::connect(myEmojiPicker, &EmojiPicker::picked, this, [this](const QString &e) {
 				myLineEdit->insert(e);
+#ifndef Q_OS_ANDROID
+				// Auf Android NICHT zurückfokussieren – das würde die
+				// virtuelle Tastatur erneut aufpoppen lassen.
 				myLineEdit->setFocus();
+#endif
 			});
 		}
 		myEmojiPicker->showAt(myLineEdit);

@@ -89,7 +89,7 @@
 using namespace std;
 
 gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
-	: QMainWindow(parent), myChat(NULL), myConfig(c), myReactionPicker(nullptr), myReactionFx(nullptr), myLastOwnReactionTime(0), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
+	: QMainWindow(parent), myChat(NULL), myConfig(c), myReactionPicker(nullptr), myReactionButton(nullptr), myReactionFx(nullptr), myLastOwnReactionTime(0), myStartWindow(nullptr), gameSpeed(0), myActionIsBet(0), myActionIsRaise(0), pushButtonBetRaiseIsChecked(false), pushButtonCallCheckIsChecked(false), pushButtonFoldIsChecked(false), pushButtonAllInIsChecked(false), myButtonsAreCheckable(false), breakAfterCurrentHand(false), currentGameOver(false), betSliderChangedByInput(false), guestMode(false), myLastPreActionBetValue(0), playingMode(0)
 {
 	int i;
 
@@ -554,18 +554,50 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 	myChat = new ChatTools(tabs.lineEdit_ChatInput, myConfig, INGAME_CHAT, tabs.textBrowser_Chat);
 	myChat->setMyStyle(myGameTableStyle);
 	tabs.lineEdit_ChatInput->installEventFilter(this);
-	QLineEdit *reactionLineEdit = tabs.lineEdit_ChatInput;
 #else
 	myChat = new ChatTools(lineEdit_ChatInput, myConfig, INGAME_CHAT, textBrowser_Chat);
 	myChat->setMyStyle(myGameTableStyle);
 	lineEdit_ChatInput->installEventFilter(this);
-	QLineEdit *reactionLineEdit = lineEdit_ChatInput;
 #endif
 
-	// Emoji-Reaktionen: empfangene "/emoji"-Nachrichten als Animation am
-	// Sitz abspielen; eigener Reaktions-Picker (🎉) im Chat-Eingabefeld.
+	// Emoji-Reaktionen: empfangene "/emoji"-Nachrichten als Animation am Sitz
+	// abspielen.
 	connect(myChat, SIGNAL(reactionReceived(QString,QString)), this, SLOT(showEmojiReaction(QString,QString)));
-	QAction *reactionAction = reactionLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🎉")),
+#ifdef Q_OS_ANDROID
+	// Android: Reaktions-Picker über einen Button oben links auf dem Spieltisch
+	// öffnen (wie im QML-Client) – nicht in der Chat-Zeile, damit er auch
+	// erreichbar ist, wenn der Chat in einem separaten Dialog liegt.
+	myReactionButton = new QToolButton(this);
+	const int reactBtnSize = 44;
+	const int reactIconSize = reactBtnSize - 12;
+	// Icon direkt in der Zielgröße rendern (scharf, nicht hochskaliert).
+	myReactionButton->setIcon(EmojiPicker::emojiIcon(QStringLiteral("🎉"), reactIconSize));
+	myReactionButton->setIconSize(QSize(reactIconSize, reactIconSize));
+	myReactionButton->setFixedSize(reactBtnSize, reactBtnSize);
+	myReactionButton->setAutoRaise(true);
+	myReactionButton->setCursor(Qt::PointingHandCursor);
+	myReactionButton->setToolTip(tr("Send reaction"));
+	// Kein Tastatur-Fokus → auf Touch-Geräten poppt keine virtuelle Tastatur auf.
+	myReactionButton->setFocusPolicy(Qt::NoFocus);
+	repositionReactionButton();
+	myReactionButton->show();
+	connect(myReactionButton, &QToolButton::clicked, this, [this]() {
+		if (!myReactionPicker) {
+			myReactionPicker = new EmojiPicker(this, EmojiPicker::reactionEmojis(), 6);
+			connect(myReactionPicker, &EmojiPicker::picked, this, &gameTableImpl::sendEmojiReaction);
+		}
+		myReactionPicker->showAt(myReactionButton);
+	});
+#else
+	// Desktop: Reaktions-Picker (🎉) wie bisher als Aktion in der Chat-Zeile.
+  #ifdef GUI_800x480
+	QLineEdit *reactionLineEdit = tabs.lineEdit_ChatInput;
+  #else
+	QLineEdit *reactionLineEdit = lineEdit_ChatInput;
+  #endif
+	// Größe passend zum vergrößerten Auslöser-Icon-Maß der Chat-Zeile (siehe
+	// ChatTools::setupEmojiPickerAction, BiggerActionIconStyle auf Desktop = 22).
+	QAction *reactionAction = reactionLineEdit->addAction(EmojiPicker::emojiIcon(QStringLiteral("🎉"), 22),
 	                                                      QLineEdit::TrailingPosition);
 	reactionAction->setToolTip(tr("Send reaction"));
 	connect(reactionAction, &QAction::triggered, this, [this, reactionLineEdit]() {
@@ -575,6 +607,7 @@ gameTableImpl::gameTableImpl(ConfigFile *c, QMainWindow *parent)
 		}
 		myReactionPicker->showAt(reactionLineEdit);
 	});
+#endif
 
 	this->installEventFilter(this);
 
@@ -3706,6 +3739,7 @@ void gameTableImpl::onScreenGeometryChanged(const QRect & /*geometry*/)
 	}
 #endif
 	refreshSpectatorsDisplay();
+	repositionReactionButton();
 	update();
 }
 
@@ -3716,6 +3750,7 @@ void gameTableImpl::onScreenDpiChanged(qreal /*dpi*/)
 		layout()->activate();
 	}
 	refreshSpectatorsDisplay();
+	repositionReactionButton();
 	update();
 }
 
@@ -5047,6 +5082,15 @@ void gameTableImpl::checkActionLabelPosition()
 		}
 	}
 #endif
+}
+
+void gameTableImpl::repositionReactionButton()
+{
+	// Oben links auf dem Spieltisch, mit kleinem Rand (analog QML-Client).
+	if (myReactionButton) {
+		myReactionButton->move(6, 6);
+		myReactionButton->raise();
+	}
 }
 
 void gameTableImpl::refreshSpectatorsDisplay()

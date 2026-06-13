@@ -5,11 +5,18 @@
  * Gametable) sowie für die Emoji-Reaktionen am Spieltisch.                  *
  *****************************************************************************/
 #include "emojipicker.h"
+#include <QGuiApplication>
+#include <QInputMethod>
 
 EmojiPicker::EmojiPicker(QWidget *parent, const QStringList &emojis, int columns)
 	: QWidget(parent, Qt::Popup)
 {
 	setAttribute(Qt::WA_DeleteOnClose, false);
+#ifdef Q_OS_ANDROID
+	// Der Picker selbst soll keinen Tastatur-Fokus ziehen – sonst öffnet
+	// sich auf Touch-Geräten die virtuelle Tastatur.
+	setFocusPolicy(Qt::NoFocus);
+#endif
 	buildGrid(emojis.isEmpty() ? defaultEmojis() : emojis, columns);
 }
 
@@ -37,6 +44,11 @@ void EmojiPicker::buildGrid(const QStringList &emojis, int columns)
 		btn->setIconSize(QSize(32, 32));
 		btn->setAutoRaise(true);
 		btn->setFixedSize(46, 46);
+#ifdef Q_OS_ANDROID
+		// Auf Touch-Geräten keinen Fokus ziehen → die virtuelle Tastatur
+		// poppt beim Antippen nicht auf.
+		btn->setFocusPolicy(Qt::NoFocus);
+#endif
 		btn->setCursor(Qt::PointingHandCursor);
 		connect(btn, &QToolButton::clicked, this, [this, e]() {
 			emit picked(e);
@@ -61,6 +73,13 @@ void EmojiPicker::buildGrid(const QStringList &emojis, int columns)
 
 void EmojiPicker::showAt(QWidget *anchor)
 {
+#ifdef Q_OS_ANDROID
+	// Virtuelle Tastatur ausblenden, damit der Picker klar vom Texteingabe-
+	// Feld abgegrenzt ist und die Tastatur nicht darüber liegt (Android).
+	if (QGuiApplication::inputMethod())
+		QGuiApplication::inputMethod()->hide();
+#endif
+
 	QPoint below = anchor->mapToGlobal(QPoint(0, anchor->height() + 4));
 	QScreen *screen = anchor->screen();
 	if (screen && below.y() + height() > screen->availableGeometry().bottom())

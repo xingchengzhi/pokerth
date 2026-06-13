@@ -184,7 +184,11 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 	QString textColor = isDarkMode ? "#ffffff" : "rgb(0, 0, 0)";
 
 #ifdef __APPLE__
-	// macOS workaround: background-image in stylesheets crashes on Monterey - disabled
+	// macOS workaround: only the background-image in stylesheets crashes on
+	// Monterey, so keep background-color and text color (respecting dark mode)
+	// but drop the image. Otherwise the game list falls back to the native
+	// (white) base color and no longer matches the dark lobby.
+	treeView_GameList->setStyleSheet(QString("QTreeView {background-color: %1; color: %2; font: 22px}").arg(backgroundColor).arg(textColor));
 #else
 	treeView_GameList->setStyleSheet(QString("QTreeView {background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; font: 22px}").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
 #endif

@@ -186,8 +186,7 @@ gameLobbyDialogImpl::gameLobbyDialogImpl(startWindowImpl *parent, ConfigFile *c)
 #ifdef __APPLE__
 	// macOS workaround: only the background-image in stylesheets crashes on
 	// Monterey, so keep background-color and text color (respecting dark mode)
-	// but drop the image. Otherwise the game list falls back to the native
-	// (white) base color and no longer matches the dark lobby.
+	// but drop the image.
 	treeView_GameList->setStyleSheet(QString("QTreeView {background-color: %1; color: %2; font: 22px}").arg(backgroundColor).arg(textColor));
 #else
 	treeView_GameList->setStyleSheet(QString("QTreeView {background-color: %1; background-image: url(\"%2gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat; color: %3; font: 22px}").arg(backgroundColor).arg(myAppDataPath).arg(textColor));
@@ -2490,24 +2489,21 @@ void gameLobbyDialogImpl::onScreenDpiChanged(qreal /*dpi*/)
 
 void gameLobbyDialogImpl::updateGameListStyleSheet()
 {
-#ifdef __APPLE__
-    // macOS workaround: setStyleSheet crashes on Monterey Qt 6.9.2 - skip entirely
-    return;
-#endif
-    
     // Guard against being called before widget is fully constructed
     if (!treeView_GameList) {
         return;
     }
-    
+
     // Use DarkModeHelper for consistent dark mode detection with config override
     bool isDarkMode = DarkModeHelper::isDarkMode(myConfig);
-    
+
     QString backgroundColor = isDarkMode ? "#2b2b2b" : "white";
     QString textColor = isDarkMode ? "#ffffff" : "rgb(0, 0, 0)";
 
-    // macOS workaround: background-image stylesheet causes crash on Monterey
-    // QString styleSheet = QString("QTreeView {background-color: %1; color: %2; background-image: url(\"%3gfx/gui/misc/background_gamelist.png\"); background-attachment: fixed; background-position: top center ; background-repeat: no-repeat;}").arg(backgroundColor).arg(textColor).arg(myAppDataPath);
+    // Note: on macOS (Monterey, Qt 6.9.2) only a background-image: url(...) in
+    // the stylesheet crashes, so we deliberately set just background-color and
+    // text color here (no image). Skipping setStyleSheet entirely would leave
+    // the game list on the native white base color, mismatching the dark lobby.
     QString styleSheet = QString("QTreeView {background-color: %1; color: %2;}").arg(backgroundColor).arg(textColor);
     treeView_GameList->setStyleSheet(styleSheet);
 }
